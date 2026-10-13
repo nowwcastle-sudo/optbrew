@@ -19,6 +19,8 @@ test('scanner reports four fake secret classes without values and ignores public
     await writeFile(file, [...fake, 'public git SHA 5b2c0007766c6a1cf1d53fd8fc73e979e0821022'].join('\n'));
     const result = await scanSecrets({ root: dir, files: ['sample.txt'] });
     assert.equal(result.checked, 1);
+    assert.equal(result.checkedPaths, 1);
+    assert.equal(result.checkedVersions, 1);
     assert.equal(result.findings.length, 4);
     assert.equal(result.exitCode, 1);
     assert.deepEqual(result.findings.map(x => x.line), [1, 2, 3, 4]);
@@ -37,13 +39,16 @@ test('Git scan reads staged bytes, even if working copy differs or is deleted', 
     await unlink(path.join(dir, 'deleted.txt'));
     await writeFile(path.join(dir, 'untracked.txt'), 'disk-C\n');
     const inputs = await readGitScanInputs({ root: dir });
-    const byPath = new Map(inputs.map(x => [x.path, x.bytes.toString('utf8')]));
-    assert.equal(byPath.get('changed.txt'), 'staged-A\n');
-    assert.equal(byPath.get('deleted.txt'), 'staged-D\n');
-    assert.equal(byPath.get('untracked.txt'), 'disk-C\n');
-    assert.equal(byPath.size, 3);
+    const byVersion = new Map(inputs.map(x => [`${x.path}:${x.version}`, x.bytes.toString('utf8')]));
+    assert.equal(byVersion.get('changed.txt:index'), 'staged-A\n');
+    assert.equal(byVersion.get('changed.txt:working-tree'), 'working-B\n');
+    assert.equal(byVersion.get('deleted.txt:index'), 'staged-D\n');
+    assert.equal(byVersion.get('untracked.txt:untracked'), 'disk-C\n');
+    assert.equal(byVersion.size, 4);
     const result = await scanTrackedAndStaged({ root: dir });
-    assert.equal(result.checked, 3);
+    assert.equal(result.checked, 4);
+    assert.equal(result.checkedPaths, 3);
+    assert.equal(result.checkedVersions, 4);
     assert.equal(result.findings.length, 0);
   } finally { await rm(dir, { recursive: true, force: true }); }
 });

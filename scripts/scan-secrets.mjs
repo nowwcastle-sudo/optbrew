@@ -12,9 +12,9 @@ const rules = [
 
 function scanInputs(inputs) {
   const findings = [];
-  let checked = 0;
+  const checkedPaths = new Set();
   for (const { path: relative, bytes: content } of inputs) {
-    checked++;
+    checkedPaths.add(relative);
     if (content.includes(0)) continue;
     const lines = content.toString('utf8').split(/\r?\n/);
     for (let i = 0; i < lines.length; i++) {
@@ -24,7 +24,7 @@ function scanInputs(inputs) {
       }
     }
   }
-  return { checked, findings, exitCode: findings.length ? 1 : 0 };
+  return { checked: inputs.length, checkedPaths: checkedPaths.size, checkedVersions: inputs.length, findings, exitCode: findings.length ? 1 : 0 };
 }
 
 export async function scanSecrets({ root, files }) {
@@ -32,7 +32,7 @@ export async function scanSecrets({ root, files }) {
   for (const name of files) {
     const relative = name.replaceAll('\\', '/');
     if (path.isAbsolute(relative) || relative.split('/').includes('..')) throw new Error(`scan path outside root: ${relative}`);
-    try { inputs.push({ path: relative, bytes: await readFile(path.join(root, relative)) }); }
+    try { inputs.push({ path: relative, version: 'working-tree', bytes: await readFile(path.join(root, relative)) }); }
     catch (error) { if (error.code !== 'ENOENT') throw error; }
   }
   return scanInputs(inputs);
@@ -42,14 +42,20 @@ export async function readGitScanInputs({ root }) {
   const names = args => execFileSync('git', ['ls-files', '-z', ...args], { cwd: root }).toString('utf8').split('\0').filter(Boolean);
   const tracked = [...new Set(names(['--cached']))];
   const untracked = names(['--others', '--exclude-standard']);
-  const inputs = tracked.map(name => ({
-    path: name.replaceAll('\\', '/'),
-    bytes: execFileSync('git', ['show', `:${name}`], { cwd: root, maxBuffer: 64 * 1024 * 1024 })
-  }));
+  const inputs = [];
+  for (const name of tracked) {
+    const relative = name.replaceAll('\\', '/');
+    const staged = execFileSync('git', ['show', `:${name}`], { cwd: root, maxBuffer: 64 * 1024 * 1024 });
+    inputs.push({ path: relative, version: 'index', bytes: staged });
+    try {
+      const working = await readFile(path.join(root, relative));
+      if (!working.equals(staged)) inputs.push({ path: relative, version: 'working-tree', bytes: working });
+    } catch (error) { if (error.code !== 'ENOENT') throw error; }
+  }
   for (const name of untracked) {
     const relative = name.replaceAll('\\', '/');
     if (path.isAbsolute(relative) || relative.split('/').includes('..')) throw new Error(`scan path outside root: ${relative}`);
-    inputs.push({ path: relative, bytes: await readFile(path.join(root, relative)) });
+    inputs.push({ path: relative, version: 'untracked', bytes: await readFile(path.join(root, relative)) });
   }
   return inputs;
 }
@@ -66,7 +72,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
     const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
     scanTrackedAndStaged({ root }).then(result => {
       for (const finding of result.findings) process.stdout.write(`${finding.path}:${finding.line} ${finding.rule}\n`);
-      process.stdout.write(`checked=${result.checked} findings=${result.findings.length}\n`);
+      process.stdout.write(`checked_paths=${result.checkedPaths} checked_versions=${result.checkedVersions} findings=${result.findings.length}\n`);
       process.exitCode = result.exitCode;
     }).catch(error => { process.stderr.write(`${error.message}\n`); process.exitCode = 2; });
   }
