@@ -1,3 +1,11 @@
 .worktrees/
 .superpowers/
 .sdlc-automate/
+
+# graft's local graph cache — regenerable, not committed (run `graft build`).
+/graft/
+
+# Local release output, audit data and backups.
+/dist/
+/.optbrew/
+/_백업_원본_*/

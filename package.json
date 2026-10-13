@@ -1,0 +1,26 @@
+{
+  "name": "optbrew",
+  "version": "0.1.0",
+  "type": "module",
+  "description": "Pinned search audit and improvement skill bundle",
+  "license": "MIT",
+  "engines": { "node": ">=22" },
+  "bin": { "optbrew": "bin/optbrew.mjs" },
+  "files": [
+    "bin/",
+    "lib/",
+    "skills/optbrew/",
+    "plugin.json",
+    ".codex-plugin/",
+    ".claude-plugin/",
+    "README.md",
+    "README.ko.md",
+    "CHANGELOG.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "test": "node --test",
+    "vendor": "node scripts/vendor.mjs",
+    "scan-secrets": "node scripts/scan-secrets.mjs --tracked-and-staged"
+  }
+}

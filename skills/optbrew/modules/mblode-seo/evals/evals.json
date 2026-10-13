@@ -1,0 +1,153 @@
+{
+  "skill_name": "seo",
+  "evals": [
+    {
+      "id": 1,
+      "prompt": "Brief an article on Things 3 for Windows. The keyword tool reports volume 900 for Australia, last month. The prompt tool supplies Phrase 400 but no Exact data.",
+      "expected_output": "Produce a sourced writer brief with the missing Exact metric explicit.",
+      "files": [],
+      "assertions": [
+        "Retains keyword scope and date",
+        "Writes No data for Exact prompt volume",
+        "Does not write the article or claim Phrase is Exact"
+      ]
+    },
+    {
+      "id": 2,
+      "prompt": "Review SEO monitoring for https://app.example.test. The connected Search Console export is for https://www.example.test and a matching monitor already exists.",
+      "expected_output": "Identify the property mismatch and use the existing monitor when updating.",
+      "files": [],
+      "assertions": [
+        "Does not report the other property as app traffic",
+        "Does not create a duplicate recurring job",
+        "Does not send a recap to an unapproved channel"
+      ]
+    },
+    {
+      "id": 3,
+      "prompt": "Verify SEO in a local Next.js checkout. Port 3000 is occupied by another project; the page has two JSON-LD scripts describing distinct consistent entities.",
+      "expected_output": "Use a free owned port and check served metadata without falsely rejecting multiple blocks.",
+      "files": [],
+      "assertions": [
+        "Does not kill the existing listener",
+        "Verifies the served build identity",
+        "Does not flag block count alone"
+      ]
+    },
+    {
+      "id": 4,
+      "prompt": "Add Search Console verification. The domain property is already verified through DNS and no meta token was supplied.",
+      "expected_output": "Preserve DNS verification and avoid invented metadata.",
+      "files": [],
+      "assertions": [
+        "Does not invent a token",
+        "Does not demand meta verification in addition to DNS",
+        "Separates property access from ownership verification"
+      ]
+    },
+    {
+      "id": 5,
+      "prompt": "Audit these verified served-page facts and give only justified fixes: portfolio homepage H1 Matthew Blode; DNS-verified GSC domain with no meta token; two consistent JSON-LD blocks sharing stable @ids; a category page has only navigation until JS runs; sitemap lists /studio which returns 404; all lastmod values are set to build time; /docs and /docs/introduction show identical content and self-canonicalize; French/German alternates reciprocate without x-default. The owner wants to opt out of GPTBot training but appear in ChatGPT search. Do not use external tools.",
+      "expected_output": "Prioritized evidence-based recommendations with explicit limits and no false-positive requirements.",
+      "files": [],
+      "assertions": [
+        "Flags JS-dependent hub content, unavailable sitemap URL, synthetic lastmod and duplicate canonicals",
+        "Accepts DNS verification, consistent multiple JSON-LD blocks and reciprocal hreflang without x-default",
+        "Separates GPTBot training from OAI-SearchBot search access"
+      ]
+    },
+    {
+      "id": 6,
+      "prompt": "Diagnose search performance for https://app.example.test. Only connected GSC export is https://www.example.test. Existing monitor targets app and must be reused. A prior report alleges a 20% drop from 5 clicks to 4, but no completed matching comparison window or conversion data is available. Explain what is unknown and the next measurement steps. Tool capability snapshot: Google generative AI performance provides impressions by page/country/device/date; Bing AI Performance provides citations and cited pages. Vendor prompt volumes are demand estimates. No messages to others are authorized.",
+      "expected_output": "Prioritized evidence-based recommendations with explicit limits and no false-positive requirements.",
+      "files": [],
+      "assertions": [
+        "Rejects mismatched property data and avoids diagnosing a one-click movement as a material incident",
+        "Separates native AI visibility, prompt demand and conversion outcomes",
+        "Reuses the existing monitor and does not send an unauthorized recap"
+      ]
+    },
+    {
+      "id": 7,
+      "prompt": "Our SaaS marketing site already serves full server-rendered HTML, allows OAI-SearchBot, Claude-SearchBot and PerplexityBot, and has answer-first guides with visible last-updated dates. An agency proposes a GEO retainer: add FAQ schema to every page, publish llms.txt, rewrite every intro to exactly 50 words, and report one monthly AI visibility score from a single run of 20 prompts averaged across ChatGPT, Perplexity and Gemini. Advise where the budget should go and how to measure it. Do not use external tools.",
+      "expected_output": "An evidence-bounded recommendation that treats the owned layers as largely done, moves effort to earned third-party coverage and honest per-engine measurement, and does not present schema, llms.txt or answer length as citation levers.",
+      "files": [],
+      "assertions": [
+        "Does not claim FAQ schema, llms.txt or a fixed intro length will increase AI citations",
+        "Identifies independent reviews, comparisons or round-ups in the category as the main remaining lever and recommends classifying which source types current answers cite",
+        "Rejects a single-run blended score in favor of repeated runs reported per engine",
+        "Recommends at least one first-party or retrieval check, such as Search Console generative AI reports, Bing AI performance, or a retrieval snippet test"
+      ]
+    },
+    {
+      "id": 8,
+      "prompt": "Here is our Search Console summary for the last 28 days against the 28 before: /blog/things-3-for-windows 130 clicks (was 45), position 7.1; /guides/how-to-run-a-weekly-review 0 clicks from 310 impressions (was 2 from 330), position 16.8 (was 14.2); /guides/how-to-export-your-ticktick-data 1 click from 120 impressions (was 3 from 100), position 7.4 (was 7.6). The founder wants to publish three new posts this month: 'best GTD apps', 'weekly review template' and 'Things 3 vs TickTick'. Decide what to work on first and write the decision for the first item. Do not use external tools.",
+      "expected_output": "A refresh-before-new decision that reads the supplied windows, puts the declining weekly-review guide and the steady-position CTR fall ahead of new posts, and refuses to recommend any new post without a named gap in the current results.",
+      "files": [],
+      "assertions": [
+        "Treats the weekly-review guide as a refresh or update candidate because of its position loss, rather than recommending a separate 'weekly review template' post that would compete with it",
+        "Reports absolute clicks and impressions beside any percentage change",
+        "Requires a gap check (who the current results cite and what they miss) before recommending any of the three new posts",
+        "Does not state that the TickTick export guide's CTR fall is proven significant from these counts alone"
+      ]
+    }
+  ],
+  "routing": {
+    "should_trigger": [
+      "Audit blode.co and fix crawlability issues.",
+      "Why is our category page invisible to AI search?",
+      "Add a sitemap that only lists available pages.",
+      "Investigate a drop in organic clicks.",
+      "Research the search demand for Things 3 on Windows.",
+      "Write a sourced SEO content brief.",
+      "Measure our visibility in AI Overviews and Copilot.",
+      "Consolidate duplicate documentation URLs.",
+      "Check the French and German hreflang tags.",
+      "Fix canonical URLs and JSON-LD in Next.js.",
+      "An agency wants to sell us schema, llms.txt and a monthly AI visibility score. Is that where our GEO budget should go?",
+      "What's the difference between SEO, AEO and GEO, and which should we work on?"
+    ],
+    "near_miss": [
+      {
+        "prompt": "Write the finished article from this approved brief.",
+        "expected": "ghostwriter"
+      },
+      {
+        "prompt": "Rewrite this welcome email.",
+        "expected": "ghostwriter"
+      },
+      {
+        "prompt": "Make this button label clearer.",
+        "expected": "ghostwriter"
+      },
+      {
+        "prompt": "Redesign the homepage visual style.",
+        "expected": "ui-design"
+      },
+      {
+        "prompt": "Set up tenant isolation for custom domains.",
+        "expected": "multi-tenant-architecture"
+      },
+      {
+        "prompt": "Review keyboard focus in this dialog.",
+        "expected": "ui-verification"
+      },
+      {
+        "prompt": "Add a new onboarding animation.",
+        "expected": "ui-animation"
+      },
+      {
+        "prompt": "Create a skill for release management.",
+        "expected": "agent-skills-creator"
+      },
+      {
+        "prompt": "Write a Diataxis tutorial from this API.",
+        "expected": "ghostwriter"
+      },
+      {
+        "prompt": "Change the pricing page CTA wording.",
+        "expected": "ghostwriter"
+      }
+    ]
+  }
+}

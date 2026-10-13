@@ -1,0 +1,77 @@
+{
+  "schema_version": "1.0.0",
+  "modules": [
+    {
+      "module_id": "mblode-seo",
+      "source_dir": "mblode__agent-skills",
+      "repo": "mblode/agent-skills",
+      "commit": "872bc83bdb6dd54a9ff456fbf1181beea6db7875",
+      "license": "MIT",
+      "license_path": "LICENSE.md",
+      "license_blob_sha": "c5a1d56c6d623c72d077f8aab56b31d7dc371cbb",
+      "include": ["skills/seo"],
+      "strip_prefix": "skills/seo/",
+      "excluded_files": ["Unselected agent skills in the upstream repository"]
+    },
+    {
+      "module_id": "naver-searchadvisor",
+      "source_dir": "JaceProgramming__naver-seo-expert",
+      "repo": "JaceProgramming/naver-searchadvisor-expert",
+      "commit": "cd95f6281090416b3dfbf15fb0f66f0ffa67a19c",
+      "license": "MIT (limited scope)",
+      "license_path": "LICENSE",
+      "license_blob_sha": "4434edf30edce0a41c07fbc776b0d5cebd044547",
+      "include": ["SKILL.md", "NOTICE.md", "references/INDEX.md", "scripts/audit.mjs"],
+      "strip_prefix": "",
+      "excluded_files": ["references/guide/*.md: 55 Naver copyrighted article bodies outside MIT scope; official URLs retained in INDEX", "README.md: documents upstream offline corpus and is not a runtime guide", "tools/fetch-guide.mjs: would retrieve excluded articles", "tools/fix-index.mjs and tools/package.json: authoring tools, not runtime"]
+    },
+    {
+      "module_id": "firecrawl-seo-audit",
+      "source_dir": "firecrawl__firecrawl-workflows",
+      "repo": "firecrawl/firecrawl-workflows",
+      "commit": "94cc91229d6cedc0613f140d3d013b150bc8e1b0",
+      "license": "ISC",
+      "license_path": "LICENSE",
+      "license_blob_sha": "ee221a2151d63ddc1db9857f9c5d346a3de9d816",
+      "include": ["skills/firecrawl-seo-audit"],
+      "strip_prefix": "skills/firecrawl-seo-audit/",
+      "excluded_files": ["Unselected Firecrawl workflows"]
+    },
+    {
+      "module_id": "magnus-seo",
+      "source_dir": "magnus919__agent-skills",
+      "repo": "magnus919/agent-skills",
+      "commit": "2e8fb962819b2b01b270620f92f0cc7213d77ef1",
+      "license": "MIT",
+      "license_path": "LICENSE.md",
+      "license_blob_sha": "9745e19f4b20d77c134964ae1bf0af0ace5c4db7",
+      "include": ["seo"],
+      "strip_prefix": "seo/",
+      "excluded_files": ["Unselected agent skills"]
+    },
+    {
+      "module_id": "seranking-seo",
+      "source_dir": "seranking__seo-skills",
+      "repo": "seranking/seo-skills",
+      "commit": "fd6d1408f2e6a06454d81c07c29e0f04342eb9ba",
+      "license": "MIT",
+      "license_path": "LICENSE",
+      "license_blob_sha": "ca6b9a33c8234bf47cdcfb2dc157b308195845c5",
+      "include": ["skills/seo-geo", "skills/seo-ai-search-share-of-voice", "skills/seo-api", "skills/seo-firecrawl", "skills/seo-technical-audit", "skills/seo-content-audit", "skills/seo-keyword-niche", "skills/seo-competitor-gap-analysis", "skills/seo-google", "skills/seo-page", "skills/seo-schema", "skills/seo-sitemap", "skills/seo-plan"],
+      "strip_prefix": "",
+      "excluded_files": ["extensions/google/install.sh and extensions/firecrawl/install.sh: upstream installers disabled", "scripts/google_auth.py and root scripts: upstream authentication and provider execution disabled; optbrew capability adapters replace active commands", "Unselected campaign, ad, social and other upstream skills"]
+    },
+    {
+      "module_id": "marketing-search",
+      "source_dir": "coreyhaines31__marketingskills",
+      "repo": "coreyhaines31/marketingskills",
+      "commit": "5b2c0007766c6a1cf1d53fd8fc73e979e0821022",
+      "license": "MIT",
+      "license_path": "LICENSE",
+      "license_blob_sha": "7c48dd638a9ebed49a8ef0c0c4eea90105381cdf",
+      "include": ["skills/seo-audit", "skills/ai-seo", "skills/schema", "skills/site-architecture", "skills/programmatic-seo", "skills/content-strategy", "skills/analytics"],
+      "strip_prefix": "",
+      "excluded_files": ["Unselected marketing skills, installers and authoring utilities"]
+    }
+  ]
+}
