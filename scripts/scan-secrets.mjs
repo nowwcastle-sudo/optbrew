@@ -10,15 +10,10 @@ const rules = [
   ['aws_access_key', /AKIA[A-Z0-9]{16}/g],
 ];
 
-export async function scanSecrets({ root, files }) {
+function scanInputs(inputs) {
   const findings = [];
   let checked = 0;
-  for (const name of files) {
-    const relative = name.replaceAll('\\', '/');
-    if (path.isAbsolute(relative) || relative.split('/').includes('..')) throw new Error(`scan path outside root: ${relative}`);
-    let content;
-    try { content = await readFile(path.join(root, relative)); }
-    catch (error) { if (error.code === 'ENOENT') continue; throw error; }
+  for (const { path: relative, bytes: content } of inputs) {
     checked++;
     if (content.includes(0)) continue;
     const lines = content.toString('utf8').split(/\r?\n/);
@@ -32,15 +27,44 @@ export async function scanSecrets({ root, files }) {
   return { checked, findings, exitCode: findings.length ? 1 : 0 };
 }
 
+export async function scanSecrets({ root, files }) {
+  const inputs = [];
+  for (const name of files) {
+    const relative = name.replaceAll('\\', '/');
+    if (path.isAbsolute(relative) || relative.split('/').includes('..')) throw new Error(`scan path outside root: ${relative}`);
+    try { inputs.push({ path: relative, bytes: await readFile(path.join(root, relative)) }); }
+    catch (error) { if (error.code !== 'ENOENT') throw error; }
+  }
+  return scanInputs(inputs);
+}
+
+export async function readGitScanInputs({ root }) {
+  const names = args => execFileSync('git', ['ls-files', '-z', ...args], { cwd: root }).toString('utf8').split('\0').filter(Boolean);
+  const tracked = [...new Set(names(['--cached']))];
+  const untracked = names(['--others', '--exclude-standard']);
+  const inputs = tracked.map(name => ({
+    path: name.replaceAll('\\', '/'),
+    bytes: execFileSync('git', ['show', `:${name}`], { cwd: root, maxBuffer: 64 * 1024 * 1024 })
+  }));
+  for (const name of untracked) {
+    const relative = name.replaceAll('\\', '/');
+    if (path.isAbsolute(relative) || relative.split('/').includes('..')) throw new Error(`scan path outside root: ${relative}`);
+    inputs.push({ path: relative, bytes: await readFile(path.join(root, relative)) });
+  }
+  return inputs;
+}
+
+export async function scanTrackedAndStaged({ root }) {
+  return scanInputs(await readGitScanInputs({ root }));
+}
+
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
   if (!process.argv.includes('--tracked-and-staged')) {
     process.stderr.write('usage: node scripts/scan-secrets.mjs --tracked-and-staged\n');
     process.exitCode = 2;
   } else {
     const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-    const listed = execFileSync('git', ['ls-files', '-z', '--cached', '--others', '--exclude-standard'], { cwd: root });
-    const files = listed.toString('utf8').split('\0').filter(Boolean);
-    scanSecrets({ root, files }).then(result => {
+    scanTrackedAndStaged({ root }).then(result => {
       for (const finding of result.findings) process.stdout.write(`${finding.path}:${finding.line} ${finding.rule}\n`);
       process.stdout.write(`checked=${result.checked} findings=${result.findings.length}\n`);
       process.exitCode = result.exitCode;

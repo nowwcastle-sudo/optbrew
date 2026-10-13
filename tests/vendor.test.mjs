@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict';
+import { createHash } from 'node:crypto';
+import { execFileSync } from 'node:child_process';
 import { mkdtemp, readFile, readdir, rm, cp, writeFile, mkdir } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
@@ -76,5 +78,64 @@ test('license drift and forbidden Naver guide copy fail closed', async () => {
     const badConfigPath = path.join(temp, 'bad-config.json');
     await writeFile(badConfigPath, JSON.stringify(badConfig));
     await assert.rejects(vendor({ sourcesRoot, outputRoot: path.join(temp, 'out'), configPath: badConfigPath }), /forbidden|copyright|guide/i);
+  } finally { await rm(temp, { recursive: true, force: true }); }
+});
+
+test('reviewed parser replacement survives configured CLI regeneration and rejects local edits', async () => {
+  const temp = await mkdtemp(path.join(os.tmpdir(), 'optbrew-patch-'));
+  try {
+    const outputRoot = path.join(temp, 'out');
+    const base = await vendor({ sourcesRoot, outputRoot, configPath });
+    const original = base.files.find(x => x.module_id === 'magnus-seo' && x.upstream_path === 'seo/scripts/aeo_audit.py');
+    assert.ok(original);
+    const replacement = Buffer.concat([await readFile(path.join(outputRoot, original.package_path)), Buffer.from('\n# reviewed test change\n')]);
+    const patchDir = path.join(temp, 'patches');
+    await mkdir(patchDir);
+    await writeFile(path.join(patchDir, 'aeo_audit.py'), replacement);
+    const config = JSON.parse(await readFile(configPath, 'utf8'));
+    config.reviewed_patches = [{
+      id: 'T2-MAGNUS-PARSER', module_id: 'magnus-seo', upstream_path: 'seo/scripts/aeo_audit.py',
+      expected_base_sha256: original.distributed_sha256,
+      replacement_path: 'patches/aeo_audit.py',
+      replacement_sha256: createHash('sha256').update(replacement).digest('hex'),
+      reason: 'Reviewed parser correction fixture'
+    }];
+    const patchedConfig = path.join(temp, 'vendor.config.json');
+    await writeFile(patchedConfig, JSON.stringify(config));
+    execFileSync(process.execPath, ['scripts/vendor.mjs', '--sources-root', sourcesRoot, '--output-root', outputRoot, '--config-path', patchedConfig], { cwd: root });
+    const patched = JSON.parse(await readFile(path.join(outputRoot, 'skills/optbrew/source-lock.json')));
+    const record = patched.files.find(x => x.package_path === original.package_path);
+    assert.equal(record.original_sha256, original.original_sha256);
+    assert.equal(record.patch_id, 'T2-MAGNUS-PARSER');
+    assert.equal(record.patch_reason, 'Reviewed parser correction fixture');
+    assert.equal(record.distributed_sha256, config.reviewed_patches[0].replacement_sha256);
+    assert.deepEqual(await readFile(path.join(outputRoot, original.package_path)), replacement);
+    execFileSync(process.execPath, ['scripts/vendor.mjs', '--sources-root', sourcesRoot, '--output-root', outputRoot, '--config-path', patchedConfig], { cwd: root });
+    await writeFile(path.join(outputRoot, original.package_path), 'local edit');
+    await assert.rejects(vendor({ sourcesRoot, outputRoot, configPath: patchedConfig }), /local edit|existing file differs/i);
+    config.reviewed_patches = [];
+    await writeFile(patchedConfig, JSON.stringify(config));
+    const apiLock = await vendor({ sourcesRoot, outputRoot: path.join(temp, 'api-out'), configPath: patchedConfig, patchSet: { patches: [badConfigPatch()] } });
+    assert.equal(apiLock.files.find(x => x.package_path === original.package_path).patch_id, 'T2-MAGNUS-PARSER');
+    const wrongHash = { ...badConfigPatch(), replacement_sha256: '0'.repeat(64) };
+    await assert.rejects(vendor({ sourcesRoot, outputRoot: path.join(temp, 'bad-hash-out'), configPath: patchedConfig, patchSet: { patches: [wrongHash] } }), /replacement hash mismatch/i);
+    function badConfigPatch() {
+      return { id: 'T2-MAGNUS-PARSER', module_id: 'magnus-seo', upstream_path: 'seo/scripts/aeo_audit.py', expected_base_sha256: original.distributed_sha256, replacement_path: 'patches/aeo_audit.py', replacement_sha256: createHash('sha256').update(replacement).digest('hex'), reason: 'Reviewed parser correction fixture' };
+    }
+  } finally { await rm(temp, { recursive: true, force: true }); }
+});
+
+test('Google submission commands are disabled, never labelled read-only', async () => {
+  const temp = await mkdtemp(path.join(os.tmpdir(), 'optbrew-submit-'));
+  try {
+    await vendor({ sourcesRoot, outputRoot: temp, configPath });
+    const guide = await readFile(path.join(temp, 'skills/optbrew/modules/seranking-seo/skills/seo-google/GUIDE.md'), 'utf8');
+    const reference = await readFile(path.join(temp, 'skills/optbrew/modules/seranking-seo/skills/seo-google/references/indexing-api.md'), 'utf8');
+    assert.match(guide, /index <url>[\s\S]{0,300}submission disabled/i);
+    assert.match(guide, /index-batch <file>[\s\S]{0,300}submission disabled/i);
+    assert.doesNotMatch(guide, /read-only capability[^\n]*(?:index|index-batch|<url>|<file>)/i);
+    assert.doesNotMatch(guide, /scripts\/indexing_notify\.py/);
+    assert.match(reference, /submission disabled/i);
+    assert.match(reference, /separate.*authority/i);
   } finally { await rm(temp, { recursive: true, force: true }); }
 });

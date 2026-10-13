@@ -34,9 +34,9 @@ Show what a single URL ranks for, what traffic it captures, where its weak and s
 4b. **GSC URL performance + URL Inspection** *(only if google-api.json is present, tier ≥ 1)*
    - Replaces the directional traffic estimate from step 2 with first-party Google data for the exact URL.
    - Pull GSC search analytics for the URL (last 28 days, by query and page):
-     `optbrew read-only capability (see top-level routing) "{config.default_property}" --url "{target_url}" --days 28 --json`
+     `upstream script excluded; use optbrew capability routing "{config.default_property}" --url "{target_url}" --days 28 --json`
    - Pull URL Inspection (real indexation status, canonical Google sees, last crawl date):
-     `optbrew read-only capability (see top-level routing) "{target_url}" --site-url "{config.default_property}" --json`
+     `upstream script excluded; use optbrew capability routing "{target_url}" --site-url "{config.default_property}" --json`
    - If the URL's domain isn't a verified GSC property: surface "GSC: {target_domain} not verified — add it in Search Console" and continue with SE Ranking data only.
    - Surface in `PAGE.md` "## Snapshot": `GSC last 28d: {clicks}/{impressions}/{ctr}% CTR / pos {position}` and `Google sees: {INDEXED|EXCLUDED} · canonical {userCanonical} → {googleCanonical} · last crawled {date}`.
    - **Feed into the verdict heuristic:** `INDEXED` + impressions > 100 + position 4–10 → harden REFRESH (clear quick-win). `EXCLUDED` (any reason) → harden KILL or CONSOLIDATE. `userCanonical ≠ googleCanonical` → flag as critical issue regardless of verdict.

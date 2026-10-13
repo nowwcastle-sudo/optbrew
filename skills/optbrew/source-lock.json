@@ -86,6 +86,8 @@
       "original_sha256": "81ac64b19ea7ae7f9a8d197705df58f48ffca02c74fca13e565dedf4f7595b46",
       "distributed_sha256": "81ac64b19ea7ae7f9a8d197705df58f48ffca02c74fca13e565dedf4f7595b46",
       "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": null,
       "excluded_files": [
         "Unselected agent skills in the upstream repository"
@@ -105,6 +107,8 @@
       "transformations": [
         "SKILL.md to GUIDE.md; YAML frontmatter removed"
       ],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": "Portable optbrew GUIDE and capability routing",
       "excluded_files": [
         "Unselected agent skills in the upstream repository"
@@ -122,6 +126,8 @@
       "original_sha256": "8bda87a2e1140c6c735745af18a17616a0c3bd16b812b7d19654bf0ae1a1bd6c",
       "distributed_sha256": "8bda87a2e1140c6c735745af18a17616a0c3bd16b812b7d19654bf0ae1a1bd6c",
       "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": null,
       "excluded_files": [
         "Unselected agent skills in the upstream repository"
@@ -139,6 +145,8 @@
       "original_sha256": "ca51e137e56b7eb7c02c8ca6de22177468ddaa92e69c2506d08b4cee55e43f14",
       "distributed_sha256": "ca51e137e56b7eb7c02c8ca6de22177468ddaa92e69c2506d08b4cee55e43f14",
       "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": null,
       "excluded_files": [
         "Unselected agent skills in the upstream repository"
@@ -156,6 +164,8 @@
       "original_sha256": "829293a23952c689bdd0ae5490e9261258f04576114579e9e866a011921ad44c",
       "distributed_sha256": "829293a23952c689bdd0ae5490e9261258f04576114579e9e866a011921ad44c",
       "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": null,
       "excluded_files": [
         "Unselected agent skills in the upstream repository"
@@ -173,6 +183,8 @@
       "original_sha256": "b4a207f43abc05007f2a9ecf61f895160b4da9046e1ee11e67bb532a67c07e65",
       "distributed_sha256": "b4a207f43abc05007f2a9ecf61f895160b4da9046e1ee11e67bb532a67c07e65",
       "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": null,
       "excluded_files": [
         "Unselected agent skills in the upstream repository"
@@ -190,6 +202,8 @@
       "original_sha256": "dd31124a6202816cda9395b19dd50c2f055e792bc00cd62e6c4016d1c6b13c9c",
       "distributed_sha256": "dd31124a6202816cda9395b19dd50c2f055e792bc00cd62e6c4016d1c6b13c9c",
       "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": null,
       "excluded_files": [
         "Unselected agent skills in the upstream repository"
@@ -207,6 +221,8 @@
       "original_sha256": "4552d3026b29a40bf58f5c139e51e22391092abdd620cf745cf270a205b6dac5",
       "distributed_sha256": "4552d3026b29a40bf58f5c139e51e22391092abdd620cf745cf270a205b6dac5",
       "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": null,
       "excluded_files": [
         "Unselected agent skills in the upstream repository"
@@ -224,6 +240,8 @@
       "original_sha256": "2a82f99a70a162637ada300d9812b82f41c053151b2fcf1db5f9215f5c7c0a9b",
       "distributed_sha256": "2a82f99a70a162637ada300d9812b82f41c053151b2fcf1db5f9215f5c7c0a9b",
       "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": null,
       "excluded_files": [
         "Unselected agent skills in the upstream repository"
@@ -241,6 +259,8 @@
       "original_sha256": "70bf6f9b894775668a1b6eee0b56f5d3a1c9be7d3c646b0d4165330796eb0913",
       "distributed_sha256": "70bf6f9b894775668a1b6eee0b56f5d3a1c9be7d3c646b0d4165330796eb0913",
       "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": null,
       "excluded_files": [
         "Unselected agent skills in the upstream repository"
@@ -258,6 +278,8 @@
       "original_sha256": "f3b7d76edb71fb9e55722b817fcb2350cfba8ccc94cdba34537a0806c56845fd",
       "distributed_sha256": "f3b7d76edb71fb9e55722b817fcb2350cfba8ccc94cdba34537a0806c56845fd",
       "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": null,
       "excluded_files": [
         "Unselected agent skills in the upstream repository"
@@ -275,6 +297,8 @@
       "original_sha256": "1d2bc5241a4f81062bdd3a2064046e89a207379e3470f2a49c57207c535ef04c",
       "distributed_sha256": "1d2bc5241a4f81062bdd3a2064046e89a207379e3470f2a49c57207c535ef04c",
       "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": null,
       "excluded_files": [
         "references/guide/*.md: 55 Naver copyrighted article bodies outside MIT scope; official URLs retained in INDEX",
@@ -297,6 +321,8 @@
       "transformations": [
         "Prepended distribution-specific exclusion notice; original upstream notice preserved below"
       ],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": "Portable optbrew GUIDE and capability routing",
       "excluded_files": [
         "references/guide/*.md: 55 Naver copyrighted article bodies outside MIT scope; official URLs retained in INDEX",
@@ -320,6 +346,8 @@
         "SKILL.md to GUIDE.md; YAML frontmatter removed",
         "Replaced offline copyrighted-guide workflow with official-index routing"
       ],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": "Portable optbrew GUIDE and capability routing",
       "excluded_files": [
         "references/guide/*.md: 55 Naver copyrighted article bodies outside MIT scope; official URLs retained in INDEX",
@@ -342,6 +370,8 @@
       "transformations": [
         "INDEX links point to official Naver URLs; article bodies excluded"
       ],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": "Portable optbrew GUIDE and capability routing",
       "excluded_files": [
         "references/guide/*.md: 55 Naver copyrighted article bodies outside MIT scope; official URLs retained in INDEX",
@@ -364,6 +394,8 @@
       "transformations": [
         "Audit output routes policy evidence to official URL index"
       ],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": "Portable optbrew GUIDE and capability routing",
       "excluded_files": [
         "references/guide/*.md: 55 Naver copyrighted article bodies outside MIT scope; official URLs retained in INDEX",
@@ -384,6 +416,8 @@
       "original_sha256": "7bb9acac4ebb53a0fda17dd8a764ae184ff8ebf2563a9dd7915a023f73d55c3a",
       "distributed_sha256": "7bb9acac4ebb53a0fda17dd8a764ae184ff8ebf2563a9dd7915a023f73d55c3a",
       "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": null,
       "excluded_files": [
         "Unselected Firecrawl workflows"
@@ -403,6 +437,8 @@
       "transformations": [
         "SKILL.md to GUIDE.md; YAML frontmatter removed"
       ],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": "Portable optbrew GUIDE and capability routing",
       "excluded_files": [
         "Unselected Firecrawl workflows"
@@ -420,6 +456,8 @@
       "original_sha256": "22fa3b1ec405fe440e86d0d293ce21de0c637ebc37f263dbe3032ee47215cfe2",
       "distributed_sha256": "22fa3b1ec405fe440e86d0d293ce21de0c637ebc37f263dbe3032ee47215cfe2",
       "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": null,
       "excluded_files": [
         "Unselected agent skills"
@@ -439,6 +477,8 @@
       "transformations": [
         "Inline SKILL.md mentions mapped to GUIDE.md"
       ],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": "Portable optbrew GUIDE and capability routing",
       "excluded_files": [
         "Unselected agent skills"
@@ -458,6 +498,8 @@
       "transformations": [
         "SKILL.md to GUIDE.md; YAML frontmatter removed"
       ],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": "Portable optbrew GUIDE and capability routing",
       "excluded_files": [
         "Unselected agent skills"
@@ -475,6 +517,8 @@
       "original_sha256": "c7d0948abe800929001a4604114160bb881c422d2720ce2c39d589fda8792d77",
       "distributed_sha256": "c7d0948abe800929001a4604114160bb881c422d2720ce2c39d589fda8792d77",
       "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": null,
       "excluded_files": [
         "Unselected agent skills"
@@ -492,6 +536,8 @@
       "original_sha256": "2d231a7b088a0ed307cd1a9cd2a1e202ea11d39b2494315bf016eb24c4aaab6e",
       "distributed_sha256": "2d231a7b088a0ed307cd1a9cd2a1e202ea11d39b2494315bf016eb24c4aaab6e",
       "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": null,
       "excluded_files": [
         "Unselected agent skills"
@@ -509,6 +555,8 @@
       "original_sha256": "ee4ee7c36373886d42181b575fff3692efe588cbefc1397472e419f672ad30f8",
       "distributed_sha256": "ee4ee7c36373886d42181b575fff3692efe588cbefc1397472e419f672ad30f8",
       "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": null,
       "excluded_files": [
         "Unselected agent skills"
@@ -526,6 +574,8 @@
       "original_sha256": "6c09204caf144a24ae421d488d63cb48371c741309c89eda0a91a69511371714",
       "distributed_sha256": "6c09204caf144a24ae421d488d63cb48371c741309c89eda0a91a69511371714",
       "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": null,
       "excluded_files": [
         "Unselected agent skills"
@@ -543,6 +593,8 @@
       "original_sha256": "cb470c5370ac70c08fd608f32974cd3516c5179add2b1b3ecf0955a4903c3cef",
       "distributed_sha256": "cb470c5370ac70c08fd608f32974cd3516c5179add2b1b3ecf0955a4903c3cef",
       "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": null,
       "excluded_files": [
         "Unselected agent skills"
@@ -562,6 +614,8 @@
       "transformations": [
         "Removed source trailing whitespace for clean Git diff"
       ],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": "Portable optbrew GUIDE and capability routing",
       "excluded_files": [
         "Unselected agent skills"
@@ -579,6 +633,8 @@
       "original_sha256": "c547d49e91dcabb99e133fac53f533e898a13eaf169d16691efde89425e07dfa",
       "distributed_sha256": "c547d49e91dcabb99e133fac53f533e898a13eaf169d16691efde89425e07dfa",
       "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": null,
       "excluded_files": [
         "Unselected agent skills"
@@ -596,6 +652,8 @@
       "original_sha256": "11b76c49cf6fdb297f3befa16cfd1545e932b4ae17a2a66555ee120fd4e412d5",
       "distributed_sha256": "11b76c49cf6fdb297f3befa16cfd1545e932b4ae17a2a66555ee120fd4e412d5",
       "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": null,
       "excluded_files": [
         "Unselected agent skills"
@@ -613,6 +671,8 @@
       "original_sha256": "ed0e2dbe6dcc5fd001c35cd41d58d4368b24223dce2b4779a54b1f15dbc2a61f",
       "distributed_sha256": "ed0e2dbe6dcc5fd001c35cd41d58d4368b24223dce2b4779a54b1f15dbc2a61f",
       "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": null,
       "excluded_files": [
         "Unselected agent skills"
@@ -630,6 +690,8 @@
       "original_sha256": "cad085cd4788d8447d7795e0725e72b8c449c336b301a2e109da0d89e022602b",
       "distributed_sha256": "cad085cd4788d8447d7795e0725e72b8c449c336b301a2e109da0d89e022602b",
       "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": null,
       "excluded_files": [
         "Unselected agent skills"
@@ -647,6 +709,8 @@
       "original_sha256": "cc10d4e944abb25813520697cd67f03fb7586d619e177296918fe2d7f7c1ccd5",
       "distributed_sha256": "cc10d4e944abb25813520697cd67f03fb7586d619e177296918fe2d7f7c1ccd5",
       "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": null,
       "excluded_files": [
         "Unselected agent skills"
@@ -666,6 +730,8 @@
       "transformations": [
         "Removed source trailing whitespace for clean Git diff"
       ],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": "Portable optbrew GUIDE and capability routing",
       "excluded_files": [
         "Unselected agent skills"
@@ -683,6 +749,8 @@
       "original_sha256": "2341314982e6d82d31098e73ef89ec8ff4dfc83d53a441b5b8aab61fafda81bc",
       "distributed_sha256": "2341314982e6d82d31098e73ef89ec8ff4dfc83d53a441b5b8aab61fafda81bc",
       "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": null,
       "excluded_files": [
         "Unselected agent skills"
@@ -700,6 +768,8 @@
       "original_sha256": "2f2a47178656addd664d4ecdc1b8292821a0710343b528fec85a97ff3c15c019",
       "distributed_sha256": "2f2a47178656addd664d4ecdc1b8292821a0710343b528fec85a97ff3c15c019",
       "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": null,
       "excluded_files": [
         "Unselected agent skills"
@@ -717,6 +787,8 @@
       "original_sha256": "622c98a8aa80160aebe5ecde0e6460f2863e28c696218e3f3b6c0966d2abbfb1",
       "distributed_sha256": "622c98a8aa80160aebe5ecde0e6460f2863e28c696218e3f3b6c0966d2abbfb1",
       "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": null,
       "excluded_files": [
         "Unselected agent skills"
@@ -734,6 +806,8 @@
       "original_sha256": "74fb617291ad6e123374c0239942fd7ee8055c0d4f170a38649c4d50d52343e3",
       "distributed_sha256": "74fb617291ad6e123374c0239942fd7ee8055c0d4f170a38649c4d50d52343e3",
       "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": null,
       "excluded_files": [
         "Unselected agent skills"
@@ -751,6 +825,8 @@
       "original_sha256": "dd84d1306c4cbe1a4184c6342382f1718d7187af5cf3b79af12e034b6a5c7eaa",
       "distributed_sha256": "dd84d1306c4cbe1a4184c6342382f1718d7187af5cf3b79af12e034b6a5c7eaa",
       "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": null,
       "excluded_files": [
         "Unselected agent skills"
@@ -768,6 +844,8 @@
       "original_sha256": "b5e6320db5b176df13b16c7e256b27308be33ed349e4cad199f88a9ca6f395e8",
       "distributed_sha256": "b5e6320db5b176df13b16c7e256b27308be33ed349e4cad199f88a9ca6f395e8",
       "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": null,
       "excluded_files": [
         "Unselected agent skills"
@@ -785,6 +863,8 @@
       "original_sha256": "66ed1b74fe26e608d4e25ec651de44ae08ec807bd20dafeacdc80a2a490bc0e0",
       "distributed_sha256": "66ed1b74fe26e608d4e25ec651de44ae08ec807bd20dafeacdc80a2a490bc0e0",
       "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": null,
       "excluded_files": [
         "Unselected agent skills"
@@ -802,6 +882,8 @@
       "original_sha256": "533c2dc730ad8bdcf2805d8026e51b405361e7d841128cff128856affdff6cd2",
       "distributed_sha256": "533c2dc730ad8bdcf2805d8026e51b405361e7d841128cff128856affdff6cd2",
       "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": null,
       "excluded_files": [
         "Unselected agent skills"
@@ -819,6 +901,8 @@
       "original_sha256": "e21c11aef62812e1e4f8f7fa428dc0838a50a9d0db0c7963be026f409d027b17",
       "distributed_sha256": "e21c11aef62812e1e4f8f7fa428dc0838a50a9d0db0c7963be026f409d027b17",
       "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": null,
       "excluded_files": [
         "Unselected agent skills"
@@ -836,6 +920,8 @@
       "original_sha256": "8acd06272d6615df90a9d9f3032083c246a9604106bc35e180b2b8a78cee55ba",
       "distributed_sha256": "8acd06272d6615df90a9d9f3032083c246a9604106bc35e180b2b8a78cee55ba",
       "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": null,
       "excluded_files": [
         "Unselected agent skills"
@@ -853,6 +939,8 @@
       "original_sha256": "cbc4ae80a3c41ef650911d94c76971cd7e9f1829c9e6b0df271931687f46286a",
       "distributed_sha256": "cbc4ae80a3c41ef650911d94c76971cd7e9f1829c9e6b0df271931687f46286a",
       "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": null,
       "excluded_files": [
         "Unselected agent skills"
@@ -870,6 +958,8 @@
       "original_sha256": "d153674d772f8d7f17dc8a9274ccc9432b865b454d58d090758cc4d7b6e3e1f8",
       "distributed_sha256": "d153674d772f8d7f17dc8a9274ccc9432b865b454d58d090758cc4d7b6e3e1f8",
       "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": null,
       "excluded_files": [
         "Unselected agent skills"
@@ -887,6 +977,8 @@
       "original_sha256": "a11e05c967c9113e0fc039f4d5dd6e7aeb3f0a005ff1d873382346102e3668cc",
       "distributed_sha256": "a11e05c967c9113e0fc039f4d5dd6e7aeb3f0a005ff1d873382346102e3668cc",
       "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": null,
       "excluded_files": [
         "Unselected agent skills"
@@ -904,6 +996,8 @@
       "original_sha256": "be37f39e84329222181a6d75c84b73a514e691d52da9741db864e057ce8e3eee",
       "distributed_sha256": "be37f39e84329222181a6d75c84b73a514e691d52da9741db864e057ce8e3eee",
       "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": null,
       "excluded_files": [
         "extensions/google/install.sh and extensions/firecrawl/install.sh: upstream installers disabled",
@@ -926,6 +1020,8 @@
         "SKILL.md to GUIDE.md; YAML frontmatter removed",
         "Unbundled relative link ../../examples/seo-ai-search-share-of-voice-wix-com-20260427/REPORT.md changed to upstream-only text"
       ],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": "Portable optbrew GUIDE and capability routing",
       "excluded_files": [
         "extensions/google/install.sh and extensions/firecrawl/install.sh: upstream installers disabled",
@@ -947,6 +1043,8 @@
       "transformations": [
         "SKILL.md to GUIDE.md; YAML frontmatter removed"
       ],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": "Portable optbrew GUIDE and capability routing",
       "excluded_files": [
         "extensions/google/install.sh and extensions/firecrawl/install.sh: upstream installers disabled",
@@ -966,6 +1064,8 @@
       "original_sha256": "d5555bb128b3997341802f4e881e516370b4f3bae36b5b90799bf58727a7fd9e",
       "distributed_sha256": "d5555bb128b3997341802f4e881e516370b4f3bae36b5b90799bf58727a7fd9e",
       "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": null,
       "excluded_files": [
         "extensions/google/install.sh and extensions/firecrawl/install.sh: upstream installers disabled",
@@ -985,6 +1085,8 @@
       "original_sha256": "cf65b297d0038036c17f39bf7542056cd37946fbd49441508ffd1789d119aa53",
       "distributed_sha256": "cf65b297d0038036c17f39bf7542056cd37946fbd49441508ffd1789d119aa53",
       "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": null,
       "excluded_files": [
         "extensions/google/install.sh and extensions/firecrawl/install.sh: upstream installers disabled",
@@ -1004,6 +1106,8 @@
       "original_sha256": "304efd93f4f4e245441cf906cdbeb75ebbead859202e24a135b8534116d4bf72",
       "distributed_sha256": "304efd93f4f4e245441cf906cdbeb75ebbead859202e24a135b8534116d4bf72",
       "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": null,
       "excluded_files": [
         "extensions/google/install.sh and extensions/firecrawl/install.sh: upstream installers disabled",
@@ -1023,6 +1127,8 @@
       "original_sha256": "7c2c1fc4b44ae308222b3c4f92de1b02b1f5cebc67be259780d0bf652b875fdf",
       "distributed_sha256": "7c2c1fc4b44ae308222b3c4f92de1b02b1f5cebc67be259780d0bf652b875fdf",
       "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": null,
       "excluded_files": [
         "extensions/google/install.sh and extensions/firecrawl/install.sh: upstream installers disabled",
@@ -1045,6 +1151,8 @@
         "SKILL.md to GUIDE.md; YAML frontmatter removed",
         "Unbundled relative link ../../examples/seo-competitor-gap-analysis-wix-com-20260514/REPORT.md changed to upstream-only text"
       ],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": "Portable optbrew GUIDE and capability routing",
       "excluded_files": [
         "extensions/google/install.sh and extensions/firecrawl/install.sh: upstream installers disabled",
@@ -1062,12 +1170,14 @@
       "package_path": "skills/optbrew/modules/seranking-seo/skills/seo-content-audit/GUIDE.md",
       "original_git_blob_sha": "d1a6ec1c8878af18ad0ca8c875a98fce78402f4c",
       "original_sha256": "c5ab619b6b050cf636a73d15b9d1f04de9f3170c6da19928d3696adb5fdcbc05",
-      "distributed_sha256": "bd6d98bf94d6defc4af480b20c413ee57803201b7409f96794c6ab249269e993",
+      "distributed_sha256": "0bf50f0ad97cf712f2c9228d33dc99d16daea6e96978cf64e76dc1f81ac66b39",
       "transformations": [
         "SKILL.md to GUIDE.md; YAML frontmatter removed",
         "Upstream install/auth/script commands disabled; optbrew capability routing required",
         "Unbundled relative link ../../examples/seo-content-audit-stripe-rate-limiters-20260514/VERDICT.md changed to upstream-only text"
       ],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": "Portable optbrew GUIDE and capability routing",
       "excluded_files": [
         "extensions/google/install.sh and extensions/firecrawl/install.sh: upstream installers disabled",
@@ -1087,6 +1197,8 @@
       "original_sha256": "9b779d275b3832aa8fcc52ecd27200e8a0b01603f55f8c376f38383b83521498",
       "distributed_sha256": "9b779d275b3832aa8fcc52ecd27200e8a0b01603f55f8c376f38383b83521498",
       "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": null,
       "excluded_files": [
         "extensions/google/install.sh and extensions/firecrawl/install.sh: upstream installers disabled",
@@ -1106,6 +1218,8 @@
       "original_sha256": "e8bcffb3ae07d77ab272a45c55cd4d8ce19e933f955cd3ed720fa58b5bd78b7c",
       "distributed_sha256": "e8bcffb3ae07d77ab272a45c55cd4d8ce19e933f955cd3ed720fa58b5bd78b7c",
       "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": null,
       "excluded_files": [
         "extensions/google/install.sh and extensions/firecrawl/install.sh: upstream installers disabled",
@@ -1125,6 +1239,8 @@
       "original_sha256": "3ac294680cd86afe2936d75e2890d17e24290f64cdc5a5ce113e6bd12d028614",
       "distributed_sha256": "3ac294680cd86afe2936d75e2890d17e24290f64cdc5a5ce113e6bd12d028614",
       "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": null,
       "excluded_files": [
         "extensions/google/install.sh and extensions/firecrawl/install.sh: upstream installers disabled",
@@ -1148,6 +1264,8 @@
         "Upstream install/auth/script commands disabled; optbrew capability routing required",
         "Unbundled relative link ../../examples/seo-firecrawl-stripe-com-20260514/scrape/FIRECRAWL.md changed to upstream-only text"
       ],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": "Portable optbrew GUIDE and capability routing",
       "excluded_files": [
         "extensions/google/install.sh and extensions/firecrawl/install.sh: upstream installers disabled",
@@ -1165,11 +1283,13 @@
       "package_path": "skills/optbrew/modules/seranking-seo/skills/seo-firecrawl/references/preflight.md",
       "original_git_blob_sha": "223a52042db042b7c0421cf2a56079f925a79cfa",
       "original_sha256": "75770e2c1ba908f490472db2c9b0e62d5ceadfab5b0a23d6b27ae9a5035bad8a",
-      "distributed_sha256": "86cbf38101f69bdefe5a806758eb7b9886c9e6f14ff6200b18123dad364d749c",
+      "distributed_sha256": "e88dee59c3595dcd778bdd02be5770a6e36e182b16039687ac90301d7a4668e2",
       "transformations": [
         "Upstream install/auth/script commands disabled; optbrew capability routing required",
         "Inline SKILL.md mentions mapped to GUIDE.md"
       ],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": "Portable optbrew GUIDE and capability routing",
       "excluded_files": [
         "extensions/google/install.sh and extensions/firecrawl/install.sh: upstream installers disabled",
@@ -1193,6 +1313,8 @@
         "Upstream install/auth/script commands disabled; optbrew capability routing required",
         "Unbundled relative link ../../examples/seo-geo-notion-share-pages-20260514/GEO.md changed to upstream-only text"
       ],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": "Portable optbrew GUIDE and capability routing",
       "excluded_files": [
         "extensions/google/install.sh and extensions/firecrawl/install.sh: upstream installers disabled",
@@ -1210,12 +1332,15 @@
       "package_path": "skills/optbrew/modules/seranking-seo/skills/seo-google/GUIDE.md",
       "original_git_blob_sha": "cb948303dd384a94943c5aceaa617bb3f1248e93",
       "original_sha256": "b094e9ae1314317209b6118a07f7b3e22b529e249fd3bf05f5c910b72dae99cd",
-      "distributed_sha256": "9e1efaa709bb912babc736bd88274f6dd195977641713d86315e08cbe5e54dfe",
+      "distributed_sha256": "a4c3d55109fadc582301cc55d3d4e2e3d90479715a56acd7c1025949d19b30d5",
       "transformations": [
         "SKILL.md to GUIDE.md; YAML frontmatter removed",
+        "Google index and index-batch submission commands disabled",
         "Upstream install/auth/script commands disabled; optbrew capability routing required",
         "Unbundled relative link ../../examples/seo-google-quickstart-20260514/README.md changed to upstream-only text"
       ],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": "Portable optbrew GUIDE and capability routing",
       "excluded_files": [
         "extensions/google/install.sh and extensions/firecrawl/install.sh: upstream installers disabled",
@@ -1235,6 +1360,8 @@
       "original_sha256": "94e81dd051757c8fe588756206eb83cc2d1c3907a76610862f01a1bcd1c2ac5d",
       "distributed_sha256": "94e81dd051757c8fe588756206eb83cc2d1c3907a76610862f01a1bcd1c2ac5d",
       "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": null,
       "excluded_files": [
         "extensions/google/install.sh and extensions/firecrawl/install.sh: upstream installers disabled",
@@ -1254,6 +1381,8 @@
       "original_sha256": "7248f2e7e20d87a863ccbf8c31eaa7af3645aa6483646cdeb1385c953c2d6738",
       "distributed_sha256": "7248f2e7e20d87a863ccbf8c31eaa7af3645aa6483646cdeb1385c953c2d6738",
       "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": null,
       "excluded_files": [
         "extensions/google/install.sh and extensions/firecrawl/install.sh: upstream installers disabled",
@@ -1273,6 +1402,8 @@
       "original_sha256": "afc337905d82f83659a229382432876edba9bd9af6e589b3e4de4786974f13b3",
       "distributed_sha256": "afc337905d82f83659a229382432876edba9bd9af6e589b3e4de4786974f13b3",
       "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": null,
       "excluded_files": [
         "extensions/google/install.sh and extensions/firecrawl/install.sh: upstream installers disabled",
@@ -1290,10 +1421,12 @@
       "package_path": "skills/optbrew/modules/seranking-seo/skills/seo-google/references/auth-setup.md",
       "original_git_blob_sha": "86a38d5fc7148af51b02c59ddd20b177c89cdf51",
       "original_sha256": "74d90a5e9aa6b49093bc3a0aab9266736c9bc8edc80ca0ce0640cd6080b1d5a2",
-      "distributed_sha256": "bd6d7cfb75a3b50fa14fba3d7dbf52da09e83e71cbab4bc25cb6ca0a4ab237e0",
+      "distributed_sha256": "2e8b13eea1605717750b9730aec24e50ff97deda50a267f3a46ce6db13d3f263",
       "transformations": [
         "Upstream install/auth/script commands disabled; optbrew capability routing required"
       ],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": "Portable optbrew GUIDE and capability routing",
       "excluded_files": [
         "extensions/google/install.sh and extensions/firecrawl/install.sh: upstream installers disabled",
@@ -1311,11 +1444,13 @@
       "package_path": "skills/optbrew/modules/seranking-seo/skills/seo-google/references/cross-skill-integration.md",
       "original_git_blob_sha": "2dcddf69e522bfdfdbdc52a5090d32bebb233240",
       "original_sha256": "10b8e8dc21d165141e35b419bef51c09ef2e10fdc625a6057ee60c448ce1f319",
-      "distributed_sha256": "40ec55030b7d7fa74bf2d63c128e42f6d44b4fef9780b8186323ca86a9523978",
+      "distributed_sha256": "4643c2848b77c95e2ec35688d589997d426712b60223030bab8eeea1d4177df2",
       "transformations": [
         "Upstream install/auth/script commands disabled; optbrew capability routing required",
         "Inline SKILL.md mentions mapped to GUIDE.md"
       ],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": "Portable optbrew GUIDE and capability routing",
       "excluded_files": [
         "extensions/google/install.sh and extensions/firecrawl/install.sh: upstream installers disabled",
@@ -1335,6 +1470,8 @@
       "original_sha256": "b6c29f9d830df1a406339c5776a7aebd648c5d2fd33eb7a2689106c5b3c7bbb9",
       "distributed_sha256": "b6c29f9d830df1a406339c5776a7aebd648c5d2fd33eb7a2689106c5b3c7bbb9",
       "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": null,
       "excluded_files": [
         "extensions/google/install.sh and extensions/firecrawl/install.sh: upstream installers disabled",
@@ -1352,9 +1489,14 @@
       "package_path": "skills/optbrew/modules/seranking-seo/skills/seo-google/references/indexing-api.md",
       "original_git_blob_sha": "ef23cae8e493c019e20a5d3e12d4cac295c95888",
       "original_sha256": "2c05cd03ab4e8abe255d3fed38b2638d6d38002392fc8ce6e7cbd50ebc3ec03a",
-      "distributed_sha256": "2c05cd03ab4e8abe255d3fed38b2638d6d38002392fc8ce6e7cbd50ebc3ec03a",
-      "transformations": [],
-      "patch_reason": null,
+      "distributed_sha256": "1d667da2a82c6b14725f69f7fa52fe0c36bf7dd38ace4702cea9a0b074cd7177",
+      "transformations": [
+        "Indexing API write examples marked disabled pending separate authority",
+        "Upstream install/auth/script commands disabled; optbrew capability routing required"
+      ],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": "Portable optbrew GUIDE and capability routing",
       "excluded_files": [
         "extensions/google/install.sh and extensions/firecrawl/install.sh: upstream installers disabled",
         "scripts/google_auth.py and root scripts: upstream authentication and provider execution disabled; optbrew capability adapters replace active commands",
@@ -1373,6 +1515,8 @@
       "original_sha256": "43962273a47273ac5b43e4451cb3facac50bc330d65397be523560959e46626f",
       "distributed_sha256": "43962273a47273ac5b43e4451cb3facac50bc330d65397be523560959e46626f",
       "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": null,
       "excluded_files": [
         "extensions/google/install.sh and extensions/firecrawl/install.sh: upstream installers disabled",
@@ -1392,6 +1536,8 @@
       "original_sha256": "a2b2796179b929425bfe184f761bebf180f6a4f5638bed03510b3f6b15a61d48",
       "distributed_sha256": "a2b2796179b929425bfe184f761bebf180f6a4f5638bed03510b3f6b15a61d48",
       "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": null,
       "excluded_files": [
         "extensions/google/install.sh and extensions/firecrawl/install.sh: upstream installers disabled",
@@ -1411,6 +1557,8 @@
       "original_sha256": "14d3fa5cbe7d0a82b4c2c6dee45842cf5273cda3a6b79e076da752df4530e4fe",
       "distributed_sha256": "14d3fa5cbe7d0a82b4c2c6dee45842cf5273cda3a6b79e076da752df4530e4fe",
       "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": null,
       "excluded_files": [
         "extensions/google/install.sh and extensions/firecrawl/install.sh: upstream installers disabled",
@@ -1430,6 +1578,8 @@
       "original_sha256": "ad1f7d096e229526c8fe9026a98124a05221f53636eb6023f362dfd5fd3c2f96",
       "distributed_sha256": "ad1f7d096e229526c8fe9026a98124a05221f53636eb6023f362dfd5fd3c2f96",
       "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": null,
       "excluded_files": [
         "extensions/google/install.sh and extensions/firecrawl/install.sh: upstream installers disabled",
@@ -1449,6 +1599,8 @@
       "original_sha256": "be75b999840b60f0a0980269c31046070f0915030c638521a8df2072dfd83767",
       "distributed_sha256": "be75b999840b60f0a0980269c31046070f0915030c638521a8df2072dfd83767",
       "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": null,
       "excluded_files": [
         "extensions/google/install.sh and extensions/firecrawl/install.sh: upstream installers disabled",
@@ -1468,6 +1620,8 @@
       "original_sha256": "b8937fb31fa09b2c2a09ad2573191183cad219cebafc09136a88eac133cddbc1",
       "distributed_sha256": "b8937fb31fa09b2c2a09ad2573191183cad219cebafc09136a88eac133cddbc1",
       "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": null,
       "excluded_files": [
         "extensions/google/install.sh and extensions/firecrawl/install.sh: upstream installers disabled",
@@ -1487,6 +1641,8 @@
       "original_sha256": "d6c7c0ea2205ce533bfe63f277d5497bf25239c119bfea1cf093eef30a186a6a",
       "distributed_sha256": "d6c7c0ea2205ce533bfe63f277d5497bf25239c119bfea1cf093eef30a186a6a",
       "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": null,
       "excluded_files": [
         "extensions/google/install.sh and extensions/firecrawl/install.sh: upstream installers disabled",
@@ -1509,6 +1665,8 @@
         "SKILL.md to GUIDE.md; YAML frontmatter removed",
         "Unbundled relative link ../../examples/seo-keyword-niche-espresso-machine-reviews-20260514/KEYWORD-NICHE-PLAN.md changed to upstream-only text"
       ],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": "Portable optbrew GUIDE and capability routing",
       "excluded_files": [
         "extensions/google/install.sh and extensions/firecrawl/install.sh: upstream installers disabled",
@@ -1526,12 +1684,14 @@
       "package_path": "skills/optbrew/modules/seranking-seo/skills/seo-page/GUIDE.md",
       "original_git_blob_sha": "e1233941f8412dd9892dbea9c73553aedfc37e73",
       "original_sha256": "d6f67d115ec01ce9f87a9e634960b7b0dccb0fefc27ec9ac47b02c84ea236048",
-      "distributed_sha256": "b30b8584ac03a9807fc2566fdd937d1b956cafa85e081e4b0cb1a45b02de645c",
+      "distributed_sha256": "f2ddec8f0a342ed43634256c254c7e9e11c6723c315df1e4d91e2eb4baea3f50",
       "transformations": [
         "SKILL.md to GUIDE.md; YAML frontmatter removed",
         "Upstream install/auth/script commands disabled; optbrew capability routing required",
         "Unbundled relative link ../../examples/seo-page-notion-keyboard-shortcuts-20260514/PAGE.md changed to upstream-only text"
       ],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": "Portable optbrew GUIDE and capability routing",
       "excluded_files": [
         "extensions/google/install.sh and extensions/firecrawl/install.sh: upstream installers disabled",
@@ -1549,13 +1709,15 @@
       "package_path": "skills/optbrew/modules/seranking-seo/skills/seo-plan/GUIDE.md",
       "original_git_blob_sha": "c45c1e996ae1cb121e54aed3101ec11accbd5354",
       "original_sha256": "06778d068b2abc8c727043f54d77774dc8446819af9cb10cc286360d2c767cb5",
-      "distributed_sha256": "a7d9da1bf69b3f86eadf1f931a89dd8473a9ecb548ea726afc1a7749b21333d3",
+      "distributed_sha256": "071c708fcf975fbe5d623ddcdc653029094707659fa4826384354b18ff8b9f1a",
       "transformations": [
         "SKILL.md to GUIDE.md; YAML frontmatter removed",
         "Upstream install/auth/script commands disabled; optbrew capability routing required",
         "Unbundled relative link ../../examples/seo-plan-wix-com-20260514/PLAN.md changed to upstream-only text",
         "Inline SKILL.md mentions mapped to GUIDE.md"
       ],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": "Portable optbrew GUIDE and capability routing",
       "excluded_files": [
         "extensions/google/install.sh and extensions/firecrawl/install.sh: upstream installers disabled",
@@ -1579,6 +1741,8 @@
         "Upstream install/auth/script commands disabled; optbrew capability routing required",
         "Unbundled relative link ../../examples/seo-schema-budgetbytes-slow-cooker-chicken-noodle-soup-20260514/SCHEMA.md changed to upstream-only text"
       ],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": "Portable optbrew GUIDE and capability routing",
       "excluded_files": [
         "extensions/google/install.sh and extensions/firecrawl/install.sh: upstream installers disabled",
@@ -1598,6 +1762,8 @@
       "original_sha256": "754deef92b4f0c50fef68b504768e1504d128c405377e9b66df82d4e67b5d818",
       "distributed_sha256": "754deef92b4f0c50fef68b504768e1504d128c405377e9b66df82d4e67b5d818",
       "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": null,
       "excluded_files": [
         "extensions/google/install.sh and extensions/firecrawl/install.sh: upstream installers disabled",
@@ -1617,6 +1783,8 @@
       "original_sha256": "9d3c7e6ae03fb0d68a342adfa7a95b8b9fd0e34d587aef3d5423a296e5afffcc",
       "distributed_sha256": "9d3c7e6ae03fb0d68a342adfa7a95b8b9fd0e34d587aef3d5423a296e5afffcc",
       "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": null,
       "excluded_files": [
         "extensions/google/install.sh and extensions/firecrawl/install.sh: upstream installers disabled",
@@ -1636,6 +1804,8 @@
       "original_sha256": "35934a3855ff5726613be6e97dc11f0526c956a21cdac8192ad75b9068f245ad",
       "distributed_sha256": "35934a3855ff5726613be6e97dc11f0526c956a21cdac8192ad75b9068f245ad",
       "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": null,
       "excluded_files": [
         "extensions/google/install.sh and extensions/firecrawl/install.sh: upstream installers disabled",
@@ -1655,6 +1825,8 @@
       "original_sha256": "6149f3d8d78725d91d2647021247f7f38fc233e0a45957c30d47d3270d679ee9",
       "distributed_sha256": "6149f3d8d78725d91d2647021247f7f38fc233e0a45957c30d47d3270d679ee9",
       "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": null,
       "excluded_files": [
         "extensions/google/install.sh and extensions/firecrawl/install.sh: upstream installers disabled",
@@ -1674,6 +1846,8 @@
       "original_sha256": "e73fbe6eda3de4359f0ea1438dbd4fae2f8df19fc498fd752b4e682e4e18bb76",
       "distributed_sha256": "e73fbe6eda3de4359f0ea1438dbd4fae2f8df19fc498fd752b4e682e4e18bb76",
       "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": null,
       "excluded_files": [
         "extensions/google/install.sh and extensions/firecrawl/install.sh: upstream installers disabled",
@@ -1693,6 +1867,8 @@
       "original_sha256": "720bbf08c163aa26d523cd4ca713b80528be9543f92e88f33f00cddc7a40e171",
       "distributed_sha256": "720bbf08c163aa26d523cd4ca713b80528be9543f92e88f33f00cddc7a40e171",
       "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": null,
       "excluded_files": [
         "extensions/google/install.sh and extensions/firecrawl/install.sh: upstream installers disabled",
@@ -1715,6 +1891,8 @@
         "SKILL.md to GUIDE.md; YAML frontmatter removed",
         "Unbundled relative link ../../examples/seo-sitemap-notion-so-20260514/SITEMAP.md changed to upstream-only text"
       ],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": "Portable optbrew GUIDE and capability routing",
       "excluded_files": [
         "extensions/google/install.sh and extensions/firecrawl/install.sh: upstream installers disabled",
@@ -1732,12 +1910,14 @@
       "package_path": "skills/optbrew/modules/seranking-seo/skills/seo-technical-audit/GUIDE.md",
       "original_git_blob_sha": "c8b2481441d3ca68a4a64e558aa2183d05e77657",
       "original_sha256": "59fbd07ad075576385157fa500d7ca26f25029e6b74b2a78be16c1223a95de71",
-      "distributed_sha256": "0d4ca7d5890739c5a7c5fd5f7fc20e452d517f0f879a219177fda5ed5b2a0a7e",
+      "distributed_sha256": "882cf2532cfcc19ead596dfb1e683548977a2f652c8ba02cb3294709e8ce7c2d",
       "transformations": [
         "SKILL.md to GUIDE.md; YAML frontmatter removed",
         "Upstream install/auth/script commands disabled; optbrew capability routing required",
         "Unbundled relative link ../../examples/seo-technical-audit-linear-app-20260514/TECH-AUDIT.md changed to upstream-only text"
       ],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": "Portable optbrew GUIDE and capability routing",
       "excluded_files": [
         "extensions/google/install.sh and extensions/firecrawl/install.sh: upstream installers disabled",
@@ -1759,6 +1939,8 @@
       "transformations": [
         "Inline SKILL.md mentions mapped to GUIDE.md"
       ],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": "Portable optbrew GUIDE and capability routing",
       "excluded_files": [
         "extensions/google/install.sh and extensions/firecrawl/install.sh: upstream installers disabled",
@@ -1778,6 +1960,8 @@
       "original_sha256": "b70d71e24e40fce5da8f4b6f9cd862096a048e433db7f3c8cac5e348e6d34591",
       "distributed_sha256": "b70d71e24e40fce5da8f4b6f9cd862096a048e433db7f3c8cac5e348e6d34591",
       "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": null,
       "excluded_files": [
         "Unselected marketing skills, installers and authoring utilities"
@@ -1798,6 +1982,8 @@
         "SKILL.md to GUIDE.md; YAML frontmatter removed",
         "Unbundled relative link ../../tools/REGISTRY.md changed to upstream-only text"
       ],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": "Portable optbrew GUIDE and capability routing",
       "excluded_files": [
         "Unselected marketing skills, installers and authoring utilities"
@@ -1815,6 +2001,8 @@
       "original_sha256": "010677ebde7b375f5569d5ef654c15edfc50f44efc55f9ca2f70a02a1ff1ab17",
       "distributed_sha256": "010677ebde7b375f5569d5ef654c15edfc50f44efc55f9ca2f70a02a1ff1ab17",
       "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": null,
       "excluded_files": [
         "Unselected marketing skills, installers and authoring utilities"
@@ -1834,6 +2022,8 @@
       "transformations": [
         "Inline SKILL.md mentions mapped to GUIDE.md"
       ],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": "Portable optbrew GUIDE and capability routing",
       "excluded_files": [
         "Unselected marketing skills, installers and authoring utilities"
@@ -1853,6 +2043,8 @@
       "transformations": [
         "Inline SKILL.md mentions mapped to GUIDE.md"
       ],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": "Portable optbrew GUIDE and capability routing",
       "excluded_files": [
         "Unselected marketing skills, installers and authoring utilities"
@@ -1870,6 +2062,8 @@
       "original_sha256": "8adcfcc020a3529eda71f783e4893d3e39e8b0f503fd2fa126e8b75a80963824",
       "distributed_sha256": "8adcfcc020a3529eda71f783e4893d3e39e8b0f503fd2fa126e8b75a80963824",
       "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": null,
       "excluded_files": [
         "Unselected marketing skills, installers and authoring utilities"
@@ -1889,6 +2083,8 @@
       "transformations": [
         "Inline SKILL.md mentions mapped to GUIDE.md"
       ],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": "Portable optbrew GUIDE and capability routing",
       "excluded_files": [
         "Unselected marketing skills, installers and authoring utilities"
@@ -1906,6 +2102,8 @@
       "original_sha256": "4d16bbf46b9702b7ee9cf968005dc21cdd74821d5d8e31bb8dcc52b09457ae59",
       "distributed_sha256": "4d16bbf46b9702b7ee9cf968005dc21cdd74821d5d8e31bb8dcc52b09457ae59",
       "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": null,
       "excluded_files": [
         "Unselected marketing skills, installers and authoring utilities"
@@ -1923,6 +2121,8 @@
       "original_sha256": "4abcab5b8ee90b63c5d09c98387a8ec3cdb8f5df33e75d3b4b91eb817283bfd8",
       "distributed_sha256": "4abcab5b8ee90b63c5d09c98387a8ec3cdb8f5df33e75d3b4b91eb817283bfd8",
       "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": null,
       "excluded_files": [
         "Unselected marketing skills, installers and authoring utilities"
@@ -1942,6 +2142,8 @@
       "transformations": [
         "Inline SKILL.md mentions mapped to GUIDE.md"
       ],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": "Portable optbrew GUIDE and capability routing",
       "excluded_files": [
         "Unselected marketing skills, installers and authoring utilities"
@@ -1959,6 +2161,8 @@
       "original_sha256": "e4e3356d4c813e460f29dd37a46a212f9d3f3f06e35320cf62bc3e621e1a53b2",
       "distributed_sha256": "e4e3356d4c813e460f29dd37a46a212f9d3f3f06e35320cf62bc3e621e1a53b2",
       "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": null,
       "excluded_files": [
         "Unselected marketing skills, installers and authoring utilities"
@@ -1984,6 +2188,8 @@
         "Unbundled relative link ../../tools/integrations/posthog.md changed to upstream-only text",
         "Unbundled relative link ../../tools/integrations/segment.md changed to upstream-only text"
       ],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": "Portable optbrew GUIDE and capability routing",
       "excluded_files": [
         "Unselected marketing skills, installers and authoring utilities"
@@ -2001,6 +2207,8 @@
       "original_sha256": "56932e864114d69a61b6b55e639d207329c0a8b7df8b61a0e1188b249cbef1e8",
       "distributed_sha256": "56932e864114d69a61b6b55e639d207329c0a8b7df8b61a0e1188b249cbef1e8",
       "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": null,
       "excluded_files": [
         "Unselected marketing skills, installers and authoring utilities"
@@ -2018,6 +2226,8 @@
       "original_sha256": "efc7bdb0a7b3efdea9e67ff0d1bc894dcf89ec9b9b8f3414f123d12bee109412",
       "distributed_sha256": "efc7bdb0a7b3efdea9e67ff0d1bc894dcf89ec9b9b8f3414f123d12bee109412",
       "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": null,
       "excluded_files": [
         "Unselected marketing skills, installers and authoring utilities"
@@ -2035,6 +2245,8 @@
       "original_sha256": "f33fd6db0cbdb1bdc183af5f52bedd956d14680e54bca2e2c3917de29698636e",
       "distributed_sha256": "f33fd6db0cbdb1bdc183af5f52bedd956d14680e54bca2e2c3917de29698636e",
       "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": null,
       "excluded_files": [
         "Unselected marketing skills, installers and authoring utilities"
@@ -2052,6 +2264,8 @@
       "original_sha256": "112da33832439d2ae0b2729e5031fc927df444cd1ae8eb20542d45c1b5690f52",
       "distributed_sha256": "112da33832439d2ae0b2729e5031fc927df444cd1ae8eb20542d45c1b5690f52",
       "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": null,
       "excluded_files": [
         "Unselected marketing skills, installers and authoring utilities"
@@ -2071,6 +2285,8 @@
       "transformations": [
         "SKILL.md to GUIDE.md; YAML frontmatter removed"
       ],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": "Portable optbrew GUIDE and capability routing",
       "excluded_files": [
         "Unselected marketing skills, installers and authoring utilities"
@@ -2088,6 +2304,8 @@
       "original_sha256": "10167e7125ee77cbabe4f03953750dd99ea147f7461027fdbb0cf8e089e5506d",
       "distributed_sha256": "10167e7125ee77cbabe4f03953750dd99ea147f7461027fdbb0cf8e089e5506d",
       "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": null,
       "excluded_files": [
         "Unselected marketing skills, installers and authoring utilities"
@@ -2105,6 +2323,8 @@
       "original_sha256": "1861a1aab0627ab29c279000879a9889242da1ba85e677acdc759c66a6241778",
       "distributed_sha256": "1861a1aab0627ab29c279000879a9889242da1ba85e677acdc759c66a6241778",
       "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": null,
       "excluded_files": [
         "Unselected marketing skills, installers and authoring utilities"
@@ -2126,6 +2346,8 @@
         "Unbundled relative link ../../../tools/integrations/contentful.md changed to upstream-only text",
         "Unbundled relative link ../../../tools/integrations/strapi.md changed to upstream-only text"
       ],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": "Portable optbrew GUIDE and capability routing",
       "excluded_files": [
         "Unselected marketing skills, installers and authoring utilities"
@@ -2145,6 +2367,8 @@
       "transformations": [
         "SKILL.md to GUIDE.md; YAML frontmatter removed"
       ],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": "Portable optbrew GUIDE and capability routing",
       "excluded_files": [
         "Unselected marketing skills, installers and authoring utilities"
@@ -2162,6 +2386,8 @@
       "original_sha256": "e76b704edfc50210224aa82131dc4e917d6daa3a1467b9f7fe54b2d42af2a264",
       "distributed_sha256": "e76b704edfc50210224aa82131dc4e917d6daa3a1467b9f7fe54b2d42af2a264",
       "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": null,
       "excluded_files": [
         "Unselected marketing skills, installers and authoring utilities"
@@ -2179,6 +2405,8 @@
       "original_sha256": "b2b3fd7c58c686f0670b94cf7192ff79436ccf0d602650b33a83a9d01102f11d",
       "distributed_sha256": "b2b3fd7c58c686f0670b94cf7192ff79436ccf0d602650b33a83a9d01102f11d",
       "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": null,
       "excluded_files": [
         "Unselected marketing skills, installers and authoring utilities"
@@ -2198,6 +2426,8 @@
       "transformations": [
         "SKILL.md to GUIDE.md; YAML frontmatter removed"
       ],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": "Portable optbrew GUIDE and capability routing",
       "excluded_files": [
         "Unselected marketing skills, installers and authoring utilities"
@@ -2215,6 +2445,8 @@
       "original_sha256": "084545e9aa789dace8c4d4d5daf330ffaa4fe4c64266bd76dc6688b3f8281202",
       "distributed_sha256": "084545e9aa789dace8c4d4d5daf330ffaa4fe4c64266bd76dc6688b3f8281202",
       "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": null,
       "excluded_files": [
         "Unselected marketing skills, installers and authoring utilities"
@@ -2232,6 +2464,8 @@
       "original_sha256": "5d55c96ae9859a5fb84cb18828c4a96dcd468e7aeec667c88fdf9032558ab318",
       "distributed_sha256": "5d55c96ae9859a5fb84cb18828c4a96dcd468e7aeec667c88fdf9032558ab318",
       "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": null,
       "excluded_files": [
         "Unselected marketing skills, installers and authoring utilities"
@@ -2251,6 +2485,8 @@
       "transformations": [
         "SKILL.md to GUIDE.md; YAML frontmatter removed"
       ],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": "Portable optbrew GUIDE and capability routing",
       "excluded_files": [
         "Unselected marketing skills, installers and authoring utilities"
@@ -2268,6 +2504,8 @@
       "original_sha256": "b808dfa7ee1e312cda39cfac57f44674bd3cee6eaa151af7008760a9514bb6cf",
       "distributed_sha256": "b808dfa7ee1e312cda39cfac57f44674bd3cee6eaa151af7008760a9514bb6cf",
       "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": null,
       "excluded_files": [
         "Unselected marketing skills, installers and authoring utilities"
@@ -2285,6 +2523,8 @@
       "original_sha256": "f1e273f56ce7e2215ff218bf903680ddcec0fd026ab90c3ebfb3439ed0edfaa4",
       "distributed_sha256": "f1e273f56ce7e2215ff218bf903680ddcec0fd026ab90c3ebfb3439ed0edfaa4",
       "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": null,
       "excluded_files": [
         "Unselected marketing skills, installers and authoring utilities"
@@ -2302,6 +2542,8 @@
       "original_sha256": "d2fc76f40eccc422ae0f1d7e5b770095e89a045f38e1d0370811203da57996ff",
       "distributed_sha256": "d2fc76f40eccc422ae0f1d7e5b770095e89a045f38e1d0370811203da57996ff",
       "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": null,
       "excluded_files": [
         "Unselected marketing skills, installers and authoring utilities"
@@ -2322,6 +2564,8 @@
         "SKILL.md to GUIDE.md; YAML frontmatter removed",
         "Unbundled relative link /features/analytics changed to upstream-only text"
       ],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": "Portable optbrew GUIDE and capability routing",
       "excluded_files": [
         "Unselected marketing skills, installers and authoring utilities"
@@ -2339,6 +2583,8 @@
       "original_sha256": "64b76ab82488fd168919fad1b038b7117392ff9748a835104ddde95aac4a5cee",
       "distributed_sha256": "64b76ab82488fd168919fad1b038b7117392ff9748a835104ddde95aac4a5cee",
       "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": null,
       "excluded_files": [
         "Unselected marketing skills, installers and authoring utilities"
@@ -2356,6 +2602,8 @@
       "original_sha256": "362190c7d3f419d5f445170f1fb17beecc163937d2068922893b7a69eeb25f0f",
       "distributed_sha256": "362190c7d3f419d5f445170f1fb17beecc163937d2068922893b7a69eeb25f0f",
       "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": null,
       "excluded_files": [
         "Unselected marketing skills, installers and authoring utilities"
@@ -2373,6 +2621,8 @@
       "original_sha256": "2efa772709b753e33d5018c007147ca30aaa95a04b04dc0df6227ea5a053078b",
       "distributed_sha256": "2efa772709b753e33d5018c007147ca30aaa95a04b04dc0df6227ea5a053078b",
       "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": null,
       "excluded_files": [
         "Unselected marketing skills, installers and authoring utilities"
@@ -2390,6 +2640,8 @@
       "original_sha256": "3c3cd7ce5e31c502dc071baf82bb58cb30f5edf4a2fd8ca052fbc8f3777db140",
       "distributed_sha256": "3c3cd7ce5e31c502dc071baf82bb58cb30f5edf4a2fd8ca052fbc8f3777db140",
       "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
       "patch_reason": null,
       "excluded_files": [
         "Unselected marketing skills, installers and authoring utilities"

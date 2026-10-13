@@ -69,14 +69,14 @@ A one-shot technical SEO audit for a domain. Pulls SE Ranking's audit data, cate
 
 8b. **CWV field data via CrUX** *(only if google-api.json is present, tier ≥ 0)*
    - SE Ranking's audit reports lab-only CWV (Lighthouse-flavoured estimates). CrUX returns actual Chrome user p75 metrics — the data Google ranks against.
-   - Run `optbrew read-only capability (see top-level routing) "https://{domain}" --crux-only --json` for current p75 LCP / INP / CLS / FCP / TTFB.
-   - Run `optbrew read-only capability (see top-level routing) "https://{domain}" --origin --json` for the 25-week trend per metric (improving / stable / degrading).
+   - Run `upstream script excluded; use optbrew capability routing "https://{domain}" --crux-only --json` for current p75 LCP / INP / CLS / FCP / TTFB.
+   - Run `upstream script excluded; use optbrew capability routing "https://{domain}" --origin --json` for the 25-week trend per metric (improving / stable / degrading).
    - If CrUX has no field data ("insufficient data"), surface that and continue — low-traffic origins are common.
    - Surface in `TECH-AUDIT.md` as a new section "## Core Web Vitals (field data)" with current p75 + trend per metric, source labelled "CrUX 28-day origin".
 
 8c. **Per-URL indexation status via GSC URL Inspection** *(only if google-api.json is present, tier ≥ 1)*
    - For each of the top 5 traffic pages identified in step 5 (or homepage + key landing pages if no keyword data), run:
-     `optbrew read-only capability (see top-level routing) "{url}" --site-url "{config.default_property}" --json`
+     `upstream script excluded; use optbrew capability routing "{url}" --site-url "{config.default_property}" --json`
    - Capture `indexStatusVerdict`, `coverageState`, `googleCanonical` (vs `userCanonical`), and `lastCrawlTime` per URL.
    - **Cross-check against the audit's noindex / canonical findings.** If GSC reports `INDEXED` but the audit flagged `noindex`, the audit is stale or the directive was added recently — flag for re-audit. If GSC reports `EXCLUDED` for a page the audit treats as healthy, that's a hidden indexability issue the SE Ranking audit can't see.
    - **Critical-issue elevation:** any `userCanonical ≠ googleCanonical` divergence on a top-traffic page is added to the Top-10 fix list at Critical severity regardless of `severity-mapping.md`'s default — Google having decided on a different canonical is a real-world ranking problem.

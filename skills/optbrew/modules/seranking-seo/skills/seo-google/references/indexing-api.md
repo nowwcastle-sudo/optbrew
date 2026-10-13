@@ -1,3 +1,5 @@
+> optbrew distribution notice: Submission disabled. The POST publish and batch examples below document upstream behavior; do not execute them from optbrew. A separate user authority decision and approved submission path are required.
+
 # Google Indexing API v3 Reference
 
 ## Overview

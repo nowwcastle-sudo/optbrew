@@ -1,5 +1,6 @@
 {
   "schema_version": "1.0.0",
+  "reviewed_patches": [],
   "modules": [
     {
       "module_id": "mblode-seo",

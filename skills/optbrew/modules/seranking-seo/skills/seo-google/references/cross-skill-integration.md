@@ -9,7 +9,7 @@ The pattern was adapted from `AgriciDaniel/claude-seo`'s wiring across `seo-audi
 Add this near the top of the skill's Process steps, immediately after the existing preflight (credit balance / Firecrawl detection):
 
 ```
-**Google data availability check.** Run `optbrew read-only capability (see top-level routing)`
+**Google data availability check.** Run `upstream script excluded; use optbrew capability routing`
 and parse the result. If `tier >= 0` (any creds present), Google enrichment runs in step
 N (see below). If `tier == -1` or the file is missing, the skill proceeds without
 Google enrichment and notes "Google field data: not configured (run `optbrew capability setup (see top-level routing)`)" in the deliverable.
@@ -38,10 +38,10 @@ Replaces the audit's lab-only CWV with actual Chrome user metrics from CrUX, and
 
 ```bash
 # Domain-level CrUX (origin)
-optbrew read-only capability (see top-level routing) "https://{domain}" --crux-only --json
+upstream script excluded; use optbrew capability routing "https://{domain}" --crux-only --json
 
 # 25-week trend (catches degradation we'd otherwise miss until next month's audit)
-optbrew read-only capability (see top-level routing) "https://{domain}" --origin --json
+upstream script excluded; use optbrew capability routing "https://{domain}" --origin --json
 ```
 
 Surface in `TECH-AUDIT.md` as "## Core Web Vitals (field data)" with p75 LCP / INP / CLS, source label "CrUX 28-day origin", and the 25-week trend direction.
@@ -53,7 +53,7 @@ If CrUX has no field data for the origin (low-traffic site), surface "CrUX: insu
 For each of the top 5 traffic URLs from step 5 (or homepage + key landing pages):
 
 ```bash
-optbrew read-only capability (see top-level routing) "{url}" --site-url "{config.default_property}" --json
+upstream script excluded; use optbrew capability routing "{url}" --site-url "{config.default_property}" --json
 ```
 
 Capture `indexStatusVerdict`, `coverageState`, `googleCanonical` vs `userCanonical`, and `lastCrawlTime`.
@@ -74,10 +74,10 @@ Replaces inferred-from-SE-Ranking traffic with first-party Google data for the t
 ```bash
 # GSC search analytics for the URL (requires default_property in config to be set
 # to a verified property that owns this URL — sc-domain:example.com)
-optbrew read-only capability (see top-level routing) "{config.default_property}" --url "{target_url}" --days 28 --json
+upstream script excluded; use optbrew capability routing "{config.default_property}" --url "{target_url}" --days 28 --json
 
 # URL Inspection (real indexation status, canonical Google sees, last crawl date)
-optbrew read-only capability (see top-level routing) "{target_url}" --site-url "{config.default_property}" --json
+upstream script excluded; use optbrew capability routing "{target_url}" --site-url "{config.default_property}" --json
 ```
 
 Surface in `PAGE.md` "## Snapshot" as new rows:
@@ -96,7 +96,7 @@ If the URL's domain isn't a verified GSC property, surface "GSC: {target_domain}
 Replaces estimated traffic with measured organic traffic for the audited URL.
 
 ```bash
-optbrew read-only capability (see top-level routing) top-pages --days 28 --json
+upstream script excluded; use optbrew capability routing top-pages --days 28 --json
 ```
 
 Filter the result client-side for the audited URL's path. Surface in `VERDICT.md` "## Snapshot" alongside the existing AIO citation cross-check:
@@ -125,7 +125,7 @@ Or invoke as a one-liner:
 python3 -c "from scripts.google_auth import validate_url; import sys; sys.exit(0 if validate_url('{url}') else 1)"
 ```
 
-`validate_url()` (defined at `optbrew read-only capability (see top-level routing):366`) rejects: loopback (127.0.0.1, ::1, localhost), RFC1918 private ranges (10/8, 172.16/12, 192.168/16), link-local (169.254/16), and Google metadata endpoints. Refuses non-http(s) schemes.
+`validate_url()` (defined at `upstream script excluded; use optbrew capability routing:366`) rejects: loopback (127.0.0.1, ::1, localhost), RFC1918 private ranges (10/8, 172.16/12, 192.168/16), link-local (169.254/16), and Google metadata endpoints. Refuses non-http(s) schemes.
 
 **`--skip-cwv` flag** (mirrors theirs at `seo-drift/GUIDE.md:107, 131`): skips the entire Google field-data snapshot (step 4b) even when `google-api.json` is configured. Useful when you only care about content/structural drift, or when CrUX rate-limit concerns outweigh CWV coverage.
 
@@ -133,10 +133,10 @@ python3 -c "from scripts.google_auth import validate_url; import sys; sys.exit(0
 
 ```bash
 # CWV drift over 25 weeks (origin or per-URL based on baseline scope)
-optbrew read-only capability (see top-level routing) "{baseline_url_or_origin}" --json
+upstream script excluded; use optbrew capability routing "{baseline_url_or_origin}" --json
 
 # Indexation drift: re-run Inspection on each baselined URL and diff
-optbrew read-only capability (see top-level routing) "{url}" --site-url "{config.default_property}" --json
+upstream script excluded; use optbrew capability routing "{url}" --site-url "{config.default_property}" --json
 ```
 
 Compare against the previous baseline's stored CrUX + Inspection JSON. New drift triggers:

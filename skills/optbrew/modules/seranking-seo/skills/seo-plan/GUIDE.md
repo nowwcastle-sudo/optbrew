@@ -18,7 +18,7 @@ This is the "what should we work on next quarter" skill. It does not replace spe
 ## Process
 
 0. **Google data availability check (advisory, not blocking)**
-   - Run `optbrew read-only capability (see top-level routing)`. If `tier >= 0`, the downstream specialist skills (technical-audit, page, content-audit, drift) will enrich their outputs with real Google field data — and `seo-plan` ingests those richer outputs in step 4. The plan itself doesn't dispatch `seo-google` directly; it prints a one-line notice so the user knows the option is on the table:
+   - Run `upstream script excluded; use optbrew capability routing`. If `tier >= 0`, the downstream specialist skills (technical-audit, page, content-audit, drift) will enrich their outputs with real Google field data — and `seo-plan` ingests those richer outputs in step 4. The plan itself doesn't dispatch `seo-google` directly; it prints a one-line notice so the user knows the option is on the table:
    ```
    > Google APIs detected (tier {n}, available: {comma-list}). Downstream specialist
    > skills (seo-technical-audit, seo-page, seo-content-audit, seo-drift) will enrich

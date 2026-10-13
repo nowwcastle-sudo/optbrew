@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { execFileSync } from 'node:child_process';
-import { readFile, readdir, mkdir, writeFile, lstat } from 'node:fs/promises';
+import { readFile, readdir, mkdir, writeFile, lstat, realpath } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -68,8 +68,17 @@ function transformText(module, upstream, text, selected, transformations) {
   }
   if (module.module_id === 'seranking-seo') {
     const before = result;
+    if (upstream === 'skills/seo-google/SKILL.md') {
+      result = result.replace(/^\*\*Script:\*\* `(?:python3?\s+)?scripts\/indexing_notify\.py[^`]*`.*$/gm, '**Execution:** Submission disabled in optbrew. No publish or batch command is bundled. Separate user authority and an approved submission path are required.');
+      transformations.push('Google index and index-batch submission commands disabled');
+    }
+    if (upstream === 'skills/seo-google/references/indexing-api.md') {
+      result = `> optbrew distribution notice: Submission disabled. The POST publish and batch examples below document upstream behavior; do not execute them from optbrew. A separate user authority decision and approved submission path are required.\n\n${result}`;
+      transformations.push('Indexing API write examples marked disabled pending separate authority');
+    }
     result = result.replace(/(?:bash\s+)?extensions\/(?:google|firecrawl)\/install\.sh/g, 'optbrew capability setup (see top-level routing)');
-    result = result.replace(/(?:python3?\s+)?scripts\/[\w-]+\.py(?:\s+--[\w-]+(?:\s+--[\w-]+)*)?/g, 'optbrew read-only capability (see top-level routing)');
+    result = result.replace(/(?:python3?\s+)?scripts\/indexing_notify\.py(?:[^`\n]*)?/g, 'submission disabled in optbrew; separate authority required');
+    result = result.replace(/(?:python3?\s+)?scripts\/[\w-]+\.py(?:\s+--[\w-]+(?:\s+--[\w-]+)*)?/g, 'upstream script excluded; use optbrew capability routing');
     if (result !== before) transformations.push('Upstream install/auth/script commands disabled; optbrew capability routing required');
   }
   if (upstream.endsWith('.md')) {
@@ -116,19 +125,77 @@ function sourceMetadata(sourceDir, module) {
   return null;
 }
 
-async function writeNewOrIdentical(target, bytes) {
-  await mkdir(path.dirname(target), { recursive: true });
+async function optionalRead(target) {
   try {
-    const old = await readFile(target);
-    if (!old.equals(bytes)) throw new Error(`existing file differs; back up before replacing: ${target}`);
-  } catch (error) {
-    if (error.code !== 'ENOENT') throw error;
+    if ((await lstat(target)).isSymbolicLink()) throw new Error(`existing symlink rejected: ${target}`);
+    return await readFile(target);
+  }
+  catch (error) { if (error.code === 'ENOENT') return null; throw error; }
+}
+
+async function reviewedReplacement(configPath, patch, base) {
+  if (!/^[A-Za-z0-9][A-Za-z0-9_-]*$/.test(patch.id ?? '') || !patch.reason?.trim()) throw new Error('invalid reviewed patch identity or reason');
+  if (!/^[0-9a-f]{64}$/.test(patch.expected_base_sha256 ?? '') || !/^[0-9a-f]{64}$/.test(patch.replacement_sha256 ?? '')) throw new Error(`invalid reviewed patch hash: ${patch.id}`);
+  if (sha(base, 'sha256') !== patch.expected_base_sha256) throw new Error(`reviewed patch base hash mismatch: ${patch.id}`);
+  const relative = normalizeRelative(patch.replacement_path ?? '');
+  if (!relative.startsWith('patches/')) throw new Error(`reviewed patch outside patches/: ${patch.id}`);
+  const patchRoot = path.join(path.dirname(configPath), 'patches');
+  const patchRootStat = await lstat(patchRoot);
+  if (!patchRootStat.isDirectory() || patchRootStat.isSymbolicLink()) throw new Error(`reviewed patch directory invalid: ${patch.id}`);
+  const patchFile = path.join(path.dirname(configPath), relative);
+  const fileStat = await lstat(patchFile);
+  const inside = path.relative(await realpath(patchRoot), await realpath(patchFile));
+  if (!fileStat.isFile() || fileStat.isSymbolicLink() || inside.startsWith('..') || path.isAbsolute(inside)) throw new Error(`reviewed patch path invalid: ${patch.id}`);
+  const replacement = await readFile(patchFile);
+  if (sha(replacement, 'sha256') !== patch.replacement_sha256) throw new Error(`reviewed patch replacement hash mismatch: ${patch.id}`);
+  return replacement;
+}
+
+async function writeOutputs(outputRoot, outputs) {
+  const lockName = 'skills/optbrew/source-lock.json';
+  const previousBytes = await optionalRead(path.join(outputRoot, lockName));
+  let previous = null;
+  if (previousBytes) {
+    try { previous = JSON.parse(previousBytes.toString('utf8')); }
+    catch { throw new Error('existing source-lock is invalid; local edit rejected'); }
+    if (!previousBytes.equals(Buffer.from(JSON.stringify(previous, null, 2) + '\n'))) throw new Error('existing source-lock differs from generated form; local edit rejected');
+    let gitRoot = null;
+    try { gitRoot = execFileSync('git', ['-C', outputRoot, 'rev-parse', '--show-toplevel'], { encoding: 'utf8', stdio: 'pipe' }).trim(); }
+    catch { /* Temporary output directory outside Git. */ }
+    if (gitRoot && path.resolve(gitRoot).toLowerCase() === path.resolve(outputRoot).toLowerCase()) {
+      let committed;
+      try { committed = execFileSync('git', ['-C', outputRoot, 'show', `HEAD:${lockName}`], { stdio: 'pipe' }); }
+      catch { throw new Error('cannot verify existing source-lock against HEAD'); }
+      if (!previousBytes.equals(committed) && !previousBytes.equals(outputs.find(([name]) => name === lockName)?.[1])) throw new Error('source-lock has uncommitted local edits');
+    }
+  }
+  const previousHashes = new Map((previous?.files ?? []).map(file => [file.package_path, file.distributed_sha256]));
+  const writes = [];
+  for (const [name, bytes] of outputs) {
+    const target = path.join(outputRoot, name);
+    const old = await optionalRead(target);
+    if (old?.equals(bytes)) continue;
+    if (old && name !== lockName && sha(old, 'sha256') !== previousHashes.get(name)) throw new Error(`existing file differs; local edit rejected: ${target}`);
+    writes.push([target, bytes]);
+  }
+  for (const [target, bytes] of writes) {
+    await mkdir(path.dirname(target), { recursive: true });
     await writeFile(target, bytes);
   }
 }
 
 export async function vendor({ sourcesRoot = defaultSources, outputRoot = repoRoot, configPath = path.join(repoRoot, 'scripts/vendor.config.json'), patchSet = {} } = {}) {
   const config = JSON.parse(await readFile(configPath, 'utf8'));
+  const patchEntries = [...(config.reviewed_patches ?? []), ...(patchSet.patches ?? [])];
+  const patches = new Map();
+  const patchIds = new Set();
+  for (const patch of patchEntries) {
+    const key = `${patch.module_id}/${patch.upstream_path}`;
+    if (patches.has(key) || patchIds.has(patch.id)) throw new Error(`duplicate reviewed patch: ${patch.id}`);
+    patches.set(key, patch);
+    patchIds.add(patch.id);
+  }
+  const applied = new Set();
   const lock = { schema_version: config.schema_version, modules: [], files: [] };
   const outputs = [];
   for (const module of config.modules) {
@@ -158,24 +225,42 @@ export async function vendor({ sourcesRoot = defaultSources, outputRoot = repoRo
       const transformations = [];
       const destination = upstream === module.license_path ? `skills/optbrew/licenses/${module.module_id}.txt` : mapOutput(module, upstream);
       const transformable = /\.(?:md|markdown)$/i.test(upstream) || (module.module_id === 'naver-searchadvisor' && upstream === 'scripts/audit.mjs');
-      const distributed = upstream === module.license_path || !transformable
+      let distributed = upstream === module.license_path || !transformable
         ? bytes
         : Buffer.from(transformText(module, upstream, bytes.toString('utf8'), selectedPaths, transformations));
+      const patchKey = `${module.module_id}/${upstream}`;
+      const patch = patches.get(patchKey);
+      if (patch) {
+        if (upstream === module.license_path) throw new Error(`reviewed patch cannot replace license: ${patch.id}`);
+        distributed = await reviewedReplacement(configPath, patch, distributed);
+        transformations.push(`reviewed distribution patch ${patch.id}`);
+        applied.add(patchKey);
+      }
       outputs.push([destination, distributed]);
-      lock.files.push({ module_id: module.module_id, repo: module.repo, commit: module.commit, license: module.license, license_blob_sha: module.license_blob_sha, upstream_path: upstream, package_path: destination, original_git_blob_sha: gitBlob, original_sha256: sha(bytes, 'sha256'), distributed_sha256: sha(distributed, 'sha256'), transformations: [...new Set(transformations)], patch_reason: transformations.length ? 'Portable optbrew GUIDE and capability routing' : null, excluded_files: module.excluded_files });
+      lock.files.push({ module_id: module.module_id, repo: module.repo, commit: module.commit, license: module.license, license_blob_sha: module.license_blob_sha, upstream_path: upstream, package_path: destination, original_git_blob_sha: gitBlob, original_sha256: sha(bytes, 'sha256'), distributed_sha256: sha(distributed, 'sha256'), transformations: [...new Set(transformations)], patch_id: patch?.id ?? null, patch_base_sha256: patch?.expected_base_sha256 ?? null, patch_reason: patch?.reason ?? (transformations.length ? 'Portable optbrew GUIDE and capability routing' : null), excluded_files: module.excluded_files });
     }
   }
+  for (const key of patches.keys()) if (!applied.has(key)) throw new Error(`reviewed patch target not selected: ${key}`);
   const notice = ['# Third-party notices', '', 'The files below retain their upstream copyright and permission notices. Service accounts, API data and Naver guide article bodies are outside these code licenses.', ''];
   for (const module of lock.modules) notice.push(`- **${module.module_id}** — ${module.repo} at ${module.commit}; ${module.license}; Git license blob ${module.license_blob_sha}; exact notice: [licenses/${module.module_id}.txt](licenses/${module.module_id}.txt). Exclusions: ${module.excluded_files.join('; ')}.`);
   outputs.push(['skills/optbrew/THIRD_PARTY_NOTICES.md', Buffer.from(notice.join('\n') + '\n')]);
   outputs.push(['skills/optbrew/source-lock.json', Buffer.from(JSON.stringify(lock, null, 2) + '\n')]);
-  for (const [destination, bytes] of outputs) await writeNewOrIdentical(path.join(outputRoot, destination), bytes);
+  await writeOutputs(outputRoot, outputs);
   return lock;
 }
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
-  const index = process.argv.indexOf('--sources-root');
-  vendor({ sourcesRoot: index >= 0 ? path.resolve(process.argv[index + 1]) : defaultSources }).then(lock => {
+  const argument = (flag, fallback) => {
+    const index = process.argv.indexOf(flag);
+    if (index < 0) return fallback;
+    if (!process.argv[index + 1] || process.argv[index + 1].startsWith('--')) throw new Error(`missing value for ${flag}`);
+    return path.resolve(process.argv[index + 1]);
+  };
+  vendor({
+    sourcesRoot: argument('--sources-root', defaultSources),
+    outputRoot: argument('--output-root', repoRoot),
+    configPath: argument('--config-path', path.join(repoRoot, 'scripts/vendor.config.json'))
+  }).then(lock => {
     process.stdout.write(`vendored ${lock.modules.length} modules, ${lock.files.length} files\n`);
   }).catch(error => { process.stderr.write(`${error.message}\n`); process.exitCode = 1; });
 }

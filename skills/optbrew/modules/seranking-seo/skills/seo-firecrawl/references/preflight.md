@@ -30,9 +30,9 @@ Check whether `mcp__firecrawl-mcp__firecrawl_scrape` is connected. The branch is
 
 When unavailable, also surface the install hint: `optbrew capability setup (see top-level routing)` (free tier 500 credits/month — see `seo-firecrawl/GUIDE.md`).
 
-### Stage C — Google APIs (`optbrew read-only capability (see top-level routing)`)
+### Stage C — Google APIs (`upstream script excluded; use optbrew capability routing`)
 
-Run `optbrew read-only capability (see top-level routing)` and parse the result.
+Run `upstream script excluded; use optbrew capability routing` and parse the result.
 
 - **If `tier >= 0`** (any creds present): the skill branches into the per-tier enrichment recipes documented in `skills/seo-google/references/cross-skill-integration.md`. Each enrichment-aware skill has its own section there listing which tier unlocks which step.
 - **If `tier == -1`** or the file is missing: the skill proceeds without Google enrichment and notes `Google enrichment: not configured (run `optbrew capability setup (see top-level routing)`)` in the deliverable.

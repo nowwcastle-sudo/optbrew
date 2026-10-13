@@ -38,7 +38,7 @@ Score an existing piece of content against modern E-E-A-T (Experience, Expertise
 3b. **GA4 organic traffic on the audited URL** *(only if google-api.json is present, tier ≥ 2)*
    - Replaces the implicit traffic estimation with actual measured organic sessions for the audited URL.
    - Pull the top organic landing pages (last 28 days):
-     `optbrew read-only capability (see top-level routing) top-pages --days 28 --json`
+     `upstream script excluded; use optbrew capability routing top-pages --days 28 --json`
    - Filter the result client-side for the audited URL's path. Surface in `VERDICT.md` "## Snapshot" alongside the existing AIO citation cross-check:
      - GA4 organic last 28d: `{sessions} sessions / {users} users / avg engagement {n}s`
      - If the URL doesn't appear in the top-100 organic landing pages: "GA4: not in top-100 organic landing pages last 28d — low or zero traffic."

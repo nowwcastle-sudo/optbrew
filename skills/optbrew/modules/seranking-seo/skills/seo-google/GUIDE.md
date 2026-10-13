@@ -17,7 +17,7 @@ All APIs are free. Setup requires a Google Cloud project with API key and/or ser
 Before executing any command, check credentials:
 
 ```bash
-optbrew read-only capability (see top-level routing)
+upstream script excluded; use optbrew capability routing
 ```
 
 Config file shape (`~/.config/seo-skills/google-api.json`):
@@ -82,7 +82,7 @@ Always communicate the detected tier before running commands.
 
 Combined Lighthouse lab data + CrUX field data.
 
-**Script:** `optbrew read-only capability (see top-level routing) <url> --json`
+**Script:** `upstream script excluded; use optbrew capability routing <url> --json`
 **Reference:** `references/pagespeed-crux-api.md`
 **Default:** Both mobile + desktop strategies, all Lighthouse categories.
 
@@ -92,13 +92,13 @@ Output merges lab scores (point-in-time Lighthouse) with field data (28-day Chro
 
 CrUX field data only (no Lighthouse run). Faster.
 
-**Script:** `optbrew read-only capability (see top-level routing) <url> --crux-only --json`
+**Script:** `upstream script excluded; use optbrew capability routing <url> --crux-only --json`
 
 ### `crux-history <url>`
 
 25-week CrUX History trends. Shows whether CWV metrics are improving, stable, or degrading.
 
-**Script:** `optbrew read-only capability (see top-level routing) <url> --json`
+**Script:** `upstream script excluded; use optbrew capability routing <url> --json`
 **Reference:** `references/pagespeed-crux-api.md`
 
 Output includes per-metric trend direction, percentage change, and weekly p75 values.
@@ -111,7 +111,7 @@ Output includes per-metric trend direction, percentage change, and weekly p75 va
 
 Search Analytics: clicks, impressions, CTR, position for last 28 days.
 
-**Script:** `optbrew read-only capability (see top-level routing) <property> --json`
+**Script:** `upstream script excluded; use optbrew capability routing <property> --json`
 **Reference:** `references/search-console-api.md`
 **Default:** 28 days, dimensions=query,page, type=web, limit=1000.
 
@@ -125,7 +125,7 @@ Includes quick-win detection: queries at position 4-10 with high impressions.
 
 URL Inspection: real indexation status from Google.
 
-**Script:** `optbrew read-only capability (see top-level routing) <url> --json`
+**Script:** `upstream script excluded; use optbrew capability routing <url> --json`
 
 Returns: verdict (PASS/FAIL), coverage state, robots.txt status, indexing state, page fetch state, canonical selection, mobile usability, rich results.
 
@@ -133,13 +133,13 @@ Returns: verdict (PASS/FAIL), coverage state, robots.txt status, indexing state,
 
 Batch inspection from a file (one URL per line). Rate limited to 2,000/day per site.
 
-**Script:** `optbrew read-only capability (see top-level routing) <file> --json`
+**Script:** `upstream script excluded; use optbrew capability routing <file> --json`
 
 ### `sitemaps <property>`
 
 List submitted sitemaps with status, errors, warnings.
 
-**Script:** `optbrew read-only capability (see top-level routing) sitemaps --property <property> --json`
+**Script:** `upstream script excluded; use optbrew capability routing sitemaps --property <property> --json`
 
 ---
 
@@ -149,7 +149,7 @@ List submitted sitemaps with status, errors, warnings.
 
 Notify Google of a URL update.
 
-**Script:** `optbrew read-only capability (see top-level routing) <url> --json`
+**Execution:** Submission disabled in optbrew. No publish or batch command is bundled. Separate user authority and an approved submission path are required.
 **Reference:** `references/indexing-api.md`
 
 The Indexing API is officially for JobPosting and BroadcastEvent/VideoObject pages. Always inform the user of this restriction. Daily quota: 200 publish requests.
@@ -158,7 +158,7 @@ The Indexing API is officially for JobPosting and BroadcastEvent/VideoObject pag
 
 Batch submit URLs from a file. Tracks quota usage.
 
-**Script:** `optbrew read-only capability (see top-level routing) <file> --json`
+**Execution:** Submission disabled in optbrew. No publish or batch command is bundled. Separate user authority and an approved submission path are required.
 
 ---
 
@@ -172,7 +172,7 @@ All GA4 reports accept an optional `--page <path-or-url>` flag to scope the repo
 
 Daily-time-series traffic report: sessions, users, pageviews, bounce rate, engagement.
 
-**Script:** `optbrew read-only capability (see top-level routing) <id> --json`
+**Script:** `upstream script excluded; use optbrew capability routing <id> --json`
 **Reference:** `references/ga4-data-api.md`
 **Default:** 28 days, filtered to Organic Search channel group. Pass `--channel all` for unfiltered traffic.
 
@@ -182,7 +182,7 @@ The all-channels variant is what answers "how is this post growing week over wee
 
 Top landing pages ranked by sessions for the chosen channel (default Organic Search; use `--channel all` for site-wide top pages across every source).
 
-**Script:** `optbrew read-only capability (see top-level routing) <id> --report top-pages --json`
+**Script:** `upstream script excluded; use optbrew capability routing <id> --report top-pages --json`
 
 ### `ga4-referrals [property-id]`
 
@@ -196,7 +196,7 @@ send us?" question is one command. Use this as a reality check against AI-visibi
 data from `seo-ai-search-share-of-voice` and `seo-geo` — referral volume measures
 users sharing your links in AI chats, not whether the AI proactively cites you.
 
-**Script:** `optbrew read-only capability (see top-level routing) <id> --report referrals --json`
+**Script:** `upstream script excluded; use optbrew capability routing <id> --report referrals --json`
 
 **Source modes (`--sources`):**
 - `ai` (default) — curated AI-assistant hostname list
@@ -210,7 +210,7 @@ Combine with `--page` to answer "how much AI traffic did THIS specific post get?
 
 Sessions broken down by `sessionDefaultChannelGroup` (Direct / Organic Search / Referral / Paid Search / Organic Social / …). No channel filter — this is the diagnostic view for "where does traffic to this page actually come from?". Each row includes a `share_of_sessions` percentage so the mix is visible at a glance.
 
-**Script:** `optbrew read-only capability (see top-level routing) <id> --report channel-mix --json`
+**Script:** `upstream script excluded; use optbrew capability routing <id> --report channel-mix --json`
 
 This is the report that answers questions like *"is this post mostly winning on organic, or is the traffic coming from somewhere else?"*. AI-assistant traffic frequently lands in `Direct` (uncredited) rather than `Referral`, so a high Direct share on a recent content-heavy page is itself an AI-visibility signal — pair with `ga4-referrals` for a fuller picture.
 
@@ -225,7 +225,7 @@ properties, or per-region properties) and you need to know which property_id to
 query. Output groups properties by parent account; the `property_id` field is the
 numeric value to pass as `--property`.
 
-**Script:** `optbrew read-only capability (see top-level routing) properties --json`
+**Script:** `upstream script excluded; use optbrew capability routing properties --json`
 
 Requires the **Google Analytics Admin API** to be enabled in your Cloud project
 (separate from the Data API) and the service account to have Viewer access on at
@@ -241,7 +241,7 @@ YouTube mentions have the strongest AI visibility correlation (0.737). Free, API
 
 Search YouTube for videos. Returns title, channel, views, likes, duration.
 
-**Script:** `optbrew read-only capability (see top-level routing) search "<query>" --json`
+**Script:** `upstream script excluded; use optbrew capability routing search "<query>" --json`
 **Reference:** `references/youtube-api.md`
 **Quota:** 100 units per search (10,000 units/day free).
 
@@ -249,7 +249,7 @@ Search YouTube for videos. Returns title, channel, views, likes, duration.
 
 Detailed video info + tags + top 10 comments.
 
-**Script:** `optbrew read-only capability (see top-level routing) video <video_id> --json`
+**Script:** `upstream script excluded; use optbrew capability routing video <video_id> --json`
 **Quota:** 2 units (video details + comments).
 
 ---
@@ -262,7 +262,7 @@ Google's own entity/sentiment analysis. Enhances E-E-A-T scoring.
 
 Full NLP analysis: entities, sentiment, content classification.
 
-**Script:** `optbrew read-only capability (see top-level routing) <url> --json` or `--text "..."`
+**Script:** `upstream script excluded; use optbrew capability routing <url> --json` or `--text "..."`
 **Reference:** `references/nlp-api.md`
 **Free tier:** 5,000 units/month. Requires billing enabled on GCP project.
 
@@ -270,7 +270,7 @@ Full NLP analysis: entities, sentiment, content classification.
 
 Entity extraction only (faster, less quota).
 
-**Script:** `optbrew read-only capability (see top-level routing) <url> --features entities --json`
+**Script:** `upstream script excluded; use optbrew capability routing <url> --features entities --json`
 
 ---
 
@@ -282,7 +282,7 @@ Gold-standard keyword volume data. Requires Google Ads account.
 
 Generate keyword ideas from seed terms.
 
-**Script:** `optbrew read-only capability (see top-level routing) ideas "<seed>" --json`
+**Script:** `upstream script excluded; use optbrew capability routing ideas "<seed>" --json`
 **Reference:** `references/keyword-planner-api.md`
 **Requires:** Ads developer token + customer ID in config (Tier 3).
 
@@ -290,7 +290,7 @@ Generate keyword ideas from seed terms.
 
 Search volume for specific keywords (comma-separated).
 
-**Script:** `optbrew read-only capability (see top-level routing) volume "<kw1>,<kw2>" --json`
+**Script:** `upstream script excluded; use optbrew capability routing volume "<kw1>,<kw2>" --json`
 
 ---
 
@@ -323,7 +323,7 @@ After any analysis command, offer to generate a PDF/HTML/XLSX report.
 
 Generate a professional PDF/HTML/XLSX report with charts and analytics.
 
-**Script:** `optbrew read-only capability (see top-level routing) <type> --data <json> --domain <domain> --format pdf`
+**Script:** `upstream script excluded; use optbrew capability routing <type> --data <json> --domain <domain> --format pdf`
 
 | Type | Input | Output |
 |------|-------|--------|
@@ -334,8 +334,8 @@ Generate a professional PDF/HTML/XLSX report with charts and analytics.
 
 **Workflow:**
 1. Run data collection commands (`pagespeed`, `gsc`, `inspect-batch`, etc.)
-2. Save JSON output to file: `optbrew read-only capability (see top-level routing) <url> --json > data.json`
-3. Generate report: `optbrew read-only capability (see top-level routing) cwv-audit --data data.json --domain <domain>`
+2. Save JSON output to file: `upstream script excluded; use optbrew capability routing <url> --json > data.json`
+3. Generate report: `upstream script excluded; use optbrew capability routing cwv-audit --data data.json --domain <domain>`
 
 **Convention:** After completing analysis, suggest: "Generate a report? Use `report <type>`."
 

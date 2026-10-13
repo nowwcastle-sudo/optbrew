@@ -112,7 +112,7 @@ Save to `~/.config/seo-skills/google-api.json`:
 ## Step 8: Verify Setup
 
 ```bash
-optbrew read-only capability (see top-level routing)
+upstream script excluded; use optbrew capability routing
 ```
 
 Expected output at Tier 2 (full):
