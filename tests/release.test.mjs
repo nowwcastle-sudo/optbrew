@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtemp, readFile, writeFile, rm, cp, mkdir } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -11,6 +12,15 @@ import { createBundleManifest } from '../skills/optbrew/scripts/core/bundle.mjs'
 import { verifiedBundle } from '../lib/transaction.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+
+/** Run npm with a fixed argv and no shell, as the release verifier does. */
+function npmPack(destination) {
+  const args = ['pack', '--ignore-scripts', '--json', '--pack-destination', destination];
+  const npmCli = process.env.npm_execpath || path.join(path.dirname(process.execPath), 'node_modules/npm/bin/npm-cli.js');
+  return process.platform === 'win32' ?
+    spawnSync(process.execPath, [npmCli, ...args], { cwd: root, encoding: 'utf8', shell: false }) :
+    spawnSync('npm', args, { cwd: root, encoding: 'utf8', shell: false });
+}
 
 test('ZIP contains a self-contained skill with exact selected guides and refuses tampering', async () => {
   const outputDir = await mkdtemp(path.join(tmpdir(), 'optbrew-release-'));
@@ -100,7 +110,7 @@ test('npm tarball includes matching skill bytes and excludes authoring files', a
   let passed = false;
   try {
     const artifacts = await buildRelease({ root, version: '0.1.1', outputDir });
-    const packed = spawnSync('npm', ['pack', '--ignore-scripts', '--json', '--pack-destination', outputDir], { cwd: root, encoding: 'utf8', shell: process.platform === 'win32' });
+    const packed = npmPack(outputDir);
     assert.equal(packed.status, 0, packed.stderr);
     const info = JSON.parse(packed.stdout);
     const { filename, files } = Array.isArray(info) ? info[0] : info.optbrew;
@@ -129,8 +139,7 @@ test('npm verifier rejects tampered entrypoint, missing libs, and false package 
   let passed = false;
   try {
     const artifacts = await buildRelease({ root, version: '0.1.1', outputDir });
-    const packed = spawnSync('npm', ['pack', '--ignore-scripts', '--json', '--pack-destination', outputDir],
-      { cwd: root, encoding: 'utf8', shell: process.platform === 'win32' });
+    const packed = npmPack(outputDir);
     assert.equal(packed.status, 0, packed.stderr);
     const info = JSON.parse(packed.stdout);
     artifacts.npm_tarball = path.join(outputDir, (Array.isArray(info) ? info[0] : info.optbrew).filename);
@@ -164,6 +173,35 @@ test('npm verifier rejects tampered entrypoint, missing libs, and false package 
       else assert.ok(result.errors.some(error => /duplicate archive path/.test(error.code)),
         `${kind}: ${JSON.stringify(result.errors)}`);
       process.stdout.write(`npm mutation ${kind}: ${target[kind]?.[1] ?? (kind === 'trailing-file-name' ? 'regular file path ends with slash' : 'duplicate archive path')}\n`);
+    }
+    passed = true;
+  } finally {
+    if (passed) await rm(outputDir, { recursive: true, force: true });
+  }
+});
+
+test('final review I8: ZIP verifier records every member and rejects unextractable layouts', async () => {
+  const outputDir = await mkdtemp(path.join(tmpdir(), 'optbrew-zip-layout-'));
+  let passed = false;
+  try {
+    const artifacts = await buildRelease({ root, version: '0.1.1', outputDir });
+    const script = `import sys,zipfile\nsrc,dst,kind=sys.argv[1:]\nwith zipfile.ZipFile(src) as source, zipfile.ZipFile(dst,'w',zipfile.ZIP_DEFLATED) as target:\n for item in source.infolist(): target.writestr(item, source.read(item))\n if kind=='file-dir-conflict': target.writestr(zipfile.ZipInfo('optbrew/SKILL.md/'), b'')\n if kind=='dir-then-file-conflict':\n  target.writestr(zipfile.ZipInfo('optbrew/conflict/'), b''); target.writestr('optbrew/conflict', b'x')\n if kind=='ancestor-file-conflict': target.writestr('optbrew/SKILL.md/child.txt', b'x')\n if kind=='duplicate-directory':\n  for _ in range(2): target.writestr(zipfile.ZipInfo('optbrew/duplicate/'), b'')\n if kind=='duplicate-file': target.writestr('optbrew/SKILL.md', b'duplicate')\n if kind=='harmless-directory': target.writestr(zipfile.ZipInfo('optbrew/scripts/'), b'')\n`;
+    const expected = {
+      'file-dir-conflict': /archive path conflict/, 'dir-then-file-conflict': /archive path conflict/,
+      'ancestor-file-conflict': /archive path conflict/, 'duplicate-directory': /duplicate archive path/,
+      'duplicate-file': /duplicate archive path/, 'harmless-directory': null, 'unchanged-repack': null };
+    for (const [kind, pattern] of Object.entries(expected)) {
+      const mutated = path.join(outputDir, `${kind}.zip`);
+      const made = spawnSync('python', ['-W', 'ignore', '-c', script, artifacts.skill_zip, mutated, kind], { encoding: 'utf8' });
+      assert.equal(made.status, 0, `${kind}: ${made.stderr}`);
+      const result = await verifyRelease({ root, artifacts: { ...artifacts, skill_zip: mutated,
+        hashes: { ...artifacts.hashes, skill_zip: createHash('sha256').update(await readFile(mutated)).digest('hex') } } });
+      if (!pattern) assert.equal(result.status, 'valid', `${kind}: ${JSON.stringify(result.errors)}`);
+      else {
+        assert.equal(result.status, 'invalid', kind);
+        assert.ok(result.errors.some(error => pattern.test(error.code)), `${kind}: ${JSON.stringify(result.errors)}`);
+      }
+      process.stdout.write(`zip layout ${kind}: ${result.status}\n`);
     }
     passed = true;
   } finally {
