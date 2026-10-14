@@ -7,7 +7,7 @@
       "upstream_path": "scripts/audit.mjs",
       "expected_base_sha256": "b6d29d55e94b3e152f65c5590290dd2f0e8711466c00f93579bf545582db55d2",
       "replacement_path": "patches/naver-robots.patch",
-      "replacement_sha256": "616ea1e0e9295bd3f4c53374d36ce14dcb5923650c94c63c3d4032590fb93a8a",
+      "replacement_sha256": "ebf2b57e4f271a972c583cc5ced1e74d2d80a92784342aad91c833113b86154d",
       "reason": "Use pure RFC 9309 robots parser; disable direct remote fetch and inspect bounded collector evidence"
     },
     {

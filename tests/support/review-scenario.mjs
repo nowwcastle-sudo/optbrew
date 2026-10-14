@@ -32,7 +32,7 @@ export async function startSite(routes) {
 }
 
 /** Audit local pages and wrap the preserved run evidence in a replayable report packet. */
-export async function buildScenario(site, paths, { engines = ['google'], robots = false, maxUrls = 50, name = 'scenario' } = {}) {
+export async function buildScenario(site, paths, { engines = ['google'], robots = false, sitemap = false, enable = [], maxUrls = 50, name = 'scenario' } = {}) {
   const dir = await mkdtemp(path.join(os.tmpdir(), `optbrew-final-review-${name}-`));
   const { origin, port } = site;
   const context = structuredClone(JSON.parse(await readFile(template, 'utf8')).run_context);
@@ -48,7 +48,14 @@ export async function buildScenario(site, paths, { engines = ['google'], robots 
     const family = context.protocol.families.find(x => x.family_id === 'naver-markup');
     family.applicable = true; delete family.applicability_decision;
   }
-  if (robots) context.protocol.auxiliary_resources = [{ kind: 'robots', original: `${origin}/robots.txt`, normalized: `${origin}/robots.txt` }];
+  for (const id of enable) {
+    const family = context.protocol.families.find(x => x.family_id === id);
+    family.applicable = true; delete family.applicability_decision;
+  }
+  const auxiliary = [];
+  if (robots) auxiliary.push({ kind: 'robots', original: `${origin}/robots.txt`, normalized: `${origin}/robots.txt` });
+  if (sitemap) auxiliary.push({ kind: 'sitemap', original: `${origin}/sitemap.xml`, normalized: `${origin}/sitemap.xml` });
+  if (auxiliary.length) context.protocol.auxiliary_resources = auxiliary;
   const audit = await runAudit({ context, modules: ['naver-searchadvisor'], outputDir: dir });
   const index = [];
   async function add(ref, kind, source_ref) {

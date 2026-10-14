@@ -5,6 +5,7 @@ import https from 'node:https';
 import { isIP } from 'node:net';
 import { performance } from 'node:perf_hooks';
 import { assertInScope, assertUrlInScope } from './scope.mjs';
+import { anchorLinks, canonicalLink } from './html.mjs';
 
 const HEADER_NAMES = ['content-type', 'content-length', 'content-range', 'content-encoding', 'location', 'x-robots-tag', 'last-modified', 'etag'];
 const REDIRECTS = new Set([301, 302, 303, 307, 308]);
@@ -159,11 +160,11 @@ export function declaredRobotsIndex(artifacts, declaredRobots, pageFinalUrl) {
   });
 }
 
+/** Anchors plus the canonical target, which the report needs in order to judge canonical consistency. */
 function links(html, base) {
-  const out = [];
-  for (const match of html.matchAll(/<a\b[^>]*\bhref\s*=\s*(?:"([^"]*)"|'([^']*)')/gi)) {
-    try { out.push(new URL(match[1] ?? match[2], base).href); } catch { /* malformed link */ }
-  }
+  const out = anchorLinks(html, base);
+  const canonical = canonicalLink(html);
+  if (canonical) { try { out.push(new URL(canonical, base).href); } catch { /* malformed canonical */ } }
   return out;
 }
 

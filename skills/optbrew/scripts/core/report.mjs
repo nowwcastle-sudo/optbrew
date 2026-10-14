@@ -10,7 +10,7 @@ import { measurePanel } from './metrics.mjs';
 import { normalizeImport } from '../adapters/imports.mjs';
 import { mergeFindings, selectRemediations } from './findings.mjs';
 import { auditCollected, indexingDirectives } from '../../modules/naver-searchadvisor/scripts/audit.mjs';
-import { declaredRobotsIndex } from './collector.mjs';
+import { deriveObservations } from './derive.mjs';
 import { parseRobots, robotsVerdict } from '../../modules/naver-searchadvisor/scripts/robots.mjs';
 
 const catalog = JSON.parse(readFileSync(new URL('../../references/remediations.json', import.meta.url))).items;
@@ -33,6 +33,22 @@ function completeWindow(metric) {
   const localCollectionDate = `${parts.year}-${parts.month}-${parts.day}`;
   return completeDate <= dayBefore(localCollectionDate) && metric.window.end <= completeDate;
 }
+
+/** The optbrew operating rule (design spec, scoring.md): at least 80% of the applicable weight must be measured. */
+export const COVERAGE_THRESHOLD = 80;
+
+/** One headline per profile. Below the coverage threshold the single number is withheld and only the measured subset is shown. */
+export function scoreHeadline(result) {
+  const sufficient = result.A > 0 && result.score !== null && 100 * result.M / result.A >= COVERAGE_THRESHOLD - 1e-9;
+  return { profile: result.profile, status: sufficient ? 'sufficient' : 'insufficient_coverage',
+    headline_score: sufficient ? result.score : null, measured_subset_score: result.score, coverage: result.coverage,
+    coverage_threshold: COVERAGE_THRESHOLD, missing_bounds: result.missing_bounds, readiness_status: result.readiness_status };
+}
+const headlineCell = result => {
+  const headline = scoreHeadline(result);
+  return headline.status === 'sufficient' ? `${headline.headline_score} (coverage ${headline.coverage}%)` :
+    `insufficient coverage (measured subset ${headline.measured_subset_score ?? 'unknown'}; coverage ${headline.coverage ?? 'unknown'}%; bounds ${headline.missing_bounds?.join('–') ?? 'unknown'})`;
+};
 
 function metricRows(metrics) {
   const groups = new Map();
@@ -383,12 +399,11 @@ function checkAuditPhase(input, phase, snapshot, requireRef) {
         (module.requested_url !== undefined && module.requested_url !== artifact.normalized_url) ||
         (module.redirect_chain !== undefined && !same(module.redirect_chain, artifact.redirect_chain ?? [])))
         throw new ContractError('title/index module differs from raw response and headers');
-      // A present title proves existence only; uniqueness and descriptiveness need separate evidence.
-      const expected = obs.check_id === 'document-title' ? replay.title ? 'unknown' : 'fail' : replay.index_blocked ? 'fail' : 'pass';
-      if (obs.state !== expected)
+      // Title states (missing, duplicated, unknown) are replayed by the derivation below.
+      if (obs.check_id === 'index-policy' && obs.state !== (replay.index_blocked ? 'fail' : 'pass'))
         throw new ContractError('title/index verdict differs from raw response and headers');
     }
-    if (obs.check_id === 'search-crawl-policy' && ['pass', 'fail'].includes(obs.state)) {
+    if (obs.check_id === 'search-crawl-policy' && ['pass', 'fail'].includes(obs.state) && obs.unit_key.split('|')[1] === 'naver') {
       const [, engine] = obs.unit_key.split('|');
       const robotsArtifact = artifacts.find(x => x.evidence_ref === obs.evidence_ref && x.status === 200);
       const declared = robotsArtifact && (input.run_context.protocol.auxiliary_resources ?? []).some(resource =>
@@ -409,40 +424,27 @@ function checkAuditPhase(input, phase, snapshot, requireRef) {
         throw new ContractError('crawl verdict differs from bound robots evidence and module output');
     }
   }
-  // Every observation the collector plans for this phase must be in the packet and in the saved observation file;
-  // deleting a failed unit from both would otherwise silently remove its blocker.
-  if (!Array.isArray(moduleOutputs['naver-searchadvisor'])) return;
-  const planned = new Set(input.run_context.protocol.families.filter(x => x.applicable).map(x => x.family_id));
-  const pages = input.run_context.protocol.page_types.flatMap(type => type.urls);
-  const declaredRobots = new Set((input.run_context.protocol.auxiliary_resources ?? [])
-    .filter(resource => resource.kind === 'robots').map(resource => resource.normalized));
-  const expect = (family, engine, url) => {
-    const unitKey = `${family}|${engine ? `${engine}|` : ''}${url}`;
-    if (!observations.some(x => x.unit_key === unitKey) || !savedObservations.some(x => x.unit_key === unitKey))
-      throw new ContractError(`planned collector observation missing: ${unitKey}`);
-  };
-  for (const { normalized: url, public_indexing: publicIndexing } of pages) {
-    const artifact = artifacts.find(x => x.normalized_url === url);
-    if (!artifact) {
-      // A selected page is either collected or recorded as skipped; vanishing from both hides its observations.
-      if (!(collection.skipped ?? []).some(x => x.url === url))
-        throw new ContractError(`selected page missing from the collection and its skipped list: ${url}`);
-      continue;
-    }
-    if (planned.has('fetch-response')) expect('fetch-response', null, url);
-    if (artifact.status !== 200 || artifact.capability !== 'raw_html') continue;
-    if (planned.has('document-title')) expect('document-title', null, url);
-    if (publicIndexing === false) continue;
-    if (planned.has('index-policy')) expect('index-policy', null, url);
-    if (planned.has('search-crawl-policy') && input.run_context.protocol.engines.includes('naver')) {
-      const robots = artifacts[declaredRobotsIndex(artifacts, declaredRobots, artifact.final_url)];
-      if (robots?.status === 200) {
-        const target = new URL(artifact.final_url);
-        if (!robotsVerdict(parseRobots(requireRef(robots.evidence_ref).text), 'yeti', target.pathname + target.search).allowed)
-          expect('search-crawl-policy', 'naver', url);
-      }
-    }
+  // Every selected page is either collected or recorded as skipped; vanishing from both hides its observations.
+  for (const { normalized: url } of input.run_context.protocol.page_types.flatMap(type => type.urls))
+    if (!artifacts.some(x => x.normalized_url === url) && !(collection.skipped ?? []).some(x => x.url === url))
+      throw new ContractError(`selected page missing from the collection and its skipped list: ${url}`);
+  // Re-derive every collector verdict from the hashed raw evidence. Each derived observation must be present in the
+  // packet and in the saved observation file, and no collector observation may lack a derivation.
+  const naverRun = Array.isArray(moduleOutputs['naver-searchadvisor']);
+  const derived = deriveObservations({ context: input.run_context, artifacts, collection, naverModule: naverRun,
+    textOf: artifact => artifact.content_hash ? requireRef(artifact.evidence_ref).text : null });
+  const shape = x => [x.state, x.q, x.partial_basis, x.evidence_ref];
+  for (const expected of derived) {
+    if (!observations.some(x => x.unit_key === expected.unit_key) || !savedObservations.some(x => x.unit_key === expected.unit_key))
+      throw new ContractError(`planned collector observation missing: ${expected.unit_key}`);
+    const have = observations.find(x => x.unit_key === expected.unit_key);
+    if (!same(shape(have), shape(expected)))
+      throw new ContractError(expected.family_id === 'search-crawl-policy' ? 'crawl verdict differs from bound robots evidence and module output' :
+        ['index-policy', 'document-title'].includes(expected.family_id) ? 'title/index verdict differs from raw response and headers' :
+          `collector verdict differs from raw evidence: ${expected.unit_key}`);
   }
+  for (const have of observations) if (!derived.some(x => x.unit_key === have.unit_key))
+    throw new ContractError(`collector observation is not derivable from raw evidence: ${have.unit_key}`);
 }
 
 /** Recompute scores and metrics from contained run evidence; render four design tables. */
@@ -599,11 +601,17 @@ export function buildReport(packet) {
   const scoreRows = baselineScores.map(before => {
     const after = byProfile.get(before.profile);
     const delta = comparison.score_deltas.find(x => x.profile === before.profile);
-    return [before.profile, before.score, after?.score ?? 'unknown', delta?.percentage_point_delta ?? 'unknown',
+    const cautious = scoreHeadline(before).status !== 'sufficient' || (after && scoreHeadline(after).status !== 'sufficient');
+    return [before.profile, headlineCell(before), after ? headlineCell(after) : 'unknown',
+      `${delta?.percentage_point_delta ?? 'unknown'}${cautious && delta ? ' (between measured subsets)' : ''}`,
       `${before.coverage ?? 'unknown'} → ${after?.coverage ?? 'unknown'}`,
       `${before.missing_bounds?.join('–') ?? 'unknown'} → ${after?.missing_bounds?.join('–') ?? 'unknown'}`,
       `${before.readiness_status} → ${after?.readiness_status ?? 'unknown'}`];
   });
+  const headlines = baselineScores.map(scoreHeadline);
+  result.headline = headlines;
+  const headlineText = headlines.map(h => h.status === 'sufficient' ? `${h.profile}: ${h.headline_score} (coverage ${h.coverage}%)` :
+    `${h.profile}: insufficient coverage (${h.coverage ?? 'unknown'}% of the applicable weight is measured; at least ${h.coverage_threshold}% is needed); measured subset ${h.measured_subset_score ?? 'unknown'}, bounds ${h.missing_bounds?.join('–') ?? 'unknown'}`);
   const remediationRows = findings.map(f => [f.priority, `${f.message} ${f.unit_key}`, f.sources.map(x => `${x.source_ref} ${x.evidence_ref}`).join('; '),
     f.remediation ? `${f.remediation.mechanism} (${f.remediation.source_url}, checked ${f.remediation.checked_date})` : 'unknown',
     packet.changes.filter(x => x.finding_ids.some(id => f.finding_ids.includes(id))).map(x => x.path).join('; ') || f.remediation?.location_hint || 'owner implementation location required',
@@ -614,6 +622,7 @@ export function buildReport(packet) {
   const markdown = `# optbrew report\n\n${packet.data_class === 'synthetic' ? '**Synthetic example — no real site or provider outcome.**\n\n' : ''}` +
     `Target: ${html(packet.run_context.target)}  \nEnvironment: ${html(packet.run_context.environment)}  \nGoals: ${html(packet.run_context.goals.join(', '))}  \n` +
     `Comparison: ${html(comparison.status)} (${html(comparison.reasons.join(', ') || 'none')})  \n` +
+    `Headline:  \n${headlineText.map(line => `- ${html(line)}  \n`).join('')}` +
     `Baseline blockers: ${html(baselineScores[0]?.blockers.length ?? 0)} (${html(baselineScores[0]?.blockers.map(x => `${x.family_id} ${x.unit_key}`).join('; ') || 'none')}) → ` +
     `After blockers: ${afterScores ? html(afterScores[0]?.blockers.length ?? 0) : 'unknown'} (${afterScores ? html(afterScores[0]?.blockers.map(x => `${x.family_id} ${x.unit_key}`).join('; ') || 'none') : 'after not observed'}); ` +
     `after core unknown: ${afterScores ? html(afterScores[0]?.unknown_core.length ?? 0) : 'unknown'}; actual outcomes: ${packet.metrics.length ? 'see measured and missing states below' : 'not_connected / unknown'}  \n` +

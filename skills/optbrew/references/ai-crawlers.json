@@ -1,0 +1,21 @@
+{
+  "schema_version": "1.0.0",
+  "checked": "2026-10-15",
+  "note": "engines maps a protocol engine id to the robots.txt user-agent token that governs inclusion in that engine's search or answer results. training lists tokens that are never scored (design rule: allowing training bots earns no score and blocking them is not a failure).",
+  "engines": {
+    "google": { "agent": "Googlebot", "role": "search", "source": "https://developers.google.com/search/docs/crawling-indexing/google-common-crawlers" },
+    "google_ai": { "agent": "Googlebot", "role": "search", "source": "https://developers.google.com/search/docs/appearance/ai-features" },
+    "naver": { "agent": "Yeti", "role": "search", "source": "https://searchadvisor.naver.com/guide/seo-basic-robots" },
+    "chatgpt": { "agent": "OAI-SearchBot", "role": "search", "aliases": ["openai"], "source": "https://developers.openai.com/api/docs/bots" },
+    "claude": { "agent": "Claude-SearchBot", "role": "search", "aliases": ["anthropic"], "source": "https://support.claude.com/en/articles/8896518-does-anthropic-crawl-data-from-the-web-and-how-can-site-owners-block-the-crawler" },
+    "perplexity": { "agent": "PerplexityBot", "role": "search", "source": "https://docs.perplexity.ai/guides/bots" }
+  },
+  "unscored_tokens": [
+    { "token": "GPTBot", "vendor": "OpenAI", "role": "training", "robots_controlled": true, "source": "https://developers.openai.com/api/docs/bots" },
+    { "token": "ChatGPT-User", "vendor": "OpenAI", "role": "user_initiated", "robots_controlled": false, "source": "https://developers.openai.com/api/docs/bots" },
+    { "token": "ClaudeBot", "vendor": "Anthropic", "role": "training", "robots_controlled": true, "source": "https://support.claude.com/en/articles/8896518-does-anthropic-crawl-data-from-the-web-and-how-can-site-owners-block-the-crawler" },
+    { "token": "Claude-User", "vendor": "Anthropic", "role": "user_initiated", "robots_controlled": true, "source": "https://support.claude.com/en/articles/8896518-does-anthropic-crawl-data-from-the-web-and-how-can-site-owners-block-the-crawler" },
+    { "token": "Perplexity-User", "vendor": "Perplexity", "role": "user_initiated", "robots_controlled": false, "source": "https://docs.perplexity.ai/guides/bots" },
+    { "token": "Google-Extended", "vendor": "Google", "role": "training_and_grounding", "robots_controlled": true, "affects_search_inclusion": false, "source": "https://developers.google.com/search/docs/crawling-indexing/google-common-crawlers" }
+  ]
+}

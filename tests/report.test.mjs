@@ -788,3 +788,31 @@ test('final review round 3: a production resolution shows the evaluator type of 
     assert.equal(buildReport(pending.packet).json.findings[0].resolution, null);
   } finally { rmSync(pending.dir, { recursive: true, force: true }); }
 });
+
+test('0.1.2 fix 2: a measured score is never the headline below 80% coverage', async () => {
+  const report = await import('../skills/optbrew/scripts/core/report.mjs');
+  const synthetic = (coverage, score, extra = {}) => ({ profile: 'SEO', score, coverage, A: 100, M: coverage, N: score * coverage / 100,
+    missing_bounds: [10.1, 99.9], readiness_status: 'provisional', ...extra });
+  assert.equal(report.COVERAGE_THRESHOLD, 80);
+  assert.deepEqual(report.scoreHeadline(synthetic(79.9, 100)), { profile: 'SEO', status: 'insufficient_coverage', headline_score: null,
+    measured_subset_score: 100, coverage: 79.9, coverage_threshold: 80, missing_bounds: [10.1, 99.9], readiness_status: 'provisional' });
+  assert.equal(report.scoreHeadline(synthetic(80, 91.2)).status, 'sufficient');
+  assert.equal(report.scoreHeadline(synthetic(80, 91.2)).headline_score, 91.2);
+  assert.equal(report.scoreHeadline({ profile: 'SEO', score: null, coverage: 0, A: 100, M: 0, missing_bounds: [0, 100], readiness_status: 'unverified' }).status, 'insufficient_coverage');
+
+  const packet = fixture(); packet.evidence_root = path.resolve('tests/fixtures/reports');
+  const { json, markdown } = buildReport(packet);
+  const seo = json.baseline.scores.find(x => x.profile === 'SEO');
+  const headline = json.headline.find(x => x.profile === 'SEO');
+  assert.ok(seo.coverage < 80);
+  assert.equal(headline.status, 'insufficient_coverage');
+  assert.equal(headline.headline_score, null);
+  assert.equal(headline.measured_subset_score, seo.score);
+  assert.deepEqual(headline.missing_bounds, seo.missing_bounds);
+  assert.match(markdown, /Headline:/);
+  assert.match(markdown, new RegExp(`SEO: insufficient coverage \\(${seo.coverage}% of the applicable weight is measured; at least 80% is needed\\)`));
+  assert.match(markdown, new RegExp(`measured subset ${seo.score}`));
+  const row = json.tables.score.find(x => x[0] === 'SEO');
+  assert.match(row[1], /^insufficient coverage \(measured subset/);
+  assert.match(row[1], new RegExp(`bounds ${seo.missing_bounds.join('–')}`));
+});

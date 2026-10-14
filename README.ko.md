@@ -42,6 +42,10 @@ node bin/optbrew.mjs report --input ./remote-only.json --output-dir ./report-out
 
 자체 준비도 프로필은 SEO, 네이버가 대상일 때 NEO, AEO, GEO, LLMO입니다. 고유 검사군 22개는 여러 가이드가 같은 문제를 찾아도 한 번만 셉니다. 확인하지 못한 적용 검사는 분모에 남기고, 근거 있는 `not_applicable` 검사만 제외합니다. 결과에는 점수, 측정 범위, 미측정 구간의 상·하한, 차단 요소, 미확인 핵심 검사가 들어갑니다. 측정 범위 80% 기준은 optbrew 자체 규칙이며 검색엔진 기준이 아닙니다. 높은 준비도 점수는 색인, 유입, 인용, 사실 정확성, 전환, 매출을 증명하지 않습니다.
 
+감사 스크립트가 수집한 응답에서 스스로 관찰하는 항목은 다음과 같습니다. 응답 상태, meta 태그와 `X-Robots-Tag`의 색인 지시자(대상 엔진별), 제목 없음·중복, 선언한 엔진별 robots.txt 접근(Googlebot, Yeti, [`ai-crawlers.md`](skills/optbrew/references/ai-crawlers.md)의 AI 검색 봇. 학습 봇은 점수에 넣지 않음), canonical 대상과 리다이렉트 체인 길이, 링크 또는 선언한 사이트맵을 통한 발견성, JSON-LD 문법, 네이버 마크업(Open Graph, 설명, canonical, viewport, 제목 키워드 반복, 막힌 CSS·JS), 이름·주소·전화·설립연도·배송 기준의 페이지 간 일치입니다. 따라서 SEO와 NEO는 접근·색인·마크업 검사를 스크립트로 합니다. AEO와 GEO는 준비도 감사로 남습니다. 답변 구조, 주장 근거, 저자, 최신성은 가이드와 에이전트 판단이 필요합니다. LLMO는 페이지 간 불일치를 보여 주는 검사를 얻지만 사실이 맞다는 것을 증명하지는 않습니다. 심은 결함 시험과 한계는 저장소의 `docs/validation/detection-0.1.2.md`에 있습니다.
+
+측정 범위가 80% 미만이면 보고서는 하나의 대표 점수를 내지 않고 측정된 부분의 값과 상·하한을 보여 줍니다. 모든 대표 점수는 측정 범위와 함께 표시됩니다.
+
 보고서는 준비도, 해결 방안, 실제 성과, 남은 일을 별도 표로 보여 줍니다. 실제 성과에는 소유자 내보내기 자료 또는 고정된 AI 질문 패널이 필요합니다. 일반 성과 비교에는 정의와 필터가 같은 인접한 완결 28일 기간 두 개를 사용합니다. 로컬 수정은 배포와 운영 관찰의 근거가 생기기 전까지 로컬 수정입니다.
 
 ## API와 비용
@@ -64,7 +68,7 @@ node bin/optbrew.mjs update --scope project --project ./site --json
 node bin/optbrew.mjs rollback --scope project --project ./site --release-version 0.1.0 --json
 ```
 
-`check-updates --package optbrew`는 npm 레지스트리에서 최신 버전을 읽습니다. `--package`를 빼면 `local_only`를 반환합니다. `update`는 현재 CLI 번들을 검증한 뒤 관리 기록의 모든 대상에 적용합니다. 로컬 편집은 자동으로 덮어쓰지 않습니다. `rollback`은 관리 기록에 해당 이전 버전이 남아 있어야 합니다. 새 0.1.1 설치에서는 위 복원 예시가 실패하며, 로컬 0.1.0을 보존한 관리 설치에 적용됩니다. 출시 후 `npm update -g optbrew`는 npm 패키지를 갱신하지만 이전에 agent 스킬 폴더로 복사한 파일까지 바꾸지는 않습니다. CLI를 갱신한 다음 관리 `update`를 다시 실행합니다. 호스트 고유 갱신은 [플랫폼 안내](docs/platforms.md)를 보십시오.
+`check-updates --package optbrew`는 npm 레지스트리에서 최신 버전을 읽습니다. `--package`를 빼면 `local_only`를 반환합니다. `update`는 현재 CLI 번들을 검증한 뒤 관리 기록의 모든 대상에 적용합니다. 로컬 편집은 자동으로 덮어쓰지 않습니다. `rollback`은 관리 기록에 해당 이전 버전이 남아 있어야 합니다. 새 0.1.2 설치에서는 위 복원 예시가 실패하며, 로컬 0.1.0을 보존한 관리 설치에 적용됩니다. 출시 후 `npm update -g optbrew`는 npm 패키지를 갱신하지만 이전에 agent 스킬 폴더로 복사한 파일까지 바꾸지는 않습니다. CLI를 갱신한 다음 관리 `update`를 다시 실행합니다. 호스트 고유 갱신은 [플랫폼 안내](docs/platforms.md)를 보십시오.
 
 ## 지원 범위와 라이선스
 

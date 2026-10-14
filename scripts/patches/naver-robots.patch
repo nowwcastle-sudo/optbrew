@@ -655,6 +655,25 @@ export function auditCollected({ artifact, html, robotsArtifact = null, engines 
     artifact.headers['x-robots-tag'] != null ? [artifact.headers['x-robots-tag']] : [];
   const directives = indexingDirectives({ html, xRobotsTag: xRobotsLines, engines });
   const jsonld = [...html.matchAll(/<script[^>]+application\/ld\+json[^>]*>([\s\S]*?)<\/script>/gi)];
+  // Naver markup checks on the collected response (moved from the unreachable direct-fetch path).
+  const liveMarkup = stripInert(html);
+  const markupHead = /<head[^>]*>([\s\S]*?)<\/head>/i.exec(liveMarkup)?.[1] ?? liveMarkup;
+  const markupMetas = tags(markupHead, 'meta');
+  const markupLinks = tags(markupHead, 'link');
+  const markupFindings = [];
+  const openGraph = {};
+  for (const t of markupMetas) if ((t.property || '').startsWith('og:')) openGraph[t.property.slice(3)] = t.content ?? '';
+  for (const k of ['title', 'description', 'image', 'url', 'type'])
+    if (!openGraph[k]) markupFindings.push({ code: `no-og-${k}`, message: `og:${k} is missing` });
+  if (!metaBy(markupMetas, 'name', 'description')[0]) markupFindings.push({ code: 'no-description', message: 'meta description is missing' });
+  const canonical = markupLinks.find((l) => (l.rel || '').toLowerCase() === 'canonical')?.href ?? null;
+  if (!canonical) markupFindings.push({ code: 'no-canonical', message: 'canonical link is missing' });
+  else if (!/^https?:\/\//i.test(canonical)) markupFindings.push({ code: 'canonical-relative', message: `canonical is relative: ${canonical}` });
+  // Three or more occurrences of one word in a title; two are common in legitimate "Page | Site" titles.
+  const titleWords = (title || '').toLowerCase().match(/[가-힣a-z0-9]+/g) || [];
+  const repeated = [...new Set(titleWords.filter((w) => w.length > 1 && titleWords.filter((x) => x === w).length >= 3))];
+  if (repeated.length) markupFindings.push({ code: 'title-keyword-repeat', message: `title repeats: ${repeated.join(', ')}` });
+  if (!metaBy(markupMetas, 'name', 'viewport')[0]) markupFindings.push({ code: 'no-viewport', message: 'meta viewport is missing' });
   let parsedRobots = null;
   let yetiVerdict = null;
   const findings = [];
@@ -675,6 +694,13 @@ export function auditCollected({ artifact, html, robotsArtifact = null, engines 
       if (!robotsVerdict(parsedRobots, 'yeti', target.pathname + target.search).allowed)
         findings.push({ code: 'resource-blocked', message: `Yeti resource blocked: ${target.pathname}${target.search}` });
     }
+    // A blocked stylesheet or script stops the crawler from rendering the page the way a visitor sees it.
+    for (const resource of [...tags(html, 'link').filter(x => /stylesheet/i.test(x.rel ?? '')).map(x => x.href), ...tags(html, 'script').map(x => x.src)].filter(Boolean)) {
+      let target;
+      try { target = new URL(resource, artifact.final_url); } catch { continue; }
+      if (target.origin === url.origin && !robotsVerdict(parsedRobots, 'yeti', target.pathname + target.search).allowed)
+        markupFindings.push({ code: 'resource-blocked', message: `Yeti cannot fetch ${target.pathname}${target.search}` });
+    }
   }
   return {
     url: artifact.final_url, requested_url: artifact.normalized_url ?? null,
@@ -683,6 +709,7 @@ export function auditCollected({ artifact, html, robotsArtifact = null, engines 
     index_blocked: directives.blocked,
     jsonld_blocks: jsonld.length, jsonld_parse_errors: jsonld.filter(([, body]) => { try { JSON.parse(body); return false; } catch { return true; } }).length,
     robots: parsedRobots ? { yeti_allowed: yetiVerdict.allowed, reason: yetiVerdict.reason, sitemaps: parsedRobots.sitemaps } : null,
+    canonical, markup_findings: markupFindings,
     findings,
     limitations,
   };

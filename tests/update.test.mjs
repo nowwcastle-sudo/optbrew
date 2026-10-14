@@ -100,7 +100,7 @@ test('actual distributed bundle and source-lock update in isolated project with 
   const release = path.join(f.root, 'actual-next');
   await cp(actual, release, { recursive: true, filter: p => isDistributedBundlePath(path.relative(actual, p)) });
   await writeFile(path.join(release, 'SKILL.md'), `${await readFile(path.join(release, 'SKILL.md'), 'utf8')}\nSynthetic update fixture.\n`);
-  await seal(release, '0.1.2');
+  await seal(release, '0.1.3');
   const projectRoot = path.join(f.root, 'project (한글)');
   const linked = await install({ bundleRoot: actual, agents: ['codex'], scope: 'project', projectRoot });
   await install({ bundleRoot: actual, agents: ['pi'], scope: 'project', projectRoot, strategy: 'copy' });

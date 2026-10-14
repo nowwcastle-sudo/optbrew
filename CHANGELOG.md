@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.1.2
+
+- The report headline no longer lets a measured score read as a complete one. Each headline score carries its coverage; below the 80% coverage rule the single number is withheld and the report shows `insufficient coverage` with the measured-subset value and the missing-data bounds (`report.json` `headline[]`).
+- The audit now observes from collected responses: duplicate titles (`document-title`), canonical target status and redirect-chain length (`canonical-consistency`), link and declared-sitemap discovery (`discovery`), JSON-LD parse errors (`structured-data-truth`), Naver markup moved from the unreachable direct-fetch path into the collected-evidence path (`naver-markup`: Open Graph, description, canonical, viewport, title repetition, CSS or JS blocked for Yeti), `search-crawl-policy` for Googlebot, Yeti and the AI search bots OAI-SearchBot, Claude-SearchBot and PerplexityBot (`references/ai-crawlers.md`; training bots stay unscored), and cross-page name, address, phone, founding-year and shipping-threshold comparison with an entity-identity check (`fact-consistency`, `entity-identity`).
+- `search-crawl-policy` now records a pass as well as a fail for every engine that has a robots token. The collector fetches in-scope canonical targets inside the 50-request budget.
+- Report replay derives every collector verdict again from the hashed raw evidence with the same code the audit uses, and rejects a derived observation that is missing, extra or different.
+- Scoring contracts, profile weights, the check registry and the evaluation and protocol versions (0.1.0) are unchanged, so a managed install of 0.1.1 updates to 0.1.2 without a migration. A baseline audit made with 0.1.1 produces fewer observations than 0.1.2; run the baseline again with 0.1.2 before comparing.
+- Public clones: the four maintainer-only vendor tests skip with a reason when the upstream source mirror is absent, so `npm test` passes without it.
+- Not scripted yet: the `robots.txt` Sitemap line, og:image size, hreflang, JavaScript-only navigation, answer structure, claim support, authorship and freshness.
+
 ## 0.1.1 — local release candidate
 
 - Verified a real localhost noindex/title baseline, backed-up local edit, same-condition rescan and evidence-bound JSON/Markdown report. The collector emits pass or fail observations for completed index checks, a fail for a missing title and unknown for a present one (uniqueness and descriptiveness need separate evidence), and the report replays title, index and crawl-policy verdicts from the preserved raw bytes.

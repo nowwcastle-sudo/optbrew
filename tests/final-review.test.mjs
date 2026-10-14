@@ -146,15 +146,10 @@ test('I1: report replay re-derives crawl-policy pass and fail from the bound raw
   assert.throws(() => buildReport(crawl.packet), /crawl verdict differs from bound robots evidence/);
 
   const allowed = await run(t, ['/ok'], { engines: ['naver'], robots: true });
-  assert.equal(allowed.packet.baseline.input.observations.some(x => x.check_id === 'search-crawl-policy'), false);
+  assert.equal(stateOf(allowed, 'search-crawl-policy', '/ok'), 'pass');
   assert.doesNotThrow(() => buildReport(allowed.packet));
-  const robotsRef = allowed.audit.artifacts.find(x => x.normalized_url.endsWith('/robots.txt')).evidence_ref;
-  const unit_key = `search-crawl-policy|naver|${site.origin}/ok`;
-  await allowed.forgeObservations(list => list.push({ schema_version: '1.0.0',
-    observation_id: createHash('sha256').update(unit_key).digest('hex'), check_id: 'search-crawl-policy',
-    family_id: 'search-crawl-policy', unit_key, state: 'fail', q: 0, partial_basis: null,
-    reason: 'Forged disallow while raw robots allows', evaluator_type: 'code', source_ref: 'optbrew:collector',
-    evidence_ref: robotsRef }));
+  await allowed.forgeObservations(list => Object.assign(list.find(x => x.check_id === 'search-crawl-policy'),
+    { state: 'fail', q: 0, reason: 'Forged disallow while raw robots allows' }));
   await allowed.rewrite(allowed.evidence('modules.json'), value => { value['naver-searchadvisor'][0].robots.yeti_allowed = false; });
   assert.throws(() => buildReport(allowed.packet), /crawl verdict differs from bound robots evidence/);
 
@@ -165,18 +160,21 @@ test('I1: report replay re-derives crawl-policy pass and fail from the bound raw
 });
 
 test('I9: missing title is a confirmed failure and a present title stays unknown without uniqueness evidence', async t => {
-  const scenario = await run(t, ['/notitle', '/service', '/about']);
+  const scenario = await run(t, ['/notitle', '/service', '/ok']);
   assert.equal(stateOf(scenario, 'document-title', '/notitle'), 'fail');
-  for (const urlPath of ['/service', '/about']) {
+  for (const urlPath of ['/service', '/ok']) {
     const observation = scenario.observation('document-title', urlPath);
-    assert.equal(observation.state, 'unknown', urlPath);
-    assert.equal(observation.q, null, urlPath);
+    assert.equal(observation.state, 'fail', `${urlPath} shares its title with the other page`);
   }
-  assert.equal(scenario.audit.module_outputs['naver-searchadvisor'].filter(x => x.title === 'Example service').length, 2);
+  const unique = await run(t, ['/ok', '/final']);
+  const titled = await run(t, ['/ok']);
+  assert.equal(stateOf(titled, 'document-title', '/ok'), 'unknown');
+  assert.equal(titled.observation('document-title', '/ok').q, null);
+  assert.doesNotThrow(() => buildReport(unique.packet));
   assert.doesNotThrow(() => buildReport(scenario.packet));
-  await scenario.forgeObservations(list => Object.assign(list.find(x => x.check_id === 'document-title' && x.unit_key.endsWith('/service')),
+  await titled.forgeObservations(list => Object.assign(list.find(x => x.check_id === 'document-title'),
     { state: 'pass', q: 1, reason: 'Forged existence pass' }));
-  assert.throws(() => buildReport(scenario.packet), /title\/index verdict differs from raw response and headers/);
+  assert.throws(() => buildReport(titled.packet), /title\/index verdict differs from raw response and headers/);
 });
 
 test('I6: a redirect cut by the request budget stays a reportable unknown with separate counts', async t => {
