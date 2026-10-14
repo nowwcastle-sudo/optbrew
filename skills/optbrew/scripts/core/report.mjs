@@ -214,16 +214,20 @@ function checkMetricEvidence(metric, packet, requireRef) {
     'provider response origin and semantic evaluations are attributed to indexed receipts, not independently authenticated';
 }
 
-function statusFor(finding, changes, afterInput) {
+function statusFor(finding, changes, afterInput, target, requireRef) {
   const linked = changes.filter(change => change.finding_ids.some(id => finding.finding_ids.includes(id)));
   if (!linked.length) return finding.remediation_ids.length ? 'proposed_only' :
     finding.status === 'unknown' ? 'unknown' : 'confirmed';
   if (linked.some(change => change.verification.status === 'failed')) return 'verification_failed';
   if (linked.some(change => change.verification.status !== 'passed')) return 'modified_unverified';
-  const afterResolved = linked.every(change => afterInput?.observations.some(obs =>
-    obs.check_id === finding.check_id && obs.unit_key === finding.unit_key &&
-    ['pass', 'partial'].includes(obs.state) && obs.observation_id === change.verification.observation_id &&
-    obs.evidence_ref === change.verification.observation_evidence_ref));
+  const afterResolved = same(afterInput?.run_context.target, target) &&
+    afterInput?.run_context.environment === 'production' && linked.every(change => afterInput.observations.some(obs => {
+      if (obs.check_id !== finding.check_id || obs.unit_key !== finding.unit_key ||
+          !['pass', 'partial'].includes(obs.state) || obs.observation_id !== change.verification.observation_id ||
+          obs.evidence_ref !== change.verification.observation_evidence_ref) return false;
+      const source = requireRef(obs.evidence_ref, obs.source_ref);
+      return source.phase === 'after' && source.environment === 'production' && same(source.target, target);
+    }));
   if (linked.every(change => change.environment === 'production' && change.verification.deployed === true))
     return afterResolved ? 'verified_production' : 'modified_unverified';
   return linked.every(change => change.environment === 'local') ? 'verified_local' : 'modified_unverified';
@@ -329,7 +333,7 @@ export function buildReport(packet) {
     const selected = options.find(option => option.selected);
     if (finding.remediation_ids.length && !finding.remediation_ids.every(id => id === selected?.remediation_id))
       throw new ContractError(`finding remediation link invalid: ${finding.finding_id}`);
-    const status = statusFor(finding, packet.changes, packet.after?.input);
+    const status = statusFor(finding, packet.changes, packet.after?.input, packet.run_context.target, requireRef);
     return { ...finding, remediation: selected ?? null, status };
   });
   for (const change of packet.changes) {

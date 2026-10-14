@@ -49,6 +49,45 @@ function addChange(run, id, { environment = 'local', status = 'passed', deployed
     backup_ref: `${id}-before.txt`, evidence_ref: `${id}-after.txt`,
     verification: { status, deployed, evidence_ref: `${id}-verify.json` } });
 }
+function productionRun() {
+  const run = copyRun();
+  addChange(run, 'c1', { environment: 'production', deployed: true });
+  const afterInput = structuredClone(run.packet.baseline.input);
+  const resolved = afterInput.observations.find(x => x.check_id === 'index-policy');
+  Object.assign(resolved, { state: 'pass', q: 1, reason: 'raw response allows indexing', evidence_ref: 'after-response.html' });
+  addEvidence(run, 'after-response.html', '<html><head><meta name="robots" content="index"></head></html>\n', 'raw_html', 'synthetic');
+  run.packet.after = { input: afterInput, scores: score(afterInput) };
+  run.packet.comparison = compare(run.packet.baseline.input, afterInput);
+  run.packet.changes[0].verification.observation_id = resolved.observation_id;
+  run.packet.changes[0].verification.observation_evidence_ref = resolved.evidence_ref;
+  const receipt = JSON.parse(readFileSync(path.join(run.dir, 'c1-verify.json'), 'utf8'));
+  receipt.observation_id = resolved.observation_id; receipt.observation_evidence_ref = resolved.evidence_ref;
+  run.rewrite('c1-verify.json', `${JSON.stringify(receipt)}\n`);
+  const evidence = run.packet.evidence_index.find(x => x.ref === resolved.evidence_ref);
+  Object.assign(evidence, { phase: 'after', target: 'example.com', environment: 'production', source_url: 'https://example.com/' });
+  retargetAfter(run, { environment: 'production' });
+  return run;
+}
+function retargetAfter(run, { target, browser, environment }) {
+  const afterInput = run.packet.after.input;
+  if (target) afterInput.run_context.target = target;
+  if (browser) afterInput.run_context.protocol.browser = browser;
+  if (environment) afterInput.run_context.environment = environment;
+  afterInput.run_context.evidence_ref = 'after-context.json';
+  for (const family of afterInput.run_context.protocol.families)
+    if (family.applicability_decision) family.applicability_decision.evidence_ref = 'after-intake.json';
+  const save = (ref, value, kind) => run.packet.evidence_index.some(x => x.ref === ref) ?
+    run.rewrite(ref, `${JSON.stringify(value)}\n`) : addEvidence(run, ref, value, kind);
+  save('after-context.json', afterInput.run_context, 'context');
+  const decisions = afterInput.run_context.protocol.families.filter(x => x.applicability_decision).map(x => ({
+    scope: 'family', family_id: x.family_id, condition: x.applicability_decision.condition,
+    reason: x.applicability_decision.reason }));
+  save('after-intake.json', { run_id: 'synthetic-report', target: afterInput.run_context.target,
+    protocol_hash: freezeProtocol(afterInput.run_context).protocol_hash,
+    approved_by: 'synthetic-fixture', decisions }, 'applicability');
+  run.packet.after.scores = score(afterInput);
+  run.packet.comparison = compare(run.packet.baseline.input, afterInput);
+}
 function addNative(run, ref, { start, end, value, property = 'example.com', definition = 'GSC clicks',
     sample_selection = { kind: 'all' }, collected_at = '2026-10-14T10:00:00+09:00', last_complete_date = '2026-10-13' }) {
   const source = { kind: 'native_export', run_id: 'synthetic-report', provider: 'gsc',
@@ -340,25 +379,49 @@ test('review P1-1: stale production receipt cannot verify different bytes or pat
 });
 
 test('review P1-1: production status requires same changed bytes, target and after observation', () => {
-  const run = copyRun();
+  const run = productionRun();
   try {
-    addChange(run, 'c1', { environment: 'production', deployed: true });
-    const afterInput = structuredClone(run.packet.baseline.input);
-    const resolved = afterInput.observations.find(x => x.check_id === 'index-policy');
-    Object.assign(resolved, { state: 'pass', q: 1, reason: 'raw response allows indexing', evidence_ref: 'after-response.html' });
-    addEvidence(run, 'after-response.html', '<html><head><meta name="robots" content="index"></head></html>\n', 'raw_html', 'synthetic');
-    run.packet.after = { input: afterInput, scores: score(afterInput) };
-    run.packet.comparison = compare(run.packet.baseline.input, afterInput);
-    run.packet.changes[0].verification.observation_id = resolved.observation_id;
-    run.packet.changes[0].verification.observation_evidence_ref = resolved.evidence_ref;
     const receipt = JSON.parse(readFileSync(path.join(run.dir, 'c1-verify.json'), 'utf8'));
-    receipt.observation_id = resolved.observation_id; receipt.observation_evidence_ref = resolved.evidence_ref;
-    run.rewrite('c1-verify.json', `${JSON.stringify(receipt)}\n`);
     assert.equal(buildReport(run.packet).json.findings[0].status, 'verified_production');
     receipt.observation_evidence_ref = 'raw.html';
     run.rewrite('c1-verify.json', `${JSON.stringify(receipt)}\n`);
     assert.throws(() => buildReport(run.packet), /after observation evidence/);
   } finally { rmSync(run.dir, { recursive: true, force: true }); }
+});
+
+test('review fix2: after target must match deployed target while same-target protocol changes remain eligible', () => {
+  const sameTarget = productionRun();
+  try {
+    retargetAfter(sameTarget, { browser: 'Firefox' });
+    const report = buildReport(sameTarget.packet).json;
+    assert.equal(report.comparison.status, 'not_comparable');
+    assert.equal(report.findings[0].status, 'verified_production');
+  } finally { rmSync(sameTarget.dir, { recursive: true, force: true }); }
+  const otherTarget = productionRun();
+  try {
+    retargetAfter(otherTarget, { target: 'other.example' });
+    const report = buildReport(otherTarget.packet).json;
+    assert.equal(report.comparison.status, 'not_comparable');
+    assert.equal(report.findings[0].status, 'modified_unverified');
+  } finally { rmSync(otherTarget.dir, { recursive: true, force: true }); }
+});
+
+test('review fix2: local after context cannot verify production', () => {
+  const localAfter = productionRun();
+  try {
+    retargetAfter(localAfter, { environment: 'local' });
+    assert.equal(buildReport(localAfter.packet).json.findings[0].status, 'modified_unverified');
+  } finally { rmSync(localAfter.dir, { recursive: true, force: true }); }
+});
+test('review fix2: differently attributed after source cannot verify production', () => {
+  const wrongSource = productionRun();
+  try {
+    const source = wrongSource.packet.evidence_index.find(x => x.ref === 'after-response.html');
+    source.target = 'other.example';
+    assert.equal(buildReport(wrongSource.packet).json.findings[0].status, 'modified_unverified');
+    source.target = 'example.com'; source.phase = 'baseline';
+    assert.equal(buildReport(wrongSource.packet).json.findings[0].status, 'modified_unverified');
+  } finally { rmSync(wrongSource.dir, { recursive: true, force: true }); }
 });
 
 test('review P1-2: local pass plus a separate production pending change is not verified', () => {
