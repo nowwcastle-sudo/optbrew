@@ -118,12 +118,14 @@ export function deriveObservations({ context, artifacts, collection = {}, textOf
     }
     const htmlPages = artifacts.filter(x => x.capability === 'raw_html' && x.status === 200);
     const linked = new Map();
-    let scriptNavigation = false;
+    // A page with scripts and no anchors may build its navigation in the browser: its own links are unknowable.
+    const scriptOnly = new Set();
+    let anchoredPages = 0;
     for (const page of htmlPages) {
       const body = textOf(page);
       const hrefs = anchorLinks(body, page.final_url);
-      // A page with scripts and no anchors may build its navigation in the browser; links are then unknowable.
-      if (!hrefs.length && /<script\b/i.test(body)) scriptNavigation = true;
+      if (hrefs.length) anchoredPages++;
+      else if (/<script\b/i.test(body)) scriptOnly.add(canonicalUrl(page.normalized_url));
       for (const href of hrefs) {
         const target = canonicalUrl(href);
         if (target && target !== canonicalUrl(page.final_url) && target !== canonicalUrl(page.normalized_url)) linked.set(target, (linked.get(target) ?? 0) + 1);
@@ -137,7 +139,9 @@ export function deriveObservations({ context, artifacts, collection = {}, textOf
       const inSitemap = keys.some(key => sitemapUrls.has(key));
       if (inSitemap || keys.some(key => linked.has(key)))
         add('discovery', null, url, 'pass', inSitemap ? 'Listed in a declared sitemap' : 'Linked from another collected page', artifact.evidence_ref);
-      else if (htmlPages.length >= 2 && complete && !sitemapIndex && !scriptNavigation)
+      // One script-only page leaves only its own verdict unknown. When no collected page exposes an anchor and scripts are
+      // present, the navigation is built in the browser and every verdict stays unknown.
+      else if (htmlPages.length >= 2 && complete && !sitemapIndex && !(scriptOnly.size && !anchoredPages) && !scriptOnly.has(canonicalUrl(url)))
         add('discovery', null, url, 'fail', `Not linked from any collected page and not in a sitemap${brokenSitemaps.length ? `; declared sitemap unusable: ${brokenSitemaps.join(', ')}` : ''}`, artifact.evidence_ref);
     }
   }

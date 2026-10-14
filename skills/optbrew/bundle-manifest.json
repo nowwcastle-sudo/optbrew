@@ -576,7 +576,7 @@
     },
     {
       "path": "references/report.md",
-      "sha256": "3bec12e71c069714a8fd7f90f134a3661a857c6af6e5fc8ba4f84503f41acc84"
+      "sha256": "a09e7af72e1c27dcd591e2633850aeba33273d7e581b555d85abbc70998635ca"
     },
     {
       "path": "references/routing.md",
@@ -640,7 +640,7 @@
     },
     {
       "path": "scripts/core/derive.mjs",
-      "sha256": "996c02de8ae36caf14d1eeecdbfc88d970adb63354941deead33dc8fc093cdfd"
+      "sha256": "174f0cf8526224eb9b284092376e07a9131db29375af4dc66e34bfeea582a8fc"
     },
     {
       "path": "scripts/core/facts.mjs",
@@ -683,5 +683,5 @@
       "sha256": "a53223b7eefab2204c026a62b1da04cfdb8a07be8d3749613e8241a81b027d9b"
     }
   ],
-  "bundle_hash": "2cb947a55c209dbc99f38a9d0eebcd56dc7b6c3c55bbb5baafd2a24e6b8a1115"
+  "bundle_hash": "091dc1186084219c9be74153a64ed61f20c954baea69b2812c9d72fb36ea7710"
 }
