@@ -93,7 +93,8 @@ export function pageFacts(html) {
   const tel = { phone: new Map() };
   const put = (bucket, type, raw, key) => { if (key) bucket[type].set(key, String(raw).trim()); };
   const text = visibleText(live);
-  for (const match of hardText(live).matchAll(/\b(?:Phone|Tel(?:ephone)?|Mobile)\b\s*[:：]?\s*([^\n]*)|(?:전화(?:번호)?|연락처|대표번호)\s*[:：]?\s*([^\n]*)/gi)) {
+  // The text after a label is read in a lookahead, so a label alone (a heading that says "phone") never consumes the next line.
+  for (const match of hardText(live).matchAll(/\b(?:Phone|Tel(?:ephone)?|Mobile)\b(?=\s*[:：]?\s*([^\n]*))|(?:전화(?:번호)?|연락처|대표번호)(?=\s*[:：]?\s*([^\n]*))/gi)) {
     const number = readPhone(match[1] ?? match[2]);
     if (number) put(visible, 'phone', number, phoneKey(number));
   }

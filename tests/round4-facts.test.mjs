@@ -141,3 +141,10 @@ test('M10: the same address in another word order is not a failure', () => {
   // A real difference with the same words is still different.
   assert.equal(run(three('<p>Address: 27 Wausan-ro, Mapo-gu, Seoul</p>', null, '<p>Address: Seoul, Mapo-gu, Wausan-ro 72</p>')).fails.size, 1);
 });
+test('a heading that only says "phone" does not hide the labelled number in the next block', () => {
+  const html = wrap('<h1>Order by phone</h1><p>Brewline is a roastery founded in 2014. Address: 27 Wausan-ro, Mapo-gu. Phone: +82-2-555-0142. Hours: Mon-Sat 09:00-18:00.</p>');
+  assert.deepEqual([...pageFacts(html).visible.phone.keys()], ['025550142']);
+  const withJsonLd = wrap('<h1>Order by phone</h1><p>Phone: +82-2-555-0142. Hours: Mon-Sat 09:00-18:00.</p>', ld({ telephone: '+82-2-555-0188' }));
+  const { comparison } = run({ '/x': withJsonLd });
+  assert.match([...comparison.deviations.get('/x')].join(), /phone in JSON-LD .*0188.* differs from visible/);
+});
