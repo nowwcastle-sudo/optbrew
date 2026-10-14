@@ -111,3 +111,33 @@ test('M2: a five-digit street number is not a postal code; a postal code in its 
   });
   assert.equal(postal.fails.size, 0, JSON.stringify([...postal.fails]));
 });
+
+// Round five: the phone match ends at its own last digit group, and tags are hard separators for phone extraction.
+const three = (a, b, c) => ({ '/': wrap(a), '/a': wrap(b ?? a), '/b': wrap(c) });
+const nothing = pages => { const { fails } = run(pages); assert.equal(fails.size, 0, JSON.stringify([...fails])); };
+
+test('N4: an inline element after the number is a separator, not part of it', () => {
+  nothing(three('<p><span>Phone: 02-555-0142</span></p>', null, '<p><span>Phone: 02-555-0142</span> <span>42 seats</span></p>'));
+  nothing(three('<p>Phone: 02-555-0142</p>', null, '<p>Phone: <b>02-555-0142</b><i>2014</i></p>'));
+});
+test('N5: opening hours in brackets after the number are not part of it', () => {
+  nothing(three('<p>Tel 02-555-0142</p>', null, '<p>Tel 02-555-0142 (9am-6pm)</p>'));
+  nothing(three('<p>Tel 02-555-0142</p>', null, '<p>Tel 02-555-0142 42 seats</p>'));
+  nothing(three('<p>전화 02-555-0142</p>', null, '<p>전화 02-555-0142 (평일 10:00~18:00)</p>'));
+});
+test('N6: table cells are separators', () => {
+  nothing(three('<table><tr><td>Phone: 02-555-0142</td></tr></table>', null, '<table><tr><td>Phone: 02-555-0142</td><td>2014</td></tr></table>'));
+  nothing(three('<dl><dt>Phone</dt><dd>02-555-0142</dd><dt>Founded</dt><dd>2014</dd></dl>', null, '<dl><dt>Phone</dt><dd>02-555-0142</dd><dd>42</dd></dl>'));
+});
+test('N4-N6 stay sensitive: a different number is still found, and the usual formats are one number', () => {
+  assert.equal(run(three('<p>Phone: 02-555-0142</p>', null, '<p><span>Phone: 02-555-0199</span> <span>42 seats</span></p>')).fails.size, 1);
+  const keys = html => [...pageFacts(html).visible.phone.keys()];
+  for (const formatted of ['02-555-0142', '(02) 555-0142', '02.555.0142', '+82-2-555-0142', '+82 (0)2 555 0142', '+82 2 555 0142', '02-555-0142 ext. 12'])
+    assert.deepEqual(keys(wrap(`<p>Phone: ${formatted}</p>`)), ['025550142'], formatted);
+  assert.deepEqual(keys(wrap('<p>Mobile: 010-1234-5678</p>')), ['01012345678']);
+});
+test('M10: the same address in another word order is not a failure', () => {
+  nothing(three('<p>Address: 27 Wausan-ro, Mapo-gu, Seoul</p>', null, '<p>Address: Seoul, Mapo-gu, Wausan-ro 27</p>'));
+  // A real difference with the same words is still different.
+  assert.equal(run(three('<p>Address: 27 Wausan-ro, Mapo-gu, Seoul</p>', null, '<p>Address: Seoul, Mapo-gu, Wausan-ro 72</p>')).fails.size, 1);
+});

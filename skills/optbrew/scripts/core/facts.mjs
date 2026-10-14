@@ -1,4 +1,4 @@
-import { jsonLdBlocks, stripComments, visibleText } from './html.mjs';
+import { decodeEntities, jsonLdBlocks, stripComments, stripInert, visibleText } from './html.mjs';
 
 /**
  * Cross-page entity fact extraction and comparison, pure functions of the raw HTML of the selected pages.
@@ -34,6 +34,8 @@ export function addressKey(value) {
  */
 function sameAddress(a, b) {
   if (a === b) return true;
+  // The same words in another order (an English and a Korean address order) are not a difference.
+  if (a.split(' ').sort().join(' ') === b.split(' ').sort().join(' ')) return true;
   const [short, long] = a.length <= b.length ? [a, b] : [b, a];
   const shortTokens = short.split(' '), longTokens = long.split(' ');
   if (shortTokens.length < 2 || !shortTokens.some(token => /^\p{L}/u.test(token))) return false;
@@ -61,8 +63,26 @@ function phoneKey(text) {
   if (digits.length < 9 || digits.length > 15) return null;
   return /^\s*\+?\s*82/.test(clean) && clean.trim().startsWith('+') && digits.startsWith('82') ? `0${digits.slice(2)}` : digits;
 }
-// A number never continues across a line break, so a figure in the next block is not read as part of it.
-const PHONE = String.raw`\+?\d[\d ().\t -]{6,18}\d`;
+
+/**
+ * Text for phone extraction: every tag, inline or not, ends the text before it, so a figure in the next element
+ * (a table cell, a span, a list item) is never read as the rest of a number.
+ */
+const hardText = html => decodeEntities(stripInert(html).replace(/<[^>]+>/g, '\n')).replace(/[ \t\f\v\r ]+/g, ' ');
+// An international or parenthesised number may use spaces between its groups; a plain national number only dashes and dots.
+const LOOSE_PHONE = /^[+(]\s?[\d()]{1,6}(?:[-. ]?\(?\d{1,6}\)?){1,5}/;
+const STRICT_PHONE = /^\+?\d{1,4}(?:[-.]\d{1,6}){1,4}/;
+/**
+ * The number at the start of `rest`, ending at its own last digit group. A spaced number that is followed by more
+ * digits or a bracketed digit is ambiguous, so only its dashed or dotted part is read, and a number longer than twelve
+ * digits is not read at all.
+ */
+function readPhone(rest) {
+  const usable = text => text && (phoneKey(text)?.length ?? 99) <= 13 ? text.trim() : null;
+  const loose = LOOSE_PHONE.exec(rest)?.[0].trimEnd();
+  if (loose && !/^[ \t]*[(\[]?\d/.test(rest.slice(loose.length)) && usable(loose)) return loose.trim();
+  return usable(STRICT_PHONE.exec(rest)?.[0]);
+}
 
 /** Facts on one page: visible labelled values and JSON-LD / tel: values, keyed by fact type. */
 export function pageFacts(html) {
@@ -73,8 +93,10 @@ export function pageFacts(html) {
   const tel = { phone: new Map() };
   const put = (bucket, type, raw, key) => { if (key) bucket[type].set(key, String(raw).trim()); };
   const text = visibleText(live);
-  for (const match of text.matchAll(new RegExp(String.raw`\b(?:Phone|Tel(?:ephone)?|Mobile)\b\s*[:：]?\s*(${PHONE})|(?:전화(?:번호)?|연락처|대표번호)\s*[:：]?\s*(${PHONE})`, 'gi')))
-    put(visible, 'phone', match[1] ?? match[2], phoneKey(match[1] ?? match[2]));
+  for (const match of hardText(live).matchAll(/\b(?:Phone|Tel(?:ephone)?|Mobile)\b\s*[:：]?\s*([^\n]*)|(?:전화(?:번호)?|연락처|대표번호)\s*[:：]?\s*([^\n]*)/gi)) {
+    const number = readPhone(match[1] ?? match[2]);
+    if (number) put(visible, 'phone', number, phoneKey(number));
+  }
   for (const match of live.matchAll(/href\s*=\s*["']tel:([^"']+)["']/gi)) {
     const value = decodeURIComponent(match[1]);
     put(tel, 'phone', value, phoneKey(value));

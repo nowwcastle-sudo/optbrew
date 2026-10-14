@@ -644,7 +644,7 @@
     },
     {
       "path": "scripts/core/facts.mjs",
-      "sha256": "4c3602b70cee67867c568e11d5e514c015e63da0767496bb9b8ebab0bd53a8b0"
+      "sha256": "80529f511b4b27969fec7d5352df1e5713441c2f54404b359c26ab581ad0ebad"
     },
     {
       "path": "scripts/core/findings.mjs",
@@ -683,5 +683,5 @@
       "sha256": "a53223b7eefab2204c026a62b1da04cfdb8a07be8d3749613e8241a81b027d9b"
     }
   ],
-  "bundle_hash": "d251b0dc60ba885bd13f9c5f2e1839520ac0f79ffacef66f47a3d97f024174b3"
+  "bundle_hash": "5ee356508073b987601e348788e2a505e4cbbccb1f9cf31dce26b1a2648ffc70"
 }
