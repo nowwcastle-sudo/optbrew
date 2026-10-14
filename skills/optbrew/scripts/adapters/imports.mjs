@@ -39,6 +39,11 @@ export function normalizeImport(provider, rows, metadata) {
         typeof (row.provider_definition ?? metadata.provider_definition) !== 'string' ||
         !(row.provider_definition ?? metadata.provider_definition).trim())
       throw new ContractError('native metric definition required');
+    if (row.filters && (typeof row.filters !== 'object' || Array.isArray(row.filters)))
+      throw new ContractError('row filters must be an object');
+    for (const key of ['property', 'aggregation'])
+      if (row.filters?.[key] != null && metadata[key] != null && row.filters[key] !== metadata[key])
+        throw new ContractError(`row ${key} conflicts with export scope`);
     if (sample_selection.kind === 'positive_only' &&
         (['citation_response_rate', 'all_question_citation_rate', 'overall_citation_rate'].includes(row.metric_id) ||
          row.denominator_scope === 'all_questions'))
@@ -52,7 +57,9 @@ export function normalizeImport(provider, rows, metadata) {
       throw new ContractError('Google AI export zero requires a known nonmissing mask');
     const value = value_state === 'measured' ? row.value : null;
     if (value_state === 'measured' && !Number.isFinite(value)) throw new ContractError('measured value must be finite');
-    const dimension = key => metadata[key] ?? row.filters?.[key] ?? 'unknown';
+    const dimensions = ['property', 'hostname', 'path', 'query', 'search_type', 'device', 'country', 'aggregation'];
+    const dimension = key => row.filters?.[key] ?? metadata[key] ?? 'unknown';
+    const export_scope = Object.fromEntries(dimensions.map(key => [key, metadata[key] ?? 'unknown']));
     const observation = { schema_version: '1.0.0', metric_id: `${provider}:${row.metric_id}`,
       value_state, value, numerator: row.numerator ?? null, denominator: row.denominator ?? null,
       definition: row.definition ?? row.provider_definition ?? metadata.provider_definition,
@@ -60,7 +67,7 @@ export function normalizeImport(provider, rows, metadata) {
         hostname: dimension('hostname'), search_type: dimension('search_type'),
         device: dimension('device'), country: dimension('country'),
         aggregation: dimension('aggregation'), collected_at: metadata.collected_at,
-        path: dimension('path') },
+        path: dimension('path'), query: dimension('query'), export_scope },
       window: { ...window }, panel_hash: null,
       provider_definition: row.provider_definition ?? metadata.provider_definition,
       sample_selection: { ...sample_selection,

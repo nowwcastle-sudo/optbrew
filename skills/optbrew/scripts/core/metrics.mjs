@@ -37,6 +37,8 @@ export function measurePanel(panel, responses, evaluations) {
         try { if (!['http:', 'https:'].includes(new URL(citedUrl).protocol)) throw new Error(); }
         catch { throw new ContractError('valid response has invalid citation URL'); }
       }
+      if (new Set(response.cited_urls).size !== response.cited_urls.length)
+        throw new ContractError('duplicate citation URL in response');
       valid.push(response);
     }
   }
@@ -56,8 +58,23 @@ export function measurePanel(panel, responses, evaluations) {
   if (evaluations.some(e => !validIds.has(e.response_id)) ||
       new Set(evaluations.map(e => e.response_id)).size !== evaluations.length)
     throw new ContractError('duplicate evaluation or evaluation without valid panel response');
-  const support = evaluations.flatMap(e => e.citations ?? []).filter(x =>
-    x.evaluable === true && x.source_accessible === true && typeof x.supported === 'boolean');
+  const responseById = new Map(valid.map(r => [r.response_id, r]));
+  const support = [];
+  const observedCitations = valid.reduce((sum, r) => sum + r.cited_urls.length, 0);
+  for (const evaluation of evaluations) {
+    if (evaluation.citations !== undefined && !Array.isArray(evaluation.citations))
+      throw new ContractError('citation evaluations must be an array');
+    const actual = new Set(responseById.get(evaluation.response_id).cited_urls);
+    const bound = new Set();
+    for (const citation of evaluation.citations ?? []) {
+      if (!citation || typeof citation.citation_url !== 'string' || !actual.has(citation.citation_url) ||
+          bound.has(citation.citation_url))
+        throw new ContractError('citation evaluation must bind one actual response citation');
+      bound.add(citation.citation_url);
+      if (citation.evaluable === true && citation.source_accessible === true && typeof citation.supported === 'boolean')
+        support.push(citation);
+    }
+  }
   const facts = panel.fact_list_ref ? evaluations.flatMap(e => e.claims ?? []).filter(x =>
     x.evaluable === true && typeof x.matches === 'boolean') : [];
   return [
@@ -65,7 +82,9 @@ export function measurePanel(panel, responses, evaluations) {
     ratio('target_entity_mention_rate', mentionCount, valid.length, 'valid responses with evaluated target entity mention / valid responses', panel, selection),
     ratio('citation_support_rate', support.filter(x => x.supported === true).length, support.length,
       'supported evaluable linked citations / evaluable linked citations', panel,
-      { ...selection, evaluation_scope: support.length, ...(support.length ? {} : { missing_reason: 'no_accessible_evaluable_citations' }) }, support.length > 0),
+      { ...selection, observed_citations: observedCitations, evaluation_scope: support.length,
+        unknown_citations: observedCitations - support.length,
+        ...(support.length ? {} : { missing_reason: 'no_accessible_evaluable_citations' }) }, support.length > 0),
     ratio('fact_consistency_rate', facts.filter(x => x.matches === true).length, facts.length,
       'matching evaluable important claims / evaluable important claims', panel,
       { ...selection, evaluation_scope: facts.length, ...(panel.fact_list_ref ? {} : { missing_reason: 'approved_fact_list_missing' }) }, facts.length > 0),

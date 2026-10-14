@@ -44,6 +44,23 @@ test('provider imports preserve native definition, filters, period and zero mask
   assert.equal(normalizeImport('naver', [{ metric_id: 'native_count', value: 1 }], sparse)[0].filters.device, 'unknown');
 });
 
+test('row cohorts win and export scope stays visible; conflicting aggregation is rejected', () => {
+  const exportMeta = { ...meta, device: 'desktop', country: 'US', search_type: 'web', query: 'brand' };
+  const row = { metric_id: 'clicks', value: 7, filters: {
+    device: 'mobile', country: 'KR', search_type: 'image', query: 'nonbrand', path: '/guide' } };
+  const [item] = normalizeImport('gsc', [row], exportMeta);
+  assert.equal(item.filters.device, 'mobile');
+  assert.equal(item.filters.country, 'KR');
+  assert.equal(item.filters.search_type, 'image');
+  assert.equal(item.filters.query, 'nonbrand');
+  assert.equal(item.filters.path, '/guide');
+  assert.equal(item.filters.export_scope.device, 'desktop');
+  assert.equal(item.filters.export_scope.query, 'brand');
+  assert.equal(item.filters.export_scope.aggregation, 'property');
+  assert.throws(() => normalizeImport('gsc', [{ ...row, filters: { ...row.filters, aggregation: 'page' } }], exportMeta));
+  assert.throws(() => normalizeImport('gsc', [{ ...row, filters: { ...row.filters, property: 'other-property' } }], exportMeta));
+});
+
 test('panel denominator follows 24 valid of 30 planned and six target citations', () => {
   const responses = panel.questions.flatMap(q => Array.from({ length: 3 }, (_, repeat) => {
     const number = Number(q.id.slice(1)) * 3 + repeat;
@@ -62,15 +79,45 @@ test('panel denominator follows 24 valid of 30 planned and six target citations'
 test('citation support needs accessible source and facts need an approved list', () => {
   const response = { response_id: 'r1', question_id: 'q0', repeat: 0, valid: true,
     cited_urls: ['https://example.com/'], target_mentioned: true, brand_mentions: ['Example'] };
-  const evaluation = { response_id: 'r1', citations: [{ evaluable: true, source_accessible: false, supported: true }],
+  const evaluation = { response_id: 'r1', citations: [{ citation_url: 'https://example.com/',
+    evaluable: true, source_accessible: false, supported: true }],
     claims: [{ evaluable: true, matches: true }] };
   const unknown = Object.fromEntries(measurePanel(panel, [response], [evaluation]).map(x => [x.metric_id, x]));
   assert.equal(unknown.citation_support_rate.value_state, 'unknown');
   assert.equal(unknown.fact_consistency_rate.value_state, 'unknown');
   const known = Object.fromEntries(measurePanel({ ...panel, fact_list_ref: 'approved/facts' }, [response],
-    [{ ...evaluation, citations: [{ evaluable: true, source_accessible: true, supported: true }] }]).map(x => [x.metric_id, x]));
+    [{ ...evaluation, citations: [{ citation_url: 'https://example.com/',
+      evaluable: true, source_accessible: true, supported: true }] }]).map(x => [x.metric_id, x]));
   assert.equal(known.citation_support_rate.value, 1);
   assert.equal(known.fact_consistency_rate.value, 1);
+});
+
+test('citation support binds each evaluated citation to the response source list', () => {
+  const response = { response_id: 'bound-r1', question_id: 'q0', repeat: 0, valid: true,
+    cited_urls: [], target_mentioned: false, brand_mentions: [] };
+  const linked = { citation_url: 'https://example.com/source', evaluable: true,
+    source_accessible: true, supported: true };
+  const evaluation = { response_id: 'bound-r1', citations: [linked] };
+  assert.throws(() => measurePanel(panel, [response], [evaluation]));
+  const withCitation = { ...response, cited_urls: ['https://example.com/source'] };
+  assert.throws(() => measurePanel(panel, [withCitation], [{ ...evaluation,
+    citations: [{ ...linked, citation_url: 'https://other.example/source' }] }]));
+  assert.throws(() => measurePanel(panel, [withCitation], [{ ...evaluation, citations: [linked, linked] }]));
+  assert.throws(() => measurePanel(panel, [{ ...withCitation,
+    cited_urls: ['https://example.com/source', 'https://example.com/source'] }], []));
+  const metrics = Object.fromEntries(measurePanel(panel, [withCitation], [evaluation]).map(x => [x.metric_id, x]));
+  assert.equal(metrics.citation_support_rate.value, 1);
+  assert.equal(metrics.citation_support_rate.sample_selection.observed_citations, 1);
+  assert.equal(metrics.citation_support_rate.sample_selection.unknown_citations, 0);
+  const partial = Object.fromEntries(measurePanel(panel, [{ ...withCitation,
+    cited_urls: ['https://example.com/source', 'https://example.com/other'] }], [evaluation]).map(x => [x.metric_id, x]));
+  assert.equal(partial.citation_support_rate.value, 1);
+  assert.equal(partial.citation_support_rate.sample_selection.observed_citations, 2);
+  assert.equal(partial.citation_support_rate.sample_selection.unknown_citations, 1);
+  const inaccessible = Object.fromEntries(measurePanel(panel, [withCitation], [{ ...evaluation,
+    citations: [{ ...linked, source_accessible: false }] }]).map(x => [x.metric_id, x]));
+  assert.equal(inaccessible.citation_support_rate.value_state, 'unknown');
+  assert.equal(inaccessible.citation_support_rate.sample_selection.unknown_citations, 1);
 });
 
 test('positive-only exports cannot claim an all-question citation rate', () => {
