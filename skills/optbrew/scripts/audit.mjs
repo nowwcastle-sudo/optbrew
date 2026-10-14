@@ -28,12 +28,12 @@ async function magnus(artifact) {
   });
 }
 
-function observation(artifact, family, state, reason, engine = null) {
+function observation(artifact, family, state, reason, engine = null, evidenceRef = artifact.evidence_ref) {
   const unit_key = `${family}|${engine ? `${engine}|` : ''}${artifact.normalized_url}`;
   const value = { schema_version: '1.0.0', observation_id: createHash('sha256').update(unit_key).digest('hex'),
     check_id: family, family_id: family, unit_key,
     state, q: state === 'pass' ? 1 : state === 'fail' ? 0 : null, partial_basis: null, reason,
-    evaluator_type: 'code', source_ref: 'optbrew:collector', evidence_ref: artifact.evidence_ref };
+    evaluator_type: 'code', source_ref: 'optbrew:collector', evidence_ref: evidenceRef };
   return validateEntity('CheckObservation', value);
 }
 
@@ -74,8 +74,11 @@ export async function runAudit({ context, modules, outputDir, transport, resolve
     if (artifact.capability !== 'raw_html' || artifact.status !== 200) continue;
     const html = artifact.body.toString('utf8');
     if (modules.includes('naver-searchadvisor')) {
-      const robots = collection.artifacts.find(x => { try { const u = new URL(x.final_url); return u.origin === new URL(artifact.final_url).origin && u.pathname === '/robots.txt'; } catch { return false; } });
+      const robotsIndex = collection.artifacts.findIndex(x => { try { const u = new URL(x.final_url); return u.origin === new URL(artifact.final_url).origin && u.pathname === '/robots.txt'; } catch { return false; } });
+      const robots = robotsIndex < 0 ? null : collection.artifacts[robotsIndex];
+      const robotsEvidenceRef = robots?.status === 200 ? artifacts[robotsIndex].evidence_ref : null;
       const output = auditCollected({ artifact, html, robotsArtifact: robots ? { ...robots, body: robots.body.toString('utf8') } : null });
+      output.robots_evidence_ref = robotsEvidenceRef;
       module_outputs['naver-searchadvisor'].push(output);
       if (planned.has('document-title') && selectedUrls.has(artifact.normalized_url) && !output.title)
         observations.push(observation(saved, 'document-title', 'fail', 'Raw HTML has no title'));
@@ -84,7 +87,7 @@ export async function runAudit({ context, modules, outputDir, transport, resolve
         observations.push(observation(saved, 'index-policy', 'fail', 'Raw response explicitly blocks indexing'));
       if (planned.has('search-crawl-policy') && publicUrls.has(artifact.normalized_url) &&
           context.protocol.engines.includes('naver') && output.robots?.yeti_allowed === false)
-        observations.push(observation(saved, 'search-crawl-policy', 'fail', 'Collected robots.txt disallows Yeti path', 'naver'));
+        observations.push(observation(saved, 'search-crawl-policy', 'fail', 'Collected robots.txt disallows Yeti path', 'naver', robotsEvidenceRef));
     }
     if (modules.includes('magnus-seo')) module_outputs['magnus-seo'].push(await magnus(artifact));
   }

@@ -39,3 +39,12 @@ test('missing upper bound cannot be treated as zero cost', async () => {
   await assert.rejects(reserveCost(file, { provider: 'anthropic', upperBounds: [{ unit: 'credits', amount: 0 }], approvalRef: 'approved/test' }));
   await assert.rejects(reserveCost(file, { provider: 'anthropic', upperBounds: [{ unit: 'currency_minor', amount: 1 }], approvalRef: 'approved/test' }));
 });
+
+test('observed overrun is stored at actual amount and stops later reservations', async () => {
+  const file = await ledger();
+  const first = await reserveCost(file, { provider: 'anthropic', upperBounds, approvalRef: 'approved/test' });
+  const result = await settleCost(file, first.reservation_id, [{ unit: 'credits', amount: 100 }]);
+  assert.equal(result.reservations[0].status, 'overrun');
+  assert.equal(result.settlements[0].actual[0].amount, 100);
+  await assert.rejects(reserveCost(file, { provider: 'anthropic', upperBounds: [{ unit: 'credits', amount: 1 }], approvalRef: 'approved/test' }), /overrun|blocked/);
+});

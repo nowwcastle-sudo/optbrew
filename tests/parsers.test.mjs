@@ -60,6 +60,14 @@ test('audit checks path and query for page and resource robots rules', () => {
   assert.ok(result.findings.some(finding => finding.code === 'resource-blocked' && finding.message.includes('/asset.css?preview=1')));
 });
 
+test('bad resource URL does not hide later valid robots resource checks', () => {
+  const result = auditCollected({ artifact: { final_url: 'https://example.com/page', status: 200, headers: {} },
+    html: '<html><head><title>OK</title><link rel="stylesheet" href="http://["><link rel="stylesheet" href="/asset.css?preview=1"></head></html>',
+    robotsArtifact: { status: 200, body: 'User-agent: Yeti\nDisallow: /asset.css?preview=1\n' } });
+  assert.ok(result.limitations.some(x => /invalid resource/i.test(x)));
+  assert.ok(result.findings.some(x => x.code === 'resource-blocked' && x.message.includes('/asset.css?preview=1')));
+});
+
 test('direct Naver URL CLI refuses before any request without a scope context', () => {
   const auditPath = fileURLToPath(new URL('../skills/optbrew/modules/naver-searchadvisor/scripts/audit.mjs', import.meta.url));
   const source = `globalThis.fetch = async () => { throw new Error('UNSAFE_REQUEST'); }; process.argv = [process.execPath, ${JSON.stringify(auditPath)}, 'https://example.com/']; await import(${JSON.stringify(new URL('../skills/optbrew/modules/naver-searchadvisor/scripts/audit.mjs', import.meta.url).href)});`;

@@ -46,7 +46,7 @@ function heldAmount(ledger, provider, unit) {
     if (reservation.provider !== provider) return total;
     const upper = reservation.upperBounds.find(x => amountKey(x, provider) === amountKey(unit, provider));
     if (!upper) return total;
-    const settled = ledger.settlements.find(x => x.reservation_id === reservation.reservation_id && x.status === 'settled');
+    const settled = ledger.settlements.find(x => x.reservation_id === reservation.reservation_id && ['settled', 'overrun'].includes(x.status));
     return total + BigInt(settled?.actual?.find(x => amountKey(x, provider) === amountKey(unit, provider))?.amount ?? upper.amount);
   }, 0n);
 }
@@ -58,6 +58,7 @@ export async function reserveCost(ledgerPath, { provider, upperBounds, approvalR
   return locked(ledgerPath, ledger => {
     if (ledger.approval_ref !== approvalRef) throw new Error('cost approval mismatch');
     if (runId !== undefined && ledger.run_id !== runId) throw new Error('cost ledger run mismatch');
+    if (ledger.reservations.some(x => x.status === 'overrun')) throw new Error('cost spending blocked by observed overrun');
     for (const requested of upperBounds) {
       const budget = ledger.budgets.find(x => x.provider === provider && amountKey(x, provider) === amountKey(requested, provider));
       if (!budget || !Number.isSafeInteger(budget.amount) || budget.amount < 0) throw new Error('cost cap missing');
@@ -70,21 +71,23 @@ export async function reserveCost(ledgerPath, { provider, upperBounds, approvalR
   });
 }
 
-/** Unknown billing retains the entire reservation; known usage releases only unused headroom. */
+/** Unknown billing retains the bound; an observed overrun is recorded and blocks new spend. */
 export async function settleCost(ledgerPath, reservationId, actualOrUnknown) {
   return locked(ledgerPath, ledger => {
     const reservation = ledger.reservations.find(x => x.reservation_id === reservationId);
     if (!reservation || reservation.status !== 'reserved') throw new Error('reservation not open');
     const unknown = actualOrUnknown === 'unknown';
+    let overrun = false;
     if (!unknown) {
       validAmounts(actualOrUnknown, true);
       for (const actual of actualOrUnknown) {
         const upper = reservation.upperBounds.find(x => amountKey(x, reservation.provider) === amountKey(actual, reservation.provider));
-        if (!upper || actual.amount > upper.amount) throw new Error('actual cost exceeds reserved bound');
+        if (!upper) throw new Error('actual cost unit was not reserved');
+        if (actual.amount > upper.amount) overrun = true;
       }
       if (actualOrUnknown.length !== reservation.upperBounds.length) throw new Error('actual cost units incomplete');
     }
-    reservation.status = unknown ? 'unknown' : 'settled';
+    reservation.status = unknown ? 'unknown' : overrun ? 'overrun' : 'settled';
     ledger.settlements.push({ reservation_id: reservationId, status: reservation.status, actual: unknown ? null : actualOrUnknown,
       settled_at: new Date().toISOString() });
     return ledger;

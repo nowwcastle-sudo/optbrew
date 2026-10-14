@@ -6,6 +6,9 @@ import { reserveCost, settleCost } from '../core/cost-ledger.mjs';
 
 const ENDPOINT = new URL('https://api.anthropic.com/v1/messages');
 const VERSION = '2023-06-01';
+// Official model overview, checked 2026-10-14. Accepted requests reserve the full context window plus max output.
+const MODELS = new Map(['claude-fable-5-1', 'claude-opus-5-5', 'claude-sonnet-5-5', 'claude-haiku-5-5']
+  .map(id => [id, { contextTokens: 1_000_000, maxOutputTokens: 128_000 }]));
 
 async function nodeTransport({ headers, body, timeoutMs, signal }) {
   return new Promise((resolve, reject) => {
@@ -35,11 +38,23 @@ function actualUsage(bounds, usage) {
   if (!usage || typeof usage !== 'object') return null;
   const values = bounds.map(bound => {
     let amount;
-    if (bound.unit === 'tokens') amount = (usage.input_tokens ?? NaN) + (usage.output_tokens ?? NaN);
-    if (bound.unit === 'search_calls') amount = usage.server_tool_use?.web_search_requests;
-    return Number.isSafeInteger(amount) && amount >= 0 && amount <= bound.amount ? { ...bound, amount } : null;
+    if (bound.unit === 'tokens' && [usage.input_tokens, usage.output_tokens].every(x => Number.isSafeInteger(x) && x >= 0))
+      amount = usage.input_tokens + usage.output_tokens +
+        (usage.cache_creation_input_tokens ?? 0) + (usage.cache_read_input_tokens ?? 0);
+    return Number.isSafeInteger(amount) && amount >= 0 ? { ...bound, amount } : null;
   });
   return values.every(Boolean) ? values : null;
+}
+
+function supportedRequest(request) {
+  if (!request || typeof request !== 'object' || Array.isArray(request) ||
+      Object.keys(request).some(key => !['model', 'max_tokens', 'messages'].includes(key))) return false;
+  const model = MODELS.get(request.model);
+  return Boolean(model && Number.isInteger(request.max_tokens) && request.max_tokens > 0 &&
+    request.max_tokens <= model.maxOutputTokens && Array.isArray(request.messages) && request.messages.length > 0 &&
+    request.messages.every(message => message && typeof message === 'object' && !Array.isArray(message) &&
+      Object.keys(message).every(key => ['role', 'content'].includes(key)) &&
+      ['user', 'assistant'].includes(message.role) && typeof message.content === 'string' && message.content.length > 0));
 }
 
 /** Optional paid call; every attempt has a reservation and unknown billing keeps its cap. */
@@ -49,10 +64,13 @@ export async function requestAnthropic({ context, request, env = process.env, tr
   if (!decision?.approval_ref || !Array.isArray(upperBounds) || !upperBounds.length || !ledgerPath)
     return observation(request, 'cost_decision_required');
   if (!env?.ANTHROPIC_API_KEY) return observation(request, 'api_key_missing');
-  if (!request || typeof request.model !== 'string' || !request.model || !Number.isInteger(request.max_tokens) || request.max_tokens < 1 ||
-      !Array.isArray(request.messages) || !request.messages.length)
-    return observation(request, 'invalid_request');
-  const body = JSON.stringify(request);
+  let body;
+  try { body = JSON.stringify(request); request = JSON.parse(body); }
+  catch { return observation(request, 'unsupported_direct_request'); }
+  if (!supportedRequest(request)) return observation(request, 'unsupported_direct_request');
+  const requiredTokens = MODELS.get(request.model).contextTokens + request.max_tokens;
+  if (upperBounds.length !== 1 || upperBounds[0].unit !== 'tokens' || !Number.isSafeInteger(upperBounds[0].amount) ||
+      upperBounds[0].amount < requiredTokens) return observation(request, 'upper_bound_unverified');
   for (let attempt = 0; attempt < 2; attempt++) {
     let reservation;
     try { reservation = await reserveCost(ledgerPath, { provider: 'anthropic', upperBounds, approvalRef: decision.approval_ref, runId: context.run_id }); }
@@ -74,7 +92,8 @@ export async function requestAnthropic({ context, request, env = process.env, tr
     try { parsed = JSON.parse(Buffer.isBuffer(response.body) ? response.body.toString('utf8') : response.body); }
     catch { await settleCost(ledgerPath, reservation.reservation_id, 'unknown'); return observation(request, 'malformed_provider_json_unknown_billing'); }
     const actual = actualUsage(upperBounds, parsed?.usage);
-    await settleCost(ledgerPath, reservation.reservation_id, actual ?? 'unknown');
+    const settled = await settleCost(ledgerPath, reservation.reservation_id, actual ?? 'unknown');
+    const overrun = settled.reservations.some(x => x.reservation_id === reservation.reservation_id && x.status === 'overrun');
     if (response.status >= 200 && response.status < 300 && parsed?.type === 'message') {
       const safeBody = JSON.stringify(parsed).replaceAll(env.ANTHROPIC_API_KEY, '[REDACTED]');
       const evidenceDir = path.join(path.dirname(ledgerPath), 'evidence', 'provider');
@@ -86,9 +105,10 @@ export async function requestAnthropic({ context, request, env = process.env, tr
           if (error.code !== 'EEXIST' || await readFile(evidenceRef, 'utf8') !== `${safeBody}\n`) throw error;
         }
       } catch { return observation(request, 'provider_evidence_persist_failed'); }
-      return observation(request, null, { valid: true, request_id: typeof parsed.id === 'string' ? parsed.id : null,
+      return observation(request, overrun ? 'observed_cost_overrun' : null, { valid: !overrun, request_id: typeof parsed.id === 'string' ? parsed.id : null,
         response_ref: evidenceRef, usage: parsed.usage ?? null, evidence_ref: evidenceRef });
     }
+    if (overrun) return observation(request, 'observed_cost_overrun', { usage: parsed?.usage ?? null });
     if (![429, 500, 502, 503, 504].includes(response.status) || attempt === 1)
       return observation(request, `provider_http_${Number(response.status) || 'error'}`);
   }

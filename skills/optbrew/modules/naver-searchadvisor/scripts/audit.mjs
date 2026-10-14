@@ -611,6 +611,8 @@ export function auditCollected({ artifact, html, robotsArtifact = null }) {
   let parsedRobots = null;
   let yetiVerdict = null;
   const findings = [];
+  const limitations = ['Yeti User-Agent supplied to this collector is not proof of a Naver bot visit.',
+    'Metadata observations do not prove indexing, ranking, or structured-data truth.'];
   if (robotsArtifact?.status === 200 && typeof robotsArtifact.body === 'string') {
     parsedRobots = parseRobots(robotsArtifact.body);
     const url = new URL(artifact.final_url);
@@ -619,7 +621,9 @@ export function auditCollected({ artifact, html, robotsArtifact = null }) {
     const resources = [...tags(html, 'link').filter(x => /stylesheet/i.test(x.rel ?? '')).map(x => x.href),
       ...tags(html, 'script').map(x => x.src), ...tags(html, 'img').map(x => x.src)].filter(Boolean);
     for (const resource of resources) {
-      const target = new URL(resource, artifact.final_url);
+      let target;
+      try { target = new URL(resource, artifact.final_url); }
+      catch { limitations.push('Invalid resource URL skipped during robots check.'); continue; }
       if (target.origin !== url.origin) continue;
       if (!robotsVerdict(parsedRobots, 'yeti', target.pathname + target.search).allowed)
         findings.push({ code: 'resource-blocked', message: `Yeti resource blocked: ${target.pathname}${target.search}` });
@@ -631,8 +635,7 @@ export function auditCollected({ artifact, html, robotsArtifact = null }) {
     jsonld_blocks: jsonld.length, jsonld_parse_errors: jsonld.filter(([, body]) => { try { JSON.parse(body); return false; } catch { return true; } }).length,
     robots: parsedRobots ? { yeti_allowed: yetiVerdict.allowed, reason: yetiVerdict.reason, sitemaps: parsedRobots.sitemaps } : null,
     findings,
-    limitations: ['Yeti User-Agent supplied to this collector is not proof of a Naver bot visit.',
-      'Metadata observations do not prove indexing, ranking, or structured-data truth.'],
+    limitations,
   };
 }
 

@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto';
 import http from 'node:http';
 import https from 'node:https';
 import { isIP } from 'node:net';
+import { performance } from 'node:perf_hooks';
 import { assertInScope, assertUrlInScope } from './scope.mjs';
 
 const HEADER_NAMES = ['content-type', 'content-length', 'content-range', 'content-encoding', 'location', 'x-robots-tag', 'last-modified', 'etag'];
@@ -18,11 +19,14 @@ function safeHeaders(headers) {
 /** Node's lookup callback pins the already-vetted address while TLS still verifies the URL hostname. */
 async function nodeTransport({ url, address, timeoutMs, maxBytes, headers = {}, signal }) {
   const client = url.protocol === 'https:' ? https : http;
+  const hostname = url.hostname.replace(/^\[|\]$/g, '');
   return new Promise((resolve, reject) => {
     const req = client.request(url, {
       method: 'GET', agent: false, signal, headers: { 'User-Agent': 'optbrew/0.1 (bounded public audit)', Accept: '*/*', 'Accept-Encoding': 'identity', ...headers },
-      lookup: (_hostname, _options, callback) => callback(null, address.address, address.family),
-      ...(url.protocol === 'https:' && !isIP(url.hostname) ? { servername: url.hostname } : {}),
+      lookup: (_hostname, options, callback) => options.all ?
+        callback(null, [{ address: address.address, family: address.family }]) : callback(null, address.address, address.family),
+      ...(url.protocol === 'https:' ? { rejectUnauthorized: true,
+        ...(!isIP(hostname) ? { servername: hostname } : {}) } : {}),
     }, res => {
       const chunks = []; let size = 0;
       if (Number(res.headers['content-length']) > maxBytes) {
@@ -59,48 +63,50 @@ export async function fetchScoped(input, { context, transport = nodeTransport, r
   let url = assertUrlInScope(input, context.scope);
   const requested_url = String(input);
   const redirect_chain = [];
-  for (let hop = 0; hop <= maxRedirects; hop++) {
-    const addresses = await addressesFor(url, resolve);
-    try { assertInScope(url.href, context.scope, addresses); }
-    catch (error) { error.code = 'scope_rejected'; error.redirect_chain = redirect_chain; throw error; }
-    // Pick only a vetted address. The transport must use this address, not resolve again.
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), timeoutMs);
-    let response;
-    try {
-      response = await Promise.race([
-        transport({ url, address: addresses[0], timeoutMs, maxBytes, headers, signal: controller.signal }),
-        new Promise((_, reject) => controller.signal.addEventListener('abort', () => reject(new Error('request timeout')), { once: true })),
-      ]);
-    } finally { clearTimeout(timer); }
-    if (!Number.isInteger(response?.status) || response.status < 100 || response.status > 599) throw new Error('invalid transport status');
-    const body = text(response.body);
-    if (body.length > maxBytes) throw new Error('response byte limit exceeded');
-    const savedHeaders = safeHeaders(response.headers);
-    if (REDIRECTS.has(response.status) && savedHeaders.location) {
-      if (hop === maxRedirects) throw new Error('redirect limit exceeded');
-      let next;
-      try { next = assertUrlInScope(new URL(savedHeaders.location, url).href, context.scope); }
-      catch {
-        const error = new Error('redirect outside scope');
-        error.code = 'redirect_outside_scope';
-        error.redirect_chain = [...redirect_chain, { url: url.href, status: response.status, location: '[blocked]' }];
-        throw error;
+  const controller = new AbortController();
+  const deadline = performance.now() + timeoutMs;
+  let rejectTimeout;
+  const timeout = new Promise((_, reject) => { rejectTimeout = reject; });
+  const timer = setTimeout(() => { controller.abort(); rejectTimeout(new Error('request timeout')); }, timeoutMs);
+  const withinDeadline = promise => Promise.race([promise, timeout]);
+  try {
+    for (let hop = 0; hop <= maxRedirects; hop++) {
+      const addresses = await withinDeadline(addressesFor(url, resolve));
+      try { assertInScope(url.href, context.scope, addresses); }
+      catch (error) { error.code = 'scope_rejected'; error.redirect_chain = redirect_chain; throw error; }
+      // Pick only a vetted address. The transport must use this address, not resolve again.
+      const remainingMs = Math.ceil(deadline - performance.now());
+      if (remainingMs <= 0 || controller.signal.aborted) throw new Error('request timeout');
+      const response = await withinDeadline(transport({ url, address: addresses[0], timeoutMs: remainingMs, maxBytes, headers, signal: controller.signal }));
+      if (!Number.isInteger(response?.status) || response.status < 100 || response.status > 599) throw new Error('invalid transport status');
+      const body = text(response.body);
+      if (body.length > maxBytes) throw new Error('response byte limit exceeded');
+      const savedHeaders = safeHeaders(response.headers);
+      if (REDIRECTS.has(response.status) && savedHeaders.location) {
+        if (hop === maxRedirects) throw new Error('redirect limit exceeded');
+        let next;
+        try { next = assertUrlInScope(new URL(savedHeaders.location, url).href, context.scope); }
+        catch {
+          const error = new Error('redirect outside scope');
+          error.code = 'redirect_outside_scope';
+          error.redirect_chain = [...redirect_chain, { url: url.href, status: response.status, location: '[blocked]' }];
+          throw error;
+        }
+        redirect_chain.push({ url: url.href, status: response.status, location: next.href });
+        url = next;
+        continue;
       }
-      redirect_chain.push({ url: url.href, status: response.status, location: next.href });
-      url = next;
-      continue;
+      return {
+        requested_url, normalized_url: assertUrlInScope(requested_url, context.scope).href, final_url: url.href,
+        status: response.status, headers: savedHeaders, redirect_chain, raw_html_ref: null,
+        content_hash: createHash('sha256').update(body).digest('hex'),
+        capability: savedHeaders['content-type']?.toLowerCase().includes('html') &&
+          (!savedHeaders['content-encoding'] || savedHeaders['content-encoding'].toLowerCase() === 'identity') ? 'raw_html' : 'raw_response',
+        source_ref: 'optbrew:collector', evidence_ref: null, error: null, body,
+      };
     }
-    return {
-      requested_url, normalized_url: assertUrlInScope(requested_url, context.scope).href, final_url: url.href,
-      status: response.status, headers: savedHeaders, redirect_chain, raw_html_ref: null,
-      content_hash: createHash('sha256').update(body).digest('hex'),
-      capability: savedHeaders['content-type']?.toLowerCase().includes('html') &&
-        (!savedHeaders['content-encoding'] || savedHeaders['content-encoding'].toLowerCase() === 'identity') ? 'raw_html' : 'raw_response',
-      source_ref: 'optbrew:collector', evidence_ref: null, error: null, body,
-    };
-  }
-  throw new Error('redirect limit exceeded');
+    throw new Error('redirect limit exceeded');
+  } finally { clearTimeout(timer); }
 }
 
 function links(html, base) {

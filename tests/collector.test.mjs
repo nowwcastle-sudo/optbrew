@@ -1,5 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { createServer } from 'node:http';
+import https from 'node:https';
+import { EventEmitter } from 'node:events';
 import { assertInScope } from '../skills/optbrew/scripts/core/scope.mjs';
 import { collect, fetchScoped } from '../skills/optbrew/scripts/core/collector.mjs';
 
@@ -71,4 +74,71 @@ test('blocked redirect is recorded without contacting the destination', async ()
   assert.equal(result.artifacts[0].error, 'redirect_outside_scope');
   assert.deepEqual(result.skipped.map(x => x.reason), ['redirect_outside_scope']);
   assert.equal(result.artifacts[0].redirect_chain[0].location, '[blocked]');
+});
+
+test('default transport connects to a vetted localhost address for hostname and IP URLs', async () => {
+  const server = createServer((_request, reply) => { reply.setHeader('content-type', 'text/html'); reply.end('<title>local</title>'); });
+  await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
+  const port = server.address().port;
+  try {
+    const ipScope = { allowed: [{ origin: `http://127.0.0.1:${port}`, path_prefix: '/' }], local_targets: [{ host: '127.0.0.1', port }] };
+    const ip = await fetchScoped(`http://127.0.0.1:${port}/`, { context: { scope: ipScope } });
+    assert.equal(ip.status, 200);
+    const hostScope = { allowed: [{ origin: `http://localhost:${port}`, path_prefix: '/' }], local_targets: [{ host: 'localhost', port }] };
+    const named = await fetchScoped(`http://localhost:${port}/`, { context: { scope: hostScope }, resolve: async () => [{ address: '127.0.0.1', family: 4 }] });
+    assert.equal(named.status, 200);
+  } finally { await new Promise(resolve => server.close(resolve)); }
+});
+
+test('DNS resolution shares the request deadline and cannot trigger late transport', async () => {
+  let calls = 0;
+  await assert.rejects(fetchScoped('https://example.test/owned/a', { context: context([]), timeoutMs: 10,
+    resolve: () => new Promise(resolve => setTimeout(() => resolve(['93.184.215.14']), 80)),
+    transport: async () => { calls++; return response(); } }), /timeout/);
+  await new Promise(resolve => setTimeout(resolve, 90));
+  assert.equal(calls, 0);
+});
+
+test('redirect DNS uses the same deadline as the first response', async () => {
+  let resolutions = 0; let calls = 0;
+  await assert.rejects(fetchScoped('https://example.test/owned/a', { context: context([]), timeoutMs: 15,
+    resolve: () => ++resolutions === 1 ? ['93.184.215.14'] : new Promise(resolve => setTimeout(() => resolve(['93.184.215.14']), 80)),
+    transport: async () => { calls++; return response('', 302, { location: '/owned/b' }); } }), /timeout/);
+  await new Promise(resolve => setTimeout(resolve, 90));
+  assert.equal(calls, 1);
+});
+
+test('TLS transport preserves hostname verification and pins the vetted IP in both lookup forms', async () => {
+  const original = https.request;
+  let checked = false;
+  https.request = (url, options, callback) => {
+    assert.equal(url.hostname, 'example.test');
+    assert.equal(options.servername, 'example.test');
+    assert.equal(options.rejectUnauthorized, true);
+    options.lookup('example.test', { all: true }, (error, records) => {
+      assert.equal(error, null);
+      assert.deepEqual(records, [{ address: '93.184.215.14', family: 4 }]);
+    });
+    options.lookup('example.test', {}, (error, address, family) => {
+      assert.equal(error, null);
+      assert.equal(address, '93.184.215.14');
+      assert.equal(family, 4);
+    });
+    checked = true;
+    const request = new EventEmitter();
+    request.setTimeout = () => {};
+    request.end = () => queueMicrotask(() => {
+      const response = new EventEmitter();
+      response.statusCode = 200;
+      response.headers = { 'content-type': 'text/html' };
+      callback(response);
+      response.emit('end');
+    });
+    return request;
+  };
+  try {
+    const result = await fetchScoped('https://example.test/owned/a', { context: context([]), resolve });
+    assert.equal(result.status, 200);
+    assert.equal(checked, true);
+  } finally { https.request = original; }
 });
