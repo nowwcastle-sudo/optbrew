@@ -72,54 +72,74 @@ node bin/optbrew.mjs rollback --scope project --project ./site --release-version
 
 ### Reinstall after a migration_required update
 
-Release 0.1.2 uses evaluation version 0.2.0 (0.1.1 used 0.1.0), so scores and baselines made with 0.1.1 are not comparable with 0.1.2: `compare` returns `not_comparable`, and you run the baseline audit again with 0.1.2. For the same reason `optbrew update` on a managed 0.1.1 install stops with `migration_required` and changes nothing; the message lists the paths and commands below. There is no `uninstall` command. Replace the install by deleting the managed root and the targets in its `install-record.json`, then run `install` again from the 0.1.2 checkout. The commands never touch `.optbrew/runs` (your audit evidence); do not delete the whole `.optbrew` folder. Full explanation: [platform support](docs/platforms.md).
+Release 0.1.2 uses evaluation version 0.2.0 (0.1.1 used 0.1.0), so scores and baselines made with 0.1.1 are not comparable with 0.1.2: `compare` returns `not_comparable`, and you run the baseline audit again with 0.1.2. For the same reason `optbrew update` on a managed 0.1.1 install stops with `migration_required` and changes nothing; the message lists the paths and commands. There is no `uninstall` command. Replace the install with the blocks below, from the 0.1.2 checkout root. Each block first runs the read-only `reinstall-plan`, which validates the install record (every target must be exactly the agent's `skills/optbrew` path) and refuses a tampered one before anything is deleted. The shell then deletes only the paths it printed, targets first and the managed root last, so the block can be run again after a failure. The commands never touch `.optbrew/runs` (your audit evidence); do not delete the whole `.optbrew` folder. Full explanation: [platform support](docs/platforms.md).
 
 User scope:
 
 ```powershell user
 $ErrorActionPreference = 'Stop'
-$root = Join-Path $HOME '.optbrew/installs/user'
-$record = Get-Content -Raw -Encoding UTF8 (Join-Path $root 'install-record.json') | ConvertFrom-Json
-Remove-Item -Recurse -Force -LiteralPath $root
-foreach ($t in $record.targets) { Remove-Item -Recurse -Force -LiteralPath $t.path }
-foreach ($t in $record.targets) { node bin/optbrew.mjs install --agents $t.agent --scope user --strategy $t.strategy; if ($LASTEXITCODE) { exit $LASTEXITCODE } }
-node bin/optbrew.mjs doctor --agents (($record.targets | ForEach-Object agent) -join ',') --scope user
-exit $LASTEXITCODE
+[Console]::OutputEncoding = [Text.Encoding]::UTF8
+$plan = @(node bin/optbrew.mjs reinstall-plan --scope user)
+if ($LASTEXITCODE) { exit $LASTEXITCODE }
+foreach ($line in $plan) {
+  $f = $line -split "`t"
+  if ($f[0] -eq 'delete-link') { [IO.Directory]::Delete($f[1]) }
+  elseif ($f[0] -eq 'delete-dir') { Remove-Item -Recurse -Force -LiteralPath $f[1] }
+}
+foreach ($line in $plan) {
+  $f = $line -split "`t"
+  if ($f[0] -eq 'install') { node bin/optbrew.mjs install --agents $f[1] --scope user --strategy $f[2]; if ($LASTEXITCODE) { exit $LASTEXITCODE } }
+  elseif ($f[0] -eq 'agents') { node bin/optbrew.mjs doctor --agents $f[1] --scope user; exit $LASTEXITCODE }
+}
 ```
 
 ```bash user
 set -e
-root="$HOME/.optbrew/installs/user"
-rows=$(node -p 'JSON.parse(require("fs").readFileSync(process.argv[1],"utf8")).targets.map(t=>[t.agent,t.strategy,t.path].join("|")).join("\n")' "$root/install-record.json")
-rm -r -- "$root"
-while IFS='|' read -r agent strategy target; do rm -r -- "$target"; done <<< "$rows"
-while IFS='|' read -r agent strategy target; do node bin/optbrew.mjs install --agents "$agent" --scope user --strategy "$strategy"; done <<< "$rows"
-node bin/optbrew.mjs doctor --agents "$(cut -d'|' -f1 <<< "$rows" | paste -sd, -)" --scope user
+plan=$(node bin/optbrew.mjs reinstall-plan --scope user)
+while IFS=$'\t' read -r kind a b; do
+  case "$kind" in delete-link | delete-dir) rm -r -- "$a" ;; esac
+done <<< "$plan"
+while IFS=$'\t' read -r kind a b; do
+  case "$kind" in
+    install) node bin/optbrew.mjs install --agents "$a" --scope user --strategy "$b" ;;
+    agents) node bin/optbrew.mjs doctor --agents "$a" --scope user ;;
+  esac
+done <<< "$plan"
 ```
 
 Project scope (replace `./site` with your project folder; it appears once):
 
 ```powershell project
 $ErrorActionPreference = 'Stop'
-$project = (Resolve-Path './site').Path
-$root = Join-Path $project '.optbrew/install'
-$record = Get-Content -Raw -Encoding UTF8 (Join-Path $root 'install-record.json') | ConvertFrom-Json
-Remove-Item -Recurse -Force -LiteralPath $root
-foreach ($t in $record.targets) { Remove-Item -Recurse -Force -LiteralPath $t.path }
-foreach ($t in $record.targets) { node bin/optbrew.mjs install --agents $t.agent --scope project --project $project --strategy $t.strategy; if ($LASTEXITCODE) { exit $LASTEXITCODE } }
-node bin/optbrew.mjs doctor --agents (($record.targets | ForEach-Object agent) -join ',') --scope project --project $project
-exit $LASTEXITCODE
+[Console]::OutputEncoding = [Text.Encoding]::UTF8
+$project = './site'
+$plan = @(node bin/optbrew.mjs reinstall-plan --scope project --project $project)
+if ($LASTEXITCODE) { exit $LASTEXITCODE }
+foreach ($line in $plan) {
+  $f = $line -split "`t"
+  if ($f[0] -eq 'delete-link') { [IO.Directory]::Delete($f[1]) }
+  elseif ($f[0] -eq 'delete-dir') { Remove-Item -Recurse -Force -LiteralPath $f[1] }
+}
+foreach ($line in $plan) {
+  $f = $line -split "`t"
+  if ($f[0] -eq 'install') { node bin/optbrew.mjs install --agents $f[1] --scope project --project $project --strategy $f[2]; if ($LASTEXITCODE) { exit $LASTEXITCODE } }
+  elseif ($f[0] -eq 'agents') { node bin/optbrew.mjs doctor --agents $f[1] --scope project --project $project; exit $LASTEXITCODE }
+}
 ```
 
 ```bash project
 set -e
-project="$(cd "./site" && pwd)"
-root="$project/.optbrew/install"
-rows=$(node -p 'JSON.parse(require("fs").readFileSync(process.argv[1],"utf8")).targets.map(t=>[t.agent,t.strategy,t.path].join("|")).join("\n")' "$root/install-record.json")
-rm -r -- "$root"
-while IFS='|' read -r agent strategy target; do rm -r -- "$target"; done <<< "$rows"
-while IFS='|' read -r agent strategy target; do node bin/optbrew.mjs install --agents "$agent" --scope project --project "$project" --strategy "$strategy"; done <<< "$rows"
-node bin/optbrew.mjs doctor --agents "$(cut -d'|' -f1 <<< "$rows" | paste -sd, -)" --scope project --project "$project"
+project='./site'
+plan=$(node bin/optbrew.mjs reinstall-plan --scope project --project "$project")
+while IFS=$'\t' read -r kind a b; do
+  case "$kind" in delete-link | delete-dir) rm -r -- "$a" ;; esac
+done <<< "$plan"
+while IFS=$'\t' read -r kind a b; do
+  case "$kind" in
+    install) node bin/optbrew.mjs install --agents "$a" --scope project --project "$project" --strategy "$b" ;;
+    agents) node bin/optbrew.mjs doctor --agents "$a" --scope project --project "$project" ;;
+  esac
+done <<< "$plan"
 ```
 
 ## Support and license

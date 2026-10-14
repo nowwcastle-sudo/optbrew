@@ -72,54 +72,74 @@ node bin/optbrew.mjs rollback --scope project --project ./site --release-version
 
 ### migration_required 뒤 재설치
 
-0.1.2는 평가 버전 0.2.0을 사용합니다(0.1.1은 0.1.0). 그래서 0.1.1로 만든 점수와 기준선은 0.1.2와 비교할 수 없고 `compare`는 `not_comparable`을 반환합니다. 기준선 감사는 0.1.2로 다시 실행하십시오. 같은 이유로 관리 중인 0.1.1 설치에서 `optbrew update`를 실행하면 `migration_required`로 멈추고 아무것도 바꾸지 않으며, 메시지에 아래 경로와 명령이 나옵니다. `uninstall` 명령은 없습니다. 관리 루트와 `install-record.json`에 적힌 대상을 지운 뒤 0.1.2 저장소 루트에서 `install`을 다시 실행하는 방식으로 교체합니다. 이 명령은 `.optbrew/runs`(감사 증거)를 건드리지 않습니다. `.optbrew` 폴더 전체를 지우지 마십시오. 자세한 설명은 [플랫폼 안내](docs/platforms.md)를 보십시오.
+0.1.2는 평가 버전 0.2.0을 사용합니다(0.1.1은 0.1.0). 그래서 0.1.1로 만든 점수와 기준선은 0.1.2와 비교할 수 없고 `compare`는 `not_comparable`을 반환합니다. 기준선 감사는 0.1.2로 다시 실행하십시오. 같은 이유로 관리 중인 0.1.1 설치에서 `optbrew update`를 실행하면 `migration_required`로 멈추고 아무것도 바꾸지 않으며, 메시지에 경로와 명령이 나옵니다. `uninstall` 명령은 없습니다. 0.1.2 저장소 루트에서 아래 블록으로 교체합니다. 각 블록은 먼저 읽기 전용 `reinstall-plan`을 실행해 설치 기록을 검증하고(모든 대상이 정확히 해당 에이전트의 `skills/optbrew` 경로여야 합니다) 변조된 기록이면 아무것도 지우기 전에 거절합니다. 이후 셸은 그 명령이 출력한 경로만, 대상을 먼저 지우고 관리 루트를 마지막에 지우므로 실패한 뒤 같은 블록을 다시 실행할 수 있습니다. 이 명령은 `.optbrew/runs`(감사 증거)를 건드리지 않습니다. `.optbrew` 폴더 전체를 지우지 마십시오. 자세한 설명은 [플랫폼 안내](docs/platforms.md)를 보십시오.
 
 사용자 범위:
 
 ```powershell user
 $ErrorActionPreference = 'Stop'
-$root = Join-Path $HOME '.optbrew/installs/user'
-$record = Get-Content -Raw -Encoding UTF8 (Join-Path $root 'install-record.json') | ConvertFrom-Json
-Remove-Item -Recurse -Force -LiteralPath $root
-foreach ($t in $record.targets) { Remove-Item -Recurse -Force -LiteralPath $t.path }
-foreach ($t in $record.targets) { node bin/optbrew.mjs install --agents $t.agent --scope user --strategy $t.strategy; if ($LASTEXITCODE) { exit $LASTEXITCODE } }
-node bin/optbrew.mjs doctor --agents (($record.targets | ForEach-Object agent) -join ',') --scope user
-exit $LASTEXITCODE
+[Console]::OutputEncoding = [Text.Encoding]::UTF8
+$plan = @(node bin/optbrew.mjs reinstall-plan --scope user)
+if ($LASTEXITCODE) { exit $LASTEXITCODE }
+foreach ($line in $plan) {
+  $f = $line -split "`t"
+  if ($f[0] -eq 'delete-link') { [IO.Directory]::Delete($f[1]) }
+  elseif ($f[0] -eq 'delete-dir') { Remove-Item -Recurse -Force -LiteralPath $f[1] }
+}
+foreach ($line in $plan) {
+  $f = $line -split "`t"
+  if ($f[0] -eq 'install') { node bin/optbrew.mjs install --agents $f[1] --scope user --strategy $f[2]; if ($LASTEXITCODE) { exit $LASTEXITCODE } }
+  elseif ($f[0] -eq 'agents') { node bin/optbrew.mjs doctor --agents $f[1] --scope user; exit $LASTEXITCODE }
+}
 ```
 
 ```bash user
 set -e
-root="$HOME/.optbrew/installs/user"
-rows=$(node -p 'JSON.parse(require("fs").readFileSync(process.argv[1],"utf8")).targets.map(t=>[t.agent,t.strategy,t.path].join("|")).join("\n")' "$root/install-record.json")
-rm -r -- "$root"
-while IFS='|' read -r agent strategy target; do rm -r -- "$target"; done <<< "$rows"
-while IFS='|' read -r agent strategy target; do node bin/optbrew.mjs install --agents "$agent" --scope user --strategy "$strategy"; done <<< "$rows"
-node bin/optbrew.mjs doctor --agents "$(cut -d'|' -f1 <<< "$rows" | paste -sd, -)" --scope user
+plan=$(node bin/optbrew.mjs reinstall-plan --scope user)
+while IFS=$'\t' read -r kind a b; do
+  case "$kind" in delete-link | delete-dir) rm -r -- "$a" ;; esac
+done <<< "$plan"
+while IFS=$'\t' read -r kind a b; do
+  case "$kind" in
+    install) node bin/optbrew.mjs install --agents "$a" --scope user --strategy "$b" ;;
+    agents) node bin/optbrew.mjs doctor --agents "$a" --scope user ;;
+  esac
+done <<< "$plan"
 ```
 
 프로젝트 범위(`./site`를 프로젝트 폴더로 바꾸십시오. 한 곳에만 나옵니다):
 
 ```powershell project
 $ErrorActionPreference = 'Stop'
-$project = (Resolve-Path './site').Path
-$root = Join-Path $project '.optbrew/install'
-$record = Get-Content -Raw -Encoding UTF8 (Join-Path $root 'install-record.json') | ConvertFrom-Json
-Remove-Item -Recurse -Force -LiteralPath $root
-foreach ($t in $record.targets) { Remove-Item -Recurse -Force -LiteralPath $t.path }
-foreach ($t in $record.targets) { node bin/optbrew.mjs install --agents $t.agent --scope project --project $project --strategy $t.strategy; if ($LASTEXITCODE) { exit $LASTEXITCODE } }
-node bin/optbrew.mjs doctor --agents (($record.targets | ForEach-Object agent) -join ',') --scope project --project $project
-exit $LASTEXITCODE
+[Console]::OutputEncoding = [Text.Encoding]::UTF8
+$project = './site'
+$plan = @(node bin/optbrew.mjs reinstall-plan --scope project --project $project)
+if ($LASTEXITCODE) { exit $LASTEXITCODE }
+foreach ($line in $plan) {
+  $f = $line -split "`t"
+  if ($f[0] -eq 'delete-link') { [IO.Directory]::Delete($f[1]) }
+  elseif ($f[0] -eq 'delete-dir') { Remove-Item -Recurse -Force -LiteralPath $f[1] }
+}
+foreach ($line in $plan) {
+  $f = $line -split "`t"
+  if ($f[0] -eq 'install') { node bin/optbrew.mjs install --agents $f[1] --scope project --project $project --strategy $f[2]; if ($LASTEXITCODE) { exit $LASTEXITCODE } }
+  elseif ($f[0] -eq 'agents') { node bin/optbrew.mjs doctor --agents $f[1] --scope project --project $project; exit $LASTEXITCODE }
+}
 ```
 
 ```bash project
 set -e
-project="$(cd "./site" && pwd)"
-root="$project/.optbrew/install"
-rows=$(node -p 'JSON.parse(require("fs").readFileSync(process.argv[1],"utf8")).targets.map(t=>[t.agent,t.strategy,t.path].join("|")).join("\n")' "$root/install-record.json")
-rm -r -- "$root"
-while IFS='|' read -r agent strategy target; do rm -r -- "$target"; done <<< "$rows"
-while IFS='|' read -r agent strategy target; do node bin/optbrew.mjs install --agents "$agent" --scope project --project "$project" --strategy "$strategy"; done <<< "$rows"
-node bin/optbrew.mjs doctor --agents "$(cut -d'|' -f1 <<< "$rows" | paste -sd, -)" --scope project --project "$project"
+project='./site'
+plan=$(node bin/optbrew.mjs reinstall-plan --scope project --project "$project")
+while IFS=$'\t' read -r kind a b; do
+  case "$kind" in delete-link | delete-dir) rm -r -- "$a" ;; esac
+done <<< "$plan"
+while IFS=$'\t' read -r kind a b; do
+  case "$kind" in
+    install) node bin/optbrew.mjs install --agents "$a" --scope project --project "$project" --strategy "$b" ;;
+    agents) node bin/optbrew.mjs doctor --agents "$a" --scope project --project "$project" ;;
+  esac
+done <<< "$plan"
 ```
 
 ## 지원 범위와 라이선스

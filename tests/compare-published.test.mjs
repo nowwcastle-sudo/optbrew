@@ -3,17 +3,19 @@ import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { test } from 'node:test';
+import { test, after } from 'node:test';
 import { compare } from '../skills/optbrew/scripts/core/compare.mjs';
 import { score } from '../skills/optbrew/scripts/core/score.mjs';
-import { extractPublished, root, skipUnreachable } from './support/published-011.mjs';
+import { extractPublished, releasePublished, root, skipUnreachable } from './support/published-011.mjs';
+
+after(releasePublished);
 
 const json = async file => JSON.parse(await readFile(file, 'utf8'));
 
 test('0.1.1 baselines are not comparable with 0.1.2 inputs: real published output vs current inputs', { skip: skipUnreachable }, async t => {
   const temp = await mkdtemp(path.join(os.tmpdir(), 'optbrew compare from 0.1.1 '));
   t.after(() => rm(temp, { recursive: true, force: true }));
-  const old = await extractPublished(temp);
+  const old = await extractPublished();
 
   // Real 0.1.1 output: the published bundle's own CLI scores its own fixture.
   const oldOutput = path.join(temp, 'score-0.1.1.json');

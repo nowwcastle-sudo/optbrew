@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
+import { mkdtempSync, rmSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
+import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -10,19 +12,32 @@ export const published = '5391752';
 export const reachable = spawnSync('git', ['cat-file', '-e', `${published}^{commit}`], { cwd: root }).status === 0;
 export const skipUnreachable = reachable ? false : 'published 0.1.1 commit is not in this clone';
 
-/** Extract the published 0.1.1 bundle and its scoring fixtures into `temp/old`. */
-export async function extractPublished(temp) {
-  const archive = path.join(temp, 'published.zip');
+let shared = null;
+/** Remove the extracted copy of the published release; call it from an `after` hook of the test file. */
+export function releasePublished() {
+  if (shared) rmSync(shared.checkout, { recursive: true, force: true });
+  shared = null;
+}
+
+/**
+ * Extract the published 0.1.1 bundle, its CLI and its scoring fixtures once per test file. The extraction is read-only
+ * for every test, so tests share it instead of repeating the slow git archive and unzip.
+ */
+export async function extractPublished() {
+  if (shared) return shared;
+  const checkout = mkdtempSync(path.join(os.tmpdir(), 'optbrew published 0.1.1 '));
+  const archive = path.join(checkout, 'published.zip');
   const made = spawnSync('git', ['archive', '--format=zip', '-o', archive, published, 'skills/optbrew', 'lib', 'bin', 'package.json', 'tests/fixtures/scoring'], { cwd: root });
   assert.equal(made.status, 0, String(made.stderr));
-  const extract = spawnSync('python', ['-c', 'import sys,zipfile; zipfile.ZipFile(sys.argv[1]).extractall(sys.argv[2])', archive, path.join(temp, 'old')], { encoding: 'utf8' });
+  const extract = spawnSync('python', ['-c', 'import sys,zipfile; zipfile.ZipFile(sys.argv[1]).extractall(sys.argv[2])', archive, path.join(checkout, 'tree')], { encoding: 'utf8' });
   assert.equal(extract.status, 0, extract.stderr);
-  const bundle = path.join(temp, 'old', 'skills', 'optbrew');
+  const tree = path.join(checkout, 'tree');
+  const bundle = path.join(tree, 'skills', 'optbrew');
   const manifest = JSON.parse(await readFile(path.join(bundle, 'bundle-manifest.json'), 'utf8'));
   assert.equal(manifest.release_version, '0.1.1');
   assert.match(manifest.bundle_hash, /^2945f112/);
-  const checkout = path.join(temp, 'old');
   // A real 0.1.1 user installed with the 0.1.1 CLI; the current CLI no longer verifies a 0.1.1 bundle.
-  const install = async options => (await import(pathToFileURL(path.join(checkout, 'lib/install.mjs')).href)).install(options);
-  return { checkout, bundle, manifest, install, fixtures: path.join(checkout, 'tests', 'fixtures', 'scoring') };
+  const install = async options => (await import(pathToFileURL(path.join(tree, 'lib/install.mjs')).href)).install(options);
+  shared = { checkout, tree, bundle, manifest, install, fixtures: path.join(tree, 'tests', 'fixtures', 'scoring') };
+  return shared;
 }

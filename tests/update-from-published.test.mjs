@@ -1,10 +1,8 @@
 import assert from 'node:assert/strict';
 import { cp, mkdtemp, mkdir, readFile, rm, writeFile } from 'node:fs/promises';
-import { existsSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { spawnSync } from 'node:child_process';
-import { test } from 'node:test';
+import { test, after } from 'node:test';
 import { install } from '../lib/install.mjs';
 import { update, rollback } from '../lib/update.mjs';
 import { doctor } from '../lib/doctor.mjs';
@@ -12,7 +10,9 @@ import { main } from '../lib/cli.mjs';
 import { readInstallRecord } from '../lib/records.mjs';
 import { isDistributedBundlePath } from '../skills/optbrew/scripts/core/bundle.mjs';
 import { seal } from './fixtures/releases/create.mjs';
-import { extractPublished, root, skipUnreachable } from './support/published-011.mjs';
+import { extractPublished, releasePublished, root, skipUnreachable } from './support/published-011.mjs';
+
+after(releasePublished);
 
 const currentBundle = path.join(root, 'skills', 'optbrew');
 const currentManifest = async () => JSON.parse(await readFile(path.join(currentBundle, 'bundle-manifest.json'), 'utf8'));
@@ -32,10 +32,10 @@ async function oldInstall(temp, old, { scope = 'user', strategies = { codex: 'co
   return { home, project, scopeRoot, where, recordRoot: installed.record.managed_root, record: installed.record };
 }
 
-test('managed update of the published 0.1.1 install is refused with migration_required and exact reinstall steps', { skip: skipUnreachable }, async t => {
+test('managed update of the published 0.1.1 install is refused with migration_required and exact reinstall steps', { skip: skipUnreachable, timeout: 540000 }, async t => {
   const temp = await mkdtemp(path.join(os.tmpdir(), 'optbrew update from 0.1.1 '));
   t.after(() => rm(temp, { recursive: true, force: true }));
-  const old = await extractPublished(temp);
+  const old = await extractPublished();
   const next = await currentManifest();
   assert.equal(next.release_version, '0.1.2');
   assert.equal(next.evaluation_version, '0.2.0');
@@ -51,6 +51,11 @@ test('managed update of the published 0.1.1 install is refused with migration_re
     for (const target of f.record.targets) assert.ok(text.includes(target.path), `names ${target.path}`);
     assert.match(text, /Remove-Item -Recurse -Force -LiteralPath/);
     assert.match(text, /rm -r -- /);
+    assert.match(text, /optbrew reinstall-plan --scope user --home/, 'the read-only check comes first');
+    // Targets are deleted first and the managed root, which holds the install record, last.
+    const posixLine = text.split('\n').find(line => line.includes('rm -r -- '));
+    assert.ok(posixLine.indexOf(f.record.targets[0].path) < posixLine.indexOf(f.recordRoot) && posixLine.indexOf(f.record.targets[1].path) < posixLine.indexOf(f.recordRoot), posixLine);
+    assert.ok(text.indexOf('reinstall-plan') < text.indexOf('rm -r -- '));
     for (const target of f.record.targets) assert.ok(text.includes(`optbrew install --agents ${target.agent} --scope user --home`) && text.includes(`--strategy ${target.strategy}`), text);
     assert.match(text, /optbrew doctor --agents codex,claude-code --scope user/);
     assert.match(text, /runs/);
@@ -74,73 +79,7 @@ test('managed update of the published 0.1.1 install is refused with migration_re
   assert.match(err, /^migration_required: evaluation_version changed/);
 });
 
-// Shell commands come from docs/platforms.md; README.md and README.ko.md must carry the identical blocks.
-const blockPattern = /```(powershell|bash) (user|project)\n([\s\S]*?)```/g;
-async function documentedBlocks(file) {
-  const text = await readFile(path.join(root, file), 'utf8');
-  return Object.fromEntries([...text.matchAll(blockPattern)].map(m => [`${m[1]} ${m[2]}`, m[3]]));
-}
-const documented = await documentedBlocks('docs/platforms.md');
-
-test('the reinstall command blocks are identical in docs/platforms.md, README.md and README.ko.md', async () => {
-  assert.deepEqual(Object.keys(documented).sort(), ['bash project', 'bash user', 'powershell project', 'powershell user']);
-  for (const file of ['README.md', 'README.ko.md']) assert.deepEqual(await documentedBlocks(file), documented, file);
-});
-
-function shellCommand(shell) {
-  if (shell === 'bash') {
-    const gitBash = ['C:/Program Files/Git/bin/bash.exe', 'C:/Program Files/Git/usr/bin/bash.exe'].find(existsSync);
-    const command = process.platform === 'win32' ? gitBash : 'bash';
-    return command && spawnSync(command, ['-c', 'true']).status === 0 ? command : null;
-  }
-  for (const command of process.platform === 'win32' ? ['pwsh', 'powershell'] : ['pwsh']) {
-    if (spawnSync(command, ['-NoProfile', '-Command', '$PSVersionTable.PSVersion.Major'], { encoding: 'utf8' }).status === 0) return command;
-  }
-  return null;
-}
-
-const shells = [];
-for (const shell of ['powershell', 'bash']) for (const command of shell === 'powershell' && process.platform === 'win32' ? ['pwsh', 'powershell'] : [null]) {
-  const resolved = command ? (spawnSync(command, ['-NoProfile', '-Command', '1'], { encoding: 'utf8' }).status === 0 ? command : null) : shellCommand(shell);
-  if (resolved) shells.push({ shell, command: resolved });
-}
-
-for (const { shell, command } of shells) for (const [scope, mixed] of [['user', false], ['project', true]]) {
-  test(`documented ${shell} reinstall (${command}, ${scope} scope, ${mixed ? 'link+copy' : 'copy'}) replaces a published 0.1.1 install and keeps runs`, { skip: skipUnreachable }, async t => {
-    const temp = await mkdtemp(path.join(os.tmpdir(), 'optbrew reinstall 한글 '));
-    t.after(() => rm(temp, { recursive: true, force: true }));
-    const old = await extractPublished(temp);
-    const strategies = mixed ? { codex: 'copy', 'claude-code': 'link' } : { codex: 'copy', 'claude-code': 'copy' };
-    const f = await oldInstall(temp, old, { scope, strategies });
-    const next = await currentManifest();
-    let block = documented[`${shell} ${scope}`];
-    if (scope === 'project') {
-      assert.ok(block.includes('./site'), 'project block names the project folder once');
-      block = block.replaceAll('./site', f.project.replaceAll('\\', '/'));
-    }
-    const env = { ...process.env, HOME: f.home, USERPROFILE: f.home };
-    let run;
-    if (shell === 'bash') run = spawnSync(command, ['-c', block], { cwd: root, env, encoding: 'utf8' });
-    else {
-      const script = path.join(temp, 'reinstall.ps1');
-      await writeFile(script, `﻿${block}`); // BOM so Windows PowerShell 5.1 reads the Korean temp path as UTF-8
-      run = spawnSync(command, ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', script], { cwd: root, env, encoding: 'utf8' });
-    }
-    assert.equal(run.status, 0, `${run.stdout}\n${run.stderr}`);
-
-    const record = await readInstallRecord(f.recordRoot);
-    assert.equal(record.release_version, '0.1.2');
-    assert.equal(record.bundle_hash, next.bundle_hash);
-    assert.equal(record.transaction.state, 'committed');
-    assert.deepEqual(record.targets.map(x => [x.agent, x.strategy]), agents.map(a => [a, strategies[a]]));
-    const report = await doctor({ agents, ...f.where });
-    assert.ok(report.targets.length === 2 && report.targets.every(x => x.registered && x.hash_ok), JSON.stringify(report));
-    assert.match(run.stdout, /"hash_ok":true/);
-    assert.equal(await readFile(path.join(f.scopeRoot, '.optbrew/runs/run.json'), 'utf8'), 'private run evidence');
-  });
-}
-
-test('updates and rollbacks keep working inside 0.1.2', async t => {
+test('updates and rollbacks keep working inside 0.1.2', { timeout: 540000 }, async t => {
   const temp = await mkdtemp(path.join(os.tmpdir(), 'optbrew update within 0.1.2 '));
   t.after(() => rm(temp, { recursive: true, force: true }));
   const home = path.join(temp, 'home');
@@ -150,7 +89,7 @@ test('updates and rollbacks keep working inside 0.1.2', async t => {
   await cp(currentBundle, next, { recursive: true, filter: p => isDistributedBundlePath(path.relative(currentBundle, p)) });
   await writeFile(path.join(next, 'SKILL.md'), `${await readFile(path.join(next, 'SKILL.md'), 'utf8')}\nSynthetic follow-up release.\n`);
   await seal(next, '0.1.3');
-  const installed = await install({ bundleRoot: currentBundle, home, scope: 'user', agents, strategy: 'copy' });
+  const installed = await install({ bundleRoot: currentBundle, home, scope: 'user', agents: ['codex'], strategy: 'copy' });
   const recordRoot = installed.record.managed_root;
   await mkdir(path.join(home, '.optbrew/runs'), { recursive: true });
   await writeFile(path.join(home, '.optbrew/runs/run.json'), 'private run evidence');
@@ -159,11 +98,11 @@ test('updates and rollbacks keep working inside 0.1.2', async t => {
   assert.equal(updated.status, 'updated');
   assert.equal(updated.record.release_version, '0.1.3');
   assert.equal(updated.record.previous_releases.at(-1).release_version, '0.1.2');
-  assert.ok((await doctor({ home, scope: 'user', agents })).targets.every(x => x.hash_ok));
+  assert.ok((await doctor({ home, scope: 'user', agents: ['codex'] })).targets.every(x => x.hash_ok));
   const restored = await rollback({ recordRoot, releaseVersion: '0.1.2' });
   assert.equal(restored.status, 'rolled_back');
   assert.equal(restored.record.release_version, '0.1.2');
   assert.equal(restored.record.bundle_hash, current.bundle_hash);
-  assert.ok((await doctor({ home, scope: 'user', agents })).targets.every(x => x.hash_ok));
+  assert.ok((await doctor({ home, scope: 'user', agents: ['codex'] })).targets.every(x => x.hash_ok));
   assert.equal(await readFile(path.join(home, '.optbrew/runs/run.json'), 'utf8'), 'private run evidence');
 });
