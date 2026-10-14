@@ -390,13 +390,14 @@
       "package_path": "skills/optbrew/modules/naver-searchadvisor/scripts/audit.mjs",
       "original_git_blob_sha": "de8c4a3430633cb2445e339d7a943d944cbf45a9",
       "original_sha256": "3fd83141a00a9d45d4fbffa9d8ff515c7a49e7b1ea4637844e92375ea7797ff9",
-      "distributed_sha256": "b6d29d55e94b3e152f65c5590290dd2f0e8711466c00f93579bf545582db55d2",
+      "distributed_sha256": "58b030e5c6fd5904c2462b010d38e37ab2219d0285afe0ebfe3ac6a540f320ae",
       "transformations": [
-        "Audit output routes policy evidence to official URL index"
+        "Audit output routes policy evidence to official URL index",
+        "reviewed distribution patch naver-robots-rfc9309"
       ],
-      "patch_id": null,
-      "patch_base_sha256": null,
-      "patch_reason": "Portable optbrew GUIDE and capability routing",
+      "patch_id": "naver-robots-rfc9309",
+      "patch_base_sha256": "b6d29d55e94b3e152f65c5590290dd2f0e8711466c00f93579bf545582db55d2",
+      "patch_reason": "Use pure RFC 9309 robots group and path verdict module; guard audit CLI on import",
       "excluded_files": [
         "references/guide/*.md: 55 Naver copyrighted article bodies outside MIT scope; official URLs retained in INDEX",
         "README.md: documents upstream offline corpus and is not a runtime guide",
@@ -842,11 +843,13 @@
       "package_path": "skills/optbrew/modules/magnus-seo/scripts/aeo_audit.py",
       "original_git_blob_sha": "6334d79b6b9d304ab2f147e80f1bde0bc11d9fa7",
       "original_sha256": "b5e6320db5b176df13b16c7e256b27308be33ed349e4cad199f88a9ca6f395e8",
-      "distributed_sha256": "b5e6320db5b176df13b16c7e256b27308be33ed349e4cad199f88a9ca6f395e8",
-      "transformations": [],
-      "patch_id": null,
-      "patch_base_sha256": null,
-      "patch_reason": null,
+      "distributed_sha256": "8b634e72210f366dca7ed19977eecf7912fd3f2a86943f77b09051989a50c43d",
+      "transformations": [
+        "reviewed distribution patch magnus-html-parser"
+      ],
+      "patch_id": "magnus-html-parser",
+      "patch_base_sha256": "b5e6320db5b176df13b16c7e256b27308be33ed349e4cad199f88a9ca6f395e8",
+      "patch_reason": "Parse JSON-LD arrays and nested visible HTML without script or style leakage",
       "excluded_files": [
         "Unselected agent skills"
       ]
@@ -2646,6 +2649,28 @@
       "excluded_files": [
         "Unselected marketing skills, installers and authoring utilities"
       ]
+    },
+    {
+      "module_id": "optbrew",
+      "repo": null,
+      "commit": null,
+      "license": "MIT",
+      "license_blob_sha": null,
+      "upstream_path": null,
+      "package_path": "skills/optbrew/modules/naver-searchadvisor/scripts/robots.mjs",
+      "original_git_blob_sha": null,
+      "original_sha256": null,
+      "distributed_sha256": "40c55e783a76dc21747cf000e5b7cb2ffc9e8ccb507e1671d22ffff6a3c6e6cb",
+      "transformations": [
+        "Reviewed first-party artifact copied"
+      ],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": null,
+      "excluded_files": [],
+      "source_kind": "first_party",
+      "canonical_path": "patches/naver-robots.mjs",
+      "canonical_sha256": "40c55e783a76dc21747cf000e5b7cb2ffc9e8ccb507e1671d22ffff6a3c6e6cb"
     }
   ]
 }

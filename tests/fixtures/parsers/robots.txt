@@ -1,0 +1,8 @@
+User-agent: Yeti
+Disallow: /private/
+
+User-agent: Yeti
+Allow: /private/public/
+
+User-agent: *
+Disallow: /

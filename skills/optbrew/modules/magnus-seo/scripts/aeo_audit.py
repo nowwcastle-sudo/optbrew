@@ -20,20 +20,23 @@ class PageParser(HTMLParser):
         self.links = []
         self.jsonld = []
         self.visible = []
-        self._tag = None
-        self._buf = []
-        self._script_buf = []
+        self._stack = []
+        self._heading = None
+        self._title_buf = None
+        self._script_buf = None
         self.meta = []
         self.canonical = None
 
     def handle_starttag(self, tag, attrs):
         attrs = dict(attrs)
-        self._tag = tag
+        if tag not in {"meta", "link", "br", "img", "input", "hr"}:
+            self._stack.append(tag)
         if tag in {"h1", "h2", "h3", "h4", "h5", "h6"}:
-            self._buf = []
-            self.headings.append({"level": int(tag[1]), "text": "", "question": False})
+            heading = {"level": int(tag[1]), "text": "", "question": False}
+            self.headings.append(heading)
+            self._heading = (tag, heading, [])
         elif tag == "title":
-            self._buf = []
+            self._title_buf = []
         elif tag == "a" and attrs.get("href"):
             self.links.append(attrs["href"])
         elif tag == "link" and (attrs.get("rel") or "").lower() == "canonical":
@@ -44,29 +47,37 @@ class PageParser(HTMLParser):
             self._script_buf = []
 
     def handle_data(self, data):
-        if self._tag == "script":
-            self._script_buf.append(data)
-        elif self._tag in {"title", "h1", "h2", "h3", "h4", "h5", "h6"}:
-            self._buf.append(data)
-        elif self._tag not in {"style", "noscript"}:
-            self.visible.append(data)
+        if "script" in self._stack:
+            if self._script_buf is not None:
+                self._script_buf.append(data)
+        elif any(tag in self._stack for tag in {"style", "noscript", "template"}):
+            return
+        elif self._title_buf is not None:
+            self._title_buf.append(data)
+        else:
+            if self._heading is not None:
+                self._heading[2].append(data)
+            if "head" not in self._stack:
+                self.visible.append(data)
 
     def handle_endtag(self, tag):
-        text = re.sub(r"\s+", " ", "".join(self._buf)).strip()
-        if tag == "title":
-            self.title = text
-        elif tag in {"h1", "h2", "h3", "h4", "h5", "h6"} and self.headings:
-            self.headings[-1]["text"] = text
-            self.headings[-1]["question"] = text.endswith("?")
-        elif tag == "script" and self._script_buf:
+        if tag == "title" and self._title_buf is not None:
+            self.title = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", "", "".join(self._title_buf))).strip()
+            self._title_buf = None
+        elif self._heading is not None and tag == self._heading[0]:
+            text = re.sub(r"\s+", " ", "".join(self._heading[2])).strip()
+            self._heading[1]["text"] = text
+            self._heading[1]["question"] = text.endswith("?")
+            self._heading = None
+        elif tag == "script" and self._script_buf is not None:
             raw = "".join(self._script_buf).strip()
             try:
                 self.jsonld.append(json.loads(raw))
             except json.JSONDecodeError:
                 self.jsonld.append({"_parse_error": True, "raw_prefix": raw[:120]})
-            self._script_buf = []
-        self._tag = None
-        self._buf = []
+            self._script_buf = None
+        if tag in self._stack:
+            del self._stack[len(self._stack) - 1 - self._stack[::-1].index(tag):]
 
 
 def load(source: str) -> tuple[str, str]:
@@ -79,6 +90,11 @@ def load(source: str) -> tuple[str, str]:
 
 def audit(source: str) -> dict:
     html, final_url = load(source)
+    return audit_html(html, source, final_url)
+
+
+def audit_html(html: str, source: str, final_url: str | None = None) -> dict:
+    final_url = final_url or source
     parser = PageParser()
     parser.feed(html)
     visible = re.sub(r"\s+", " ", " ".join(parser.visible)).strip()
@@ -86,7 +102,7 @@ def audit(source: str) -> dict:
     types = []
     parse_errors = 0
     for block in parser.jsonld:
-        if block.get("_parse_error"):
+        if isinstance(block, dict) and block.get("_parse_error"):
             parse_errors += 1
             continue
         values = block if isinstance(block, list) else [block]

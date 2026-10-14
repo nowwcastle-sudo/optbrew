@@ -1,4 +1,8 @@
 #!/usr/bin/env node
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { parseRobots, robotsVerdict } from './robots.mjs';
+
 /**
  * naver-searchadvisor-expert / audit.mjs
  *
@@ -91,82 +95,6 @@ function textOf(html, tag) {
 
 const metaBy = (metas, key, val) =>
   metas.filter((t) => (t[key] || '').toLowerCase() === val).map((t) => t.content ?? '');
-
-// ── robots.txt ───────────────────────────────────────────────────────────
-function parseRobots(txt) {
-  const groups = [];
-  let cur = null;
-  const sitemaps = [];
-  for (let raw of txt.split(/\r?\n/)) {
-    const line = raw.replace(/#.*$/, '').trim();
-    if (!line) continue;
-    const i = line.indexOf(':');
-    if (i < 0) continue;
-    const field = line.slice(0, i).trim().toLowerCase();
-    const value = line.slice(i + 1).trim();
-    if (field === 'user-agent') {
-      if (!cur || cur.rules.length) {
-        cur = { agents: [], rules: [] };
-        groups.push(cur);
-      }
-      cur.agents.push(value.toLowerCase());
-    } else if (field === 'allow' || field === 'disallow') {
-      if (!cur) {
-        cur = { agents: ['*'], rules: [] };
-        groups.push(cur);
-      }
-      cur.rules.push({ type: field, path: value });
-    } else if (field === 'sitemap') {
-      sitemaps.push(value);
-    }
-  }
-  return { groups, sitemaps };
-}
-
-function pathMatches(rule, path) {
-  if (rule === '') return false;
-  let anchored = false;
-  let p = rule;
-  if (p.endsWith('$')) {
-    anchored = true;
-    p = p.slice(0, -1);
-  }
-  const src =
-    '^' +
-    p
-      .split('*')
-      .map((s) => s.replace(/[.+?^${}()|[\]\\]/g, '\\$&'))
-      .join('.*') +
-    (anchored ? '$' : '');
-  return new RegExp(src).test(path);
-}
-
-/** RFC9309: 가장 구체적인(긴) 규칙이 이긴다. 동률이면 Allow 우선. */
-function robotsVerdict(parsed, agent, path) {
-  const lower = agent.toLowerCase();
-  let group =
-    parsed.groups.find((g) => g.agents.some((a) => a !== '*' && lower.includes(a))) ||
-    parsed.groups.find((g) => g.agents.includes('*'));
-  if (!group) return { allowed: true, reason: '해당 로봇에 적용되는 그룹 없음' };
-
-  let best = null;
-  for (const r of group.rules) {
-    if (!pathMatches(r.path, path)) continue;
-    if (
-      !best ||
-      r.path.length > best.path.length ||
-      (r.path.length === best.path.length && r.type === 'allow')
-    ) {
-      best = r;
-    }
-  }
-  if (!best) return { allowed: true, reason: '일치하는 규칙 없음', group };
-  return {
-    allowed: best.type === 'allow',
-    reason: `${best.type === 'allow' ? 'Allow' : 'Disallow'}: ${best.path}`,
-    group,
-  };
-}
 
 /**
  * 이미지 앞부분만 Range로 받는다. 전체 바이트 수는 Content-Range/Content-Length에서 얻는다.
@@ -703,6 +631,7 @@ function report(result) {
 }
 
 // ── 엔트리 ───────────────────────────────────────────────────────────────
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
 const args = process.argv.slice(2);
 const target = args.find((a) => !a.startsWith('--'));
 const asJson = args.includes('--json');
@@ -720,4 +649,5 @@ try {
 } catch (e) {
   console.error(`점검 실패: ${e.message}`);
   process.exit(2);
+}
 }

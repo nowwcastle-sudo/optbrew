@@ -241,6 +241,21 @@ export async function vendor({ sourcesRoot = defaultSources, outputRoot = repoRo
     }
   }
   for (const key of patches.keys()) if (!applied.has(key)) throw new Error(`reviewed patch target not selected: ${key}`);
+  for (const artifact of config.first_party_files ?? []) {
+    const source = normalizeRelative(artifact.source_path ?? '');
+    const destination = normalizeRelative(artifact.package_path ?? '');
+    if (!source.startsWith('patches/') || !destination.startsWith('skills/optbrew/') || artifact.license !== 'MIT' || !/^[0-9a-f]{64}$/.test(artifact.sha256 ?? '')) throw new Error(`invalid first-party artifact: ${artifact.id}`);
+    if (outputs.some(([name]) => name === destination)) throw new Error(`first-party output collision: ${destination}`);
+    const patchRoot = await realpath(path.join(path.dirname(configPath), 'patches'));
+    const canonical = path.join(path.dirname(configPath), source);
+    const stat = await lstat(canonical);
+    const inside = path.relative(patchRoot, await realpath(canonical));
+    if (!stat.isFile() || stat.isSymbolicLink() || inside.startsWith('..') || path.isAbsolute(inside)) throw new Error(`invalid first-party source: ${source}`);
+    const bytes = await readFile(canonical);
+    if (sha(bytes, 'sha256') !== artifact.sha256) throw new Error(`first-party artifact hash mismatch: ${artifact.id}`);
+    outputs.push([destination, bytes]);
+    lock.files.push({ module_id: 'optbrew', repo: null, commit: null, license: 'MIT', license_blob_sha: null, upstream_path: null, package_path: destination, original_git_blob_sha: null, original_sha256: null, distributed_sha256: artifact.sha256, transformations: ['Reviewed first-party artifact copied'], patch_id: null, patch_base_sha256: null, patch_reason: null, excluded_files: [], source_kind: 'first_party', canonical_path: source, canonical_sha256: artifact.sha256 });
+  }
   const notice = ['# Third-party notices', '', 'The files below retain their upstream copyright and permission notices. Service accounts, API data and Naver guide article bodies are outside these code licenses.', ''];
   for (const module of lock.modules) notice.push(`- **${module.module_id}** — ${module.repo} at ${module.commit}; ${module.license}; Git license blob ${module.license_blob_sha}; exact notice: [licenses/${module.module_id}.txt](licenses/${module.module_id}.txt). Exclusions: ${module.excluded_files.join('; ')}.`);
   outputs.push(['skills/optbrew/THIRD_PARTY_NOTICES.md', Buffer.from(notice.join('\n') + '\n')]);

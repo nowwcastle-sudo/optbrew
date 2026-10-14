@@ -35,6 +35,14 @@ test('vendored bundle has pinned files, notices and closed local links', async (
       assert.ok(license.length > 100);
     }
     const bundle = path.join(temp, 'skills/optbrew/modules');
+    assert.deepEqual(
+      await readFile(path.join(bundle, 'naver-searchadvisor/scripts/robots.mjs')),
+      await readFile(path.join(root, 'skills/optbrew/modules/naver-searchadvisor/scripts/robots.mjs'))
+    );
+    const firstParty = lock.files.find(x => x.package_path === 'skills/optbrew/modules/naver-searchadvisor/scripts/robots.mjs');
+    assert.equal(firstParty.source_kind, 'first_party');
+    assert.equal(firstParty.license, 'MIT');
+    assert.equal(firstParty.original_git_blob_sha, null);
     const files = await walk(path.join(temp, 'skills/optbrew'));
     assert.equal(files.filter(x => path.basename(x) === 'SKILL.md').length, 0);
     assert.equal(files.filter(x => x.endsWith('GUIDE.md')).length, 24);
@@ -62,6 +70,8 @@ test('vendored bundle has pinned files, notices and closed local links', async (
     const notice = await readFile(path.join(temp, 'skills/optbrew/THIRD_PARTY_NOTICES.md'), 'utf8');
     for (const module of lock.modules) assert.match(notice, new RegExp(module.license_blob_sha));
     assert.equal(JSON.parse(await readFile(path.join(temp, 'skills/optbrew/source-lock.json'), 'utf8')).files.length, lock.files.length);
+    await writeFile(path.join(bundle, 'naver-searchadvisor/scripts/robots.mjs'), 'local edit');
+    await assert.rejects(vendor({ sourcesRoot, outputRoot: temp, configPath }), /local edit|existing file differs/i);
   } finally { await rm(temp, { recursive: true, force: true }); }
 });
 
@@ -91,11 +101,12 @@ test('reviewed parser replacement survives configured CLI regeneration and rejec
     const replacement = Buffer.concat([await readFile(path.join(outputRoot, original.package_path)), Buffer.from('\n# reviewed test change\n')]);
     const patchDir = path.join(temp, 'patches');
     await mkdir(patchDir);
+    await cp(path.join(root, 'scripts/patches/naver-robots.mjs'), path.join(patchDir, 'naver-robots.mjs'));
     await writeFile(path.join(patchDir, 'aeo_audit.py'), replacement);
     const config = JSON.parse(await readFile(configPath, 'utf8'));
     config.reviewed_patches = [{
       id: 'T2-MAGNUS-PARSER', module_id: 'magnus-seo', upstream_path: 'seo/scripts/aeo_audit.py',
-      expected_base_sha256: original.distributed_sha256,
+      expected_base_sha256: original.original_sha256,
       replacement_path: 'patches/aeo_audit.py',
       replacement_sha256: createHash('sha256').update(replacement).digest('hex'),
       reason: 'Reviewed parser correction fixture'
@@ -119,8 +130,11 @@ test('reviewed parser replacement survives configured CLI regeneration and rejec
     assert.equal(apiLock.files.find(x => x.package_path === original.package_path).patch_id, 'T2-MAGNUS-PARSER');
     const wrongHash = { ...badConfigPatch(), replacement_sha256: '0'.repeat(64) };
     await assert.rejects(vendor({ sourcesRoot, outputRoot: path.join(temp, 'bad-hash-out'), configPath: patchedConfig, patchSet: { patches: [wrongHash] } }), /replacement hash mismatch/i);
+    config.first_party_files[0].sha256 = '0'.repeat(64);
+    await writeFile(patchedConfig, JSON.stringify(config));
+    await assert.rejects(vendor({ sourcesRoot, outputRoot: path.join(temp, 'bad-first-party'), configPath: patchedConfig }), /first-party artifact hash mismatch/i);
     function badConfigPatch() {
-      return { id: 'T2-MAGNUS-PARSER', module_id: 'magnus-seo', upstream_path: 'seo/scripts/aeo_audit.py', expected_base_sha256: original.distributed_sha256, replacement_path: 'patches/aeo_audit.py', replacement_sha256: createHash('sha256').update(replacement).digest('hex'), reason: 'Reviewed parser correction fixture' };
+      return { id: 'T2-MAGNUS-PARSER', module_id: 'magnus-seo', upstream_path: 'seo/scripts/aeo_audit.py', expected_base_sha256: original.original_sha256, replacement_path: 'patches/aeo_audit.py', replacement_sha256: createHash('sha256').update(replacement).digest('hex'), reason: 'Reviewed parser correction fixture' };
     }
   } finally { await rm(temp, { recursive: true, force: true }); }
 });

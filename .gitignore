@@ -9,3 +9,5 @@
 /dist/
 /.optbrew/
 /_백업_원본_*/
+__pycache__/
+*.pyc
