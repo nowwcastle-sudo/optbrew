@@ -1,0 +1,807 @@
+{
+  "schema_version": "1.0.0",
+  "run_context": {
+    "schema_version": "1.0.0",
+    "run_id": "synthetic-report",
+    "target": "example.com",
+    "environment": "local",
+    "goals": [
+      "SEO"
+    ],
+    "allowed_changes": [],
+    "scope": {},
+    "evaluation_version": "0.1.0",
+    "protocol_version": "0.1.0",
+    "data_sources": [],
+    "cost_decision": {},
+    "evidence_ref": "context.json",
+    "protocol": {
+      "page_types": [
+        {
+          "id": "primary",
+          "urls": [
+            {
+              "original": "https://example.com/",
+              "normalized": "https://example.com/"
+            },
+            {
+              "original": "https://example.com/about",
+              "normalized": "https://example.com/about"
+            }
+          ]
+        },
+        {
+          "id": "support",
+          "urls": [
+            {
+              "original": "https://example.com/help",
+              "normalized": "https://example.com/help"
+            }
+          ]
+        }
+      ],
+      "engines": [
+        "google"
+      ],
+      "locale": "ko-KR",
+      "region": "KR",
+      "browser": "Chrome",
+      "device": "mobile",
+      "surfaces": [],
+      "models": [],
+      "search_enabled": null,
+      "question_panel": [],
+      "families": [
+        {
+          "family_id": "fetch-response",
+          "applicable": true
+        },
+        {
+          "family_id": "search-crawl-policy",
+          "applicable": true
+        },
+        {
+          "family_id": "index-policy",
+          "applicable": true
+        },
+        {
+          "family_id": "render-content",
+          "applicable": false,
+          "applicability_decision": {
+            "condition": "not_render_dependent",
+            "reason": "Synthetic intake confirms this condition is absent",
+            "evidence_ref": "intake.json"
+          }
+        },
+        {
+          "family_id": "discovery",
+          "applicable": true
+        },
+        {
+          "family_id": "document-title",
+          "applicable": true
+        },
+        {
+          "family_id": "canonical-consistency",
+          "applicable": false,
+          "applicability_decision": {
+            "condition": "no_representative_url_policy",
+            "reason": "Synthetic intake confirms this condition is absent",
+            "evidence_ref": "intake.json"
+          }
+        },
+        {
+          "family_id": "internal-navigation",
+          "applicable": false,
+          "applicability_decision": {
+            "condition": "not_link_based",
+            "reason": "Synthetic intake confirms this condition is absent",
+            "evidence_ref": "intake.json"
+          }
+        },
+        {
+          "family_id": "structured-data-truth",
+          "applicable": false,
+          "applicability_decision": {
+            "condition": "markup_not_used_or_selected",
+            "reason": "Synthetic intake confirms this condition is absent",
+            "evidence_ref": "intake.json"
+          }
+        },
+        {
+          "family_id": "locale-links",
+          "applicable": false,
+          "applicability_decision": {
+            "condition": "single_locale",
+            "reason": "Synthetic intake confirms this condition is absent",
+            "evidence_ref": "intake.json"
+          }
+        },
+        {
+          "family_id": "naver-markup",
+          "applicable": false,
+          "applicability_decision": {
+            "condition": "naver_not_target",
+            "reason": "Synthetic intake confirms this condition is absent",
+            "evidence_ref": "intake.json"
+          }
+        },
+        {
+          "family_id": "lcp-field",
+          "applicable": true
+        },
+        {
+          "family_id": "inp-field",
+          "applicable": true
+        },
+        {
+          "family_id": "cls-field",
+          "applicable": true
+        },
+        {
+          "family_id": "question-coverage",
+          "applicable": false,
+          "applicability_decision": {
+            "condition": "no_fixed_questions",
+            "reason": "Synthetic intake confirms this condition is absent",
+            "evidence_ref": "intake.json"
+          }
+        },
+        {
+          "family_id": "claim-support",
+          "applicable": false,
+          "applicability_decision": {
+            "condition": "no_material_claims",
+            "reason": "Synthetic intake confirms this condition is absent",
+            "evidence_ref": "intake.json"
+          }
+        },
+        {
+          "family_id": "answer-clarity",
+          "applicable": false,
+          "applicability_decision": {
+            "condition": "no_matching_questions",
+            "reason": "Synthetic intake confirms this condition is absent",
+            "evidence_ref": "intake.json"
+          }
+        },
+        {
+          "family_id": "original-value",
+          "applicable": false,
+          "applicability_decision": {
+            "condition": "simple_contact_or_support",
+            "reason": "Synthetic intake confirms this condition is absent",
+            "evidence_ref": "intake.json"
+          }
+        },
+        {
+          "family_id": "entity-identity",
+          "applicable": false,
+          "applicability_decision": {
+            "condition": "no_identified_entity",
+            "reason": "Synthetic intake confirms this condition is absent",
+            "evidence_ref": "intake.json"
+          }
+        },
+        {
+          "family_id": "fact-consistency",
+          "applicable": false,
+          "applicability_decision": {
+            "condition": "no_evaluable_facts",
+            "reason": "Synthetic intake confirms this condition is absent",
+            "evidence_ref": "intake.json"
+          }
+        },
+        {
+          "family_id": "freshness-truth",
+          "applicable": false,
+          "applicability_decision": {
+            "condition": "no_date_or_currentness",
+            "reason": "Synthetic intake confirms this condition is absent",
+            "evidence_ref": "intake.json"
+          }
+        },
+        {
+          "family_id": "source-transparency",
+          "applicable": false,
+          "applicability_decision": {
+            "condition": "not_required_for_purpose",
+            "reason": "Synthetic intake confirms this condition is absent",
+            "evidence_ref": "intake.json"
+          }
+        }
+      ]
+    }
+  },
+  "baseline": {
+    "input": {
+      "schema_version": "1.0.0",
+      "run_context": {
+        "schema_version": "1.0.0",
+        "run_id": "synthetic-report",
+        "target": "example.com",
+        "environment": "local",
+        "goals": [
+          "SEO"
+        ],
+        "allowed_changes": [],
+        "scope": {},
+        "evaluation_version": "0.1.0",
+        "protocol_version": "0.1.0",
+        "data_sources": [],
+        "cost_decision": {},
+        "evidence_ref": "context.json",
+        "protocol": {
+          "page_types": [
+            {
+              "id": "primary",
+              "urls": [
+                {
+                  "original": "https://example.com/",
+                  "normalized": "https://example.com/"
+                },
+                {
+                  "original": "https://example.com/about",
+                  "normalized": "https://example.com/about"
+                }
+              ]
+            },
+            {
+              "id": "support",
+              "urls": [
+                {
+                  "original": "https://example.com/help",
+                  "normalized": "https://example.com/help"
+                }
+              ]
+            }
+          ],
+          "engines": [
+            "google"
+          ],
+          "locale": "ko-KR",
+          "region": "KR",
+          "browser": "Chrome",
+          "device": "mobile",
+          "surfaces": [],
+          "models": [],
+          "search_enabled": null,
+          "question_panel": [],
+          "families": [
+            {
+              "family_id": "fetch-response",
+              "applicable": true
+            },
+            {
+              "family_id": "search-crawl-policy",
+              "applicable": true
+            },
+            {
+              "family_id": "index-policy",
+              "applicable": true
+            },
+            {
+              "family_id": "render-content",
+              "applicable": false,
+              "applicability_decision": {
+                "condition": "not_render_dependent",
+                "reason": "Synthetic intake confirms this condition is absent",
+                "evidence_ref": "intake.json"
+              }
+            },
+            {
+              "family_id": "discovery",
+              "applicable": true
+            },
+            {
+              "family_id": "document-title",
+              "applicable": true
+            },
+            {
+              "family_id": "canonical-consistency",
+              "applicable": false,
+              "applicability_decision": {
+                "condition": "no_representative_url_policy",
+                "reason": "Synthetic intake confirms this condition is absent",
+                "evidence_ref": "intake.json"
+              }
+            },
+            {
+              "family_id": "internal-navigation",
+              "applicable": false,
+              "applicability_decision": {
+                "condition": "not_link_based",
+                "reason": "Synthetic intake confirms this condition is absent",
+                "evidence_ref": "intake.json"
+              }
+            },
+            {
+              "family_id": "structured-data-truth",
+              "applicable": false,
+              "applicability_decision": {
+                "condition": "markup_not_used_or_selected",
+                "reason": "Synthetic intake confirms this condition is absent",
+                "evidence_ref": "intake.json"
+              }
+            },
+            {
+              "family_id": "locale-links",
+              "applicable": false,
+              "applicability_decision": {
+                "condition": "single_locale",
+                "reason": "Synthetic intake confirms this condition is absent",
+                "evidence_ref": "intake.json"
+              }
+            },
+            {
+              "family_id": "naver-markup",
+              "applicable": false,
+              "applicability_decision": {
+                "condition": "naver_not_target",
+                "reason": "Synthetic intake confirms this condition is absent",
+                "evidence_ref": "intake.json"
+              }
+            },
+            {
+              "family_id": "lcp-field",
+              "applicable": true
+            },
+            {
+              "family_id": "inp-field",
+              "applicable": true
+            },
+            {
+              "family_id": "cls-field",
+              "applicable": true
+            },
+            {
+              "family_id": "question-coverage",
+              "applicable": false,
+              "applicability_decision": {
+                "condition": "no_fixed_questions",
+                "reason": "Synthetic intake confirms this condition is absent",
+                "evidence_ref": "intake.json"
+              }
+            },
+            {
+              "family_id": "claim-support",
+              "applicable": false,
+              "applicability_decision": {
+                "condition": "no_material_claims",
+                "reason": "Synthetic intake confirms this condition is absent",
+                "evidence_ref": "intake.json"
+              }
+            },
+            {
+              "family_id": "answer-clarity",
+              "applicable": false,
+              "applicability_decision": {
+                "condition": "no_matching_questions",
+                "reason": "Synthetic intake confirms this condition is absent",
+                "evidence_ref": "intake.json"
+              }
+            },
+            {
+              "family_id": "original-value",
+              "applicable": false,
+              "applicability_decision": {
+                "condition": "simple_contact_or_support",
+                "reason": "Synthetic intake confirms this condition is absent",
+                "evidence_ref": "intake.json"
+              }
+            },
+            {
+              "family_id": "entity-identity",
+              "applicable": false,
+              "applicability_decision": {
+                "condition": "no_identified_entity",
+                "reason": "Synthetic intake confirms this condition is absent",
+                "evidence_ref": "intake.json"
+              }
+            },
+            {
+              "family_id": "fact-consistency",
+              "applicable": false,
+              "applicability_decision": {
+                "condition": "no_evaluable_facts",
+                "reason": "Synthetic intake confirms this condition is absent",
+                "evidence_ref": "intake.json"
+              }
+            },
+            {
+              "family_id": "freshness-truth",
+              "applicable": false,
+              "applicability_decision": {
+                "condition": "no_date_or_currentness",
+                "reason": "Synthetic intake confirms this condition is absent",
+                "evidence_ref": "intake.json"
+              }
+            },
+            {
+              "family_id": "source-transparency",
+              "applicable": false,
+              "applicability_decision": {
+                "condition": "not_required_for_purpose",
+                "reason": "Synthetic intake confirms this condition is absent",
+                "evidence_ref": "intake.json"
+              }
+            }
+          ]
+        }
+      },
+      "observations": [
+        {
+          "schema_version": "1.0.0",
+          "observation_id": "fetch-pass",
+          "check_id": "fetch-response",
+          "family_id": "fetch-response",
+          "unit_key": "fetch-response|https://example.com/",
+          "state": "pass",
+          "q": 1,
+          "partial_basis": null,
+          "reason": "HTTP 200",
+          "evaluator_type": "code",
+          "source_ref": "synthetic",
+          "evidence_ref": "raw.html"
+        },
+        {
+          "schema_version": "1.0.0",
+          "observation_id": "noindex",
+          "check_id": "index-policy",
+          "family_id": "index-policy",
+          "unit_key": "index-policy|https://example.com/",
+          "state": "fail",
+          "q": 0,
+          "partial_basis": null,
+          "reason": "Unexpected | noindex <tag>\nfrom raw HTML",
+          "evaluator_type": "code",
+          "source_ref": "synthetic",
+          "evidence_ref": "raw.html"
+        }
+      ]
+    },
+    "scores": [
+      {
+        "schema_version": "1.0.0",
+        "evaluation_version": "0.1.0",
+        "profile": "SEO",
+        "A": 100,
+        "M": 5.769230769230769,
+        "N": 2.8846153846153846,
+        "score": 50,
+        "coverage": 5.8,
+        "missing_bounds": [
+          2.9,
+          97.1
+        ],
+        "band": "focus_improvement",
+        "readiness_status": "blocked",
+        "blockers": [
+          {
+            "family_id": "index-policy",
+            "unit_key": "index-policy|https://example.com/",
+            "reason": "Unexpected | noindex <tag>\nfrom raw HTML",
+            "evidence_ref": "raw.html"
+          }
+        ],
+        "unknown_core": [
+          {
+            "family_id": "fetch-response",
+            "unit_key": "fetch-response|https://example.com/about"
+          },
+          {
+            "family_id": "fetch-response",
+            "unit_key": "fetch-response|https://example.com/help"
+          },
+          {
+            "family_id": "search-crawl-policy",
+            "unit_key": "search-crawl-policy|google|https://example.com/"
+          },
+          {
+            "family_id": "search-crawl-policy",
+            "unit_key": "search-crawl-policy|google|https://example.com/about"
+          },
+          {
+            "family_id": "search-crawl-policy",
+            "unit_key": "search-crawl-policy|google|https://example.com/help"
+          },
+          {
+            "family_id": "index-policy",
+            "unit_key": "index-policy|https://example.com/about"
+          },
+          {
+            "family_id": "index-policy",
+            "unit_key": "index-policy|https://example.com/help"
+          }
+        ],
+        "source_ref": "optbrew:scoring:0.1.0"
+      },
+      {
+        "schema_version": "1.0.0",
+        "evaluation_version": "0.1.0",
+        "profile": "AEO",
+        "A": 100,
+        "M": 5,
+        "N": 2.5,
+        "score": 50,
+        "coverage": 5,
+        "missing_bounds": [
+          2.5,
+          97.5
+        ],
+        "band": "focus_improvement",
+        "readiness_status": "blocked",
+        "blockers": [
+          {
+            "family_id": "index-policy",
+            "unit_key": "index-policy|https://example.com/",
+            "reason": "Unexpected | noindex <tag>\nfrom raw HTML",
+            "evidence_ref": "raw.html"
+          }
+        ],
+        "unknown_core": [
+          {
+            "family_id": "fetch-response",
+            "unit_key": "fetch-response|https://example.com/about"
+          },
+          {
+            "family_id": "fetch-response",
+            "unit_key": "fetch-response|https://example.com/help"
+          },
+          {
+            "family_id": "search-crawl-policy",
+            "unit_key": "search-crawl-policy|google|https://example.com/"
+          },
+          {
+            "family_id": "search-crawl-policy",
+            "unit_key": "search-crawl-policy|google|https://example.com/about"
+          },
+          {
+            "family_id": "search-crawl-policy",
+            "unit_key": "search-crawl-policy|google|https://example.com/help"
+          },
+          {
+            "family_id": "index-policy",
+            "unit_key": "index-policy|https://example.com/about"
+          },
+          {
+            "family_id": "index-policy",
+            "unit_key": "index-policy|https://example.com/help"
+          }
+        ],
+        "source_ref": "optbrew:scoring:0.1.0"
+      },
+      {
+        "schema_version": "1.0.0",
+        "evaluation_version": "0.1.0",
+        "profile": "GEO",
+        "A": 100,
+        "M": 6.944444444444445,
+        "N": 3.4722222222222223,
+        "score": 50,
+        "coverage": 6.9,
+        "missing_bounds": [
+          3.5,
+          96.5
+        ],
+        "band": "focus_improvement",
+        "readiness_status": "blocked",
+        "blockers": [
+          {
+            "family_id": "index-policy",
+            "unit_key": "index-policy|https://example.com/",
+            "reason": "Unexpected | noindex <tag>\nfrom raw HTML",
+            "evidence_ref": "raw.html"
+          }
+        ],
+        "unknown_core": [
+          {
+            "family_id": "fetch-response",
+            "unit_key": "fetch-response|https://example.com/about"
+          },
+          {
+            "family_id": "fetch-response",
+            "unit_key": "fetch-response|https://example.com/help"
+          },
+          {
+            "family_id": "search-crawl-policy",
+            "unit_key": "search-crawl-policy|google|https://example.com/"
+          },
+          {
+            "family_id": "search-crawl-policy",
+            "unit_key": "search-crawl-policy|google|https://example.com/about"
+          },
+          {
+            "family_id": "search-crawl-policy",
+            "unit_key": "search-crawl-policy|google|https://example.com/help"
+          },
+          {
+            "family_id": "index-policy",
+            "unit_key": "index-policy|https://example.com/about"
+          },
+          {
+            "family_id": "index-policy",
+            "unit_key": "index-policy|https://example.com/help"
+          }
+        ],
+        "source_ref": "optbrew:scoring:0.1.0"
+      },
+      {
+        "schema_version": "1.0.0",
+        "evaluation_version": "0.1.0",
+        "profile": "LLMO",
+        "A": 100,
+        "M": 6.25,
+        "N": 3.125,
+        "score": 50,
+        "coverage": 6.3,
+        "missing_bounds": [
+          3.1,
+          96.9
+        ],
+        "band": "focus_improvement",
+        "readiness_status": "blocked",
+        "blockers": [
+          {
+            "family_id": "index-policy",
+            "unit_key": "index-policy|https://example.com/",
+            "reason": "Unexpected | noindex <tag>\nfrom raw HTML",
+            "evidence_ref": "raw.html"
+          }
+        ],
+        "unknown_core": [
+          {
+            "family_id": "fetch-response",
+            "unit_key": "fetch-response|https://example.com/about"
+          },
+          {
+            "family_id": "fetch-response",
+            "unit_key": "fetch-response|https://example.com/help"
+          },
+          {
+            "family_id": "search-crawl-policy",
+            "unit_key": "search-crawl-policy|google|https://example.com/"
+          },
+          {
+            "family_id": "search-crawl-policy",
+            "unit_key": "search-crawl-policy|google|https://example.com/about"
+          },
+          {
+            "family_id": "search-crawl-policy",
+            "unit_key": "search-crawl-policy|google|https://example.com/help"
+          },
+          {
+            "family_id": "index-policy",
+            "unit_key": "index-policy|https://example.com/about"
+          },
+          {
+            "family_id": "index-policy",
+            "unit_key": "index-policy|https://example.com/help"
+          }
+        ],
+        "source_ref": "optbrew:scoring:0.1.0"
+      }
+    ]
+  },
+  "after": null,
+  "comparison": {
+    "status": "no_after",
+    "score_deltas": [],
+    "reasons": [
+      "after_missing"
+    ]
+  },
+  "metrics": [],
+  "findings": [
+    {
+      "schema_version": "1.0.0",
+      "finding_id": "module:a",
+      "check_id": "index-policy",
+      "unit_key": "index-policy|https://example.com/",
+      "priority": "P0",
+      "blocker": true,
+      "message": "Unexpected | noindex <tag>\nfrom raw HTML",
+      "source_ref": "module:a",
+      "evidence_ref": "module-a.html",
+      "remediation_ids": [
+        "remove-unintended-noindex"
+      ],
+      "status": "confirmed"
+    },
+    {
+      "schema_version": "1.0.0",
+      "finding_id": "module:b",
+      "check_id": "index-policy",
+      "unit_key": "index-policy|https://example.com/",
+      "priority": "P0",
+      "blocker": true,
+      "message": "Unexpected | noindex <tag>\nfrom raw HTML",
+      "source_ref": "module:b",
+      "evidence_ref": "module-b.html",
+      "remediation_ids": [
+        "remove-unintended-noindex"
+      ],
+      "status": "confirmed"
+    }
+  ],
+  "changes": [],
+  "costs": {
+    "schema_version": "1.0.0",
+    "run_id": "synthetic-report",
+    "budgets": [],
+    "reservations": [],
+    "settlements": [],
+    "approval_ref": null,
+    "source_ref": "synthetic",
+    "evidence_ref": "cost-ledger.json"
+  },
+  "capabilities": {
+    "selected": [
+      {
+        "capability": "search",
+        "provider": "host",
+        "tool_ref": "synthetic",
+        "cost_enforcement": "host_policy"
+      }
+    ],
+    "missing": [
+      "provider_api"
+    ],
+    "limitations": [
+      "not_connected"
+    ]
+  },
+  "remaining": [
+    {
+      "problem": "No deployed change",
+      "reason": "remote_only",
+      "required_input_or_authority": "site owner edit",
+      "next_action": "Remove unintended noindex in template or response header",
+      "reobserve_when": "after owner deployment and raw response fetch"
+    }
+  ],
+  "evidence_root": ".",
+  "evidence_index": [
+    {
+      "ref": "context.json",
+      "sha256": "52f5b7132eb2c294f0c2bce35d105aeff38a60dd0ddc2065e878d3807e34e4e4",
+      "kind": "context",
+      "run_id": "synthetic-report"
+    },
+    {
+      "ref": "intake.json",
+      "sha256": "2e277515ae3b539f9e0753115fb1ea938057aa2b2639dd0eff0f8c03d070adba",
+      "kind": "intake",
+      "run_id": "synthetic-report"
+    },
+    {
+      "ref": "raw.html",
+      "sha256": "6c2913b454626eaad6dbc2ca38a81868709676e6b73b7e915b73616846f51b2e",
+      "kind": "raw_html",
+      "run_id": "synthetic-report",
+      "source_ref": "synthetic"
+    },
+    {
+      "ref": "module-a.html",
+      "sha256": "5cc8ed1c78f5d68abdaf08f3b42bb9abe82b745a4892f191b4c37fe07bfd759e",
+      "kind": "raw_html",
+      "run_id": "synthetic-report",
+      "source_ref": "module:a"
+    },
+    {
+      "ref": "module-b.html",
+      "sha256": "5cc8ed1c78f5d68abdaf08f3b42bb9abe82b745a4892f191b4c37fe07bfd759e",
+      "kind": "raw_html",
+      "run_id": "synthetic-report",
+      "source_ref": "module:b"
+    },
+    {
+      "ref": "cost-ledger.json",
+      "sha256": "eda77ea2cf29671f6cf447f10f12ab0f7df662c5fee83cf1c4d516d34a8188dc",
+      "kind": "raw_html",
+      "run_id": "synthetic-report"
+    }
+  ],
+  "source_ref": "synthetic",
+  "data_class": "synthetic"
+}
