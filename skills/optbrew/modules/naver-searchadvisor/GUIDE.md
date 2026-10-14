@@ -4,6 +4,10 @@ Adapted from the pinned upstream SKILL.md. Naver's 55 article bodies are exclude
 
 The upstream instructions to read local article bodies, search those bodies, or fetch them into this package do not apply to optbrew.
 
+## Optbrew audit input
+
+Run `node skills/optbrew/scripts/audit.mjs --context <run-context.json> --modules naver-searchadvisor --output-dir <run-dir>`. The optbrew collector checks the declared origin, path and resolved IP at each redirect. This module reads only collector-preserved HTML, response headers and any in-scope robots.txt artifact. Its original direct URL CLI is disabled. A Yeti User-Agent response, when supplied, is a bot-specific response observation; it does not prove that a Naver bot visited the site. Module warnings are evidence to review, not automatic optbrew score deductions.
+
 ## 라우팅 표 — 요청 → 읽을 문서
 
 | 사용자가 이런 걸 물으면 | 읽을 파일 (`official URLs in references/INDEX.md`) |

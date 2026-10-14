@@ -341,14 +341,15 @@
       "package_path": "skills/optbrew/modules/naver-searchadvisor/GUIDE.md",
       "original_git_blob_sha": "7536957694e77333f54d1870aff49d1fffd25621",
       "original_sha256": "baab29832210c4fe0a92dbb5ca2b9603931fd1ad167d8502a043e89030e21dc1",
-      "distributed_sha256": "962baa5b9dee48c301ef53d201268e21a210aefd8ca995e687b705d0fbf2c174",
+      "distributed_sha256": "d7cdc695bd18aeb19060acaaa5d7db70ca3ebef322664d360c5df2eff097c610",
       "transformations": [
         "SKILL.md to GUIDE.md; YAML frontmatter removed",
-        "Replaced offline copyrighted-guide workflow with official-index routing"
+        "Replaced offline copyrighted-guide workflow with official-index routing",
+        "reviewed distribution patch naver-bounded-guide"
       ],
-      "patch_id": null,
-      "patch_base_sha256": null,
-      "patch_reason": "Portable optbrew GUIDE and capability routing",
+      "patch_id": "naver-bounded-guide",
+      "patch_base_sha256": "962baa5b9dee48c301ef53d201268e21a210aefd8ca995e687b705d0fbf2c174",
+      "patch_reason": "Route Naver audit through bounded optbrew collector and clarify bot-response evidence",
       "excluded_files": [
         "references/guide/*.md: 55 Naver copyrighted article bodies outside MIT scope; official URLs retained in INDEX",
         "README.md: documents upstream offline corpus and is not a runtime guide",
@@ -390,14 +391,14 @@
       "package_path": "skills/optbrew/modules/naver-searchadvisor/scripts/audit.mjs",
       "original_git_blob_sha": "de8c4a3430633cb2445e339d7a943d944cbf45a9",
       "original_sha256": "3fd83141a00a9d45d4fbffa9d8ff515c7a49e7b1ea4637844e92375ea7797ff9",
-      "distributed_sha256": "18a2a2fe184f7e57a593a2cb56e5bf6c348e8e2ade3d0cf4c8158863843c2a3a",
+      "distributed_sha256": "b6993d8b5526c8f9ca62020a3c998de0e3b17141d7f22e8345e2cc9d44db7afd",
       "transformations": [
         "Audit output routes policy evidence to official URL index",
         "reviewed distribution patch naver-robots-rfc9309"
       ],
       "patch_id": "naver-robots-rfc9309",
       "patch_base_sha256": "b6d29d55e94b3e152f65c5590290dd2f0e8711466c00f93579bf545582db55d2",
-      "patch_reason": "Use pure RFC 9309 robots group and path verdict module; guard audit CLI on import",
+      "patch_reason": "Use pure RFC 9309 robots parser; disable direct remote fetch and inspect bounded collector evidence",
       "excluded_files": [
         "references/guide/*.md: 55 Naver copyrighted article bodies outside MIT scope; official URLs retained in INDEX",
         "README.md: documents upstream offline corpus and is not a runtime guide",
@@ -495,13 +496,14 @@
       "package_path": "skills/optbrew/modules/magnus-seo/GUIDE.md",
       "original_git_blob_sha": "dd9db8ef191b3c433750fd322e2edeb6336027d0",
       "original_sha256": "6abe5e0005c66e1fd98eee10fc84d75995ba5bcda8e64907d8376873ddffd149",
-      "distributed_sha256": "b04c8adc4554281f92a40529b22df4207996b0f4a29a62f051d749cab6636037",
+      "distributed_sha256": "881b30f5b9cd42922384b38dea89367119e88d07423cf19fa70fcae376e89c30",
       "transformations": [
-        "SKILL.md to GUIDE.md; YAML frontmatter removed"
+        "SKILL.md to GUIDE.md; YAML frontmatter removed",
+        "reviewed distribution patch magnus-bounded-guide"
       ],
-      "patch_id": null,
-      "patch_base_sha256": null,
-      "patch_reason": "Portable optbrew GUIDE and capability routing",
+      "patch_id": "magnus-bounded-guide",
+      "patch_base_sha256": "b04c8adc4554281f92a40529b22df4207996b0f4a29a62f051d749cab6636037",
+      "patch_reason": "Document offline Magnus HTML input and disabled direct URL fetch",
       "excluded_files": [
         "Unselected agent skills"
       ]
@@ -843,13 +845,13 @@
       "package_path": "skills/optbrew/modules/magnus-seo/scripts/aeo_audit.py",
       "original_git_blob_sha": "6334d79b6b9d304ab2f147e80f1bde0bc11d9fa7",
       "original_sha256": "b5e6320db5b176df13b16c7e256b27308be33ed349e4cad199f88a9ca6f395e8",
-      "distributed_sha256": "8b634e72210f366dca7ed19977eecf7912fd3f2a86943f77b09051989a50c43d",
+      "distributed_sha256": "7e556b725a523f33fcb3ebe6fafc42d0bbaf5267bfd3bb85d080762ed5e686f9",
       "transformations": [
         "reviewed distribution patch magnus-html-parser"
       ],
       "patch_id": "magnus-html-parser",
       "patch_base_sha256": "b5e6320db5b176df13b16c7e256b27308be33ed349e4cad199f88a9ca6f395e8",
-      "patch_reason": "Parse JSON-LD arrays and nested visible HTML without script or style leakage",
+      "patch_reason": "Parse JSON-LD arrays and nested visible HTML; require offline input for optbrew audit",
       "excluded_files": [
         "Unselected agent skills"
       ]

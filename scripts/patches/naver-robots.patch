@@ -33,19 +33,7 @@ const LEVEL_ORDER = { BLOCK: 0, INDEX: 1, SERP: 2, INFO: 3 };
 
 // ── 유틸 ─────────────────────────────────────────────────────────────────
 async function get(url, { ua = YETI_UA, method = 'GET', redirect = 'manual' } = {}) {
-  const ac = new AbortController();
-  const t = setTimeout(() => ac.abort(), TIMEOUT);
-  try {
-    const res = await fetch(url, {
-      method,
-      redirect,
-      signal: ac.signal,
-      headers: { 'User-Agent': ua, Accept: '*/*' },
-    });
-    return res;
-  } finally {
-    clearTimeout(t);
-  }
+  throw new Error('direct remote fetch disabled; use optbrew audit with a RunContext');
 }
 
 /** 리다이렉트 체인을 직접 따라가며 기록한다 (최대 10회). */
@@ -101,24 +89,7 @@ const metaBy = (metas, key, val) =>
  * Range를 무시하는 서버면 전체 응답을 그대로 쓴다.
  */
 async function fetchRange(url, first = 65536) {
-  const ac = new AbortController();
-  const t = setTimeout(() => ac.abort(), TIMEOUT);
-  try {
-    const res = await fetch(url, {
-      redirect: 'follow',
-      signal: ac.signal,
-      headers: { 'User-Agent': YETI_UA, Accept: 'image/*,*/*', Range: `bytes=0-${first - 1}` },
-    });
-    if (!res.ok) return { ok: false, status: res.status };
-    const buf = await res.arrayBuffer();
-    // 206이면 Content-Range의 전체 길이가 실제 파일 크기다.
-    const cr = res.headers.get('content-range');
-    const total = cr && /\/(\d+)\s*$/.exec(cr);
-    const bytes = total ? Number(total[1]) : buf.byteLength;
-    return { ok: true, status: res.status, buf, bytes };
-  } finally {
-    clearTimeout(t);
-  }
+  throw new Error('direct remote fetch disabled; use collected evidence');
 }
 
 // ── 이미지 크기 (og:image 검증용) ────────────────────────────────────────
@@ -630,6 +601,41 @@ function report(result) {
   return out.join('\n');
 }
 
+/** Optbrew path: inspect only responses already collected and preserved by the bounded collector. */
+export function auditCollected({ artifact, html, robotsArtifact = null }) {
+  const head = /<head[^>]*>([\s\S]*?)<\/head>/i.exec(html)?.[1] ?? html;
+  const title = textOf(head, 'title');
+  const metas = tags(head, 'meta');
+  const robotsMeta = metaBy(metas, 'name', 'robots').join(', ');
+  const jsonld = [...html.matchAll(/<script[^>]+application\/ld\+json[^>]*>([\s\S]*?)<\/script>/gi)];
+  let parsedRobots = null;
+  let yetiVerdict = null;
+  const findings = [];
+  if (robotsArtifact?.status === 200 && typeof robotsArtifact.body === 'string') {
+    parsedRobots = parseRobots(robotsArtifact.body);
+    const url = new URL(artifact.final_url);
+    yetiVerdict = robotsVerdict(parsedRobots, 'yeti', url.pathname + url.search);
+    if (!yetiVerdict.allowed) findings.push({ code: 'robots-disallow', message: `Yeti path blocked: ${url.pathname}${url.search}` });
+    const resources = [...tags(html, 'link').filter(x => /stylesheet/i.test(x.rel ?? '')).map(x => x.href),
+      ...tags(html, 'script').map(x => x.src), ...tags(html, 'img').map(x => x.src)].filter(Boolean);
+    for (const resource of resources) {
+      const target = new URL(resource, artifact.final_url);
+      if (target.origin !== url.origin) continue;
+      if (!robotsVerdict(parsedRobots, 'yeti', target.pathname + target.search).allowed)
+        findings.push({ code: 'resource-blocked', message: `Yeti resource blocked: ${target.pathname}${target.search}` });
+    }
+  }
+  return {
+    url: artifact.final_url, status: artifact.status, title,
+    x_robots_tag: artifact.headers['x-robots-tag'] ?? null, robots_meta: robotsMeta || null,
+    jsonld_blocks: jsonld.length, jsonld_parse_errors: jsonld.filter(([, body]) => { try { JSON.parse(body); return false; } catch { return true; } }).length,
+    robots: parsedRobots ? { yeti_allowed: yetiVerdict.allowed, reason: yetiVerdict.reason, sitemaps: parsedRobots.sitemaps } : null,
+    findings,
+    limitations: ['Yeti User-Agent supplied to this collector is not proof of a Naver bot visit.',
+      'Metadata observations do not prove indexing, ranking, or structured-data truth.'],
+  };
+}
+
 // ── 엔트리 ───────────────────────────────────────────────────────────────
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
 const args = process.argv.slice(2);
@@ -637,9 +643,12 @@ const target = args.find((a) => !a.startsWith('--'));
 const asJson = args.includes('--json');
 
 if (!target) {
-  console.error('사용법: node audit.mjs <url> [--json]');
+  console.error('사용법: node skills/optbrew/scripts/audit.mjs --context <run-context.json> --modules naver-searchadvisor --output-dir <run-dir>');
   process.exit(2);
 }
+
+console.error('직접 원격 감사가 비활성화되었습니다. optbrew audit의 scope context와 수집 증거를 사용하세요.');
+process.exit(2);
 
 try {
   const result = await audit(target.includes('://') ? target : `https://${target}`);

@@ -1,0 +1,118 @@
+#!/usr/bin/env node
+import { createHash } from 'node:crypto';
+import { spawn } from 'node:child_process';
+import { access, mkdir, readFile, writeFile } from 'node:fs/promises';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { validateEntity } from './core/contracts.mjs';
+import { collect } from './core/collector.mjs';
+import { auditCollected } from '../modules/naver-searchadvisor/scripts/audit.mjs';
+
+const magnusScript = fileURLToPath(new URL('../modules/magnus-seo/scripts/aeo_audit.py', import.meta.url));
+const supported = new Set(['naver-searchadvisor', 'magnus-seo']);
+
+async function magnus(artifact) {
+  return new Promise(resolve => {
+    const child = spawn(process.platform === 'win32' ? 'python' : 'python3', [magnusScript, '--stdin', '--source-url', artifact.final_url, '--json'],
+      { stdio: ['pipe', 'pipe', 'pipe'] });
+    const chunks = []; let bytes = 0;
+    child.stdout.on('data', chunk => { bytes += chunk.length; if (bytes > 5242880) child.kill(); else chunks.push(chunk); });
+    child.on('error', () => resolve({ status: 'unavailable', reason: 'python_unavailable' }));
+    child.on('close', code => {
+      if (code !== 0) return resolve({ status: 'unavailable', reason: 'python_audit_failed' });
+      try { resolve(JSON.parse(Buffer.concat(chunks).toString('utf8'))); }
+      catch { resolve({ status: 'unavailable', reason: 'python_output_invalid' }); }
+    });
+    child.stdin.on('error', () => {});
+    child.stdin.end(artifact.body);
+  });
+}
+
+function observation(artifact, family, state, reason, engine = null) {
+  const unit_key = `${family}|${engine ? `${engine}|` : ''}${artifact.normalized_url}`;
+  const value = { schema_version: '1.0.0', observation_id: createHash('sha256').update(unit_key).digest('hex'),
+    check_id: family, family_id: family, unit_key,
+    state, q: state === 'pass' ? 1 : state === 'fail' ? 0 : null, partial_basis: null, reason,
+    evaluator_type: 'code', source_ref: 'optbrew:collector', evidence_ref: artifact.evidence_ref };
+  return validateEntity('CheckObservation', value);
+}
+
+/** Persist collector bytes and offline module output in the same run evidence directory. */
+export async function runAudit({ context, modules, outputDir, transport, resolve }) {
+  validateEntity('RunContext', context);
+  if (!Array.isArray(modules) || modules.some(x => !supported.has(x)) || !outputDir) throw new Error('unsupported modules or output directory');
+  const evidenceDir = path.join(outputDir, 'evidence');
+  await mkdir(evidenceDir, { recursive: true });
+  try { await access(path.join(evidenceDir, 'collection.json')); throw new Error('run evidence index already exists'); }
+  catch (error) { if (error.code !== 'ENOENT') throw error; }
+  const collection = await collect(context, { transport, resolve });
+  const artifacts = [];
+  for (const artifact of collection.artifacts) {
+    const { body, ...saved } = artifact;
+    if (artifact.content_hash) {
+      const name = `${artifact.content_hash}.${artifact.capability === 'raw_html' ? 'html' : 'bin'}`;
+      const ref = path.join(evidenceDir, name);
+      try { await writeFile(ref, body, { flag: 'wx' }); }
+      catch (error) {
+        if (error.code !== 'EEXIST' || !Buffer.from(await readFile(ref)).equals(body)) throw error;
+      }
+      saved.raw_html_ref = artifact.capability === 'raw_html' ? ref : null;
+      saved.evidence_ref = ref;
+    } else saved.evidence_ref = path.join(evidenceDir, 'collection.json');
+    artifacts.push(saved);
+  }
+  const module_outputs = Object.fromEntries(modules.map(x => [x, []]));
+  const observations = [];
+  const planned = new Set(context.protocol.families.filter(x => x.applicable).map(x => x.family_id));
+  const selectedUrls = new Set(context.protocol.page_types.flatMap(type => type.urls.map(x => x.normalized)));
+  const publicUrls = new Set(context.protocol.page_types.flatMap(type => type.urls.filter(x => x.public_indexing !== false).map(x => x.normalized)));
+  for (const artifact of collection.artifacts) {
+    const saved = artifacts.find(x => x.normalized_url === artifact.normalized_url);
+    if (planned.has('fetch-response') && selectedUrls.has(artifact.normalized_url)) observations.push(observation(saved, 'fetch-response',
+      artifact.error || artifact.status < 200 || artifact.status >= 300 && artifact.status < 400 ? 'unknown' : artifact.status >= 400 ? 'fail' : 'pass',
+      artifact.error ? 'Request did not finish' : `HTTP ${artifact.status}`));
+    if (artifact.capability !== 'raw_html' || artifact.status !== 200) continue;
+    const html = artifact.body.toString('utf8');
+    if (modules.includes('naver-searchadvisor')) {
+      const robots = collection.artifacts.find(x => { try { const u = new URL(x.final_url); return u.origin === new URL(artifact.final_url).origin && u.pathname === '/robots.txt'; } catch { return false; } });
+      const output = auditCollected({ artifact, html, robotsArtifact: robots ? { ...robots, body: robots.body.toString('utf8') } : null });
+      module_outputs['naver-searchadvisor'].push(output);
+      if (planned.has('document-title') && selectedUrls.has(artifact.normalized_url) && !output.title)
+        observations.push(observation(saved, 'document-title', 'fail', 'Raw HTML has no title'));
+      if (planned.has('index-policy') && publicUrls.has(artifact.normalized_url) &&
+          /\b(?:noindex|none)\b/i.test(`${output.x_robots_tag ?? ''},${output.robots_meta ?? ''}`))
+        observations.push(observation(saved, 'index-policy', 'fail', 'Raw response explicitly blocks indexing'));
+      if (planned.has('search-crawl-policy') && publicUrls.has(artifact.normalized_url) &&
+          context.protocol.engines.includes('naver') && output.robots?.yeti_allowed === false)
+        observations.push(observation(saved, 'search-crawl-policy', 'fail', 'Collected robots.txt disallows Yeti path', 'naver'));
+    }
+    if (modules.includes('magnus-seo')) module_outputs['magnus-seo'].push(await magnus(artifact));
+  }
+  const result = { context_ref: context.evidence_ref, artifacts, observations, module_outputs,
+    evidence_ref: path.join(evidenceDir, 'evidence-index.json'), discovered_count: collection.discovered_count,
+    evaluated_count: collection.evaluated_count, skipped: collection.skipped, limit_reached: collection.limit_reached };
+  await writeFile(path.join(evidenceDir, 'collection.json'), `${JSON.stringify({ artifacts, discovered_count: collection.discovered_count,
+    evaluated_count: collection.evaluated_count, skipped: collection.skipped, limit_reached: collection.limit_reached }, null, 2)}\n`, { flag: 'wx' });
+  await writeFile(path.join(evidenceDir, 'modules.json'), `${JSON.stringify(module_outputs, null, 2)}\n`, { flag: 'wx' });
+  await writeFile(path.join(evidenceDir, 'observations.json'), `${JSON.stringify(observations, null, 2)}\n`, { flag: 'wx' });
+  await writeFile(result.evidence_ref, `${JSON.stringify({ run_id: context.run_id, context_ref: context.evidence_ref,
+    collection_ref: path.join(evidenceDir, 'collection.json'), module_output_ref: path.join(evidenceDir, 'modules.json'),
+    observations_ref: path.join(evidenceDir, 'observations.json'),
+    raw: artifacts.map(x => ({ normalized_url: x.normalized_url, evidence_ref: x.evidence_ref, content_hash: x.content_hash })) }, null, 2)}\n`, { flag: 'wx' });
+  return result;
+}
+
+if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+  try {
+    const args = process.argv.slice(2);
+    const option = name => { const i = args.indexOf(name); return i < 0 ? null : args[i + 1]; };
+    const contextPath = option('--context');
+    const moduleText = option('--modules');
+    const outputDir = option('--output-dir');
+    if (!contextPath || !moduleText || !outputDir || args.length !== 6) throw new Error('usage: node skills/optbrew/scripts/audit.mjs --context <run-context.json> --modules naver-searchadvisor,magnus-seo --output-dir <run-dir>');
+    const context = JSON.parse(await readFile(contextPath, 'utf8'));
+    const result = await runAudit({ context, modules: moduleText.split(','), outputDir });
+    process.stdout.write(`${JSON.stringify({ evidence_ref: result.evidence_ref, evaluated_count: result.evaluated_count,
+      observations: result.observations.length })}\n`);
+  } catch (error) { process.stderr.write(`audit failed: ${error.message}\n`); process.exitCode = 2; }
+}

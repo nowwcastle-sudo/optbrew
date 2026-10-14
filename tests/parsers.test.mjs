@@ -4,6 +4,7 @@ import { readFile } from 'node:fs/promises';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { parseRobots, robotsVerdict } from '../skills/optbrew/modules/naver-searchadvisor/scripts/robots.mjs';
+import { auditCollected } from '../skills/optbrew/modules/naver-searchadvisor/scripts/audit.mjs';
 
 const fixture = fileURLToPath(new URL('./fixtures/parsers/robots.txt', import.meta.url));
 
@@ -52,20 +53,17 @@ test('empty Disallow ends a group before the next User-agent', () => {
 });
 
 test('audit checks path and query for page and resource robots rules', () => {
-  const auditPath = fileURLToPath(new URL('../skills/optbrew/modules/naver-searchadvisor/scripts/audit.mjs', import.meta.url));
-  const source = `
-    globalThis.fetch = async url => {
-      const path = new URL(url).pathname;
-      if (path === '/robots.txt') return new Response('User-agent: Yeti\\nDisallow: /item?preview=1\\nDisallow: /asset.css?preview=1\\n', { headers: { 'content-type': 'text/plain' } });
-      if (path === '/item') return new Response('<html><head><title>Article</title><link rel="stylesheet" href="/asset.css?preview=1"></head><body><h1>Article</h1></body></html>', { headers: { 'content-type': 'text/html' } });
-      return new Response('', { status: 404 });
-    };
-    process.argv = [process.execPath, ${JSON.stringify(auditPath)}, 'https://example.com/item?preview=1', '--json'];
-    await import(${JSON.stringify(new URL('../skills/optbrew/modules/naver-searchadvisor/scripts/audit.mjs', import.meta.url).href)});
-  `;
-  const run = spawnSync(process.execPath, ['--input-type=module', '-e', source], { encoding: 'utf8', timeout: 5000 });
-  assert.equal(run.status, 1, run.stderr);
-  const result = JSON.parse(run.stdout);
+  const html = '<html><head><title>Article</title><link rel="stylesheet" href="/asset.css?preview=1"></head><body><h1>Article</h1></body></html>';
+  const result = auditCollected({ artifact: { final_url: 'https://example.com/item?preview=1', status: 200, headers: {} }, html,
+    robotsArtifact: { status: 200, body: 'User-agent: Yeti\nDisallow: /item?preview=1\nDisallow: /asset.css?preview=1\n' } });
   assert.ok(result.findings.some(finding => finding.code === 'robots-disallow' && finding.message.includes('/item?preview=1')));
   assert.ok(result.findings.some(finding => finding.code === 'resource-blocked' && finding.message.includes('/asset.css?preview=1')));
+});
+
+test('direct Naver URL CLI refuses before any request without a scope context', () => {
+  const auditPath = fileURLToPath(new URL('../skills/optbrew/modules/naver-searchadvisor/scripts/audit.mjs', import.meta.url));
+  const source = `globalThis.fetch = async () => { throw new Error('UNSAFE_REQUEST'); }; process.argv = [process.execPath, ${JSON.stringify(auditPath)}, 'https://example.com/']; await import(${JSON.stringify(new URL('../skills/optbrew/modules/naver-searchadvisor/scripts/audit.mjs', import.meta.url).href)});`;
+  const run = spawnSync(process.execPath, ['--input-type=module', '-e', source], { encoding: 'utf8', timeout: 5000 });
+  assert.equal(run.status, 2);
+  assert.doesNotMatch(run.stderr, /UNSAFE_REQUEST/);
 });

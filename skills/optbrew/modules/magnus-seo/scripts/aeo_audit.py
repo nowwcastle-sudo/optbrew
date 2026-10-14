@@ -8,7 +8,6 @@ import re
 import sys
 from html.parser import HTMLParser
 from pathlib import Path
-from urllib.request import Request, urlopen
 from urllib.parse import urljoin
 
 
@@ -82,9 +81,7 @@ class PageParser(HTMLParser):
 
 def load(source: str) -> tuple[str, str]:
     if source.startswith(("http://", "https://")):
-        req = Request(source, headers={"User-Agent": "aeo-audit/1.0 (read-only)"})
-        with urlopen(req, timeout=20) as response:
-            return response.read().decode(response.headers.get_content_charset() or "utf-8", "replace"), response.geturl()
+        raise ValueError("direct remote URL disabled; use optbrew audit with a scope context")
     return Path(source).read_text(encoding="utf-8"), Path(source).resolve().as_uri()
 
 
@@ -136,11 +133,21 @@ def audit_html(html: str, source: str, final_url: str | None = None) -> dict:
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__)
-    ap.add_argument("source", help="local HTML file or HTTP(S) URL")
+    ap.add_argument("source", nargs="?", help="local HTML file")
+    ap.add_argument("--stdin", action="store_true", help="read collector-preserved HTML from stdin")
+    ap.add_argument("--source-url", help="source URL for --stdin evidence")
     ap.add_argument("--json", action="store_true", dest="as_json", help="emit JSON (default)")
     args = ap.parse_args()
     try:
-        print(json.dumps(audit(args.source), indent=2, sort_keys=True))
+        if args.stdin:
+            if not args.source_url or args.source:
+                raise ValueError("--stdin requires --source-url and no positional source")
+            result = audit_html(sys.stdin.read(), args.source_url, args.source_url)
+        elif args.source:
+            result = audit(args.source)
+        else:
+            raise ValueError("local source or --stdin required")
+        print(json.dumps(result, indent=2, sort_keys=True))
     except (OSError, ValueError, TimeoutError) as exc:
         print(f"aeo-audit: {exc}", file=sys.stderr)
         return 2

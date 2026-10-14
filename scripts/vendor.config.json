@@ -7,8 +7,8 @@
       "upstream_path": "scripts/audit.mjs",
       "expected_base_sha256": "b6d29d55e94b3e152f65c5590290dd2f0e8711466c00f93579bf545582db55d2",
       "replacement_path": "patches/naver-robots.patch",
-      "replacement_sha256": "18a2a2fe184f7e57a593a2cb56e5bf6c348e8e2ade3d0cf4c8158863843c2a3a",
-      "reason": "Use pure RFC 9309 robots group and path verdict module; guard audit CLI on import"
+      "replacement_sha256": "b6993d8b5526c8f9ca62020a3c998de0e3b17141d7f22e8345e2cc9d44db7afd",
+      "reason": "Use pure RFC 9309 robots parser; disable direct remote fetch and inspect bounded collector evidence"
     },
     {
       "id": "magnus-html-parser",
@@ -16,8 +16,26 @@
       "upstream_path": "seo/scripts/aeo_audit.py",
       "expected_base_sha256": "b5e6320db5b176df13b16c7e256b27308be33ed349e4cad199f88a9ca6f395e8",
       "replacement_path": "patches/magnus-html.patch",
-      "replacement_sha256": "8b634e72210f366dca7ed19977eecf7912fd3f2a86943f77b09051989a50c43d",
-      "reason": "Parse JSON-LD arrays and nested visible HTML without script or style leakage"
+      "replacement_sha256": "7e556b725a523f33fcb3ebe6fafc42d0bbaf5267bfd3bb85d080762ed5e686f9",
+      "reason": "Parse JSON-LD arrays and nested visible HTML; require offline input for optbrew audit"
+    },
+    {
+      "id": "naver-bounded-guide",
+      "module_id": "naver-searchadvisor",
+      "upstream_path": "SKILL.md",
+      "expected_base_sha256": "962baa5b9dee48c301ef53d201268e21a210aefd8ca995e687b705d0fbf2c174",
+      "replacement_path": "patches/naver-guide.patch",
+      "replacement_sha256": "d7cdc695bd18aeb19060acaaa5d7db70ca3ebef322664d360c5df2eff097c610",
+      "reason": "Route Naver audit through bounded optbrew collector and clarify bot-response evidence"
+    },
+    {
+      "id": "magnus-bounded-guide",
+      "module_id": "magnus-seo",
+      "upstream_path": "seo/SKILL.md",
+      "expected_base_sha256": "b04c8adc4554281f92a40529b22df4207996b0f4a29a62f051d749cab6636037",
+      "replacement_path": "patches/magnus-guide.patch",
+      "replacement_sha256": "881b30f5b9cd42922384b38dea89367119e88d07423cf19fa70fcae376e89c30",
+      "reason": "Document offline Magnus HTML input and disabled direct URL fetch"
     }
   ],
   "first_party_files": [
