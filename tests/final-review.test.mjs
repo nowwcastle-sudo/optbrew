@@ -177,17 +177,16 @@ test('I9: missing title is a confirmed failure and a present title stays unknown
   assert.throws(() => buildReport(titled.packet), /title\/index verdict differs from raw response and headers/);
 });
 
-test('I6: a redirect cut by the request budget stays a reportable unknown with separate counts', async t => {
+test('I6 (round 5): a redirect that has started finishes after the request budget, with separate counts', async t => {
   const before = site.requests.length;
   const limited = await run(t, ['/redirect'], { maxUrls: 1 });
-  assert.equal(site.requests.length - before, 1, 'one actual HTTP request for max_urls 1');
+  assert.equal(site.requests.length - before, 2, 'the fetch starts within the budget and its redirect finishes');
   assert.equal(limited.audit.evaluated_count, 1);
   assert.equal(limited.audit.discovered_count, 1);
-  assert.equal(limited.audit.request_count, 1);
-  assert.equal(limited.audit.limit_reached, true);
-  assert.equal(limited.audit.artifacts[0].error, 'request_limit');
-  assert.equal(limited.audit.artifacts[0].final_url, null);
-  assert.equal(stateOf(limited, 'fetch-response', '/redirect'), 'unknown');
-  assert.equal(JSON.parse(await readFile(limited.evidence('collection.json'), 'utf8')).request_count, 1);
+  assert.equal(limited.audit.request_count, 2);
+  assert.equal(limited.audit.limit_reached, false);
+  assert.equal(limited.audit.artifacts[0].error ?? null, null);
+  assert.equal(limited.audit.artifacts[0].redirect_chain.length, 1);
+  assert.equal(JSON.parse(await readFile(limited.evidence('collection.json'), 'utf8')).request_count, 2);
   assert.doesNotThrow(() => buildReport(limited.packet));
 });
