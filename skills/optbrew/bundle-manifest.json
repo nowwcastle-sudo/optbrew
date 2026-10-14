@@ -64,7 +64,7 @@
     },
     {
       "path": "SKILL.md",
-      "sha256": "3b6122d18d6a4f9e6549109c91de41e29aa518972dc44b66c842380d74c6d534"
+      "sha256": "718631de9fa30c21eff178093311490ac9b396a3828f3ecfee10672b91ca2e52"
     },
     {
       "path": "THIRD_PARTY_NOTICES.md",
@@ -592,7 +592,7 @@
     },
     {
       "path": "scripts/audit.mjs",
-      "sha256": "ad89d820460f5804ddcc181b7e62360c9a8387d880a553c1b784bcc2633fa3d8"
+      "sha256": "9fb107cd227461d8cf0eb1a7e02fe7704539df0d428ec7a6aa03009c015d911b"
     },
     {
       "path": "scripts/cli.mjs",
@@ -612,7 +612,7 @@
     },
     {
       "path": "scripts/core/collector.mjs",
-      "sha256": "8a46d2dd77fb1b7a464c1e4a53957f5a7aae4ae8decba43de7c7e4fcc5925120"
+      "sha256": "e732b684b31067a5996f2769883e0f9ef588af9d1eafd07fac3968cf1dcd0ee8"
     },
     {
       "path": "scripts/core/compare.mjs",
@@ -659,5 +659,5 @@
       "sha256": "e9041a0ff06c5395027c25646cf210958e38e969d34b329d7b165a865e77e313"
     }
   ],
-  "bundle_hash": "bc16dfa6048e13acf9e2528cfcc5199192c360ece703ead45f3b6bfbbe6dcaf2"
+  "bundle_hash": "b6d9469d3240cce74903122d36884cbc88e050c22d54ea9c9e147c84b028bc28"
 }

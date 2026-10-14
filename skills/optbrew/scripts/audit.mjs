@@ -99,9 +99,9 @@ export async function runAudit({ context, modules, outputDir, transport, resolve
   }
   const result = { context_ref: context.evidence_ref, artifacts, observations, module_outputs,
     evidence_ref: path.join(evidenceDir, 'evidence-index.json'), discovered_count: collection.discovered_count,
-    evaluated_count: collection.evaluated_count, skipped: collection.skipped, limit_reached: collection.limit_reached };
+    evaluated_count: collection.evaluated_count, request_count: collection.request_count, skipped: collection.skipped, limit_reached: collection.limit_reached };
   await writeFile(path.join(evidenceDir, 'collection.json'), `${JSON.stringify({ artifacts, discovered_count: collection.discovered_count,
-    evaluated_count: collection.evaluated_count, skipped: collection.skipped, limit_reached: collection.limit_reached }, null, 2)}\n`, { flag: 'wx' });
+    evaluated_count: collection.evaluated_count, request_count: collection.request_count, skipped: collection.skipped, limit_reached: collection.limit_reached }, null, 2)}\n`, { flag: 'wx' });
   await writeFile(path.join(evidenceDir, 'modules.json'), `${JSON.stringify(module_outputs, null, 2)}\n`, { flag: 'wx' });
   await writeFile(path.join(evidenceDir, 'observations.json'), `${JSON.stringify(observations, null, 2)}\n`, { flag: 'wx' });
   await writeFile(result.evidence_ref, `${JSON.stringify({ run_id: context.run_id, context_ref: context.evidence_ref,
@@ -121,7 +121,7 @@ if (process.argv[1] && realpathSync(path.resolve(process.argv[1])) === realpathS
     if (!contextPath || !moduleText || !outputDir || args.length !== 6) throw new Error('usage: node skills/optbrew/scripts/audit.mjs --context <run-context.json> --modules naver-searchadvisor,magnus-seo --output-dir <run-dir>');
     const context = JSON.parse(await readFile(contextPath, 'utf8'));
     const result = await runAudit({ context, modules: moduleText.split(','), outputDir });
-    process.stdout.write(`${JSON.stringify({ evidence_ref: result.evidence_ref, evaluated_count: result.evaluated_count,
+    process.stdout.write(`${JSON.stringify({ evidence_ref: result.evidence_ref, evaluated_count: result.evaluated_count, request_count: result.request_count,
       observations: result.observations.length })}\n`);
   } catch (error) { process.stderr.write(`audit failed: ${error.message}\n`); process.exitCode = 2; }
 }

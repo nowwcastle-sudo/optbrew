@@ -70,7 +70,7 @@ async function addressesFor(url, resolve) {
 }
 
 /** Fetch one URL with fresh DNS validation at every redirect and a pinned connection. */
-export async function fetchScoped(input, { context, transport = nodeTransport, resolve = host => lookup(host, { all: true, verbatim: true }), timeoutMs = 20000, maxBytes = 5242880, maxRedirects = 10, headers = {}, allowedAuxiliary = null }) {
+export async function fetchScoped(input, { context, transport = nodeTransport, resolve = host => lookup(host, { all: true, verbatim: true }), timeoutMs = 20000, maxBytes = 5242880, maxRedirects = 10, headers = {}, allowedAuxiliary = null, reserveRequest = null }) {
   if (![timeoutMs, maxBytes, maxRedirects].every(Number.isInteger) || timeoutMs < 1 || timeoutMs > 20000 || maxBytes < 1 || maxBytes > 5242880 || maxRedirects < 0 || maxRedirects > 10)
     throw new Error('fetch limits exceed context ceiling');
   let url = assertUrlInScope(input, context.scope);
@@ -91,6 +91,13 @@ export async function fetchScoped(input, { context, transport = nodeTransport, r
       // Pick only a vetted address. The transport must use this address, not resolve again.
       const remainingMs = Math.ceil(deadline - performance.now());
       if (remainingMs <= 0 || controller.signal.aborted) throw new Error('request timeout');
+      // Reserve the shared budget immediately before the real request; redirect hops are requests too.
+      if (reserveRequest && !reserveRequest()) {
+        const error = new Error('request budget exhausted');
+        error.code = 'request_limit';
+        error.redirect_chain = redirect_chain;
+        throw error;
+      }
       const response = await withinDeadline(transport({ url, address: addresses[0], timeoutMs: remainingMs, maxBytes, headers, signal: controller.signal }));
       if (!Number.isInteger(response?.status) || response.status < 100 || response.status > 599) throw new Error('invalid transport status');
       const body = text(response.body);
@@ -171,26 +178,34 @@ export async function collect(context, { transport, resolve } = {}) {
       throw new Error('auxiliary resource URL mismatch');
     enqueue(normalized, 0, true);
   }
-  const artifacts = []; let cursor = 0; let scheduled = 0;
+  const artifacts = []; let cursor = 0; let requestCount = 0; let evaluated = 0;
   async function worker() {
     while (cursor < queue.length) {
       const item = queue[cursor++];
-      if (scheduled >= limit) { skipped.push({ url: item.url, reason: 'url_limit' }); continue; }
-      scheduled++;
+      if (requestCount >= limit) { skipped.push({ url: item.url, reason: 'url_limit' }); continue; }
+      let used = 0;
+      const reserveRequest = () => {
+        if (requestCount >= limit) return false;
+        requestCount++; used++;
+        return true;
+      };
       let artifact;
-      try { artifact = await fetchScoped(item.url, { context, transport, resolve, allowedAuxiliary: allowedDocuments }); }
+      try { artifact = await fetchScoped(item.url, { context, transport, resolve, allowedAuxiliary: allowedDocuments, reserveRequest }); }
       catch (error) {
-        const reason = ['scope_rejected', 'redirect_outside_scope', 'auxiliary_undeclared'].includes(error.code) ? error.code : 'fetch_failed';
+        const reason = ['scope_rejected', 'redirect_outside_scope', 'auxiliary_undeclared', 'request_limit'].includes(error.code) ? error.code : 'fetch_failed';
+        if (reason === 'request_limit' && !used) { skipped.push({ url: item.url, reason: 'url_limit' }); continue; }
         if (reason !== 'fetch_failed') skipped.push({ url: item.url, reason });
         artifact = { requested_url: item.url, normalized_url: item.url, final_url: null, status: null,
           headers: {}, redirect_chain: error.redirect_chain ?? [], raw_html_ref: null, content_hash: null, capability: 'none',
           source_ref: 'optbrew:collector', evidence_ref: null, error: reason, body: Buffer.alloc(0) };
       }
+      if (used) evaluated++;
       artifacts.push(artifact);
       if (!item.auxiliaryResource && artifact.status === 200 && artifact.capability === 'raw_html')
         for (const next of links(artifact.body.toString('utf8'), artifact.final_url)) enqueue(next, item.depth + 1);
     }
   }
   await Promise.all(Array.from({ length: concurrency }, () => worker()));
-  return { artifacts, discovered_count: seen.size, evaluated_count: scheduled, skipped, limit_reached: skipped.some(x => x.reason === 'url_limit') };
+  return { artifacts, discovered_count: seen.size, evaluated_count: evaluated, request_count: requestCount, skipped,
+    limit_reached: skipped.some(x => x.reason === 'url_limit' || x.reason === 'request_limit') };
 }

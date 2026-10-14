@@ -276,3 +276,45 @@ test('TLS transport preserves hostname verification and pins the vetted IP in bo
     assert.equal(checked, true);
   } finally { https.request = original; }
 });
+
+test('final review I6: redirect hops draw from the shared request budget and keep the URL as a limit unknown', async () => {
+  const redirecting = { page: 'https://example.test/owned/redirect', final: 'https://example.test/owned/final' };
+  const requested = [];
+  const transport = async ({ url }) => {
+    requested.push(url.href);
+    return url.href.endsWith('/redirect') || /\/owned\/r\d+$/.test(url.pathname) ?
+      response('', 302, { location: `${url.pathname}-final` }) : response('<title>done</title>');
+  };
+  const one = await collect(context([redirecting.page], { max_urls: 1 }), { resolve, transport });
+  assert.equal(requested.length, 1, `actual requests: ${requested.join(', ')}`);
+  assert.equal(one.request_count, 1);
+  assert.equal(one.evaluated_count, 1);
+  assert.equal(one.discovered_count, 1);
+  assert.equal(one.limit_reached, true);
+  assert.equal(one.artifacts.length, 1);
+  assert.equal(one.artifacts[0].status, null);
+  assert.equal(one.artifacts[0].error, 'request_limit');
+  assert.equal(one.artifacts[0].redirect_chain.length, 1);
+  assert.ok(one.skipped.some(x => x.url === redirecting.page && x.reason === 'request_limit'));
+
+  requested.length = 0;
+  const urls = Array.from({ length: 30 }, (_, n) => `https://example.test/owned/r${n}`);
+  const many = await collect(context(urls, { max_urls: 50 }), { resolve, transport });
+  assert.equal(requested.length, 50, 'redirect hops count against the fifty-request ceiling');
+  assert.equal(many.request_count, 50);
+  assert.equal(many.discovered_count, 30);
+  const cut = many.artifacts.filter(x => x.error === 'request_limit');
+  const complete = many.artifacts.filter(x => x.status === 200);
+  assert.equal(complete.length * 2 + cut.length, 50, 'every actual request belongs to one evaluated URL');
+  assert.ok(cut.length <= 2);
+  assert.equal(many.artifacts.length, many.evaluated_count);
+  assert.equal(many.evaluated_count + many.skipped.filter(x => x.reason === 'url_limit').length, 30);
+  assert.equal(many.skipped.filter(x => x.reason === 'request_limit').length, cut.length);
+  assert.equal(many.limit_reached, true);
+
+  requested.length = 0;
+  const roomy = await collect(context(urls.slice(0, 5), { max_urls: 50 }), { resolve, transport });
+  assert.equal(roomy.request_count, 10);
+  assert.equal(roomy.evaluated_count, 5);
+  assert.equal(roomy.limit_reached, false);
+});
