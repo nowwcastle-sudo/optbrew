@@ -2,6 +2,7 @@ import { readFileSync, writeFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { score } from '../../../skills/optbrew/scripts/core/score.mjs';
 import { compare } from '../../../skills/optbrew/scripts/core/compare.mjs';
+import { freezeProtocol } from '../../../skills/optbrew/scripts/core/protocol.mjs';
 
 const input = JSON.parse(readFileSync(new URL('../scoring/before.json', import.meta.url)));
 input.run_context.run_id = 'synthetic-report';
@@ -19,7 +20,10 @@ const finding = (id, ref) => ({ schema_version: '1.0.0', finding_id: id, check_i
   remediation_ids: ['remove-unintended-noindex'], status: 'confirmed' });
 const files = {
   'context.json': `${JSON.stringify(input.run_context, null, 2)}\n`,
-  'intake.json': '{"run_id":"synthetic-report","description":"Synthetic family applicability fixture; no real site assessment"}\n',
+  'intake.json': `${JSON.stringify({ run_id: 'synthetic-report', target: input.run_context.target,
+    protocol_hash: freezeProtocol(input.run_context).protocol_hash, approved_by: 'synthetic-fixture',
+    decisions: input.run_context.protocol.families.filter(x => x.applicability_decision).map(x => ({ scope: 'family',
+      family_id: x.family_id, condition: x.applicability_decision.condition, reason: x.applicability_decision.reason })) }, null, 2)}\n`,
   'raw.html': '<!doctype html><html><head><meta name="robots" content="noindex"><title>Example</title></head><body>Synthetic</body></html>\n',
   'module-a.html': '<!doctype html><html><head><meta name="robots" content="noindex"></head></html>\n',
   'module-b.html': '<!doctype html><html><head><meta name="robots" content="noindex"></head></html>\n',

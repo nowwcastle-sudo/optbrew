@@ -6,7 +6,9 @@ function ratio(id, numerator, denominator, definition, panel, selection, evaluab
     value_state: measured ? 'measured' : 'unknown', value: measured ? numerator / denominator : null,
     numerator: measured ? numerator : null, denominator: measured ? denominator : null,
     definition, filters: { engine: panel.engine, surface: panel.surface, model: panel.model,
-      search_enabled: panel.search_enabled, locale: panel.locale, region: panel.region },
+      search_enabled: panel.search_enabled, locale: panel.locale, region: panel.region,
+      ...(panel.collected_at ? { collected_at: panel.collected_at } : {}),
+      ...(panel.last_complete_date ? { last_complete_date: panel.last_complete_date } : {}) },
     window: panel.window, panel_hash: panel.panel_hash, provider_definition: 'optbrew fixed AI response panel v0.1.0',
     sample_selection: selection, source_ref: panel.source_ref, evidence_ref: panel.evidence_ref };
   return validateEntity('MetricObservation', observation);

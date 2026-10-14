@@ -100,5 +100,9 @@ export function freezeProtocol(context) {
     url.indexing_decision = { condition: url.indexing_decision.condition };
   for (const family of hashInput.families) if (family.applicability_decision)
     family.applicability_decision = { condition: family.applicability_decision.condition };
+  if (hashInput.target_identity) {
+    for (const mapping of hashInput.target_identity.native_properties ?? []) delete mapping.evidence_ref;
+    if (hashInput.target_identity.panel) delete hashInput.target_identity.panel.evidence_ref;
+  }
   return { protocol, protocol_hash: createHash('sha256').update(JSON.stringify(stable(hashInput))).digest('hex') };
 }

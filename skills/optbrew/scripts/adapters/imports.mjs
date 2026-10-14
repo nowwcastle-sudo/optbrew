@@ -34,6 +34,7 @@ export function normalizeImport(provider, rows, metadata) {
     throw new ContractError('invalid window or sample selection');
   if (!Number.isFinite(Date.parse(metadata.collected_at)) || !/[zZ]|[+-]\d\d:\d\d$/.test(metadata.collected_at))
     throw new ContractError('collected_at requires timezone');
+  if (metadata.last_complete_date !== undefined) dateValue(metadata.last_complete_date);
   return rows.map(row => {
     if (!row || typeof row.metric_id !== 'string' || !row.metric_id ||
         typeof (row.provider_definition ?? metadata.provider_definition) !== 'string' ||
@@ -67,6 +68,7 @@ export function normalizeImport(provider, rows, metadata) {
         hostname: dimension('hostname'), search_type: dimension('search_type'),
         device: dimension('device'), country: dimension('country'),
         aggregation: dimension('aggregation'), collected_at: metadata.collected_at,
+        ...(metadata.last_complete_date ? { last_complete_date: metadata.last_complete_date } : {}),
         path: dimension('path'), query: dimension('query'), export_scope },
       window: { ...window }, panel_hash: null,
       provider_definition: row.provider_definition ?? metadata.provider_definition,

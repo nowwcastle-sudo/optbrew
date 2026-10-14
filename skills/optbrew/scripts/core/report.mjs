@@ -12,24 +12,39 @@ import { mergeFindings, selectRemediations } from './findings.mjs';
 
 const catalog = JSON.parse(readFileSync(new URL('../../references/remediations.json', import.meta.url))).items;
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+const named = value => typeof value === 'string' && value.trim().length > 0;
 const sensitive = /(?:sk-ant-api03-[A-Za-z0-9_-]{32,}|sk-proj-[A-Za-z0-9_-]{32,}|ghp_[A-Za-z0-9]{36,}|AKIA[A-Z0-9]{16}|\b\d{6}-[1-8]\d{6}\b)/;
 const html = value => String(value ?? 'unknown').replace(/\\/g, '\\\\').replace(/&/g, '&amp;').replace(/</g, '&lt;')
   .replace(/>/g, '&gt;').replace(/\|/g, '\\|').replace(/\r?\n/g, '<br>');
 const table = (columns, rows) => `| ${columns.join(' | ')} |\n| ${columns.map(() => '---').join(' | ')} |\n${rows.map(row => `| ${row.map(html).join(' | ')} |`).join('\n') || `| ${columns.map(() => '—').join(' | ')} |`}`;
 const days = window => (Date.parse(`${window.end}T00:00:00Z`) - Date.parse(`${window.start}T00:00:00Z`)) / 86400000 + 1;
+const dayBefore = date => new Date(Date.parse(`${date}T00:00:00Z`) - 86400000).toISOString().slice(0, 10);
+function completeWindow(metric) {
+  const collectedAt = metric.filters.collected_at, completeDate = metric.filters.last_complete_date;
+  if (!collectedAt || !/^\d{4}-\d{2}-\d{2}$/.test(completeDate ?? '') ||
+      !/[zZ]|[+-]\d\d:\d\d$/.test(collectedAt) || !Number.isFinite(Date.parse(collectedAt)) ||
+      !Number.isFinite(Date.parse(`${completeDate}T00:00:00Z`)) ||
+      new Date(`${completeDate}T00:00:00Z`).toISOString().slice(0, 10) !== completeDate) return false;
+  const parts = Object.fromEntries(new Intl.DateTimeFormat('en-US', { timeZone: metric.window.timezone,
+    year: 'numeric', month: '2-digit', day: '2-digit' }).formatToParts(new Date(collectedAt)).map(x => [x.type, x.value]));
+  const localCollectionDate = `${parts.year}-${parts.month}-${parts.day}`;
+  return completeDate <= dayBefore(localCollectionDate) && metric.window.end <= completeDate;
+}
 
 function metricRows(metrics) {
   const groups = new Map();
   for (const metric of metrics) {
-    const filters = { ...metric.filters }; delete filters.collected_at; delete filters.phase;
-    const key = JSON.stringify([metric.metric_id, filters, metric.panel_hash, metric.provider_definition, metric.sample_selection.kind]);
+    const filters = { ...metric.filters }; delete filters.collected_at; delete filters.last_complete_date; delete filters.phase;
+    const key = JSON.stringify([metric.metric_id, metric.definition, filters, metric.panel_hash,
+      metric.provider_definition, metric.sample_selection]);
     if (!groups.has(key)) groups.set(key, []);
     groups.get(key).push(metric);
   }
   return [...groups.values()].map(group => {
     group.sort((a, b) => a.window.start.localeCompare(b.window.start));
     const [before, after] = group;
-    const paired = group.length === 2 && days(before.window) === 28 && days(after.window) === 28 &&
+    const paired = group.length === 2 && completeWindow(before) && completeWindow(after) &&
+      days(before.window) === 28 && days(after.window) === 28 &&
       before.window.timezone === after.window.timezone &&
       Date.parse(`${after.window.start}T00:00:00Z`) - Date.parse(`${before.window.end}T00:00:00Z`) === 86400000;
     const measured = paired && before.value_state === 'measured' && after.value_state === 'measured';
@@ -74,13 +89,22 @@ function indexedEvidence(packet) {
 }
 
 function checkDecisions(input, requireRef, auditRef) {
+  const protocolHash = freezeProtocol(input.run_context).protocol_hash;
+  const decisionRecord = (decision, scope, identity) => {
+    const record = JSON.parse(requireRef(decision.evidence_ref).text);
+    if (record.run_id !== input.run_context.run_id || !same(record.target, input.run_context.target) ||
+        record.protocol_hash !== protocolHash || !named(record.approved_by) || !Array.isArray(record.decisions) ||
+        !record.decisions.some(item => item.scope === scope && item[identity.key] === identity.value &&
+          item.condition === decision.condition && item.reason === decision.reason))
+      throw new ContractError(`applicability decision record does not match ${scope} ${identity.value}`);
+  };
   for (const type of input.run_context.protocol.page_types) for (const url of type.urls)
-    if (url.indexing_decision) requireRef(url.indexing_decision.evidence_ref);
+    if (url.indexing_decision) decisionRecord(url.indexing_decision, 'url', { key: 'normalized_url', value: url.normalized });
   for (const family of input.run_context.protocol.families)
-    if (family.applicability_decision) requireRef(family.applicability_decision.evidence_ref);
+    if (family.applicability_decision) decisionRecord(family.applicability_decision, 'family', { key: 'family_id', value: family.family_id });
   for (const observation of input.observations) {
     const evidence = requireRef(observation.evidence_ref, observation.source_ref);
-    if (observation.applicability_decision) requireRef(observation.applicability_decision.evidence_ref);
+    if (observation.applicability_decision) decisionRecord(observation.applicability_decision, 'unit', { key: 'unit_key', value: observation.unit_key });
     if (observation.check_id === 'index-policy' && observation.state === 'fail') {
       if (evidence.kind !== 'raw_html' && evidence.kind !== 'http_response')
         throw new ContractError('index-policy failure requires raw HTML or response-header evidence');
@@ -109,8 +133,26 @@ function checkMetricEvidence(metric, packet, requireRef) {
   try { source = JSON.parse(evidence.text); }
   catch { throw new ContractError('metric evidence must be replayable JSON'); }
   if (source.run_id !== packet.run_context.run_id) throw new ContractError('metric evidence run mismatch');
+  const identity = packet.run_context.protocol.target_identity;
+  if (!identity || !same(identity.target, packet.run_context.target))
+    throw new ContractError('target identity mapping missing from frozen run protocol');
   let observed;
-  if (source.kind === 'native_export') observed = normalizeImport(source.provider, source.rows, source.metadata);
+  if (source.kind === 'native_export') {
+    const property = source.metadata.property;
+    const mapping = identity.native_properties?.find(x => x.provider === source.provider && x.property === property);
+    if (!mapping || !same(mapping.target, packet.run_context.target) || !mapping.evidence_ref || !property || property === 'unknown')
+      throw new ContractError('native property target mapping missing');
+    if (metric.filters.hostname !== 'unknown' && metric.filters.hostname !== mapping.hostname ||
+        metric.filters.path !== 'unknown' && (!mapping.path_prefix || !metric.filters.path.startsWith(mapping.path_prefix)))
+      throw new ContractError('native hostname or URL scope differs from approved target mapping');
+    const decision = JSON.parse(requireRef(mapping.evidence_ref).text);
+    if (decision.run_id !== packet.run_context.run_id || !same(decision.target, packet.run_context.target) ||
+        decision.provider !== source.provider || decision.property !== property ||
+        (mapping.hostname && decision.hostname !== mapping.hostname) ||
+        (mapping.path_prefix && decision.path_prefix !== mapping.path_prefix) || !named(decision.approved_by))
+      throw new ContractError('native property target mapping record differs from run');
+    observed = normalizeImport(source.provider, source.rows, source.metadata);
+  }
   else if (source.kind === 'panel') {
     const expectedHash = freezeProtocol(packet.run_context).protocol_hash;
     if (source.panel.panel_hash !== expectedHash || metric.panel_hash !== expectedHash)
@@ -121,20 +163,118 @@ function checkMetricEvidence(metric, packet, requireRef) {
         source.panel.search_enabled !== protocol.search_enabled || source.panel.locale !== protocol.locale ||
         source.panel.region !== protocol.region)
       throw new ContractError('panel inputs differ from run protocol');
+    const target = identity.panel;
+    if (!target || !same([source.panel.target_entity, source.panel.target_domains, source.panel.competitor_entities ?? []],
+        [target.target_entity, target.target_domains, target.competitor_entities ?? []]) || !target.evidence_ref)
+      throw new ContractError('panel target identity differs from frozen run');
+    const decision = JSON.parse(requireRef(target.evidence_ref).text);
+    if (decision.run_id !== packet.run_context.run_id || !same(decision.target, packet.run_context.target) ||
+        !same(decision.panel, target) || !named(decision.approved_by))
+      throw new ContractError('panel target identity approval record differs from run');
+    const evaluableClaims = source.evaluations.flatMap(x => x.claims ?? []).filter(x => x.evaluable === true);
+    const evaluableCitations = source.evaluations.flatMap(x => x.citations ?? []).filter(x => x.evaluable === true);
+    let facts = null;
+    if (source.panel.fact_list_ref) {
+      facts = JSON.parse(requireRef(source.panel.fact_list_ref).text);
+      if (facts.run_id !== packet.run_context.run_id || facts.target_entity !== target.target_entity ||
+          !named(facts.approved_by) || !Array.isArray(facts.facts)) throw new ContractError('approved fact list differs from panel target');
+    }
+    if (evaluableClaims.length && !facts) throw new ContractError('evaluable facts require approved fact list');
+    for (const response of source.responses) {
+      if (!response.response_ref || !response.extraction_ref) throw new ContractError('provider response evidence missing');
+      const raw = requireRef(response.response_ref);
+      const receipt = JSON.parse(requireRef(response.extraction_ref).text);
+      const normalized = { ...response }; delete normalized.response_ref; delete normalized.extraction_ref;
+      if (receipt.run_id !== packet.run_context.run_id || receipt.response_id !== response.response_id ||
+          receipt.raw_ref !== response.response_ref || receipt.raw_sha256 !== raw.sha256 ||
+          !same(receipt.normalized_response, normalized))
+        throw new ContractError('provider response extraction receipt differs from raw evidence');
+    }
+    for (const evaluation of source.evaluations) {
+      if (!evaluation.evidence_ref) throw new ContractError('evaluation evidence receipt missing');
+      const receipt = JSON.parse(requireRef(evaluation.evidence_ref).text);
+      const normalized = { ...evaluation }; delete normalized.evidence_ref;
+      if (receipt.run_id !== packet.run_context.run_id || receipt.response_id !== evaluation.response_id ||
+          !named(receipt.approved_by) || !same(receipt.evaluation, normalized))
+        throw new ContractError('evaluation evidence receipt differs from panel verdict');
+      for (const citation of (evaluation.citations ?? []).filter(x => x.evaluable === true)) {
+        if (!citation.source_evidence_ref || requireRef(citation.source_evidence_ref).source_url !== citation.citation_url)
+          throw new ContractError('citation source evidence does not match evaluated URL');
+      }
+      for (const claim of (evaluation.claims ?? []).filter(x => x.evaluable === true)) {
+        if (!claim.fact_id || !facts.facts.some(x => x.fact_id === claim.fact_id) || !claim.source_evidence_ref)
+          throw new ContractError('evaluated claim lacks fact ID or source evidence');
+        requireRef(claim.source_evidence_ref);
+      }
+    }
     observed = measurePanel(source.panel, source.responses, source.evaluations);
   } else throw new ContractError('unsupported metric evidence kind');
   if (!observed.some(item => same(item, metric))) throw new ContractError('metric differs from bound export or panel evidence');
+  return source.kind === 'native_export' ? 'owner export origin and provider completeness are not independently authenticated' :
+    'provider response origin and semantic evaluations are attributed to indexed receipts, not independently authenticated';
 }
 
-function statusFor(finding, changes) {
+function statusFor(finding, changes, afterInput) {
   const linked = changes.filter(change => change.finding_ids.some(id => finding.finding_ids.includes(id)));
   if (!linked.length) return finding.remediation_ids.length ? 'proposed_only' :
     finding.status === 'unknown' ? 'unknown' : 'confirmed';
   if (linked.some(change => change.verification.status === 'failed')) return 'verification_failed';
-  if (linked.some(change => change.verification.status === 'passed'))
-    return linked.some(change => change.environment === 'production' && change.verification.deployed === true) ?
-      'verified_production' : 'verified_local';
-  return 'modified_unverified';
+  if (linked.some(change => change.verification.status !== 'passed')) return 'modified_unverified';
+  const afterResolved = linked.every(change => afterInput?.observations.some(obs =>
+    obs.check_id === finding.check_id && obs.unit_key === finding.unit_key &&
+    ['pass', 'partial'].includes(obs.state) && obs.observation_id === change.verification.observation_id &&
+    obs.evidence_ref === change.verification.observation_evidence_ref));
+  if (linked.every(change => change.environment === 'production' && change.verification.deployed === true))
+    return afterResolved ? 'verified_production' : 'modified_unverified';
+  return linked.every(change => change.environment === 'local') ? 'verified_local' : 'modified_unverified';
+}
+
+function checkAuditPhase(input, phase, snapshot, requireRef) {
+  const observations = input?.observations.filter(x => x.source_ref === 'optbrew:collector') ?? [];
+  if (!observations.length) return;
+  if (!snapshot || snapshot.phase !== phase || snapshot.context_ref !== input.run_context.evidence_ref)
+    throw new ContractError(`${phase} collector observations require their own audit snapshot`);
+  const audit = JSON.parse(requireRef(snapshot.audit_ref).text);
+  if (audit.run_id !== input.run_context.run_id || audit.context_ref !== snapshot.context_ref)
+    throw new ContractError('audit index run/context mismatch');
+  const collection = JSON.parse(requireRef(audit.collection_ref).text);
+  const moduleOutputs = JSON.parse(requireRef(audit.module_output_ref).text);
+  const savedObservations = JSON.parse(requireRef(audit.observations_ref).text);
+  if (!Array.isArray(collection.artifacts) || !Array.isArray(audit.raw) || !Array.isArray(savedObservations))
+    throw new ContractError('audit snapshot files incomplete');
+  const rawRefs = new Set();
+  for (const raw of audit.raw) {
+    if (raw.content_hash === null) {
+      if (raw.evidence_ref !== audit.collection_ref || !collection.artifacts.some(x =>
+          x.normalized_url === raw.normalized_url && x.evidence_ref === raw.evidence_ref &&
+          x.content_hash === null && x.error))
+        throw new ContractError('bodyless audit failure lacks matching collection record');
+      requireRef(raw.evidence_ref);
+    } else if (requireRef(raw.evidence_ref).sha256 !== raw.content_hash)
+      throw new ContractError('audit raw content hash mismatch');
+    rawRefs.add(raw.evidence_ref);
+  }
+  for (const obs of observations) {
+    if (!savedObservations.some(x => same(x, obs)) || !rawRefs.has(obs.evidence_ref))
+      throw new ContractError('collector observation is not bound to audit index and raw evidence');
+    const url = obs.unit_key.split('|').at(-1);
+    const artifact = collection.artifacts.find(x => x.normalized_url === url && x.evidence_ref === obs.evidence_ref);
+    const modules = (moduleOutputs['naver-searchadvisor'] ?? []).filter(x => x.url === url);
+    const module = modules.length === 1 ? modules[0] : null;
+    if (obs.check_id === 'fetch-response' && (!artifact ||
+        (obs.state === 'pass' && !(artifact.status >= 200 && artifact.status < 300)) ||
+        (obs.state === 'fail' && artifact.status < 400) ||
+        (artifact.content_hash === null && obs.state !== 'unknown')))
+      throw new ContractError('fetch response verdict differs from collected artifact');
+    if (obs.check_id === 'index-policy' && obs.state === 'fail' &&
+        !/\b(?:noindex|none)\b/i.test(`${module?.robots_meta ?? ''},${module?.x_robots_tag ?? ''}`))
+      throw new ContractError('index-policy verdict differs from module output');
+    if (obs.check_id === 'document-title' && obs.state === 'fail' && (!module || module.title))
+      throw new ContractError('document title verdict differs from module output');
+    if (obs.check_id === 'search-crawl-policy' && obs.state === 'fail' &&
+        (!module || module.robots_evidence_ref !== obs.evidence_ref || module.robots?.yeti_allowed !== false))
+      throw new ContractError('crawl verdict differs from bound robots evidence and module output');
+  }
 }
 
 /** Recompute scores and metrics from contained run evidence; render four design tables. */
@@ -145,9 +285,15 @@ export function buildReport(packet) {
       !same(packet.baseline.input.run_context, packet.run_context) || packet.costs.run_id !== packet.run_context.run_id)
     throw new ContractError('report run context or cost ledger mismatch');
   const { requireRef } = indexedEvidence(packet);
+  const snapshots = packet.audit_snapshots ?? (packet.audit_ref ? [{ phase: 'baseline',
+    audit_ref: packet.audit_ref, context_ref: packet.run_context.evidence_ref }] : []);
+  if (new Set(snapshots.map(x => x.phase)).size !== snapshots.length ||
+      snapshots.some(x => !['baseline', 'after'].includes(x.phase) || !x.audit_ref || !x.context_ref))
+    throw new ContractError('audit snapshot phase or reference invalid');
+  const snapshotFor = phase => snapshots.find(x => x.phase === phase);
   const baselineScores = score(packet.baseline.input);
   if (!same(packet.baseline.scores, baselineScores)) throw new ContractError('baseline score differs from raw observations');
-  checkDecisions(packet.baseline.input, requireRef, packet.audit_ref);
+  checkDecisions(packet.baseline.input, requireRef, snapshotFor('baseline')?.audit_ref);
   let afterScores = null;
   if (packet.after) {
     if (packet.after.input.run_context.run_id !== packet.run_context.run_id) throw new ContractError('after run ID mismatch');
@@ -155,45 +301,15 @@ export function buildReport(packet) {
       throw new ContractError('after context evidence differs from input');
     afterScores = score(packet.after.input);
     if (!same(packet.after.scores, afterScores)) throw new ContractError('after score differs from raw observations');
-    checkDecisions(packet.after.input, requireRef, packet.audit_ref);
+    checkDecisions(packet.after.input, requireRef, snapshotFor('after')?.audit_ref);
   }
   const comparison = compare(packet.baseline.input, packet.after?.input ?? null);
   if (!same(packet.comparison, comparison)) throw new ContractError('comparison differs from raw inputs');
-  for (const metric of packet.metrics) checkMetricEvidence(metric, packet, requireRef);
+  const metricOriginLimitations = [...new Set(packet.metrics.map(metric => checkMetricEvidence(metric, packet, requireRef)))];
   if (!packet.costs.evidence_ref || !same(JSON.parse(requireRef(packet.costs.evidence_ref).text), packet.costs))
     throw new ContractError('cost ledger snapshot evidence differs from report');
-  if (packet.baseline.input.observations.some(x => x.source_ref === 'optbrew:collector') || packet.after?.input.observations.some(x => x.source_ref === 'optbrew:collector')) {
-    if (!packet.audit_ref) throw new ContractError('collector observations require audit evidence index');
-    const audit = JSON.parse(requireRef(packet.audit_ref).text);
-    if (audit.run_id !== packet.run_context.run_id || audit.context_ref !== packet.run_context.evidence_ref)
-      throw new ContractError('audit index run/context mismatch');
-    const collection = JSON.parse(requireRef(audit.collection_ref).text);
-    const moduleOutputs = JSON.parse(requireRef(audit.module_output_ref).text);
-    const auditObservations = JSON.parse(requireRef(audit.observations_ref).text);
-    const raw = new Set(audit.raw.map(x => {
-      const evidence = requireRef(x.evidence_ref);
-      if (x.content_hash !== evidence.sha256) throw new ContractError('audit raw content hash mismatch');
-      return x.evidence_ref;
-    }));
-    for (const obs of [...packet.baseline.input.observations, ...(packet.after?.input.observations ?? [])].filter(x => x.source_ref === 'optbrew:collector')) {
-      if (!auditObservations.some(x => same(x, obs)) || !raw.has(obs.evidence_ref))
-        throw new ContractError('collector observation is not bound to audit index and raw evidence');
-      const url = obs.unit_key.split('|').at(-1);
-      const artifact = collection.artifacts.find(x => x.normalized_url === url);
-      const module = (moduleOutputs['naver-searchadvisor'] ?? []).find(x => x.url === url);
-      if (obs.check_id === 'fetch-response' && (!artifact || artifact.evidence_ref !== obs.evidence_ref ||
-          (obs.state === 'pass' && !(artifact.status >= 200 && artifact.status < 300)) || (obs.state === 'fail' && artifact.status < 400)))
-        throw new ContractError('fetch response verdict differs from collected artifact');
-      if (obs.check_id === 'index-policy' && obs.state === 'fail' &&
-          !/\b(?:noindex|none)\b/i.test(`${module?.robots_meta ?? ''},${module?.x_robots_tag ?? ''}`))
-        throw new ContractError('index-policy verdict differs from module output');
-      if (obs.check_id === 'document-title' && obs.state === 'fail' && module?.title)
-        throw new ContractError('document title verdict differs from module output');
-      if (obs.check_id === 'search-crawl-policy' && obs.state === 'fail' &&
-          (!module || module.robots_evidence_ref !== obs.evidence_ref || module.robots?.yeti_allowed !== false))
-        throw new ContractError('crawl verdict differs from bound robots evidence and module output');
-    }
-  }
+  checkAuditPhase(packet.baseline.input, 'baseline', snapshotFor('baseline'), requireRef);
+  checkAuditPhase(packet.after?.input, 'after', snapshotFor('after'), requireRef);
   const merged = mergeFindings(packet.findings);
   const observations = [...packet.baseline.input.observations, ...(packet.after?.input.observations ?? [])];
   const findings = merged.map(finding => {
@@ -213,7 +329,7 @@ export function buildReport(packet) {
     const selected = options.find(option => option.selected);
     if (finding.remediation_ids.length && !finding.remediation_ids.every(id => id === selected?.remediation_id))
       throw new ContractError(`finding remediation link invalid: ${finding.finding_id}`);
-    const status = statusFor(finding, packet.changes);
+    const status = statusFor(finding, packet.changes, packet.after?.input);
     return { ...finding, remediation: selected ?? null, status };
   });
   for (const change of packet.changes) {
@@ -229,9 +345,32 @@ export function buildReport(packet) {
     if (change.verification?.evidence_ref) {
       const receipt = JSON.parse(requireRef(change.verification.evidence_ref).text);
       if (receipt.run_id !== packet.run_context.run_id || receipt.change_id !== change.change_id ||
-          receipt.status !== change.verification.status ||
+          receipt.status !== change.verification.status || receipt.path !== change.path ||
+          receipt.after_hash !== change.after_hash || receipt.environment !== change.environment ||
+          !same(receipt.target, packet.run_context.target) ||
           (change.verification.deployed === true && receipt.deployed !== true))
         throw new ContractError('verification receipt differs from change record');
+      if (receipt.status === 'passed' && (!Array.isArray(receipt.checks) || !receipt.checks.length ||
+          receipt.checks.some(check => check.status !== 'passed' || !check.id || !check.observed ||
+            !check.evidence_ref || !check.after_hash || check.after_hash !== change.after_hash ||
+            requireRef(check.evidence_ref).sha256 !== change.after_hash)))
+        throw new ContractError('verification check lacks actual changed bytes and passing observation');
+      if (change.environment === 'production' && change.verification.deployed === true) {
+        const deployment = receipt.deployment;
+        const evidence = deployment?.evidence_ref ? JSON.parse(requireRef(deployment.evidence_ref).text) : null;
+        if (!deployment || !same(deployment.target, packet.run_context.target) ||
+            deployment.path !== change.path || deployment.after_hash !== change.after_hash ||
+            !evidence || evidence.run_id !== packet.run_context.run_id || evidence.environment !== 'production' ||
+            !same(evidence.target, packet.run_context.target) || evidence.path !== change.path ||
+            evidence.after_hash !== change.after_hash || !named(evidence.confirmed_by))
+          throw new ContractError('deployment receipt does not bind target path and bytes');
+        if (receipt.status === 'passed' && (receipt.observation_id !== change.verification.observation_id ||
+            receipt.observation_evidence_ref !== change.verification.observation_evidence_ref ||
+            !receipt.observation_id || !receipt.observation_evidence_ref ||
+            !packet.after?.input.observations.some(obs => obs.observation_id === receipt.observation_id &&
+              obs.evidence_ref === receipt.observation_evidence_ref && ['pass', 'partial'].includes(obs.state))))
+          throw new ContractError('production verification is not bound to after observation evidence');
+      }
     }
   }
   for (const item of packet.remaining) if (!item.problem || !item.reason || !item.required_input_or_authority ||
@@ -259,9 +398,9 @@ export function buildReport(packet) {
     data_class: packet.data_class ?? 'unknown', baseline: { input: packet.baseline.input, scores: baselineScores },
     after: packet.after ? { input: packet.after.input, scores: afterScores } : null, comparison,
     metrics: packet.metrics, findings, changes: packet.changes, costs: packet.costs,
-    capabilities: packet.capabilities ?? null, cost_issues: costIssues, remaining,
+    capabilities: packet.capabilities ?? null, cost_issues: costIssues, metric_origin_limitations: metricOriginLimitations, remaining,
     evidence_root: packet.evidence_root, evidence_index: packet.evidence_index,
-    audit_ref: packet.audit_ref ?? null, source_ref: packet.source_ref };
+    audit_ref: packet.audit_ref ?? null, audit_snapshots: snapshots, source_ref: packet.source_ref };
   const byProfile = new Map(afterScores?.map(x => [x.profile, x]) ?? []);
   const scoreRows = baselineScores.map(before => {
     const after = byProfile.get(before.profile);
@@ -281,7 +420,8 @@ export function buildReport(packet) {
     `Target: ${html(packet.run_context.target)}  \nEnvironment: ${html(packet.run_context.environment)}  \nGoals: ${html(packet.run_context.goals.join(', '))}  \n` +
     `Comparison: ${html(comparison.status)} (${html(comparison.reasons.join(', ') || 'none')})  \n` +
     `Blockers: ${html(baselineScores[0]?.blockers.length ?? 0)} (${html(baselineScores[0]?.blockers.map(x => `${x.family_id} ${x.unit_key}`).join('; ') || 'none')}); actual outcomes: ${packet.metrics.length ? 'see measured and missing states below' : 'not_connected / unknown'}  \n` +
-    `Cost and capability limitations: ${html(costIssues.join('; ') || 'none recorded')}\n\n` +
+    `Cost and capability limitations: ${html(costIssues.join('; ') || 'none recorded')}  \n` +
+    `Metric source limitations: ${html(metricOriginLimitations.join('; ') || 'no measured provider input')}\n\n` +
     `## Score\n\n${table(['Area', 'Before', 'After', 'Difference', 'Coverage before → after', 'Missing bounds', 'Status'], scoreRows)}\n\n` +
     `## Remediation\n\n${table(['Priority', 'Problem / URL', 'Evidence', 'Selected remedy', 'Change path or owner location', 'Cost / effort', 'Verification', 'Status'], remediationRows)}\n\n` +
     `## Actual outcomes\n\n${table(['Engine / property', 'Metric', 'Window / sample', 'Before raw', 'After raw', 'Difference', 'Completion', 'Limitations'], outcomeRows)}\n\n` +

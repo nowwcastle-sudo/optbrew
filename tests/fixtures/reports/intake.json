@@ -1,1 +1,92 @@
-{"run_id":"synthetic-report","description":"Synthetic family applicability fixture; no real site assessment"}
+{
+  "run_id": "synthetic-report",
+  "target": "example.com",
+  "protocol_hash": "9fee5fce05dbfbf88e39abac4407a8308309b54a00f1c9bcb55ff2af8bd64fe7",
+  "approved_by": "synthetic-fixture",
+  "decisions": [
+    {
+      "scope": "family",
+      "family_id": "render-content",
+      "condition": "not_render_dependent",
+      "reason": "Synthetic intake confirms this condition is absent"
+    },
+    {
+      "scope": "family",
+      "family_id": "canonical-consistency",
+      "condition": "no_representative_url_policy",
+      "reason": "Synthetic intake confirms this condition is absent"
+    },
+    {
+      "scope": "family",
+      "family_id": "internal-navigation",
+      "condition": "not_link_based",
+      "reason": "Synthetic intake confirms this condition is absent"
+    },
+    {
+      "scope": "family",
+      "family_id": "structured-data-truth",
+      "condition": "markup_not_used_or_selected",
+      "reason": "Synthetic intake confirms this condition is absent"
+    },
+    {
+      "scope": "family",
+      "family_id": "locale-links",
+      "condition": "single_locale",
+      "reason": "Synthetic intake confirms this condition is absent"
+    },
+    {
+      "scope": "family",
+      "family_id": "naver-markup",
+      "condition": "naver_not_target",
+      "reason": "Synthetic intake confirms this condition is absent"
+    },
+    {
+      "scope": "family",
+      "family_id": "question-coverage",
+      "condition": "no_fixed_questions",
+      "reason": "Synthetic intake confirms this condition is absent"
+    },
+    {
+      "scope": "family",
+      "family_id": "claim-support",
+      "condition": "no_material_claims",
+      "reason": "Synthetic intake confirms this condition is absent"
+    },
+    {
+      "scope": "family",
+      "family_id": "answer-clarity",
+      "condition": "no_matching_questions",
+      "reason": "Synthetic intake confirms this condition is absent"
+    },
+    {
+      "scope": "family",
+      "family_id": "original-value",
+      "condition": "simple_contact_or_support",
+      "reason": "Synthetic intake confirms this condition is absent"
+    },
+    {
+      "scope": "family",
+      "family_id": "entity-identity",
+      "condition": "no_identified_entity",
+      "reason": "Synthetic intake confirms this condition is absent"
+    },
+    {
+      "scope": "family",
+      "family_id": "fact-consistency",
+      "condition": "no_evaluable_facts",
+      "reason": "Synthetic intake confirms this condition is absent"
+    },
+    {
+      "scope": "family",
+      "family_id": "freshness-truth",
+      "condition": "no_date_or_currentness",
+      "reason": "Synthetic intake confirms this condition is absent"
+    },
+    {
+      "scope": "family",
+      "family_id": "source-transparency",
+      "condition": "not_required_for_purpose",
+      "reason": "Synthetic intake confirms this condition is absent"
+    }
+  ]
+}

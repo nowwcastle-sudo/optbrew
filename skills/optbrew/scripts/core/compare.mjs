@@ -21,7 +21,7 @@ export function compare(before, after) {
     for (const field of ['target', 'environment', 'evaluation_version', 'protocol_version'])
       if (JSON.stringify(baseline.protocol[field]) !== JSON.stringify(followup.protocol[field])) reasons.push(`${field}_changed`);
     for (const field of ['page_types', 'engines', 'families', 'locale', 'region', 'browser', 'device',
-      'question_panel', 'surfaces', 'models', 'search_enabled'])
+      'question_panel', 'surfaces', 'models', 'search_enabled', 'target_identity'])
       if (JSON.stringify(baseline.protocol[field]) !== JSON.stringify(followup.protocol[field])) reasons.push(`${field}_changed`);
     if (!reasons.length) reasons.push('protocol_changed');
   }
