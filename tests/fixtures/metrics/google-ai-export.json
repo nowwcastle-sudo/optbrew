@@ -1,0 +1,22 @@
+{
+  "provider": "google_ai",
+  "metadata": {
+    "property": "https://example.com/",
+    "hostname": "example.com",
+    "search_type": "web",
+    "device": "mobile",
+    "country": "KR",
+    "timezone": "Asia/Seoul",
+    "aggregation": "property",
+    "window": { "start": "2026-09-16", "end": "2026-10-13", "timezone": "Asia/Seoul" },
+    "collected_at": "2026-10-14T10:00:00+09:00",
+    "source_ref": "synthetic:owner-export",
+    "evidence_ref": "tests/fixtures/metrics/google-ai-export.json",
+    "sample_selection": { "kind": "all" },
+    "provider_definition": "Synthetic Google AI report native impressions"
+  },
+  "rows": [
+    { "metric_id": "impressions", "value": 0, "display_state": "~" },
+    { "metric_id": "impressions_unmasked", "value": 0, "missing_mask": false }
+  ]
+}

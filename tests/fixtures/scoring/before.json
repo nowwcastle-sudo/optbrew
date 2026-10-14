@@ -1,0 +1,53 @@
+{
+  "schema_version": "1.0.0",
+  "run_context": {
+    "schema_version": "1.0.0", "run_id": "synthetic-partial", "target": "example.com",
+    "environment": "local", "goals": ["SEO"], "allowed_changes": [], "scope": {},
+    "evaluation_version": "0.1.0", "protocol_version": "0.1.0",
+    "data_sources": [], "cost_decision": {}, "evidence_ref": "synthetic/context",
+    "protocol": {
+      "page_types": [
+        { "id": "primary", "urls": [
+          { "original": "https://example.com/", "normalized": "https://example.com/" },
+          { "original": "https://example.com/about", "normalized": "https://example.com/about" }
+        ] },
+        { "id": "support", "urls": [
+          { "original": "https://example.com/help", "normalized": "https://example.com/help" }
+        ] }
+      ],
+      "engines": ["google"], "locale": "ko-KR", "region": "KR", "browser": "Chrome",
+      "device": "mobile", "surfaces": [], "models": [], "search_enabled": null,
+      "question_panel": [],
+      "families": [
+        { "family_id": "fetch-response", "applicable": true },
+        { "family_id": "search-crawl-policy", "applicable": true },
+        { "family_id": "index-policy", "applicable": true },
+        { "family_id": "render-content", "applicable": false, "applicability_decision": {"condition":"not_render_dependent","reason":"Synthetic intake confirms this condition is absent","evidence_ref":"synthetic/intake"} },
+        { "family_id": "discovery", "applicable": true },
+        { "family_id": "document-title", "applicable": true },
+        { "family_id": "canonical-consistency", "applicable": false, "applicability_decision": {"condition":"no_representative_url_policy","reason":"Synthetic intake confirms this condition is absent","evidence_ref":"synthetic/intake"} },
+        { "family_id": "internal-navigation", "applicable": false, "applicability_decision": {"condition":"not_link_based","reason":"Synthetic intake confirms this condition is absent","evidence_ref":"synthetic/intake"} },
+        { "family_id": "structured-data-truth", "applicable": false, "applicability_decision": {"condition":"markup_not_used_or_selected","reason":"Synthetic intake confirms this condition is absent","evidence_ref":"synthetic/intake"} },
+        { "family_id": "locale-links", "applicable": false, "applicability_decision": {"condition":"single_locale","reason":"Synthetic intake confirms this condition is absent","evidence_ref":"synthetic/intake"} },
+        { "family_id": "naver-markup", "applicable": false, "applicability_decision": {"condition":"naver_not_target","reason":"Synthetic intake confirms this condition is absent","evidence_ref":"synthetic/intake"} },
+        { "family_id": "lcp-field", "applicable": true },
+        { "family_id": "inp-field", "applicable": true },
+        { "family_id": "cls-field", "applicable": true },
+        { "family_id": "question-coverage", "applicable": false, "applicability_decision": {"condition":"no_fixed_questions","reason":"Synthetic intake confirms this condition is absent","evidence_ref":"synthetic/intake"} },
+        { "family_id": "claim-support", "applicable": false, "applicability_decision": {"condition":"no_material_claims","reason":"Synthetic intake confirms this condition is absent","evidence_ref":"synthetic/intake"} },
+        { "family_id": "answer-clarity", "applicable": false, "applicability_decision": {"condition":"no_matching_questions","reason":"Synthetic intake confirms this condition is absent","evidence_ref":"synthetic/intake"} },
+        { "family_id": "original-value", "applicable": false, "applicability_decision": {"condition":"simple_contact_or_support","reason":"Synthetic intake confirms this condition is absent","evidence_ref":"synthetic/intake"} },
+        { "family_id": "entity-identity", "applicable": false, "applicability_decision": {"condition":"no_identified_entity","reason":"Synthetic intake confirms this condition is absent","evidence_ref":"synthetic/intake"} },
+        { "family_id": "fact-consistency", "applicable": false, "applicability_decision": {"condition":"no_evaluable_facts","reason":"Synthetic intake confirms this condition is absent","evidence_ref":"synthetic/intake"} },
+        { "family_id": "freshness-truth", "applicable": false, "applicability_decision": {"condition":"no_date_or_currentness","reason":"Synthetic intake confirms this condition is absent","evidence_ref":"synthetic/intake"} },
+        { "family_id": "source-transparency", "applicable": false, "applicability_decision": {"condition":"not_required_for_purpose","reason":"Synthetic intake confirms this condition is absent","evidence_ref":"synthetic/intake"} }
+      ]
+    }
+  },
+  "observations": [
+    { "schema_version": "1.0.0", "observation_id": "fetch-pass", "check_id": "fetch-response",
+      "family_id": "fetch-response", "unit_key": "fetch-response|https://example.com/",
+      "state": "pass", "q": 1, "partial_basis": null, "reason": "HTTP 200",
+      "evaluator_type": "code", "source_ref": "synthetic", "evidence_ref": "synthetic/fetch" }
+  ]
+}

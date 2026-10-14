@@ -103,6 +103,31 @@ function checkObservation(value) {
   if (value.blocker === true && state !== 'fail') fail('CheckObservation', 'blocker requires fail');
 }
 
+function checkMetric(value) {
+  const path = 'MetricObservation';
+  if (!value.metric_id.trim() || !value.definition.trim() || !value.provider_definition.trim() ||
+      !value.source_ref.trim() || !value.evidence_ref.trim()) fail(path, 'nonempty identity, definition and evidence required');
+  if (value.value_state === 'measured' ? !Number.isFinite(value.value) : value.value !== null)
+    fail(path, 'value_state and value disagree');
+  if (!value.sample_selection || !['all', 'positive_only', 'unknown'].includes(value.sample_selection.kind))
+    fail(path, 'sample_selection.kind required');
+  const { start, end, timezone } = value.window;
+  for (const [name, date] of [['start', start], ['end', end]]) {
+    const timestamp = Date.parse(`${date}T00:00:00Z`);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || !Number.isFinite(timestamp) ||
+        new Date(timestamp).toISOString().slice(0, 10) !== date)
+      fail(`${path}.window.${name}`, 'invalid local date');
+  }
+  if (start > end || !timezone) fail(`${path}.window`, 'ordered dates and timezone required');
+  try { new Intl.DateTimeFormat('en', { timeZone: timezone }); }
+  catch { fail(`${path}.window.timezone`, 'invalid timezone'); }
+  if ((value.numerator === null) !== (value.denominator === null) ||
+      (value.numerator !== null && (!Number.isFinite(value.numerator) || !Number.isFinite(value.denominator) || value.denominator <= 0)))
+    fail(path, 'numerator and positive denominator must occur together');
+  if (value.sample_selection.kind === 'positive_only' &&
+      /(?:^|:)citation_response_rate$/.test(value.metric_id)) fail(path, 'positive-only sample cannot estimate all-question citation rate');
+}
+
 /** Validate a persisted entity and return its original value. */
 export function validateEntity(typeName, value) {
   const rule = schema.$defs[typeName];
@@ -111,5 +136,6 @@ export function validateEntity(typeName, value) {
   checkRule(rule, value, typeName);
   if (typeName === 'CheckObservation') checkObservation(value);
   if (typeName === 'ScoreInput') value.observations.forEach(checkObservation);
+  if (typeName === 'MetricObservation') checkMetric(value);
   return value;
 }
