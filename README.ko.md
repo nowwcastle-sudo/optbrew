@@ -10,7 +10,9 @@ Optbrew는 웹사이트의 검색 준비도를 확인하고, 승인된 로컬 �
 
 Node.js 22 이상이 필요합니다. 내부 Python 감사 도구는 Python 3.10 이상이 필요합니다. Python이 없으면 그 도구는 미실행으로 남깁니다. 이 checkout에서 `site`라는 별도 프로젝트 폴더를 만든 뒤 실행합니다.
 
-```sh
+Bash와 PowerShell에서 같은 명령을 사용합니다.
+
+```text
 node bin/optbrew.mjs install --agents codex,claude-code,cursor,opencode,pi --scope project --project ./site --strategy copy --dry-run --json
 node bin/optbrew.mjs install --agents codex,claude-code,cursor,opencode,pi --scope project --project ./site --strategy copy --json
 node bin/optbrew.mjs doctor --agents codex,claude-code,cursor,opencode,pi --scope project --project ./site --json
@@ -26,7 +28,9 @@ node bin/optbrew.mjs doctor --agents codex,claude-code,cursor,opencode,pi --scop
 
 다음 명령은 포함된 합성 fixture를 재생하며 제공자 호출을 하지 않습니다. 저장소 루트에서 새 출력 경로를 골라 실행합니다.
 
-```sh
+Bash와 PowerShell에서 같은 명령을 사용합니다.
+
+```text
 node bin/optbrew.mjs score --input ./before.json --output ./score.json
 node bin/optbrew.mjs compare --before ./before.json --after ./after.json --output ./comparison.json
 node bin/optbrew.mjs report --input ./remote-only.json --output-dir ./report-output
@@ -52,7 +56,9 @@ SE Ranking은 별도의 [API](https://seranking.com/api.html), [MCP 안내](http
 
 관리 설치를 갱신하려면 먼저 검증된 새 optbrew 번들을 빌드하거나 받습니다. 저장소 루트에서 다음 명령을 실행합니다.
 
-```sh
+Bash와 PowerShell에서 같은 명령을 사용합니다.
+
+```text
 node bin/optbrew.mjs check-updates --json
 node bin/optbrew.mjs update --scope project --project ./site --json
 node bin/optbrew.mjs rollback --scope project --project ./site --release-version 0.1.0 --json

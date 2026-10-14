@@ -10,7 +10,9 @@ The CLI can calculate a score and write a report from stored JSON without an API
 
 Requires Node.js 22 or later. The internal Python audit utilities need Python 3.10 or later; missing Python leaves those utilities unrun. From this checkout, first inspect the targets in an isolated project directory named `site`:
 
-```sh
+Bash and PowerShell use the same commands:
+
+```text
 node bin/optbrew.mjs install --agents codex,claude-code,cursor,opencode,pi --scope project --project ./site --strategy copy --dry-run --json
 node bin/optbrew.mjs install --agents codex,claude-code,cursor,opencode,pi --scope project --project ./site --strategy copy --json
 node bin/optbrew.mjs doctor --agents codex,claude-code,cursor,opencode,pi --scope project --project ./site --json
@@ -26,7 +28,9 @@ Ask the host to use optbrew with the target URL, goal, site ownership or access,
 
 The examples below replay bundled synthetic fixtures. They make no provider call. Run them from the checkout root and choose fresh output paths:
 
-```sh
+Bash and PowerShell use the same commands:
+
+```text
 node bin/optbrew.mjs score --input ./before.json --output ./score.json
 node bin/optbrew.mjs compare --before ./before.json --after ./after.json --output ./comparison.json
 node bin/optbrew.mjs report --input ./remote-only.json --output-dir ./report-output
@@ -52,7 +56,9 @@ SE Ranking has its own [API](https://seranking.com/api.html), [MCP instructions]
 
 For a managed project installation, rebuild or obtain a verified newer optbrew bundle before updating. From the checkout root:
 
-```sh
+Bash and PowerShell use the same commands:
+
+```text
 node bin/optbrew.mjs check-updates --json
 node bin/optbrew.mjs update --scope project --project ./site --json
 node bin/optbrew.mjs rollback --scope project --project ./site --release-version 0.1.0 --json

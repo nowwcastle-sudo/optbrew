@@ -6,6 +6,8 @@ import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { test } from 'node:test';
+import { fixture } from './fixtures/releases/create.mjs';
+import { main } from '../lib/cli.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const cli = path.join(root, 'bin/optbrew.mjs');
@@ -47,7 +49,7 @@ test('documented local commands parse and operate in isolated project', async ()
     if (args.startsWith('rollback ')) {
       // A fresh install has no retained earlier version. This must reach that boundary, not fail argument parsing.
       assert.equal(result.code, 1);
-      assert.doesNotMatch(result.stderr, /unknown or repeated option|usage:/);
+      assert.match(result.stderr, /^verified previous release not found\r?\n$/);
     } else {
       assert.equal(result.code, 0, `${args}: ${result.stderr}`);
       assert.ok(result.stdout.trim());
@@ -63,6 +65,47 @@ test('documented local commands parse and operate in isolated project', async ()
     for (const name of ['score.json', 'comparison.json', 'report-output/report.md', 'report-output/report.json'])
       outputs[name] = sha256(await readFile(path.join(temp, name)));
     await writeFile(process.env.OPTBREW_DOCS_RECEIPT, `${JSON.stringify({ commands, outputs }, null, 2)}\n`);
+  }
+});
+
+test('README command blocks label both compatible shells', async () => {
+  for (const name of ['README.md', 'README.ko.md']) {
+    const body = await readFile(path.join(root, name), 'utf8');
+    const labels = [...body.matchAll(/(?:Bash and PowerShell|Bash와 PowerShell)[^\n]*\n\n```text\nnode bin\/optbrew\.mjs/g)];
+    assert.equal(labels.length, 3, `${name} must label all three CLI example blocks for both shells`);
+  }
+});
+
+test('documented user scope and backup policy parse in isolated locations', async () => {
+  const temp = await mkdtemp(path.join(os.tmpdir(), 'optbrew-docs-scope-'));
+  const args = ['install', '--agents', 'codex', '--scope', 'user', '--home', './home', '--strategy', 'copy', '--dry-run', '--json'];
+  const dryRun = run(args, temp);
+  assert.equal(dryRun.code, 0, dryRun.stderr);
+  const decision = JSON.parse(dryRun.stdout);
+  assert.equal(decision.status, 'dry_run');
+  assert.deepEqual(decision.changed_paths, []);
+  assert.equal(decision.decision.targets[0].path, path.join(temp, 'home/.agents/skills/optbrew'));
+  await assert.rejects(access(path.join(temp, 'home')), { code: 'ENOENT' });
+
+  const f = await fixture('copy');
+  const edited = path.join(f.record.targets[0].path, 'SKILL.md');
+  await writeFile(edited, 'user edit');
+  let stdout = '', stderr = '';
+  const updateArgs = ['update', '--record-root', f.recordRoot, '--local-changes', 'backup-and-replace', '--json'];
+  const code = await main(updateArgs, { bundleRoot: f.next, stdout: { write: s => { stdout += s; } }, stderr: { write: s => { stderr += s; } } });
+  assert.equal(code, 0, stderr);
+  const result = JSON.parse(stdout);
+  assert.equal(result.status, 'updated');
+  const backup = result.decision.backups.find(item => item.path === edited.replace(/[\\/]SKILL\.md$/, ''));
+  assert.ok(backup, 'edited target has a backup decision');
+  assert.equal(await readFile(path.join(backup.backup, 'SKILL.md'), 'utf8'), 'user edit');
+  if (process.env.OPTBREW_DOCS_RECEIPT) {
+    const receipt = {
+      userScope: { argv: [process.execPath, cli, ...args], cwd: temp, ...dryRun, scope_root: path.join(temp, 'home'), wrote_home: false },
+      backupPolicy: { argv: ['main', ...updateArgs], bundleRoot: f.next, code, stdout, stderr, edited, backup: backup.backup,
+        backup_sha256: sha256(await readFile(path.join(backup.backup, 'SKILL.md'))) },
+    };
+    await writeFile(`${process.env.OPTBREW_DOCS_RECEIPT}.scope.json`, `${JSON.stringify(receipt, null, 2)}\n`);
   }
 });
 
