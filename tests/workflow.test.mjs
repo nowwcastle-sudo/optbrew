@@ -230,5 +230,66 @@ test('real local HTTP baseline, authorized edit and same-condition rescan clear 
   modules['naver-searchadvisor'][0].title = null;
   await writeFile(moduleRef, `${JSON.stringify(modules)}\n`);
   evidence_index.find(x => x.ref === moduleRef).sha256 = sha(await readFile(moduleRef));
-  assert.throws(() => buildReport(packet), /document title verdict differs/);
+  assert.throws(() => buildReport(packet), /module differs from raw response/);
+
+  modules['naver-searchadvisor'][0].title = 'Example service';
+  await writeFile(moduleRef, `${JSON.stringify(modules)}\n`);
+  evidence_index.find(x => x.ref === moduleRef).sha256 = sha(await readFile(moduleRef));
+  const baselineModuleRef = path.join(path.dirname(baseline.evidence_ref), 'modules.json');
+  const baselineObsRef = path.join(path.dirname(baseline.evidence_ref), 'observations.json');
+  const forgedModules = JSON.parse(await readFile(baselineModuleRef, 'utf8'));
+  const originalBaselineModules = structuredClone(forgedModules);
+  const originalBaselineObservations = structuredClone(beforeInput.observations);
+  forgedModules['naver-searchadvisor'][0].title = 'Invented title';
+  forgedModules['naver-searchadvisor'][0].robots_meta = 'index,follow';
+  forgedModules['naver-searchadvisor'][0].x_robots_tag = '';
+  for (const obs of beforeInput.observations.filter(x => ['document-title', 'index-policy'].includes(x.check_id))) {
+    obs.state = 'pass'; obs.q = 1; obs.reason = 'Forged positive';
+  }
+  await writeFile(baselineModuleRef, `${JSON.stringify(forgedModules)}\n`);
+  await writeFile(baselineObsRef, `${JSON.stringify(beforeInput.observations)}\n`);
+  for (const ref of [baselineModuleRef, baselineObsRef])
+    evidence_index.find(x => x.ref === ref).sha256 = sha(await readFile(ref));
+  packet.baseline.scores = score(beforeInput);
+  packet.comparison = compare(beforeInput, afterInput);
+  packet.findings = [];
+  packet.changes = [];
+  assert.throws(() => buildReport(packet), /raw|module.*differs|title.*differs/i);
+
+  await writeFile(baselineModuleRef, `${JSON.stringify(originalBaselineModules)}\n`);
+  beforeInput.observations = originalBaselineObservations;
+  await writeFile(baselineObsRef, `${JSON.stringify(beforeInput.observations)}\n`);
+  for (const ref of [baselineModuleRef, baselineObsRef])
+    evidence_index.find(x => x.ref === ref).sha256 = sha(await readFile(ref));
+  packet.baseline.scores = score(beforeInput);
+
+  const afterCollectionRef = path.join(path.dirname(followup.evidence_ref), 'collection.json');
+  const afterObsRef = path.join(path.dirname(followup.evidence_ref), 'observations.json');
+  const afterCollection = JSON.parse(await readFile(afterCollectionRef, 'utf8'));
+  afterCollection.artifacts[0].headers['x-robots-tag'] = 'noindex';
+  modules['naver-searchadvisor'][0].x_robots_tag = 'noindex';
+  const indexObservation = afterInput.observations.find(x => x.check_id === 'index-policy');
+  indexObservation.state = 'fail'; indexObservation.q = 0; indexObservation.reason = 'Header blocks indexing';
+  const saveAfter = async () => {
+    await writeFile(afterCollectionRef, `${JSON.stringify(afterCollection)}\n`);
+    await writeFile(moduleRef, `${JSON.stringify(modules)}\n`);
+    await writeFile(afterObsRef, `${JSON.stringify(afterInput.observations)}\n`);
+    for (const ref of [afterCollectionRef, moduleRef, afterObsRef])
+      evidence_index.find(x => x.ref === ref).sha256 = sha(await readFile(ref));
+    packet.after.scores = score(afterInput);
+    packet.comparison = compare(beforeInput, afterInput);
+  };
+  await saveAfter();
+  assert.doesNotThrow(() => buildReport(packet));
+  modules['naver-searchadvisor'][0].x_robots_tag = '';
+  indexObservation.state = 'pass'; indexObservation.q = 1; indexObservation.reason = 'Forged positive header verdict';
+  await saveAfter();
+  assert.throws(() => buildReport(packet), /module differs from raw response and headers/);
+  modules['naver-searchadvisor'][0].x_robots_tag = 'noindex';
+  indexObservation.state = 'fail'; indexObservation.q = 0; indexObservation.reason = 'Header blocks indexing';
+  const titleObservation = afterInput.observations.find(x => x.check_id === 'document-title');
+  modules['naver-searchadvisor'][0].title = null;
+  titleObservation.state = 'fail'; titleObservation.q = 0; titleObservation.reason = 'Forged missing title';
+  await saveAfter();
+  assert.throws(() => buildReport(packet), /document-title failure conflicts with raw HTML evidence|module differs from raw response and headers/);
 });

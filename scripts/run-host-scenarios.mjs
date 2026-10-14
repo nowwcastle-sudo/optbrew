@@ -1,6 +1,6 @@
 import { spawn } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { access, mkdir, readFile, writeFile } from 'node:fs/promises';
+import { access, mkdir, open, readFile, rename, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -18,23 +18,56 @@ async function executable(host) {
   throw new Error(`native ${name} not found on PATH`);
 }
 
-function run(file, args, cwd, timeoutMs) {
+export async function runOwnedProcess(file, args, cwd, timeoutMs, stdoutPath, stderrPath,
+  { graceMs = 500, spawnChild = spawn } = {}) {
+  const stdoutFile = await open(stdoutPath, 'wx');
+  let stderrFile;
+  try { stderrFile = await open(stderrPath, 'wx'); }
+  catch (error) { await stdoutFile.close(); throw error; }
   return new Promise(resolve => {
     const started = new Date().toISOString();
-    const child = spawn(file, args, { cwd, shell: false, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
-    const stdout = [], stderr = [];
-    let size = 0, reason = null;
-    const collect = target => chunk => {
+    const child = spawnChild(file, args, { cwd, shell: false, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
+    let size = 0, reason = null, exitCode = null, closeObserved = false, settled = false, writeError = null;
+    let writes = Promise.resolve(), graceTimer;
+    const append = handle => chunk => {
+      if (settled || writeError) return;
       size += chunk.length;
-      if (size > 10_000_000) { reason = 'output_limit'; child.kill(); return; }
-      target.push(chunk);
+      if (size > 10_000_000) { stop('output_limit'); return; }
+      const bytes = Buffer.from(chunk);
+      writes = writes.then(async () => {
+        for (let offset = 0; offset < bytes.length;) {
+          const { bytesWritten } = await handle.write(bytes, offset);
+          if (!bytesWritten) throw new Error('log write made no progress');
+          offset += bytesWritten;
+        }
+      }).catch(error => { writeError = error; stop('log_write_error'); });
     };
-    child.stdout.on('data', collect(stdout));
-    child.stderr.on('data', collect(stderr));
-    child.on('error', error => { reason = `spawn_error:${error.code ?? 'unknown'}`; });
-    const timer = setTimeout(() => { reason = 'timeout'; child.kill(); }, timeoutMs);
-    child.on('close', code => { clearTimeout(timer); resolve({ started, ended: new Date().toISOString(),
-      exit_code: code, reason, stdout: Buffer.concat(stdout), stderr: Buffer.concat(stderr) }); });
+    const finish = async () => {
+      if (settled) return;
+      settled = true;
+      clearTimeout(timer); clearTimeout(graceTimer);
+      child.stdout?.destroy(); child.stderr?.destroy();
+      await writes;
+      await Promise.all([stdoutFile.sync(), stderrFile.sync()]);
+      await Promise.all([stdoutFile.close(), stderrFile.close()]);
+      const stdout = await readFile(stdoutPath), stderr = await readFile(stderrPath);
+      resolve({ started, ended: new Date().toISOString(), exit_code: exitCode, reason: reason ??
+        (writeError ? 'log_write_error' : null), close_observed: closeObserved, stdout, stderr });
+    };
+    const grace = () => { if (!graceTimer) graceTimer = setTimeout(() => {
+      reason ??= 'close_missing'; void finish();
+    }, graceMs); };
+    const stop = why => {
+      reason ??= why;
+      if (child.exitCode === null && child.signalCode === null) child.kill();
+      grace();
+    };
+    child.stdout.on('data', append(stdoutFile));
+    child.stderr.on('data', append(stderrFile));
+    child.on('exit', code => { exitCode = code; grace(); });
+    child.on('error', error => { reason ??= `spawn_error:${error.code ?? 'unknown'}`; grace(); });
+    child.on('close', code => { closeObserved = true; exitCode ??= code; void finish(); });
+    const timer = setTimeout(() => stop('timeout'), timeoutMs);
   });
 }
 
@@ -45,10 +78,27 @@ export async function runHostScenarios({ host, scenarios, workspaceRoot, outputD
   const binary = await executable(host);
   await access(workspaceRoot);
   await mkdir(outputDir, { recursive: true });
-  const versionRun = await run(binary, ['--version'], workspaceRoot, Math.min(timeoutMs, 15000));
-  if (versionRun.exit_code !== 0) throw new Error(`${host} --version failed`);
+  const receipt = { host, host_version: null, binary_sha256: digest(await readFile(binary)),
+    installation: 'isolated_plugin_or_explicit_skill', scenarios: [], evidence_ref: path.join(outputDir, 'receipt.json') };
+  const saveReceipt = async (initial = false) => {
+    const bytes = `${JSON.stringify(receipt, null, 2)}\n`;
+    if (initial) await writeFile(receipt.evidence_ref, bytes, { flag: 'wx' });
+    else { const temporary = `${receipt.evidence_ref}.tmp`; await writeFile(temporary, bytes);
+      await rename(temporary, receipt.evidence_ref); }
+  };
+  await saveReceipt(true);
+  const versionRun = await runOwnedProcess(binary, ['--version'], workspaceRoot, Math.min(timeoutMs, 15000),
+    path.join(outputDir, 'version.stdout.log'), path.join(outputDir, 'version.stderr.log'));
+  if (versionRun.exit_code !== 0 || versionRun.reason) {
+    receipt.version_check = { status: 'incomplete', exit_code: versionRun.exit_code,
+      reason: versionRun.reason, stdout_ref: path.join(outputDir, 'version.stdout.log'),
+      stderr_ref: path.join(outputDir, 'version.stderr.log') };
+    await saveReceipt();
+    throw new Error(`${host} --version failed; receipt: ${receipt.evidence_ref}`);
+  }
   const host_version = versionRun.stdout.toString('utf8').trim();
-  const receipts = [];
+  receipt.host_version = host_version;
+  await saveReceipt();
   for (const scenario of scenarios) {
     if (!/^[a-z0-9-]+$/.test(scenario.id) || typeof scenario.request !== 'string' || !scenario.request.trim() ||
         Object.keys(scenario).some(key => !['id', 'request', 'material'].includes(key)))
@@ -62,22 +112,26 @@ export async function runHostScenarios({ host, scenarios, workspaceRoot, outputD
     const argv = host === 'codex' ? ['exec', '--ephemeral', '--json', '--skip-git-repo-check', '-C', scenarioRoot,
       '-o', finalPath, prompt] : ['-p', prompt, '--no-session-persistence', '--output-format', 'json',
       '--plugin-dir', pluginRoot];
-    const result = await run(binary, argv, scenarioRoot, timeoutMs);
     const stdoutPath = path.join(output, 'stdout.log'), stderrPath = path.join(output, 'stderr.log');
-    await writeFile(stdoutPath, result.stdout, { flag: 'wx' });
-    await writeFile(stderrPath, result.stderr, { flag: 'wx' });
+    const scenarioReceipt = { scenario_id: scenario.id, request: scenario.request, actual_version: host_version,
+      binary, argv, started: new Date().toISOString(), ended: null, exit_code: null,
+      discovery_status: 'pending_independent_review', invocation_status: 'running',
+      artifact_hashes: {}, verdict: 'pending_independent_review', limitations: [],
+      stdout_ref: stdoutPath, stderr_ref: stderrPath, final_ref: null };
+    receipt.scenarios.push(scenarioReceipt);
+    await saveReceipt();
+    const result = await runOwnedProcess(binary, argv, scenarioRoot, timeoutMs, stdoutPath, stderrPath);
     const hashes = { stdout: digest(result.stdout), stderr: digest(result.stderr) };
     try { hashes.final = digest(await readFile(finalPath)); } catch { /* host did not produce final output */ }
-    receipts.push({ scenario_id: scenario.id, request: scenario.request, actual_version: host_version,
-      binary, argv, started: result.started, ended: result.ended, exit_code: result.exit_code,
-      discovery_status: 'pending_independent_review', invocation_status: result.exit_code === 0 ?
+    Object.assign(scenarioReceipt, { started: result.started, ended: result.ended, exit_code: result.exit_code,
+      close_observed: result.close_observed,
+      invocation_status: result.reason ? 'incomplete' : result.exit_code === 0 ?
         (hashes.final || result.stdout.length ? 'host_returned_output' : 'no_output') : 'host_error',
-      artifact_hashes: hashes, verdict: 'pending_independent_review', limitations: result.reason ? [result.reason] : [],
-      stdout_ref: stdoutPath, stderr_ref: stderrPath, final_ref: hashes.final ? finalPath : null });
+      artifact_hashes: hashes, limitations: result.reason ? [result.reason] : [],
+      final_ref: hashes.final ? finalPath : null });
+    await saveReceipt();
+    if (result.reason) break;
   }
-  const receipt = { host, host_version, binary_sha256: digest(await readFile(binary)), installation: 'isolated_plugin_or_explicit_skill',
-    scenarios: receipts, evidence_ref: path.join(outputDir, 'receipt.json') };
-  await writeFile(receipt.evidence_ref, `${JSON.stringify(receipt, null, 2)}\n`, { flag: 'wx' });
   return receipt;
 }
 

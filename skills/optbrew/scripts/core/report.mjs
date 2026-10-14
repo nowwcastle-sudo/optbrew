@@ -9,6 +9,7 @@ import { freezeProtocol } from './protocol.mjs';
 import { measurePanel } from './metrics.mjs';
 import { normalizeImport } from '../adapters/imports.mjs';
 import { mergeFindings, selectRemediations } from './findings.mjs';
+import { auditCollected } from '../../modules/naver-searchadvisor/scripts/audit.mjs';
 
 const catalog = JSON.parse(readFileSync(new URL('../../references/remediations.json', import.meta.url))).items;
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
@@ -270,12 +271,19 @@ function checkAuditPhase(input, phase, snapshot, requireRef) {
         (obs.state === 'fail' && artifact.status < 400) ||
         (artifact.content_hash === null && obs.state !== 'unknown')))
       throw new ContractError('fetch response verdict differs from collected artifact');
-    if (obs.check_id === 'index-policy' && ['pass', 'fail'].includes(obs.state) &&
-        (!module || (/\b(?:noindex|none)\b/i.test(`${module.robots_meta ?? ''},${module.x_robots_tag ?? ''}`) !== (obs.state === 'fail'))))
-      throw new ContractError('index-policy verdict differs from module output');
-    if (obs.check_id === 'document-title' && ['pass', 'fail'].includes(obs.state) &&
-        (!module || Boolean(module.title) !== (obs.state === 'pass')))
-      throw new ContractError('document title verdict differs from module output');
+    if (['index-policy', 'document-title'].includes(obs.check_id) && ['pass', 'fail'].includes(obs.state)) {
+      const raw = artifact && requireRef(obs.evidence_ref);
+      if (!module || !artifact || artifact.status !== 200 || artifact.capability !== 'raw_html' ||
+          artifact.raw_html_ref !== obs.evidence_ref || artifact.content_hash !== raw.sha256 || raw.kind !== 'raw_html')
+        throw new ContractError('title/index verdict lacks bound raw response');
+      const replay = auditCollected({ artifact, html: raw.text });
+      if (!same([module.title, module.robots_meta, module.x_robots_tag],
+        [replay.title, replay.robots_meta, replay.x_robots_tag]))
+        throw new ContractError('title/index module differs from raw response and headers');
+      const blocked = /\b(?:noindex|none)\b/i.test(`${replay.robots_meta ?? ''},${replay.x_robots_tag ?? ''}`);
+      if (obs.state !== (obs.check_id === 'document-title' ? replay.title ? 'pass' : 'fail' : blocked ? 'fail' : 'pass'))
+        throw new ContractError('title/index verdict differs from raw response and headers');
+    }
     if (obs.check_id === 'search-crawl-policy' && obs.state === 'fail' &&
         (!module || module.robots_evidence_ref !== obs.evidence_ref || module.robots?.yeti_allowed !== false))
       throw new ContractError('crawl verdict differs from bound robots evidence and module output');

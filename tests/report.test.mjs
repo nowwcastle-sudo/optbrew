@@ -323,9 +323,11 @@ test('collector observations bind to the owning audit index and raw content hash
     run.packet.evidence_index.find(x => x.ref === 'raw.html').source_ref = 'optbrew:collector';
     run.packet.baseline.scores = score(run.packet.baseline.input);
     const observations = `${JSON.stringify(run.packet.baseline.input.observations)}\n`;
-    const collection = `${JSON.stringify({ artifacts: [{ normalized_url: 'https://example.com/', evidence_ref: 'raw.html',
-      status: 200, headers: {} }] })}\n`;
-    const modules = `${JSON.stringify({ 'naver-searchadvisor': [{ url: 'https://example.com/', robots_meta: 'noindex' }] })}\n`;
+    const collection = `${JSON.stringify({ artifacts: [{ normalized_url: 'https://example.com/', final_url: 'https://example.com/',
+      evidence_ref: 'raw.html', raw_html_ref: 'raw.html', content_hash: sha(readFileSync(path.join(run.dir, 'raw.html'))),
+      capability: 'raw_html', status: 200, headers: {} }] })}\n`;
+    const modules = `${JSON.stringify({ 'naver-searchadvisor': [{ url: 'https://example.com/', title: 'Example',
+      robots_meta: 'noindex', x_robots_tag: null }] })}\n`;
     const audit = { run_id: 'synthetic-report', context_ref: 'context.json',
       collection_ref: 'collection.json', module_output_ref: 'modules.json', observations_ref: 'observations.json',
       raw: [{ normalized_url: 'https://example.com/', evidence_ref: 'raw.html',
@@ -337,8 +339,9 @@ test('collector observations bind to the owning audit index and raw content hash
     }
     run.packet.audit_ref = 'audit.json';
     assert.equal(buildReport(run.packet).json.baseline.scores[0].readiness_status, 'blocked');
-    run.rewrite('modules.json', `${JSON.stringify({ 'naver-searchadvisor': [{ url: 'https://example.com/', robots_meta: null }] })}\n`);
-    assert.throws(() => buildReport(run.packet), /index-policy verdict differs/);
+    run.rewrite('modules.json', `${JSON.stringify({ 'naver-searchadvisor': [{ url: 'https://example.com/', title: 'Example',
+      robots_meta: null, x_robots_tag: null }] })}\n`);
+    assert.throws(() => buildReport(run.packet), /module differs from raw response/);
     run.rewrite('modules.json', modules);
     audit.raw[0].content_hash = '0'.repeat(64);
     run.rewrite('audit.json', `${JSON.stringify(audit)}\n`);
@@ -605,8 +608,11 @@ test('review P2-8: before and after collector snapshots use their own evidence r
     for (const [phase, ref] of [['baseline', 'raw.html'], ['after', 'after.html']]) {
       const prefix = phase === 'baseline' ? 'b' : 'a';
       addEvidence(run, `${prefix}-collection.json`, { artifacts: [{ normalized_url: 'https://example.com/',
-        evidence_ref: ref, status: 200, headers: {} }] }, 'collection');
-      addEvidence(run, `${prefix}-modules.json`, { 'naver-searchadvisor': [{ url: 'https://example.com/', robots_meta: 'noindex' }] }, 'modules');
+        final_url: 'https://example.com/', evidence_ref: ref, raw_html_ref: ref,
+        content_hash: run.packet.evidence_index.find(x => x.ref === ref).sha256,
+        capability: 'raw_html', status: 200, headers: {} }] }, 'collection');
+      addEvidence(run, `${prefix}-modules.json`, { 'naver-searchadvisor': [{ url: 'https://example.com/',
+        title: phase === 'baseline' ? 'Example' : 'After', robots_meta: 'noindex', x_robots_tag: null }] }, 'modules');
       addEvidence(run, `${prefix}-observations.json`, phase === 'baseline' ? run.packet.baseline.input.observations : afterInput.observations, 'observations');
       addEvidence(run, `${prefix}-audit.json`, { run_id: 'synthetic-report', context_ref: 'context.json',
         collection_ref: `${prefix}-collection.json`, module_output_ref: `${prefix}-modules.json`,

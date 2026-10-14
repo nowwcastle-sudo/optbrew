@@ -640,7 +640,7 @@
     },
     {
       "path": "scripts/core/report.mjs",
-      "sha256": "e50dcad6e4246e6ba9209330b632dbce0e5b3f37e56d042ce0dfcd6daec5d31f"
+      "sha256": "c28b59dc4ebb92c98a8a0cc9bbbb6cc57868e22813bd79d7775fbd51edbab20f"
     },
     {
       "path": "scripts/core/scope.mjs",
@@ -659,5 +659,5 @@
       "sha256": "e9041a0ff06c5395027c25646cf210958e38e969d34b329d7b165a865e77e313"
     }
   ],
-  "bundle_hash": "e2901501f5f010731c38138e734c180580526a68951a8aef940467cf99e9ebde"
+  "bundle_hash": "bc16dfa6048e13acf9e2528cfcc5199192c360ece703ead45f3b6bfbbe6dcaf2"
 }
