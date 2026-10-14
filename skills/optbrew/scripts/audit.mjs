@@ -91,17 +91,18 @@ export async function runAudit({ context, modules, outputDir, transport, resolve
   // Verdicts come from one derivation shared with the report replay.
   const bodies = new Map(collection.artifacts.map(x => [x.normalized_url, x.body]));
   const observations = deriveObservations({ context, artifacts, collection,
-    textOf: x => bodies.get(x.normalized_url)?.toString('utf8') ?? null, naverModule: modules.includes('naver-searchadvisor') });
+    textOf: x => bodies.get(x.normalized_url)?.toString('utf8') ?? null });
   const result = { context_ref: context.evidence_ref, artifacts, observations, module_outputs,
     evidence_ref: path.join(evidenceDir, 'evidence-index.json'), discovered_count: collection.discovered_count,
     evaluated_count: collection.evaluated_count, request_count: collection.request_count, skipped: collection.skipped, limit_reached: collection.limit_reached };
   await writeFile(path.join(evidenceDir, 'collection.json'), `${JSON.stringify({ artifacts, discovered_count: collection.discovered_count,
     evaluated_count: collection.evaluated_count, request_count: collection.request_count, skipped: collection.skipped, limit_reached: collection.limit_reached }, null, 2)}\n`, { flag: 'wx' });
+  await writeFile(path.join(evidenceDir, 'ledger.json'), `${JSON.stringify({ entries: collection.ledger, limit: Math.min(context.scope?.max_urls ?? 50, 50) }, null, 2)}\n`, { flag: 'wx' });
   await writeFile(path.join(evidenceDir, 'modules.json'), `${JSON.stringify(module_outputs, null, 2)}\n`, { flag: 'wx' });
   await writeFile(path.join(evidenceDir, 'observations.json'), `${JSON.stringify(observations, null, 2)}\n`, { flag: 'wx' });
   await writeFile(result.evidence_ref, `${JSON.stringify({ run_id: context.run_id, context_ref: context.evidence_ref,
     collection_ref: path.join(evidenceDir, 'collection.json'), module_output_ref: path.join(evidenceDir, 'modules.json'),
-    observations_ref: path.join(evidenceDir, 'observations.json'),
+    observations_ref: path.join(evidenceDir, 'observations.json'), ledger_ref: path.join(evidenceDir, 'ledger.json'), modules,
     raw: artifacts.map(x => ({ normalized_url: x.normalized_url, evidence_ref: x.evidence_ref, content_hash: x.content_hash })),
     responses }, null, 2)}\n`, { flag: 'wx' });
   return result;

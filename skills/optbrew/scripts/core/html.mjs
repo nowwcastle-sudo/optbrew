@@ -5,11 +5,19 @@ export function stripInert(html) {
   return String(html ?? '').replace(/<!--[\s\S]*?(?:-->|$)|<(script|style|textarea)\b[^>]*>[\s\S]*?(?:<\/\1\s*>|$)/gi, '');
 }
 
+/** Markup without HTML comments. */
+export const stripComments = html => String(html ?? '').replace(/<!--[\s\S]*?(?:-->|$)/g, '');
+
+const named = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ' };
+/** Decode the character references that appear in attribute values. */
+export const decodeEntities = value => String(value).replace(/&(?:#(\d+)|#x([0-9a-f]+)|(amp|lt|gt|quot|apos|nbsp));/gi,
+  (match, dec, hex, name) => dec ? String.fromCodePoint(Number(dec)) : hex ? String.fromCodePoint(parseInt(hex, 16)) : named[name.toLowerCase()]);
+
 /** Absolute hrefs of anchors, resolved against the response URL. */
 export function anchorLinks(html, base) {
   const out = [];
   for (const match of String(html).matchAll(/<a\b[^>]*\bhref\s*=\s*(?:"([^"]*)"|'([^']*)')/gi)) {
-    try { out.push(new URL(match[1] ?? match[2], base).href); } catch { /* malformed link */ }
+    try { out.push(new URL(decodeEntities(match[1] ?? match[2]), base).href); } catch { /* malformed link */ }
   }
   return out;
 }
@@ -26,9 +34,11 @@ export function canonicalLink(html) {
 
 /** JSON-LD blocks with their parse result. */
 export function jsonLdBlocks(html) {
-  return [...String(html).matchAll(/<script[^>]+application\/ld\+json[^>]*>([\s\S]*?)<\/script>/gi)].map(match => {
-    try { return { ok: true, value: JSON.parse(match[1]) }; } catch { return { ok: false, value: null }; }
-  });
+  // Blocks inside HTML comments are not live markup, and an empty placeholder block is not an error.
+  return [...stripComments(html).matchAll(/<script[^>]+application\/ld\+json[^>]*>([\s\S]*?)<\/script>/gi)]
+    .filter(match => match[1].trim()).map(match => {
+      try { return { ok: true, value: JSON.parse(match[1]) }; } catch { return { ok: false, value: null }; }
+    });
 }
 
 const entities = { '&amp;': '&', '&lt;': '<', '&gt;': '>', '&quot;': '"', '&#39;': "'", '&nbsp;': ' ' };

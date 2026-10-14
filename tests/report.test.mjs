@@ -68,10 +68,34 @@ function titleObservation(ref) {
     reason: 'Raw HTML has a title; uniqueness and descriptiveness are not established', evaluator_type: 'code',
     source_ref: 'optbrew:collector', evidence_ref: ref };
 }
-/** Selected pages the hand-built collection did not fetch are recorded as skipped, as the collector does at its limit. */
-function skippedOthers(run, collected = 'https://example.com/') {
-  return run.packet.run_context.protocol.page_types.flatMap(type => type.urls).map(x => x.normalized)
-    .filter(url => url !== collected).map(url => ({ url, reason: 'url_limit' }));
+/**
+ * Hand-built audit evidence for the fixture's three selected pages: the home page is fetched (when `ref` is given) and
+ * every other selected page is a recorded failed fetch, so the request ledger, the response records and the planned
+ * observations all agree the way the audit writes them.
+ */
+function handAudit(run, { prefix, collectionRef, ref = null, homeError = 'fetch_failed' }) {
+  const urls = run.packet.run_context.protocol.page_types.flatMap(type => type.urls).map(x => x.normalized);
+  const artifacts = [], entries = [], raw = [], responses = [], observations = [];
+  for (const [index, url] of urls.entries()) {
+    if (index === 0 && ref) {
+      const bound = collectedArtifact(run, prefix + '-', ref);
+      artifacts.push(bound.artifact); responses.push(bound.response);
+      entries.push({ url, requests: 1, outcome: 'response', skipped_reason: null, error: null });
+      raw.push({ normalized_url: url, evidence_ref: ref, content_hash: run.packet.evidence_index.find(x => x.ref === ref).sha256 });
+      continue;
+    }
+    const error = index === 0 ? homeError : 'fetch_failed';
+    artifacts.push({ requested_url: url, normalized_url: url, final_url: null, status: null, error, content_hash: null,
+      evidence_ref: collectionRef, headers: {}, header_lines: [], redirect_chain: [], capability: 'none', raw_html_ref: null });
+    entries.push({ url, requests: 1, outcome: 'error', skipped_reason: null, error });
+    raw.push({ normalized_url: url, evidence_ref: collectionRef, content_hash: null });
+    observations.push({ schema_version: '1.0.0', observation_id: `failed-${index}`, check_id: 'fetch-response', family_id: 'fetch-response',
+      unit_key: `fetch-response|${url}`, state: 'unknown', q: null, partial_basis: null, reason: 'Request did not finish',
+      evaluator_type: 'code', source_ref: 'optbrew:collector', evidence_ref: collectionRef });
+  }
+  addEvidence(run, prefix + '-ledger.json', { entries, limit: 50 }, 'record', 'optbrew:collector');
+  const collection = { artifacts, skipped: [], request_count: entries.length, evaluated_count: entries.length, limit_reached: false };
+  return { collection, raw, responses, observations, auditFields: { ledger_ref: prefix + '-ledger.json', modules: ['naver-searchadvisor'], raw, responses } };
 }
 function productionRun() {
   const run = copyRun();
@@ -344,22 +368,22 @@ test('collector observations bind to the owning audit index and raw content hash
   const run = copyRun();
   try {
     for (const obs of run.packet.baseline.input.observations) obs.source_ref = 'optbrew:collector';
+    run.packet.baseline.input.observations.find(x => x.check_id === 'index-policy').reason = 'Raw response blocks indexing for the target engine';
     run.packet.baseline.input.observations.push(titleObservation('raw.html'));
     run.packet.evidence_index.find(x => x.ref === 'raw.html').source_ref = 'optbrew:collector';
+    const hand = handAudit(run, { prefix: 'bind', collectionRef: 'collection.json', ref: 'raw.html' });
+    run.packet.baseline.input.observations.push(...hand.observations);
     run.packet.baseline.scores = score(run.packet.baseline.input);
     const observations = `${JSON.stringify(run.packet.baseline.input.observations)}\n`;
-    const bound = collectedArtifact(run, 'bind-', 'raw.html');
-    const collection = `${JSON.stringify({ artifacts: [bound.artifact], skipped: skippedOthers(run) })}\n`;
+    const collection = `${JSON.stringify(hand.collection)}\n`;
     const modules = `${JSON.stringify({ 'naver-searchadvisor': [{ url: 'https://example.com/', title: 'Example',
       robots_meta: 'noindex', x_robots_tag: null }] })}\n`;
     const audit = { run_id: 'synthetic-report', context_ref: 'context.json',
-      collection_ref: 'collection.json', module_output_ref: 'modules.json', observations_ref: 'observations.json',
-      raw: [{ normalized_url: 'https://example.com/', evidence_ref: 'raw.html',
-        content_hash: run.packet.evidence_index.find(x => x.ref === 'raw.html').sha256 }], responses: [bound.response] };
+      collection_ref: 'collection.json', module_output_ref: 'modules.json', observations_ref: 'observations.json', ...hand.auditFields };
     for (const [ref, text] of Object.entries({ 'collection.json': collection, 'modules.json': modules,
       'observations.json': observations, 'audit.json': `${JSON.stringify(audit)}\n` })) {
       run.rewrite(ref, text);
-      run.packet.evidence_index.push({ ref, sha256: sha(text), kind: 'audit', run_id: 'synthetic-report' });
+      run.packet.evidence_index.push({ ref, sha256: sha(text), kind: 'audit', run_id: 'synthetic-report', ...(ref === 'collection.json' ? { source_ref: 'optbrew:collector' } : {}) });
     }
     run.packet.audit_ref = 'audit.json';
     assert.equal(buildReport(run.packet).json.baseline.scores[0].readiness_status, 'blocked');
@@ -637,16 +661,15 @@ test('review P2-7: bodyless timeout remains a reportable unknown', () => {
   const run = copyRun();
   try {
     const fetch = run.packet.baseline.input.observations[0];
-    Object.assign(fetch, { state: 'unknown', q: null, reason: 'timeout', source_ref: 'optbrew:collector', evidence_ref: 'collection.json' });
+    Object.assign(fetch, { state: 'unknown', q: null, reason: 'Request did not finish', source_ref: 'optbrew:collector', evidence_ref: 'collection.json' });
+    const hand = handAudit(run, { prefix: 'p27', collectionRef: 'collection.json', homeError: 'timeout' });
+    run.packet.baseline.input.observations.push(...hand.observations);
     run.packet.baseline.scores = score(run.packet.baseline.input);
-    const collection = { artifacts: [{ normalized_url: 'https://example.com/', final_url: 'https://example.com/',
-      status: null, error: 'timeout', content_hash: null, evidence_ref: 'collection.json' }], skipped: skippedOthers(run) };
-    addEvidence(run, 'collection.json', collection, 'collection', 'optbrew:collector');
-    addEvidence(run, 'modules.json', {}, 'modules');
-    addEvidence(run, 'observations.json', [fetch], 'observations');
+    addEvidence(run, 'collection.json', hand.collection, 'collection', 'optbrew:collector');
+    addEvidence(run, 'modules.json', { 'naver-searchadvisor': [] }, 'modules');
+    addEvidence(run, 'observations.json', run.packet.baseline.input.observations, 'observations');
     addEvidence(run, 'audit.json', { run_id: 'synthetic-report', context_ref: 'context.json',
-      collection_ref: 'collection.json', module_output_ref: 'modules.json', observations_ref: 'observations.json',
-      raw: [{ normalized_url: 'https://example.com/', evidence_ref: 'collection.json', content_hash: null }] }, 'audit');
+      collection_ref: 'collection.json', module_output_ref: 'modules.json', observations_ref: 'observations.json', ...hand.auditFields }, 'audit');
     run.packet.audit_ref = 'audit.json';
     assert.doesNotThrow(() => buildReport(run.packet));
   } finally { rmSync(run.dir, { recursive: true, force: true }); }
@@ -655,29 +678,30 @@ test('review P2-7: bodyless timeout remains a reportable unknown', () => {
 test('review P2-8: before and after collector snapshots use their own evidence refs for the same URL', () => {
   const run = copyRun();
   try {
-    const before = run.packet.baseline.input.observations[0];
     for (const obs of run.packet.baseline.input.observations) obs.source_ref = 'optbrew:collector';
+    run.packet.baseline.input.observations.find(x => x.check_id === 'index-policy').reason = 'Raw response blocks indexing for the target engine';
     run.packet.baseline.input.observations.push(titleObservation('raw.html'));
     run.packet.evidence_index.find(x => x.ref === 'raw.html').source_ref = 'optbrew:collector';
+    const hands = {};
+    for (const [phase, ref] of [['baseline', 'raw.html'], ['after', 'after.html']]) {
+      if (phase === 'after') addEvidence(run, 'after.html', '<html><head><meta name="robots" content="noindex"><title>After</title></head></html>\n', 'raw_html', 'optbrew:collector');
+      hands[phase] = handAudit(run, { prefix: phase[0], collectionRef: `${phase[0]}-collection.json`, ref });
+    }
+    run.packet.baseline.input.observations.push(...hands.baseline.observations);
     run.packet.baseline.scores = score(run.packet.baseline.input);
     const afterInput = structuredClone(run.packet.baseline.input);
-    afterInput.observations[0].evidence_ref = 'after.html';
-    afterInput.observations[1].evidence_ref = 'after.html';
-    afterInput.observations[2].evidence_ref = 'after.html';
-    addEvidence(run, 'after.html', '<html><head><meta name="robots" content="noindex"><title>After</title></head></html>\n', 'raw_html', 'optbrew:collector');
+    for (const obs of afterInput.observations) obs.evidence_ref = obs.evidence_ref === 'b-collection.json' ? 'a-collection.json' : 'after.html';
     run.packet.after = { input: afterInput, scores: score(afterInput) };
     run.packet.comparison = compare(run.packet.baseline.input, afterInput);
-    for (const [phase, ref] of [['baseline', 'raw.html'], ['after', 'after.html']]) {
-      const prefix = phase === 'baseline' ? 'b' : 'a';
-      const bound = collectedArtifact(run, `${prefix}-`, ref);
-      addEvidence(run, `${prefix}-collection.json`, { artifacts: [bound.artifact], skipped: skippedOthers(run) }, 'collection');
+    for (const [phase] of [['baseline'], ['after']]) {
+      const prefix = phase[0];
+      addEvidence(run, `${prefix}-collection.json`, hands[phase].collection, 'collection', 'optbrew:collector');
       addEvidence(run, `${prefix}-modules.json`, { 'naver-searchadvisor': [{ url: 'https://example.com/',
         title: phase === 'baseline' ? 'Example' : 'After', robots_meta: 'noindex', x_robots_tag: null }] }, 'modules');
       addEvidence(run, `${prefix}-observations.json`, phase === 'baseline' ? run.packet.baseline.input.observations : afterInput.observations, 'observations');
       addEvidence(run, `${prefix}-audit.json`, { run_id: 'synthetic-report', context_ref: 'context.json',
         collection_ref: `${prefix}-collection.json`, module_output_ref: `${prefix}-modules.json`,
-        observations_ref: `${prefix}-observations.json`, raw: [{ normalized_url: 'https://example.com/',
-          evidence_ref: ref, content_hash: run.packet.evidence_index.find(x => x.ref === ref).sha256 }], responses: [bound.response] }, 'audit');
+        observations_ref: `${prefix}-observations.json`, ...hands[phase].auditFields }, 'audit');
     }
     run.packet.audit_ref = 'b-audit.json';
     run.packet.audit_snapshots = [{ phase: 'baseline', audit_ref: 'b-audit.json', context_ref: 'context.json' },
@@ -795,7 +819,7 @@ test('0.1.2 fix 2: a measured score is never the headline below 80% coverage', a
     missing_bounds: [10.1, 99.9], readiness_status: 'provisional', ...extra });
   assert.equal(report.COVERAGE_THRESHOLD, 80);
   assert.deepEqual(report.scoreHeadline(synthetic(79.9, 100)), { profile: 'SEO', status: 'insufficient_coverage', headline_score: null,
-    measured_subset_score: 100, coverage: 79.9, coverage_threshold: 80, missing_bounds: [10.1, 99.9], readiness_status: 'provisional' });
+    measured_subset_score: 100, coverage: 79.9, coverage_exact: 79.9, coverage_threshold: 80, unresolved_core: 0, missing_bounds: [10.1, 99.9], readiness_status: 'provisional' });
   assert.equal(report.scoreHeadline(synthetic(80, 91.2)).status, 'sufficient');
   assert.equal(report.scoreHeadline(synthetic(80, 91.2)).headline_score, 91.2);
   assert.equal(report.scoreHeadline({ profile: 'SEO', score: null, coverage: 0, A: 100, M: 0, missing_bounds: [0, 100], readiness_status: 'unverified' }).status, 'insufficient_coverage');
@@ -810,7 +834,8 @@ test('0.1.2 fix 2: a measured score is never the headline below 80% coverage', a
   assert.equal(headline.measured_subset_score, seo.score);
   assert.deepEqual(headline.missing_bounds, seo.missing_bounds);
   assert.match(markdown, /Headline:/);
-  assert.match(markdown, new RegExp(`SEO: insufficient coverage \\(${seo.coverage}% of the applicable weight is measured; at least 80% is needed\\)`));
+  const shown = Math.floor(headline.coverage_exact * 10 + 1e-9) / 10;
+  assert.match(markdown, new RegExp(`SEO: insufficient coverage \\(${shown}% of the applicable weight is measured; at least 80% is needed\\)`));
   assert.match(markdown, new RegExp(`measured subset ${seo.score}`));
   const row = json.tables.score.find(x => x[0] === 'SEO');
   assert.match(row[1], /^insufficient coverage \(measured subset/);

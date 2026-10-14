@@ -395,7 +395,7 @@
       "package_path": "skills/optbrew/modules/naver-searchadvisor/scripts/audit.mjs",
       "original_git_blob_sha": "de8c4a3430633cb2445e339d7a943d944cbf45a9",
       "original_sha256": "3fd83141a00a9d45d4fbffa9d8ff515c7a49e7b1ea4637844e92375ea7797ff9",
-      "distributed_sha256": "ebf2b57e4f271a972c583cc5ced1e74d2d80a92784342aad91c833113b86154d",
+      "distributed_sha256": "fa70051e07b429ad9477b8d778232cc4b3ca0bae8d2a1352074dfd4cb6f5f884",
       "transformations": [
         "Audit output routes policy evidence to official URL index",
         "reviewed distribution patch naver-robots-rfc9309"

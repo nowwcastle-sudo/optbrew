@@ -142,7 +142,7 @@ test('R1: a selected page missing from artifacts and skipped, or a dropped audit
   await crawl.forgeObservations(list => {
     for (let i = list.length - 1; i >= 0; i--) if (list[i].unit_key.endsWith(pageUrl)) list.splice(i, 1);
   });
-  assert.throws(() => buildReport(crawl.packet), /selected page missing from the collection and its skipped list/);
+  assert.throws(() => buildReport(crawl.packet), /selected page missing from the collection and its skipped list|request ledger/);
 
   const dropped = await run(t, ['/meta'], { engines: ['google'] });
   assert.equal(blockers(buildReport(dropped.packet)), 1);

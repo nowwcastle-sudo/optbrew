@@ -654,7 +654,8 @@ export function auditCollected({ artifact, html, robotsArtifact = null, engines 
     artifact.header_lines.filter((line) => line.name === 'x-robots-tag').map((line) => line.value) :
     artifact.headers['x-robots-tag'] != null ? [artifact.headers['x-robots-tag']] : [];
   const directives = indexingDirectives({ html, xRobotsTag: xRobotsLines, engines });
-  const jsonld = [...html.matchAll(/<script[^>]+application\/ld\+json[^>]*>([\s\S]*?)<\/script>/gi)];
+  // JSON-LD inside HTML comments is not live markup; an empty placeholder block is not a parse error.
+  const jsonld = [...String(html).replace(/<!--[\s\S]*?(?:-->|$)/g, '').matchAll(/<script[^>]+application\/ld\+json[^>]*>([\s\S]*?)<\/script>/gi)].filter(([, body]) => body.trim());
   // Naver markup checks on the collected response (moved from the unreachable direct-fetch path).
   const liveMarkup = stripInert(html);
   const markupHead = /<head[^>]*>([\s\S]*?)<\/head>/i.exec(liveMarkup)?.[1] ?? liveMarkup;

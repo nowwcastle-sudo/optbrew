@@ -186,6 +186,7 @@ test('real local HTTP baseline, authorized edit and same-condition rescan clear 
   for (const [phase, run] of [['baseline', baseline], ['after', followup]]) {
     for (const name of ['collection.json', 'modules.json', 'observations.json', 'evidence-index.json'])
       await evidence(path.join(path.dirname(run.evidence_ref), name), 'record');
+    await evidence(path.join(path.dirname(run.evidence_ref), 'ledger.json'), 'record', 'optbrew:collector');
     for (const artifact of run.artifacts) {
       await evidence(artifact.evidence_ref, 'raw_html', 'optbrew:collector', { phase, environment: 'local', target: context.target });
       if (artifact.response_ref) await evidence(artifact.response_ref, 'response_record', 'optbrew:collector');

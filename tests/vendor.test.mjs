@@ -13,8 +13,8 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const sourcesRoot = process.env.OPTBREW_SOURCES_ROOT ?? path.resolve(root, '../../../work/seo-alternatives/sources');
 const configPath = path.join(root, 'scripts/vendor.config.json');
 // These tests regenerate the vendored bundle from the maintainers' local mirror of the pinned upstream repositories.
-// A public clone has no such mirror, so they skip instead of failing; set OPTBREW_SOURCES_ROOT to run them.
-const maintainerOnly = existsSync(sourcesRoot) ? {} :
+// A public clone has no such mirror, so they skip instead of failing. A set OPTBREW_SOURCES_ROOT always runs them, and a wrong path fails.
+const maintainerOnly = process.env.OPTBREW_SOURCES_ROOT || existsSync(sourcesRoot) ? {} :
   { skip: 'maintainer-only: upstream source mirror not found; set OPTBREW_SOURCES_ROOT to the mirror directory' };
 const ids = ['mblode-seo', 'naver-searchadvisor', 'firecrawl-seo-audit', 'magnus-seo', 'seranking-seo', 'marketing-search'];
 

@@ -42,7 +42,7 @@ node bin/optbrew.mjs report --input ./remote-only.json --output-dir ./report-out
 
 자체 준비도 프로필은 SEO, 네이버가 대상일 때 NEO, AEO, GEO, LLMO입니다. 고유 검사군 22개는 여러 가이드가 같은 문제를 찾아도 한 번만 셉니다. 확인하지 못한 적용 검사는 분모에 남기고, 근거 있는 `not_applicable` 검사만 제외합니다. 결과에는 점수, 측정 범위, 미측정 구간의 상·하한, 차단 요소, 미확인 핵심 검사가 들어갑니다. 측정 범위 80% 기준은 optbrew 자체 규칙이며 검색엔진 기준이 아닙니다. 높은 준비도 점수는 색인, 유입, 인용, 사실 정확성, 전환, 매출을 증명하지 않습니다.
 
-감사 스크립트가 수집한 응답에서 스스로 관찰하는 항목은 다음과 같습니다. 응답 상태, meta 태그와 `X-Robots-Tag`의 색인 지시자(대상 엔진별), 제목 없음·중복, 선언한 엔진별 robots.txt 접근(Googlebot, Yeti, [`ai-crawlers.md`](skills/optbrew/references/ai-crawlers.md)의 AI 검색 봇. 학습 봇은 점수에 넣지 않음), canonical 대상과 리다이렉트 체인 길이, 링크 또는 선언한 사이트맵을 통한 발견성, JSON-LD 문법, 네이버 마크업(Open Graph, 설명, canonical, viewport, 제목 키워드 반복, 막힌 CSS·JS), 이름·주소·전화·설립연도·배송 기준의 페이지 간 일치입니다. 따라서 SEO와 NEO는 접근·색인·마크업 검사를 스크립트로 합니다. AEO와 GEO는 준비도 감사로 남습니다. 답변 구조, 주장 근거, 저자, 최신성은 가이드와 에이전트 판단이 필요합니다. LLMO는 페이지 간 불일치를 보여 주는 검사를 얻지만 사실이 맞다는 것을 증명하지는 않습니다. 심은 결함 시험과 한계는 저장소의 `docs/validation/detection-0.1.2.md`에 있습니다.
+감사 스크립트가 수집한 응답에서 스스로 관찰하는 항목은 다음과 같습니다. 응답 상태, meta 태그와 `X-Robots-Tag`의 색인 지시자(대상 엔진별), 제목 없음·중복, 선언한 엔진별 robots.txt 접근(Googlebot, Yeti, [`ai-crawlers.md`](skills/optbrew/references/ai-crawlers.md)의 AI 검색 봇. 학습 봇은 점수에 넣지 않음), canonical 대상과 리다이렉트 체인 길이, 링크 또는 선언한 사이트맵을 통한 발견성, JSON-LD 문법, 네이버 마크업(Open Graph, 설명, canonical, viewport, 제목 키워드 반복, 막힌 CSS·JS), 이름·주소·전화·설립연도의 페이지 간 일치입니다. 따라서 SEO와 NEO는 접근·색인·마크업 검사를 스크립트로 합니다. AEO와 GEO는 준비도 감사로 남습니다. 답변 구조, 주장 근거, 저자, 최신성은 가이드와 에이전트 판단이 필요합니다. LLMO는 페이지 간 불일치를 보여 주는 검사를 얻지만 사실이 맞다는 것을 증명하지는 않습니다. 심은 결함 시험과 한계는 저장소의 `docs/validation/detection-0.1.2.md`에 있습니다.
 
 측정 범위가 80% 미만이면 보고서는 하나의 대표 점수를 내지 않고 측정된 부분의 값과 상·하한을 보여 줍니다. 모든 대표 점수는 측정 범위와 함께 표시됩니다.
 

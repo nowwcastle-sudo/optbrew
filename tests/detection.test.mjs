@@ -130,17 +130,17 @@ test('Fix 4: AI search bots are judged per declared engine; training bots earn a
 
 // ---- Fix 5: LLMO cross-page facts
 const N = 'Brewline Coffee Roasters', ADDR = '27 Wausan-ro, Mapo-gu, Seoul 04050', TEL = '+82-2-555-0142';
-const facts = (o = {}) => `<p>${o.name ?? N} is a specialty coffee roastery founded in ${o.year ?? 2014}.</p><p>Address: ${o.addr ?? ADDR}. Phone: ${o.tel ?? TEL}.</p>`;
-const orgLd = (o = {}) => `<script type="application/ld+json">${JSON.stringify({ '@context': 'https://schema.org', '@type': 'Organization', name: N, url: 'https://x.test/',
+const facts = (o = {}) => `<p>Address: ${o.addr ?? ADDR}</p><p>Phone: ${o.tel ?? TEL}</p><p>Founded: ${o.year ?? 2014}</p>`;
+const orgLd = (o = {}) => `<script type="application/ld+json">${JSON.stringify({ '@context': 'https://schema.org', '@type': 'Organization', name: o.name ?? N, url: 'https://x.test/',
   telephone: o.tel ?? TEL, address: ADDR, ...(o.sameAs === false ? {} : { sameAs: ['https://example.org/brewline'] }) })}</script>`;
 const factPaths = ['/', '/contact', '/faq', '/press', '/store', '/support', '/history', '/about', '/ld-phone'];
 const factPage = (path, o = {}) => req => doc(req, path, { title: `Title ${path}`, head: o.ld ?? '', main: `<h1>${path}</h1>${facts(o)}${o.extra ?? ''}` });
 const llmoSite = await open({
   '/': req => doc(req, '/', { title: 'Home', main: `<h1>${N}</h1>${facts()}<ul>${factPaths.slice(1).map(p => `<li><a href="${p}">${p}</a></li>`).join('')}</ul>` }),
-  '/contact': factPage('/contact'), '/faq': factPage('/faq', { extra: '<p>Shipping is free for orders over 30,000 KRW.</p>' }),
-  '/press': factPage('/press', { name: 'BrewLine Coffee Co.' }), '/store': factPage('/store', { addr: '112 Seongsu-ro, Seongdong-gu, Seoul 04790' }),
+  '/contact': factPage('/contact', { ld: orgLd() }), '/faq': factPage('/faq', { ld: orgLd() }),
+  '/press': factPage('/press', { ld: orgLd({ name: 'BrewLine Coffee Co.' }) }), '/store': factPage('/store', { addr: '112 Seongsu-ro, Seongdong-gu, Seoul 04790' }),
   '/support': factPage('/support', { tel: '+82-2-555-0199' }), '/history': factPage('/history', { year: 2016 }),
-  '/about': factPage('/about', { ld: orgLd({ sameAs: false }) }), '/ld-phone': factPage('/ld-phone', { ld: orgLd({ tel: '+82-2-555-0188' }), extra: '<p>Shipping is free for orders over 50,000 KRW.</p>' }),
+  '/about': factPage('/about', { ld: orgLd({ sameAs: false }) }), '/ld-phone': factPage('/ld-phone', { ld: orgLd({ tel: '+82-2-555-0188' }) }),
 });
 
 test('Fix 5: cross-page entity facts produce fact-consistency and entity-identity observations', async t => {
@@ -167,7 +167,7 @@ test('Fix 5: cross-page entity facts produce fact-consistency and entity-identit
 });
 
 test('Fix 5: too little data stays unknown, never a pass', async t => {
-  const scenario = await run(t, llmoSite, ['/contact', '/faq'], { enable: ['fact-consistency', 'entity-identity'] });
+  const scenario = await run(t, llmoSite, ['/', '/store'], { enable: ['fact-consistency', 'entity-identity'] });
   assert.equal(scenario.packet.baseline.input.observations.some(x => x.family_id === 'entity-identity'), false, 'no Organization data');
   const one = await run(t, llmoSite, ['/press'], { enable: ['fact-consistency'] });
   assert.equal(one.packet.baseline.input.observations.some(x => x.family_id === 'fact-consistency'), false, 'one page cannot establish a reference');

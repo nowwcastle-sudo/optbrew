@@ -39,14 +39,20 @@ export const COVERAGE_THRESHOLD = 80;
 
 /** One headline per profile. Below the coverage threshold the single number is withheld and only the measured subset is shown. */
 export function scoreHeadline(result) {
-  const sufficient = result.A > 0 && result.score !== null && 100 * result.M / result.A >= COVERAGE_THRESHOLD - 1e-9;
-  return { profile: result.profile, status: sufficient ? 'sufficient' : 'insufficient_coverage',
-    headline_score: sufficient ? result.score : null, measured_subset_score: result.score, coverage: result.coverage,
-    coverage_threshold: COVERAGE_THRESHOLD, missing_bounds: result.missing_bounds, readiness_status: result.readiness_status };
+  const exact = result.A > 0 ? 100 * result.M / result.A : null;
+  const coverageOk = result.score !== null && exact !== null && exact >= COVERAGE_THRESHOLD - 1e-9;
+  // The design spec also asks for verdicts on the core access and indexing checks before a score counts as sufficient.
+  const coreOk = (result.unknown_core ?? []).length === 0;
+  const status = !coverageOk ? 'insufficient_coverage' : !coreOk ? 'insufficient_core' : 'sufficient';
+  return { profile: result.profile, status, headline_score: status === 'sufficient' ? result.score : null,
+    measured_subset_score: result.score, coverage: result.coverage, coverage_exact: exact, coverage_threshold: COVERAGE_THRESHOLD,
+    unresolved_core: (result.unknown_core ?? []).length, missing_bounds: result.missing_bounds, readiness_status: result.readiness_status };
 }
+const floorTenth = value => value === null ? 'unknown' : Math.floor(value * 10 + 1e-9) / 10;
 const headlineCell = result => {
   const headline = scoreHeadline(result);
   return headline.status === 'sufficient' ? `${headline.headline_score} (coverage ${headline.coverage}%)` :
+    headline.status === 'insufficient_core' ? `insufficient core checks (${headline.unresolved_core} unresolved; measured subset ${headline.measured_subset_score ?? 'unknown'}; coverage ${headline.coverage ?? 'unknown'}%; bounds ${headline.missing_bounds?.join('–') ?? 'unknown'})` :
     `insufficient coverage (measured subset ${headline.measured_subset_score ?? 'unknown'}; coverage ${headline.coverage ?? 'unknown'}%; bounds ${headline.missing_bounds?.join('–') ?? 'unknown'})`;
 };
 
@@ -343,6 +349,43 @@ function statusFor(finding, changes, afterInput, target, requireRef) {
   return linked.every(change => change.environment === 'local') && localResolved ? 'verified_local' : 'modified_unverified';
 }
 
+/**
+ * The request ledger accounts for every queued or rejected URL. Collection counts and the skipped list must equal what
+ * the ledger and the hashed response records show, so a fetched page cannot be moved to skipped and a request limit
+ * cannot be claimed without the requests that exhaust it.
+ */
+function checkLedger(input, audit, collection, artifacts, requireRef) {
+  const ledger = JSON.parse(requireRef(audit.ledger_ref).text);
+  const entries = ledger.entries;
+  const fail = message => { throw new ContractError(`request ledger: ${message}`); };
+  if (!Array.isArray(entries)) fail('entries missing');
+  const limit = Math.min(input.run_context.scope?.max_urls ?? 50, 50);
+  if (ledger.limit !== limit) fail('request limit differs from the run scope');
+  const total = entries.reduce((sum, entry) => sum + entry.requests, 0);
+  if (total > limit) fail('more requests than the limit');
+  const responded = artifacts.filter(x => Number.isInteger(x.status));
+  const failed = artifacts.filter(x => !Number.isInteger(x.status));
+  const byUrl = outcome => new Map(entries.filter(x => x.outcome === outcome).map(x => [x.url, x]));
+  const responses = byUrl('response'), errors = byUrl('error');
+  if (responses.size !== responded.length || audit.responses.length !== responded.length || errors.size !== failed.length)
+    fail('collected artifacts differ from the ledger or the response records');
+  for (const artifact of responded) {
+    const entry = responses.get(artifact.normalized_url);
+    if (!entry || entry.requests !== artifact.redirect_chain.length + 1) fail(`response for ${artifact.normalized_url} is not recorded`);
+  }
+  for (const artifact of failed) if (!errors.has(artifact.normalized_url) || errors.get(artifact.normalized_url).requests < artifact.redirect_chain.length)
+    fail(`failed fetch of ${artifact.normalized_url} is not recorded`);
+  const key = x => `${x.url}|${x.reason ?? x.skipped_reason}`;
+  const ledgerSkips = entries.filter(x => x.skipped_reason).map(key).sort();
+  if (JSON.stringify((collection.skipped ?? []).map(key).sort()) !== JSON.stringify(ledgerSkips)) fail('skipped list differs from the ledger');
+  const limited = entries.some(x => ['url_limit', 'request_limit'].includes(x.skipped_reason));
+  if (collection.limit_reached !== limited) fail('limit_reached differs from the ledger');
+  if (limited && total < limit) fail('a request limit is claimed but fewer requests than the limit were made');
+  if (collection.request_count !== total || collection.evaluated_count !== entries.filter(x => x.requests > 0).length) fail('request or evaluated count differs from the ledger');
+  const selected = new Set(input.run_context.protocol.page_types.flatMap(type => type.urls.map(x => x.normalized)));
+  if (entries.some(x => selected.has(x.url) && x.skipped_reason && x.skipped_reason !== 'url_limit' && x.outcome === 'skipped')) fail('a selected page is skipped for a reason other than the request limit');
+}
+
 function checkAuditPhase(input, phase, snapshot, requireRef) {
   if (!input) return;
   const observations = input.observations.filter(x => x.source_ref === 'optbrew:collector');
@@ -357,6 +400,10 @@ function checkAuditPhase(input, phase, snapshot, requireRef) {
   const savedObservations = JSON.parse(requireRef(audit.observations_ref).text);
   if (!Array.isArray(collection.artifacts) || !Array.isArray(audit.raw) || !Array.isArray(savedObservations))
     throw new ContractError('audit snapshot files incomplete');
+  if (!Array.isArray(audit.modules) || !audit.ledger_ref || !Array.isArray(audit.responses))
+    throw new ContractError('audit evidence was produced by an older optbrew release (it has no request ledger or module list); re-run the audit with optbrew 0.1.2 and build a new packet');
+  for (const name of audit.modules) if (!Array.isArray(moduleOutputs[name])) throw new ContractError(`planned module output missing: ${name}`);
+  const naverPlanned = audit.modules.includes('naver-searchadvisor');
   const rawRefs = new Set();
   for (const raw of audit.raw) {
     if (raw.content_hash === null) {
@@ -371,6 +418,7 @@ function checkAuditPhase(input, phase, snapshot, requireRef) {
   }
   // Final URL, redirect chain and header lines come from the hashed response records, not from collection.json alone.
   const artifacts = collection.artifacts.map(x => boundArtifact(x, audit, requireRef));
+  checkLedger(input, audit, collection, artifacts, requireRef);
   for (const obs of observations) {
     if (!savedObservations.some(x => same(x, obs)) || !rawRefs.has(obs.evidence_ref))
       throw new ContractError('collector observation is not bound to audit index and raw evidence');
@@ -390,14 +438,14 @@ function checkAuditPhase(input, phase, snapshot, requireRef) {
     if (['index-policy', 'document-title'].includes(obs.check_id) &&
         (['pass', 'fail'].includes(obs.state) || obs.check_id === 'document-title' && obs.state === 'unknown')) {
       const raw = artifact && requireRef(obs.evidence_ref);
-      if (!module || !artifact || artifact.status !== 200 || artifact.capability !== 'raw_html' ||
+      if ((naverPlanned && !module) || !artifact || artifact.status !== 200 || artifact.capability !== 'raw_html' ||
           artifact.raw_html_ref !== obs.evidence_ref || artifact.content_hash !== raw.sha256 || raw.kind !== 'raw_html')
         throw new ContractError('title/index verdict lacks bound raw response');
       const replay = auditCollected({ artifact, html: raw.text, engines });
-      if (!same([module.title, module.robots_meta, module.x_robots_tag],
+      if (naverPlanned && (!same([module.title, module.robots_meta, module.x_robots_tag],
         [replay.title, replay.robots_meta, replay.x_robots_tag]) ||
         (module.requested_url !== undefined && module.requested_url !== artifact.normalized_url) ||
-        (module.redirect_chain !== undefined && !same(module.redirect_chain, artifact.redirect_chain ?? [])))
+        (module.redirect_chain !== undefined && !same(module.redirect_chain, artifact.redirect_chain ?? []))))
         throw new ContractError('title/index module differs from raw response and headers');
       // Title states (missing, duplicated, unknown) are replayed by the derivation below.
       if (obs.check_id === 'index-policy' && obs.state !== (replay.index_blocked ? 'fail' : 'pass'))
@@ -430,10 +478,9 @@ function checkAuditPhase(input, phase, snapshot, requireRef) {
       throw new ContractError(`selected page missing from the collection and its skipped list: ${url}`);
   // Re-derive every collector verdict from the hashed raw evidence. Each derived observation must be present in the
   // packet and in the saved observation file, and no collector observation may lack a derivation.
-  const naverRun = Array.isArray(moduleOutputs['naver-searchadvisor']);
-  const derived = deriveObservations({ context: input.run_context, artifacts, collection, naverModule: naverRun,
+  const derived = deriveObservations({ context: input.run_context, artifacts, collection,
     textOf: artifact => artifact.content_hash ? requireRef(artifact.evidence_ref).text : null });
-  const shape = x => [x.state, x.q, x.partial_basis, x.evidence_ref];
+  const shape = x => [x.state, x.q, x.partial_basis, x.evidence_ref, x.reason, x.evaluator_type, x.source_ref];
   for (const expected of derived) {
     if (!observations.some(x => x.unit_key === expected.unit_key) || !savedObservations.some(x => x.unit_key === expected.unit_key))
       throw new ContractError(`planned collector observation missing: ${expected.unit_key}`);
@@ -611,7 +658,8 @@ export function buildReport(packet) {
   const headlines = baselineScores.map(scoreHeadline);
   result.headline = headlines;
   const headlineText = headlines.map(h => h.status === 'sufficient' ? `${h.profile}: ${h.headline_score} (coverage ${h.coverage}%)` :
-    `${h.profile}: insufficient coverage (${h.coverage ?? 'unknown'}% of the applicable weight is measured; at least ${h.coverage_threshold}% is needed); measured subset ${h.measured_subset_score ?? 'unknown'}, bounds ${h.missing_bounds?.join('–') ?? 'unknown'}`);
+    h.status === 'insufficient_core' ? `${h.profile}: insufficient core checks (${h.unresolved_core} access or indexing check(s) have no verdict, although ${h.coverage}% is measured); measured subset ${h.measured_subset_score ?? 'unknown'}, bounds ${h.missing_bounds?.join('–') ?? 'unknown'}` :
+    `${h.profile}: insufficient coverage (${floorTenth(h.coverage_exact)}% of the applicable weight is measured; at least ${h.coverage_threshold}% is needed); measured subset ${h.measured_subset_score ?? 'unknown'}, bounds ${h.missing_bounds?.join('–') ?? 'unknown'}`);
   const remediationRows = findings.map(f => [f.priority, `${f.message} ${f.unit_key}`, f.sources.map(x => `${x.source_ref} ${x.evidence_ref}`).join('; '),
     f.remediation ? `${f.remediation.mechanism} (${f.remediation.source_url}, checked ${f.remediation.checked_date})` : 'unknown',
     packet.changes.filter(x => x.finding_ids.some(id => f.finding_ids.includes(id))).map(x => x.path).join('; ') || f.remediation?.location_hint || 'owner implementation location required',

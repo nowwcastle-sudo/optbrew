@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { validateEntity } from './contracts.mjs';
 import { auditCollected } from '../../modules/naver-searchadvisor/scripts/audit.mjs';
 import { parseRobots, robotsVerdict } from '../../modules/naver-searchadvisor/scripts/robots.mjs';
-import { anchorLinks } from './html.mjs';
+import { anchorLinks, decodeEntities } from './html.mjs';
 import { agentFor } from './crawlers.mjs';
 import { declaredRobotsIndex } from './collector.mjs';
 import { compareFacts, pageFacts } from './facts.mjs';
@@ -12,7 +12,16 @@ import { compareFacts, pageFacts } from './facts.mjs';
  * report replays this same function over hashed raw evidence, so a producer and a verifier cannot disagree.
  * `artifacts` carry the collection record fields plus evidence_ref; `textOf(artifact)` returns the raw body text.
  */
-export function deriveObservations({ context, artifacts, collection = {}, textOf, naverModule = true }) {
+/** Link and sitemap target comparison key: no fragment, and a directory index file equals its directory. */
+function canonicalUrl(value) {
+  try {
+    const url = new URL(value); url.hash = '';
+    url.pathname = url.pathname.replace(/\/index\.(?:html?|php)$/i, '/');
+    return url.href;
+  } catch { return null; }
+}
+
+export function deriveObservations({ context, artifacts, collection = {}, textOf }) {
   const protocol = context.protocol;
   const planned = new Set(protocol.families.filter(x => x.applicable).map(x => x.family_id));
   const selected = new Map(protocol.page_types.flatMap(type => type.urls).map(url => [url.normalized, url]));
@@ -33,7 +42,7 @@ export function deriveObservations({ context, artifacts, collection = {}, textOf
     if (planned.has('fetch-response')) add('fetch-response', null, url,
       artifact.error || artifact.status < 200 || artifact.status >= 300 && artifact.status < 400 ? 'unknown' : artifact.status >= 400 ? 'fail' : 'pass',
       artifact.error ? 'Request did not finish' : `HTTP ${artifact.status}`, artifact.evidence_ref);
-    if (artifact.capability !== 'raw_html' || artifact.status !== 200 || !naverModule) continue;
+    if (artifact.capability !== 'raw_html' || artifact.status !== 200) continue;
     const html = textOf(artifact);
     const robotsIndex = declaredRobotsIndex(artifacts, declaredRobots, artifact.final_url);
     const robots = robotsIndex < 0 ? null : artifacts[robotsIndex];
@@ -97,31 +106,44 @@ export function deriveObservations({ context, artifacts, collection = {}, textOf
   if (planned.has('discovery')) {
     const sitemapUrls = new Set();
     const brokenSitemaps = [];
+    let sitemapIndex = false;
     for (const artifact of artifacts) {
       if (!declaredSitemaps.has(artifact.normalized_url)) continue;
       if (artifact.status >= 200 && artifact.status < 300) {
-        for (const match of String(textOf(artifact) ?? '').matchAll(/<loc>\s*([^<\s]+)\s*<\/loc>/gi)) sitemapUrls.add(match[1]);
+        const body = String(textOf(artifact) ?? '');
+        // Child sitemaps of an index are not fetched, so pages missing from the index prove nothing.
+        if (/<sitemapindex\b/i.test(body)) sitemapIndex = true;
+        for (const match of body.matchAll(/<loc>\s*([^<\s]+)\s*<\/loc>/gi)) sitemapUrls.add(canonicalUrl(decodeEntities(match[1])));
       } else brokenSitemaps.push(`${artifact.normalized_url} (${artifact.status ?? artifact.error ?? 'no response'})`);
     }
     const htmlPages = artifacts.filter(x => x.capability === 'raw_html' && x.status === 200);
     const linked = new Map();
-    for (const page of htmlPages) for (const href of anchorLinks(textOf(page), page.final_url)) {
-      let target; try { target = new URL(href); target.hash = ''; } catch { continue; }
-      if (target.href !== page.final_url && target.href !== page.normalized_url)
-        linked.set(target.href, (linked.get(target.href) ?? 0) + 1);
+    let scriptNavigation = false;
+    for (const page of htmlPages) {
+      const body = textOf(page);
+      const hrefs = anchorLinks(body, page.final_url);
+      // A page with scripts and no anchors may build its navigation in the browser; links are then unknowable.
+      if (!hrefs.length && /<script\b/i.test(body)) scriptNavigation = true;
+      for (const href of hrefs) {
+        const target = canonicalUrl(href);
+        if (target && target !== canonicalUrl(page.final_url) && target !== canonicalUrl(page.normalized_url)) linked.set(target, (linked.get(target) ?? 0) + 1);
+      }
     }
     const complete = !collection.limit_reached && !(collection.skipped ?? []).some(x => ['depth_limit', 'url_limit', 'request_limit'].includes(x.reason));
     for (const row of pageRows) {
       if (!row.publicIndexing) continue;
       const { url, artifact } = row;
-      const found = linked.has(url) || linked.has(artifact.final_url) || sitemapUrls.has(url) || sitemapUrls.has(artifact.final_url);
-      if (found) add('discovery', null, url, 'pass', sitemapUrls.has(url) || sitemapUrls.has(artifact.final_url) ? 'Listed in a declared sitemap' : 'Linked from another collected page', artifact.evidence_ref);
-      else if (htmlPages.length >= 2 && complete)
+      const keys = [canonicalUrl(url), canonicalUrl(artifact.final_url)];
+      const inSitemap = keys.some(key => sitemapUrls.has(key));
+      if (inSitemap || keys.some(key => linked.has(key)))
+        add('discovery', null, url, 'pass', inSitemap ? 'Listed in a declared sitemap' : 'Linked from another collected page', artifact.evidence_ref);
+      else if (htmlPages.length >= 2 && complete && !sitemapIndex && !scriptNavigation)
         add('discovery', null, url, 'fail', `Not linked from any collected page and not in a sitemap${brokenSitemaps.length ? `; declared sitemap unusable: ${brokenSitemaps.join(', ')}` : ''}`, artifact.evidence_ref);
     }
   }
   if (planned.has('fact-consistency')) {
     for (const page of facts) {
+      if (comparison.separate.has(page.url)) continue;
       const found = comparison.deviations.get(page.url) ?? [];
       const comparable = Object.keys(comparison.references).some(type => page.facts.visible[type].size || page.facts.linked[type].size);
       if (found.length) add('fact-consistency', null, page.url, 'fail', `Cross-page fact comparison (no approved fact list): ${found.join('; ')}`, page.row.artifact.evidence_ref);
@@ -131,7 +153,7 @@ export function deriveObservations({ context, artifacts, collection = {}, textOf
   if (planned.has('entity-identity') && facts.length) {
     const reasons = [];
     const home = facts.find(x => new URL(x.row.artifact.final_url).pathname === '/') ?? facts[0];
-    const orgPages = facts.filter(x => x.facts.orgs.length);
+    const orgPages = facts.filter(x => x.facts.orgs.length && !comparison.separate.has(x.url));
     const nameReference = comparison.references.name;
     const nameDeviants = facts.filter(x => (comparison.deviations.get(x.url) ?? []).some(text => text.startsWith('name ')));
     if (nameDeviants.length) reasons.push(`name differs from "${nameReference.label}" on ${nameDeviants.map(x => x.url).join(', ')}`);

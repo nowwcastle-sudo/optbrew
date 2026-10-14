@@ -184,16 +184,19 @@ export async function collect(context, { transport, resolve } = {}) {
     throw new Error('robots and sitemap must be auxiliary resources');
   if (auxiliary.length && initial.length + auxiliary.length > limit) throw new Error('selected pages and auxiliary resources exceed request scope');
   const queue = []; const seen = new Set(); const skipped = [];
+  // Every queued or rejected URL leaves one ledger entry, so skipped URLs and the request count can be checked later.
+  const ledger = [];
+  const skip = (url, reason) => { skipped.push({ url, reason }); ledger.push({ url, requests: 0, outcome: 'skipped', skipped_reason: reason, error: null }); };
   const enqueue = (url, depth, auxiliaryResource = false) => {
     let normalized;
     try { normalized = assertUrlInScope(url, scope).href; }
-    catch { skipped.push({ url, reason: 'outside_scope' }); return; }
+    catch { skip(url, 'outside_scope'); return; }
     if (depth > 0 && auxiliaryDocument(normalized) && !allowedDocuments.has(normalized)) {
-      skipped.push({ url: normalized, reason: 'auxiliary_undeclared' }); return;
+      skip(normalized, 'auxiliary_undeclared'); return;
     }
     if (seen.has(normalized)) return;
     seen.add(normalized);
-    if (depth > depthLimit) { skipped.push({ url: normalized, reason: 'depth_limit' }); return; }
+    if (depth > depthLimit) { skip(normalized, 'depth_limit'); return; }
     queue.push({ url: normalized, depth, auxiliaryResource });
   };
   initial.forEach(url => enqueue(url, 0));
@@ -208,7 +211,7 @@ export async function collect(context, { transport, resolve } = {}) {
   async function worker() {
     while (cursor < queue.length) {
       const item = queue[cursor++];
-      if (requestCount >= limit) { skipped.push({ url: item.url, reason: 'url_limit' }); continue; }
+      if (requestCount >= limit) { skip(item.url, 'url_limit'); continue; }
       let used = 0;
       const reserveRequest = () => {
         if (requestCount >= limit) return false;
@@ -219,19 +222,21 @@ export async function collect(context, { transport, resolve } = {}) {
       try { artifact = await fetchScoped(item.url, { context, transport, resolve, allowedAuxiliary: allowedDocuments, reserveRequest }); }
       catch (error) {
         const reason = ['scope_rejected', 'redirect_outside_scope', 'auxiliary_undeclared', 'request_limit'].includes(error.code) ? error.code : 'fetch_failed';
-        if (reason === 'request_limit' && !used) { skipped.push({ url: item.url, reason: 'url_limit' }); continue; }
+        if (reason === 'request_limit' && !used) { skip(item.url, 'url_limit'); continue; }
         if (reason !== 'fetch_failed') skipped.push({ url: item.url, reason });
+        ledger.push({ url: item.url, requests: used, outcome: 'error', skipped_reason: reason !== 'fetch_failed' ? reason : null, error: reason });
         artifact = { requested_url: item.url, normalized_url: item.url, final_url: null, status: null,
           headers: {}, header_lines: [], redirect_chain: error.redirect_chain ?? [], raw_html_ref: null, content_hash: null, capability: 'none',
           source_ref: 'optbrew:collector', evidence_ref: null, error: reason, body: Buffer.alloc(0) };
       }
       if (used) evaluated++;
+      if (!artifact.error) ledger.push({ url: item.url, requests: used, outcome: 'response', skipped_reason: null, error: null });
       artifacts.push(artifact);
       if (!item.auxiliaryResource && artifact.status === 200 && artifact.capability === 'raw_html')
         for (const next of links(artifact.body.toString('utf8'), artifact.final_url)) enqueue(next, item.depth + 1);
     }
   }
   await Promise.all(Array.from({ length: concurrency }, () => worker()));
-  return { artifacts, discovered_count: seen.size, evaluated_count: evaluated, request_count: requestCount, skipped,
+  return { artifacts, ledger, discovered_count: seen.size, evaluated_count: evaluated, request_count: requestCount, skipped,
     limit_reached: skipped.some(x => x.reason === 'url_limit' || x.reason === 'request_limit') };
 }

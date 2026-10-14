@@ -1,5 +1,6 @@
 import { createServer } from 'node:http';
 import { createHash } from 'node:crypto';
+import { existsSync } from 'node:fs';
 import { mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
@@ -32,7 +33,7 @@ export async function startSite(routes) {
 }
 
 /** Audit local pages and wrap the preserved run evidence in a replayable report packet. */
-export async function buildScenario(site, paths, { engines = ['google'], robots = false, sitemap = false, enable = [], maxUrls = 50, name = 'scenario' } = {}) {
+export async function buildScenario(site, paths, { engines = ['google'], robots = false, sitemap = false, enable = [], modules = ['naver-searchadvisor'], maxUrls = 50, name = 'scenario' } = {}) {
   const dir = await mkdtemp(path.join(os.tmpdir(), `optbrew-final-review-${name}-`));
   const { origin, port } = site;
   const context = structuredClone(JSON.parse(await readFile(template, 'utf8')).run_context);
@@ -56,7 +57,7 @@ export async function buildScenario(site, paths, { engines = ['google'], robots 
   if (robots) auxiliary.push({ kind: 'robots', original: `${origin}/robots.txt`, normalized: `${origin}/robots.txt` });
   if (sitemap) auxiliary.push({ kind: 'sitemap', original: `${origin}/sitemap.xml`, normalized: `${origin}/sitemap.xml` });
   if (auxiliary.length) context.protocol.auxiliary_resources = auxiliary;
-  const audit = await runAudit({ context, modules: ['naver-searchadvisor'], outputDir: dir });
+  const audit = await runAudit({ context, modules, outputDir: dir });
   const index = [];
   async function add(ref, kind, source_ref) {
     if (index.some(x => x.ref === ref)) return;
@@ -75,6 +76,7 @@ export async function buildScenario(site, paths, { engines = ['google'], robots 
   await record('costs.json', costs);
   for (const file of ['collection.json', 'modules.json', 'observations.json', 'evidence-index.json'])
     await add(path.join(dir, 'evidence', file), 'record', file === 'collection.json' ? 'optbrew:collector' : undefined);
+  if (existsSync(path.join(dir, 'evidence', 'ledger.json'))) await add(path.join(dir, 'evidence', 'ledger.json'), 'record', 'optbrew:collector');
   for (const artifact of audit.artifacts) {
     await add(artifact.evidence_ref, artifact.capability === 'raw_html' ? 'raw_html' : 'raw_response', 'optbrew:collector');
     if (artifact.response_ref) await add(artifact.response_ref, 'response_record', 'optbrew:collector');
