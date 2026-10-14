@@ -119,14 +119,6 @@
       "sha256": "dd84d1306c4cbe1a4184c6342382f1718d7187af5cf3b79af12e034b6a5c7eaa"
     },
     {
-      "path": "modules/magnus-seo/scripts/__pycache__/aeo_audit.cpython-314.pyc",
-      "sha256": "70283a1a13b58453965ed3c5e5a40ef2d8909c99ac8f38cff9f134b6b1b48998"
-    },
-    {
-      "path": "modules/magnus-seo/scripts/__pycache__/test_aeo_scripts.cpython-314.pyc",
-      "sha256": "37df8e6fc8e8c10beb48ae289d443448cac024f116c8162d98430e519b94af62"
-    },
-    {
       "path": "modules/magnus-seo/scripts/aeo_audit.py",
       "sha256": "7e556b725a523f33fcb3ebe6fafc42d0bbaf5267bfd3bb85d080762ed5e686f9"
     },
@@ -592,7 +584,7 @@
     },
     {
       "path": "scripts/core/bundle.mjs",
-      "sha256": "1196d40565c97090ca64208c7ed8657e40714c5ab3233d9531dd3f0839460dac"
+      "sha256": "706b2b1dee874a904b806375579bca5d62910b82f0a2dbdf71854713c1d8a414"
     },
     {
       "path": "scripts/core/capabilities.mjs",
@@ -647,5 +639,5 @@
       "sha256": "e9041a0ff06c5395027c25646cf210958e38e969d34b329d7b165a865e77e313"
     }
   ],
-  "bundle_hash": "e69d5d88e0447749831a3d2e5072ae0bf84b6a8d2780c39076ead6d1c5f1945e"
+  "bundle_hash": "efdade0df270f17e4884681fc93cb25895295c79ad58b1b4e9789b3a3003f9b5"
 }

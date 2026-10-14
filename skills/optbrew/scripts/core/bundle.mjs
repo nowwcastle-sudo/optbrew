@@ -5,11 +5,17 @@ import path from 'node:path';
 const digest = bytes => createHash('sha256').update(bytes).digest('hex');
 const manifestName = 'bundle-manifest.json';
 
+/** Match the package.json skill exclusions for generated Python cache files. */
+export function isDistributedBundlePath(relative) {
+  return !relative.split(/[\\/]/).includes('__pycache__') && !relative.endsWith('.pyc');
+}
+
 async function listFiles(root, relative = '') {
   const result = [];
   for (const entry of await readdir(path.join(root, relative), { withFileTypes: true })) {
     const name = relative ? `${relative}/${entry.name}` : entry.name;
     if (name === manifestName) continue;
+    if (!isDistributedBundlePath(name)) continue;
     if (entry.isDirectory()) result.push(...await listFiles(root, name));
     else if (entry.isFile()) result.push(name);
     else throw new Error(`bundle contains link or special file: ${name}`);
