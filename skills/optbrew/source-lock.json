@@ -390,7 +390,7 @@
       "package_path": "skills/optbrew/modules/naver-searchadvisor/scripts/audit.mjs",
       "original_git_blob_sha": "de8c4a3430633cb2445e339d7a943d944cbf45a9",
       "original_sha256": "3fd83141a00a9d45d4fbffa9d8ff515c7a49e7b1ea4637844e92375ea7797ff9",
-      "distributed_sha256": "58b030e5c6fd5904c2462b010d38e37ab2219d0285afe0ebfe3ac6a540f320ae",
+      "distributed_sha256": "18a2a2fe184f7e57a593a2cb56e5bf6c348e8e2ade3d0cf4c8158863843c2a3a",
       "transformations": [
         "Audit output routes policy evidence to official URL index",
         "reviewed distribution patch naver-robots-rfc9309"
@@ -2660,7 +2660,7 @@
       "package_path": "skills/optbrew/modules/naver-searchadvisor/scripts/robots.mjs",
       "original_git_blob_sha": null,
       "original_sha256": null,
-      "distributed_sha256": "40c55e783a76dc21747cf000e5b7cb2ffc9e8ccb507e1671d22ffff6a3c6e6cb",
+      "distributed_sha256": "20acf1a7401fbe42c0455fceb21b32346d1594135186eb18e1a32033ad97632a",
       "transformations": [
         "Reviewed first-party artifact copied"
       ],
@@ -2670,7 +2670,7 @@
       "excluded_files": [],
       "source_kind": "first_party",
       "canonical_path": "patches/naver-robots.mjs",
-      "canonical_sha256": "40c55e783a76dc21747cf000e5b7cb2ffc9e8ccb507e1671d22ffff6a3c6e6cb"
+      "canonical_sha256": "20acf1a7401fbe42c0455fceb21b32346d1594135186eb18e1a32033ad97632a"
     }
   ]
 }

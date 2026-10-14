@@ -246,7 +246,7 @@ async function audit(target) {
           'seo-basic-robots',
           '표준 문법상 허용되지만 엄격한 파서는 이 줄을 무시합니다. 공백을 제거해 "User-agent: Yeti" 형태로 맞추세요.');
 
-      const yeti = robotsVerdict(robots, 'yeti', url.pathname);
+      const yeti = robotsVerdict(robots, 'yeti', url.pathname + url.search);
       if (!yeti.allowed) {
         add('BLOCK', 'robots-disallow',
           `robots.txt가 Yeti의 이 경로 수집을 차단합니다 (${yeti.reason}).`,
@@ -256,7 +256,7 @@ async function audit(target) {
       }
 
       const hasYetiGroup = robots.groups.some((g) => g.agents.includes('yeti'));
-      const starBlocked = robotsVerdict(robots, 'some-other-bot', url.pathname);
+      const starBlocked = robotsVerdict(robots, 'some-other-bot', url.pathname + url.search);
       if (!starBlocked.allowed && !hasYetiGroup) {
         add('BLOCK', 'robots-star-block',
           '와일드카드(*) 그룹이 수집을 차단하는데 Yeti 전용 그룹이 없습니다. 네이버도 함께 차단됩니다.',
@@ -483,12 +483,12 @@ async function audit(target) {
       let same = 0, blocked = 0;
       for (const [kind, list] of Object.entries(resources)) {
         const urls = [...new Set(list)].map(resolve).filter((u) => u && u.origin === origin);
-        const bad = urls.filter((u) => !robotsVerdict(robots, agent, u.pathname).allowed);
+        const bad = urls.filter((u) => !robotsVerdict(robots, agent, u.pathname + u.search).allowed);
         same += urls.length;
         blocked += bad.length;
         if (bad.length)
           out[kind] = { n: bad.length, of: urls.length,
-            rules: [...new Set(bad.map((u) => robotsVerdict(robots, agent, u.pathname).reason))] };
+            rules: [...new Set(bad.map((u) => robotsVerdict(robots, agent, u.pathname + u.search).reason))] };
       }
       return { out, same, blocked };
     };

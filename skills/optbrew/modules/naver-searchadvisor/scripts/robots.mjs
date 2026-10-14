@@ -3,6 +3,7 @@ export function parseRobots(text) {
   const groups = [];
   const sitemaps = [];
   let current = null;
+  let hasRule = false;
   for (const raw of text.split(/\r?\n/)) {
     const line = raw.replace(/#.*$/, '').trim();
     const colon = line.indexOf(':');
@@ -13,12 +14,14 @@ export function parseRobots(text) {
       if (value) sitemaps.push(value);
     } else if (field === 'user-agent') {
       if (!value) continue;
-      if (!current || current.rules.length) {
+      if (!current || hasRule) {
         current = { agents: [], rules: [] };
         groups.push(current);
+        hasRule = false;
       }
       current.agents.push(value.toLowerCase());
     } else if ((field === 'allow' || field === 'disallow') && current) {
+      hasRule = true;
       // RFC 9309: an empty rule does not restrict access.
       if (value) current.rules.push({ type: field, path: value });
     }

@@ -39,6 +39,10 @@ test('vendored bundle has pinned files, notices and closed local links', async (
       await readFile(path.join(bundle, 'naver-searchadvisor/scripts/robots.mjs')),
       await readFile(path.join(root, 'skills/optbrew/modules/naver-searchadvisor/scripts/robots.mjs'))
     );
+    assert.deepEqual(
+      await readFile(path.join(bundle, 'naver-searchadvisor/scripts/audit.mjs')),
+      await readFile(path.join(root, 'scripts/patches/naver-robots.patch'))
+    );
     const firstParty = lock.files.find(x => x.package_path === 'skills/optbrew/modules/naver-searchadvisor/scripts/robots.mjs');
     assert.equal(firstParty.source_kind, 'first_party');
     assert.equal(firstParty.license, 'MIT');

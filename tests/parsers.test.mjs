@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import { readFile } from 'node:fs/promises';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
@@ -41,4 +42,30 @@ test('wildcard and end anchor match normalized paths', () => {
   assert.equal(robotsVerdict(parsed, 'Yeti', '/shop/one/draft/final').allowed, true);
   assert.equal(robotsVerdict(parsed, 'Yeti', '/shop/open/item').allowed, true);
   assert.equal(robotsVerdict(parsed, 'Yeti', '/a~b').allowed, false);
+});
+
+test('empty Disallow ends a group before the next User-agent', () => {
+  const parsed = parseRobots('User-agent: *\nDisallow:\nUser-agent: Yeti\nDisallow: /secret\n');
+  assert.deepEqual(parsed.groups.map(group => group.agents), [['*'], ['yeti']]);
+  assert.equal(robotsVerdict(parsed, 'OtherBot', '/secret').allowed, true);
+  assert.equal(robotsVerdict(parsed, 'Yeti', '/secret').allowed, false);
+});
+
+test('audit checks path and query for page and resource robots rules', () => {
+  const auditPath = fileURLToPath(new URL('../skills/optbrew/modules/naver-searchadvisor/scripts/audit.mjs', import.meta.url));
+  const source = `
+    globalThis.fetch = async url => {
+      const path = new URL(url).pathname;
+      if (path === '/robots.txt') return new Response('User-agent: Yeti\\nDisallow: /item?preview=1\\nDisallow: /asset.css?preview=1\\n', { headers: { 'content-type': 'text/plain' } });
+      if (path === '/item') return new Response('<html><head><title>Article</title><link rel="stylesheet" href="/asset.css?preview=1"></head><body><h1>Article</h1></body></html>', { headers: { 'content-type': 'text/html' } });
+      return new Response('', { status: 404 });
+    };
+    process.argv = [process.execPath, ${JSON.stringify(auditPath)}, 'https://example.com/item?preview=1', '--json'];
+    await import(${JSON.stringify(new URL('../skills/optbrew/modules/naver-searchadvisor/scripts/audit.mjs', import.meta.url).href)});
+  `;
+  const run = spawnSync(process.execPath, ['--input-type=module', '-e', source], { encoding: 'utf8', timeout: 5000 });
+  assert.equal(run.status, 1, run.stderr);
+  const result = JSON.parse(run.stdout);
+  assert.ok(result.findings.some(finding => finding.code === 'robots-disallow' && finding.message.includes('/item?preview=1')));
+  assert.ok(result.findings.some(finding => finding.code === 'resource-blocked' && finding.message.includes('/asset.css?preview=1')));
 });

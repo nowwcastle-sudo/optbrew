@@ -7,7 +7,7 @@
       "upstream_path": "scripts/audit.mjs",
       "expected_base_sha256": "b6d29d55e94b3e152f65c5590290dd2f0e8711466c00f93579bf545582db55d2",
       "replacement_path": "patches/naver-robots.patch",
-      "replacement_sha256": "58b030e5c6fd5904c2462b010d38e37ab2219d0285afe0ebfe3ac6a540f320ae",
+      "replacement_sha256": "18a2a2fe184f7e57a593a2cb56e5bf6c348e8e2ade3d0cf4c8158863843c2a3a",
       "reason": "Use pure RFC 9309 robots group and path verdict module; guard audit CLI on import"
     },
     {
@@ -25,7 +25,7 @@
       "id": "naver-robots-parser",
       "source_path": "patches/naver-robots.mjs",
       "package_path": "skills/optbrew/modules/naver-searchadvisor/scripts/robots.mjs",
-      "sha256": "40c55e783a76dc21747cf000e5b7cb2ffc9e8ccb507e1671d22ffff6a3c6e6cb",
+      "sha256": "20acf1a7401fbe42c0455fceb21b32346d1594135186eb18e1a32033ad97632a",
       "license": "MIT"
     }
   ],
