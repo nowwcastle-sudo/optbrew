@@ -1,4 +1,5 @@
 import { readFile, realpath, mkdir, rename, writeFile, rm } from 'node:fs/promises';
+import { realpathSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { score } from './core/score.mjs';
@@ -35,6 +36,6 @@ export async function runCli(argv = process.argv.slice(2)) {
   return result;
 }
 
-if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+if (process.argv[1] && realpathSync(path.resolve(process.argv[1])) === realpathSync(fileURLToPath(import.meta.url))) {
   runCli().catch(error => { process.stderr.write(`${error.name}: ${error.message}\n`); process.exitCode = 1; });
 }

@@ -18,5 +18,5 @@ test('CLI validates arguments and reports JSON dry-run without writes', async ()
   assert.equal(JSON.parse(out).decision.targets.length, 2);
   assert.equal(await main(['install', '--agents', 'unknown', '--scope', 'user'], io), 2);
   assert.match(err, /agent/i);
-  assert.equal(await main(['update', '--agents', 'codex', '--scope', 'user'], io), 1);
+  assert.equal(await main(['update', '--agents', 'codex', '--scope', 'user', '--home', path.join(root, 'home')], io), 1);
 });

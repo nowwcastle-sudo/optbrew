@@ -1,0 +1,15 @@
+# Release readiness, version 0.1.1
+
+The local package is reviewable after the final build, npm pack, ZIP and verifier run. Public release is pending. No repository creation, push, npm publish, direct paid API request or search-engine submission is part of this validation.
+
+`package.json`, `plugin.json`, `.codex-plugin/plugin.json`, `.claude-plugin/plugin.json`, `.claude-plugin/marketplace.json` and the ZIP name use 0.1.1. The bundle manifest keeps evaluation and observation protocol versions separate, hashes their source files, and is checked before scoring. The npm tarball and ZIP must contain one skill with matching bundle bytes. `docs/release.md` has the reviewable build and publication steps. A local Git tag is pending final review.
+
+The selected six upstream module notices remain under `skills/optbrew/licenses/`. The root notice links through `skills/optbrew/licenses/`; the skill notice links through `licenses/`. The portable plugin schema under `docs/validation/` is Apache-2.0 with its own attribution. Runtime dependencies in `package.json` remain zero. Naver's 55 guide article bodies and upstream installers stay excluded. These notices do not grant access to paid services or API data.
+
+Direct audit and calculation commands use the installed skill path. A Windows junction or Unix symlink must reach the same entrypoint as the physical managed bundle; `tests/workflow.test.mjs` checks both paths and import purity with actual localhost input.
+
+At the read-only publication preflight on 2026-10-14, the authenticated GitHub owner query returned `nowwcastle-sudo`; the requested `nowwcastle-sudo/optbrew` repository returned HTTP 404. `npm whoami` returned `ENEEDAUTH`; `npm view optbrew` returned E404. These responses neither reserve a name nor prove future availability. Recheck immediately before a separately authorized publication.
+
+The first Codex account-host attempt stopped at selected-model capacity. A later fresh user-installed literal `optbrew 실행해` call completed and requested the missing URL and goal. Claude Code stopped at weekly HTTP 429. The user installs passed managed doctor checks on the earlier 0.1.0 bundle. The corrected local package is 0.1.1; user-target update awaits final review. Same-version different-byte updates remain refused. Direct provider APIs also remain unmeasured until a first-cost estimate and limit are approved.
+
+Known small limits: the Markdown actual-outcomes table hides a single measured window until it can be paired, while `report.json` retains the metric; the current CLI test name overstates invalid/partial-output coverage; the recovery help example needs a literal-safe PowerShell path if it contains `$`; a Windows npm test helper emits Node DEP0190 because it invokes `npm` with `shell:true`; Claude Code warns about missing plugin author metadata. These do not establish a user-facing runtime failure, but should be resolved before calling the package fully polished.

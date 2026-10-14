@@ -46,7 +46,7 @@ The report keeps readiness, remedies, actual outcomes, and remaining work in sep
 
 ## APIs and cost
 
-API access is optional. A Claude or Claude Code subscription does not supply Anthropic API billing. To use a direct API key, follow the [official key guide](https://platform.claude.com/docs/en/get-api-key): Console → Settings → API keys. Put the key in the `ANTHROPIC_API_KEY` environment variable in your own shell or secret manager; never put a real value in a report. A key spanning multiple Anthropic workspaces may require an `anthropic-workspace-id` header. The v0.1.0 direct adapter does not set that header, so use a compatible key or a separately approved host capability.
+API access is optional. A Claude or Claude Code subscription does not supply Anthropic API billing. To use a direct API key, follow the [official key guide](https://platform.claude.com/docs/en/get-api-key): Console → Settings → API keys. Put the key in the `ANTHROPIC_API_KEY` environment variable in your own shell or secret manager; never put a real value in a report. A key spanning multiple Anthropic workspaces may require an `anthropic-workspace-id` header. The direct adapter introduced in v0.1.0 still does not set that header, so use a compatible key or a separately approved host capability.
 
 The direct adapter accepts only text `{model,max_tokens,messages}` requests for the exact model IDs `claude-fable-5-1`, `claude-opus-5-5`, `claude-sonnet-5-5`, and `claude-haiku-5-5`. `max_tokens` cannot exceed 128,000. Each attempt needs one token reservation of at least `1,000,000 + max_tokens`, a matching ledger budget, and an approval reference. This is a worst-case capacity bound, not a bill estimate. Record the current price source, estimated spend, and approved stop condition before the first paid call. Extra fields, tools, search, non-text input, unknown models, or currency-only bounds make zero direct calls. See [API boundaries](skills/optbrew/references/api.md).
 
@@ -64,7 +64,7 @@ node bin/optbrew.mjs update --scope project --project ./site --json
 node bin/optbrew.mjs rollback --scope project --project ./site --release-version 0.1.0 --json
 ```
 
-Without a confirmed registry package, `check-updates` reports `local_only`. `update` uses the current CLI bundle, verifies it, and updates all targets in that install record; it does not silently replace local edits. `rollback` needs that version in the record's retained prior releases. The shown rollback will therefore fail on a fresh 0.1.0 install. `npm update -g optbrew` updates npm's package files after release; it does not rewrite a copy already placed in an agent skills directory. Run the managed `update` command again after updating the CLI. Native plugin and Pi package update paths are in [platform support](docs/platforms.md).
+Without a confirmed registry package, `check-updates` reports `local_only`. `update` uses the current CLI bundle, verifies it, and updates all targets in that install record; it does not silently replace local edits. `rollback` needs that version in the record's retained prior releases. The shown rollback will therefore fail on a fresh 0.1.1 install and applies to a managed installation that retains local 0.1.0. `npm update -g optbrew` updates npm's package files after release; it does not rewrite a copy already placed in an agent skills directory. Run the managed `update` command again after updating the CLI. Native plugin and Pi package update paths are in [platform support](docs/platforms.md).
 
 ## Support and license
 

@@ -17,8 +17,10 @@ export async function buildRelease({ root = projectRoot, version, outputDir = pa
   if (metadataErrors.length) throw new Error(`release metadata mismatch: ${JSON.stringify(metadataErrors)}`);
   const bundleRoot = path.join(root, 'skills', 'optbrew');
   await copyFile(path.join(root, 'LICENSE'), path.join(bundleRoot, 'LICENSE'));
-  for (const name of ['THIRD_PARTY_NOTICES.md', 'source-lock.json'])
-    await copyFile(path.join(bundleRoot, name), path.join(root, name));
+  const notices = await readFile(path.join(bundleRoot, 'THIRD_PARTY_NOTICES.md'), 'utf8');
+  await writeFile(path.join(root, 'THIRD_PARTY_NOTICES.md'),
+    notices.replace(/\]\(licenses\//g, '](skills/optbrew/licenses/'));
+  await copyFile(path.join(bundleRoot, 'source-lock.json'), path.join(root, 'source-lock.json'));
   const manifest = await createBundleManifest({ bundleRoot, releaseVersion: version });
   if (manifest.evaluation_sources.length !== evaluationSourcePaths.length ||
       manifest.protocol_sources.length !== protocolSourcePaths.length)

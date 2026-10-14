@@ -270,10 +270,11 @@ function checkAuditPhase(input, phase, snapshot, requireRef) {
         (obs.state === 'fail' && artifact.status < 400) ||
         (artifact.content_hash === null && obs.state !== 'unknown')))
       throw new ContractError('fetch response verdict differs from collected artifact');
-    if (obs.check_id === 'index-policy' && obs.state === 'fail' &&
-        !/\b(?:noindex|none)\b/i.test(`${module?.robots_meta ?? ''},${module?.x_robots_tag ?? ''}`))
+    if (obs.check_id === 'index-policy' && ['pass', 'fail'].includes(obs.state) &&
+        (!module || (/\b(?:noindex|none)\b/i.test(`${module.robots_meta ?? ''},${module.x_robots_tag ?? ''}`) !== (obs.state === 'fail'))))
       throw new ContractError('index-policy verdict differs from module output');
-    if (obs.check_id === 'document-title' && obs.state === 'fail' && (!module || module.title))
+    if (obs.check_id === 'document-title' && ['pass', 'fail'].includes(obs.state) &&
+        (!module || Boolean(module.title) !== (obs.state === 'pass')))
       throw new ContractError('document title verdict differs from module output');
     if (obs.check_id === 'search-crawl-policy' && obs.state === 'fail' &&
         (!module || module.robots_evidence_ref !== obs.evidence_ref || module.robots?.yeti_allowed !== false))
@@ -381,11 +382,18 @@ export function buildReport(packet) {
       !item.next_action || !item.reobserve_when) throw new ContractError('remaining work row incomplete');
   const remaining = [...packet.remaining];
   for (const finding of findings.filter(x => x.status !== 'verified_production' &&
-      !packet.remaining.some(row => row.finding_id && finding.finding_ids.includes(row.finding_id))))
-    remaining.push({ finding_id: finding.finding_id, problem: `${finding.message} ${finding.unit_key}`,
+      !packet.remaining.some(row => row.finding_id && finding.finding_ids.includes(row.finding_id)))) {
+    if (finding.status === 'verified_local') {
+      remaining.push({ finding_id: finding.finding_id,
+        problem: `Production application and observation pending for ${finding.unit_key}`,
+        reason: 'production_deployment_pending', required_input_or_authority: 'site owner deployment authority and production target',
+        next_action: 'Deploy the locally verified change, then fetch the production response',
+        reobserve_when: 'after authorized production deployment and a new raw response' });
+    } else remaining.push({ finding_id: finding.finding_id, problem: `${finding.message} ${finding.unit_key}`,
       reason: finding.status, required_input_or_authority: finding.remediation?.required_authority ?? 'source evidence and owner review',
       next_action: finding.remediation?.mechanism ?? 'Confirm the issue from raw evidence',
       reobserve_when: finding.remediation?.validation ?? 'after new evidence is collected' });
+  }
   const costIssues = [
     ...packet.costs.reservations.filter(x => ['unknown', 'overrun'].includes(x.status)).map(x => {
       const settlement = packet.costs.settlements.find(item => item.reservation_id === x.reservation_id);
@@ -423,7 +431,9 @@ export function buildReport(packet) {
   const markdown = `# optbrew report\n\n${packet.data_class === 'synthetic' ? '**Synthetic example — no real site or provider outcome.**\n\n' : ''}` +
     `Target: ${html(packet.run_context.target)}  \nEnvironment: ${html(packet.run_context.environment)}  \nGoals: ${html(packet.run_context.goals.join(', '))}  \n` +
     `Comparison: ${html(comparison.status)} (${html(comparison.reasons.join(', ') || 'none')})  \n` +
-    `Blockers: ${html(baselineScores[0]?.blockers.length ?? 0)} (${html(baselineScores[0]?.blockers.map(x => `${x.family_id} ${x.unit_key}`).join('; ') || 'none')}); actual outcomes: ${packet.metrics.length ? 'see measured and missing states below' : 'not_connected / unknown'}  \n` +
+    `Baseline blockers: ${html(baselineScores[0]?.blockers.length ?? 0)} (${html(baselineScores[0]?.blockers.map(x => `${x.family_id} ${x.unit_key}`).join('; ') || 'none')}) → ` +
+    `After blockers: ${afterScores ? html(afterScores[0]?.blockers.length ?? 0) : 'unknown'} (${afterScores ? html(afterScores[0]?.blockers.map(x => `${x.family_id} ${x.unit_key}`).join('; ') || 'none') : 'after not observed'}); ` +
+    `after core unknown: ${afterScores ? html(afterScores[0]?.unknown_core.length ?? 0) : 'unknown'}; actual outcomes: ${packet.metrics.length ? 'see measured and missing states below' : 'not_connected / unknown'}  \n` +
     `Cost and capability limitations: ${html(costIssues.join('; ') || 'none recorded')}  \n` +
     `Metric source limitations: ${html(metricOriginLimitations.join('; ') || 'no measured provider input')}\n\n` +
     `## Score\n\n${table(['Area', 'Before', 'After', 'Difference', 'Coverage before → after', 'Missing bounds', 'Status'], scoreRows)}\n\n` +

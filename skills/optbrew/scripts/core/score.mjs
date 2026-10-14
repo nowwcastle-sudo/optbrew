@@ -1,9 +1,26 @@
+import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
-import { validateEntity, cwvVerdict } from './contracts.mjs';
+import { validateEntity, cwvVerdict, ContractError } from './contracts.mjs';
 import { compileUnits, scoreWeighted } from './weights.mjs';
 
 const registry = JSON.parse(readFileSync(new URL('../../references/check-registry.json', import.meta.url)));
 const profiles = JSON.parse(readFileSync(new URL('../../references/profiles.json', import.meta.url)));
+const bundleRoot = new URL('../../', import.meta.url);
+
+function assertEvaluationIdentity(context) {
+  const manifest = JSON.parse(readFileSync(new URL('bundle-manifest.json', bundleRoot), 'utf8'));
+  if (!manifest.evaluation_hash || !manifest.protocol_hash ||
+      context.evaluation_version !== manifest.evaluation_version ||
+      context.protocol_version !== manifest.protocol_version)
+    throw new ContractError('evaluation version or protocol identity differs from installed bundle');
+  for (const [field, hashField] of [['evaluation_sources', 'evaluation_hash'], ['protocol_sources', 'protocol_hash']]) {
+    const sources = manifest[field];
+    if (!Array.isArray(sources) || !sources.length ||
+        createHash('sha256').update(JSON.stringify(sources)).digest('hex') !== manifest[hashField] ||
+        sources.some(source => createHash('sha256').update(readFileSync(new URL(source.path, bundleRoot))).digest('hex') !== source.sha256))
+      throw new ContractError(`${field} identity differs from installed bundle`);
+  }
+}
 
 export { cwvVerdict };
 
@@ -18,6 +35,7 @@ function band(score) {
 /** Readiness scores are local audit status, never predicted search or AI outcomes. */
 export function score(input) {
   validateEntity('ScoreInput', input);
+  assertEvaluationIdentity(input.run_context);
   const units = compileUnits(input, 'SEO');
   const coreIds = new Set(registry.families.filter(x => x.core_policy).map(x => x.family_id));
   const blockingIds = new Set(registry.families.filter(x => x.blocker_on_fail).map(x => x.family_id));

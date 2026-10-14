@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { createHash } from 'node:crypto';
 import { spawn } from 'node:child_process';
+import { realpathSync } from 'node:fs';
 import { access, mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -82,11 +83,14 @@ export async function runAudit({ context, modules, outputDir, transport, resolve
       const output = auditCollected({ artifact, html, robotsArtifact: robots ? { ...robots, body: robots.body.toString('utf8') } : null });
       output.robots_evidence_ref = robotsEvidenceRef;
       module_outputs['naver-searchadvisor'].push(output);
-      if (planned.has('document-title') && selectedUrls.has(artifact.normalized_url) && !output.title)
-        observations.push(observation(saved, 'document-title', 'fail', 'Raw HTML has no title'));
-      if (planned.has('index-policy') && publicUrls.has(artifact.normalized_url) &&
-          /\b(?:noindex|none)\b/i.test(`${output.x_robots_tag ?? ''},${output.robots_meta ?? ''}`))
-        observations.push(observation(saved, 'index-policy', 'fail', 'Raw response explicitly blocks indexing'));
+      if (planned.has('document-title') && selectedUrls.has(artifact.normalized_url))
+        observations.push(observation(saved, 'document-title', output.title ? 'pass' : 'fail',
+          output.title ? 'Raw HTML contains a title' : 'Raw HTML has no title'));
+      if (planned.has('index-policy') && publicUrls.has(artifact.normalized_url)) {
+        const blocked = /\b(?:noindex|none)\b/i.test(`${output.x_robots_tag ?? ''},${output.robots_meta ?? ''}`);
+        observations.push(observation(saved, 'index-policy', blocked ? 'fail' : 'pass',
+          blocked ? 'Raw response explicitly blocks indexing' : 'Raw response has no noindex directive'));
+      }
       if (planned.has('search-crawl-policy') && publicUrls.has(artifact.normalized_url) &&
           context.protocol.engines.includes('naver') && output.robots?.yeti_allowed === false)
         observations.push(observation(saved, 'search-crawl-policy', 'fail', 'Collected robots.txt disallows Yeti path', 'naver', robotsEvidenceRef));
@@ -107,7 +111,7 @@ export async function runAudit({ context, modules, outputDir, transport, resolve
   return result;
 }
 
-if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
+if (process.argv[1] && realpathSync(path.resolve(process.argv[1])) === realpathSync(fileURLToPath(import.meta.url))) {
   try {
     const args = process.argv.slice(2);
     const option = name => { const i = args.indexOf(name); return i < 0 ? null : args[i + 1]; };

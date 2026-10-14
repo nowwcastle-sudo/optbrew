@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0.0",
-  "release_version": "0.1.0",
+  "release_version": "0.1.1",
   "evaluation_version": "0.1.0",
   "protocol_version": "0.1.0",
   "evaluation_sources": [
@@ -22,7 +22,7 @@
     },
     {
       "path": "scripts/core/score.mjs",
-      "sha256": "924210e252505394e772ce9fe7f38daccc93b893371df679801c21c59cad7970"
+      "sha256": "62e26a06e262a0be76082ca94569cc3b409cc161b2096b15a676267067009eb1"
     },
     {
       "path": "scripts/core/weights.mjs",
@@ -45,7 +45,7 @@
       "sha256": "703d5c16878c526114afb540e4a6d54bd74831f35a824c03a839e2480097d279"
     }
   ],
-  "evaluation_hash": "a693671128b4093fbafa25c05689afb74884f60b3914fd31e45cc1404fdec0d8",
+  "evaluation_hash": "573391e30f11c0a6c8d6c6a9bceaa69215343e4df750c3f715dcb96ca5d9a48a",
   "protocol_sources": [
     {
       "path": "references/schemas/contract.schema.json",
@@ -592,11 +592,11 @@
     },
     {
       "path": "scripts/audit.mjs",
-      "sha256": "72251d428b6f45b786d0b01cbc57e0c811b9afb4d040e2be0a16b1ad6d773160"
+      "sha256": "ad89d820460f5804ddcc181b7e62360c9a8387d880a553c1b784bcc2633fa3d8"
     },
     {
       "path": "scripts/cli.mjs",
-      "sha256": "b327a9c56ad99ebb098a458f75f8a41269bfa158958efaad01ab914a5aad2a44"
+      "sha256": "01d60a5dedcd8b478570d7c523f72df735631cdf11e1a78a7e1d64db3f528a28"
     },
     {
       "path": "scripts/core/bootstrap.mjs",
@@ -640,7 +640,7 @@
     },
     {
       "path": "scripts/core/report.mjs",
-      "sha256": "00c6407ff2c034cbd324563ce3bce9d36d3867256bbc0d75466824660cc1ede6"
+      "sha256": "e50dcad6e4246e6ba9209330b632dbce0e5b3f37e56d042ce0dfcd6daec5d31f"
     },
     {
       "path": "scripts/core/scope.mjs",
@@ -648,7 +648,7 @@
     },
     {
       "path": "scripts/core/score.mjs",
-      "sha256": "924210e252505394e772ce9fe7f38daccc93b893371df679801c21c59cad7970"
+      "sha256": "62e26a06e262a0be76082ca94569cc3b409cc161b2096b15a676267067009eb1"
     },
     {
       "path": "scripts/core/weights.mjs",
@@ -659,5 +659,5 @@
       "sha256": "e9041a0ff06c5395027c25646cf210958e38e969d34b329d7b165a865e77e313"
     }
   ],
-  "bundle_hash": "e0ba573e39a63c0b2d9a620f0d1f80505fe7c37dabf5cba4a32dd2385b7ef53a"
+  "bundle_hash": "e2901501f5f010731c38138e734c180580526a68951a8aef940467cf99e9ebde"
 }

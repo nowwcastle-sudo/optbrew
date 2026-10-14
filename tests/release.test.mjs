@@ -16,7 +16,7 @@ test('ZIP contains a self-contained skill with exact selected guides and refuses
   const outputDir = await mkdtemp(path.join(tmpdir(), 'optbrew-release-'));
   let passed = false;
   try {
-    const artifacts = await buildRelease({ root, version: '0.1.0', outputDir });
+    const artifacts = await buildRelease({ root, version: '0.1.1', outputDir });
     const first = await verifyRelease({ root, artifacts });
     assert.equal(first.status, 'valid', JSON.stringify(first.errors));
     const listing = spawnSync('python', ['-c', 'import sys,zipfile,json; print(json.dumps(zipfile.ZipFile(sys.argv[1]).namelist()))', artifacts.skill_zip], { encoding: 'utf8' });
@@ -99,7 +99,7 @@ test('npm tarball includes matching skill bytes and excludes authoring files', a
   const outputDir = await mkdtemp(path.join(tmpdir(), 'optbrew-npm-'));
   let passed = false;
   try {
-    const artifacts = await buildRelease({ root, version: '0.1.0', outputDir });
+    const artifacts = await buildRelease({ root, version: '0.1.1', outputDir });
     const packed = spawnSync('npm', ['pack', '--ignore-scripts', '--json', '--pack-destination', outputDir], { cwd: root, encoding: 'utf8', shell: process.platform === 'win32' });
     assert.equal(packed.status, 0, packed.stderr);
     const info = JSON.parse(packed.stdout);
@@ -128,7 +128,7 @@ test('npm verifier rejects tampered entrypoint, missing libs, and false package 
   const outputDir = await mkdtemp(path.join(tmpdir(), 'optbrew-npm-tamper-'));
   let passed = false;
   try {
-    const artifacts = await buildRelease({ root, version: '0.1.0', outputDir });
+    const artifacts = await buildRelease({ root, version: '0.1.1', outputDir });
     const packed = spawnSync('npm', ['pack', '--ignore-scripts', '--json', '--pack-destination', outputDir],
       { cwd: root, encoding: 'utf8', shell: process.platform === 'win32' });
     assert.equal(packed.status, 0, packed.stderr);

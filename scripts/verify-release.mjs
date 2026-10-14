@@ -111,7 +111,9 @@ export async function verifyRelease({ root = projectRoot, artifacts }) {
     for (const name of ['THIRD_PARTY_NOTICES.md', 'source-lock.json']) {
       const a = await readFile(path.join(root, name));
       const b = await readFile(path.join(bundleRoot, name));
-      if (!a.equals(b)) errors.push({ path: name, code: 'mirror_mismatch' });
+      const expected = name === 'THIRD_PARTY_NOTICES.md' ?
+        Buffer.from(b.toString('utf8').replace(/\]\(licenses\//g, '](skills/optbrew/licenses/')) : b;
+      if (!a.equals(expected)) errors.push({ path: name, code: 'mirror_mismatch' });
     }
     if (artifacts.hashes?.bundle !== manifest.bundle_hash || artifacts.hashes?.evaluation !== manifest.evaluation_hash || artifacts.hashes?.protocol !== manifest.protocol_hash)
       errors.push({ path: 'bundle-manifest.json', code: 'artifact_identity_mismatch' });

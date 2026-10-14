@@ -2,5 +2,5 @@
   "name": "optbrew-local",
   "description": "Local optbrew plugin source",
   "owner": { "name": "optbrew" },
-  "plugins": [{ "name": "optbrew", "source": "./", "version": "0.1.0" }]
+  "plugins": [{ "name": "optbrew", "source": "./", "version": "0.1.1" }]
 }

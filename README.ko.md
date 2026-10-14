@@ -46,7 +46,7 @@ node bin/optbrew.mjs report --input ./remote-only.json --output-dir ./report-out
 
 ## API와 비용
 
-API 사용은 선택 사항입니다. Claude 또는 Claude Code 구독에 Anthropic API 과금이 포함되는 것은 아닙니다. 직접 API 키는 [공식 발급 안내](https://platform.claude.com/docs/en/get-api-key)의 Console → Settings → API keys에서 만듭니다. 키는 자신의 셸 또는 비밀 관리 도구에서 `ANTHROPIC_API_KEY`로 설정합니다. 보고서에 실값을 넣지 마십시오. 여러 Anthropic workspace에 걸친 키에는 `anthropic-workspace-id` 헤더가 필요할 수 있습니다. v0.1.0 직접 어댑터는 이 헤더를 설정하지 않으므로, 호환 키나 별도로 승인된 호스트 기능을 사용합니다.
+API 사용은 선택 사항입니다. Claude 또는 Claude Code 구독에 Anthropic API 과금이 포함되는 것은 아닙니다. 직접 API 키는 [공식 발급 안내](https://platform.claude.com/docs/en/get-api-key)의 Console → Settings → API keys에서 만듭니다. 키는 자신의 셸 또는 비밀 관리 도구에서 `ANTHROPIC_API_KEY`로 설정합니다. 보고서에 실값을 넣지 마십시오. v0.1.0에서 도입한 직접 어댑터는 여러 Anthropic workspace에 걸친 키에 필요할 수 있는 `anthropic-workspace-id` 헤더를 여전히 설정하지 않습니다. 호환 키나 별도로 승인된 호스트 기능을 사용합니다.
 
 직접 어댑터는 텍스트 `{model,max_tokens,messages}` 요청과 정확한 모델 ID `claude-fable-5-1`, `claude-opus-5-5`, `claude-sonnet-5-5`, `claude-haiku-5-5`만 받습니다. `max_tokens` 상한은 128,000입니다. 매 시도에는 `1,000,000 + max_tokens` 이상의 토큰 예약 한 개, 맞는 장부 예산, 승인 참조가 필요합니다. 이 예약은 최악 경우의 용량 상한이며 예상 청구액이 아닙니다. 첫 유료 호출 전에 현재 단가의 출처와 날짜, 예상 지출, 승인된 중단 조건을 기록합니다. 추가 필드, 도구, 검색, 비텍스트 입력, 다른 모델, 통화만으로 설정한 상한은 직접 호출 전에 거부됩니다. 자세한 경계는 [API 안내](skills/optbrew/references/api.md)에 있습니다.
 
@@ -64,7 +64,7 @@ node bin/optbrew.mjs update --scope project --project ./site --json
 node bin/optbrew.mjs rollback --scope project --project ./site --release-version 0.1.0 --json
 ```
 
-확인된 registry 패키지가 없으면 `check-updates`는 `local_only`를 반환합니다. `update`는 현재 CLI 번들을 검증한 뒤 관리 기록의 모든 대상에 적용합니다. 로컬 편집은 자동으로 덮어쓰지 않습니다. `rollback`은 관리 기록에 해당 이전 버전이 남아 있어야 합니다. 새 0.1.0 설치에서는 위 복원 예시가 실패합니다. 출시 후 `npm update -g optbrew`는 npm 패키지를 갱신하지만 이전에 agent 스킬 폴더로 복사한 파일까지 바꾸지는 않습니다. CLI를 갱신한 다음 관리 `update`를 다시 실행합니다. 호스트 고유 갱신은 [플랫폼 안내](docs/platforms.md)를 보십시오.
+확인된 registry 패키지가 없으면 `check-updates`는 `local_only`를 반환합니다. `update`는 현재 CLI 번들을 검증한 뒤 관리 기록의 모든 대상에 적용합니다. 로컬 편집은 자동으로 덮어쓰지 않습니다. `rollback`은 관리 기록에 해당 이전 버전이 남아 있어야 합니다. 새 0.1.1 설치에서는 위 복원 예시가 실패하며, 로컬 0.1.0을 보존한 관리 설치에 적용됩니다. 출시 후 `npm update -g optbrew`는 npm 패키지를 갱신하지만 이전에 agent 스킬 폴더로 복사한 파일까지 바꾸지는 않습니다. CLI를 갱신한 다음 관리 `update`를 다시 실행합니다. 호스트 고유 갱신은 [플랫폼 안내](docs/platforms.md)를 보십시오.
 
 ## 지원 범위와 라이선스
 

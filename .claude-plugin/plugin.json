@@ -1,6 +1,6 @@
 {
   "name": "optbrew",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Pinned search audit and improvement skill bundle",
   "skills": ["./skills/optbrew"]
 }
