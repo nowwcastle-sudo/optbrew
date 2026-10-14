@@ -4,6 +4,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { createBundleManifest, evaluationSourcePaths, protocolSourcePaths } from '../skills/optbrew/scripts/core/bundle.mjs';
+import { releaseMetadataErrors } from './verify-release.mjs';
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
@@ -12,7 +13,10 @@ const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 export async function buildRelease({ root = projectRoot, version, outputDir = path.join(root, 'dist') }) {
   const packageJson = JSON.parse(await readFile(path.join(root, 'package.json')));
   if (packageJson.version !== version || !/^\d+\.\d+\.\d+$/.test(version)) throw new Error('release version differs from package.json');
+  const metadataErrors = await releaseMetadataErrors(root, version);
+  if (metadataErrors.length) throw new Error(`release metadata mismatch: ${JSON.stringify(metadataErrors)}`);
   const bundleRoot = path.join(root, 'skills', 'optbrew');
+  await copyFile(path.join(root, 'LICENSE'), path.join(bundleRoot, 'LICENSE'));
   for (const name of ['THIRD_PARTY_NOTICES.md', 'source-lock.json'])
     await copyFile(path.join(bundleRoot, name), path.join(root, name));
   const manifest = await createBundleManifest({ bundleRoot, releaseVersion: version });

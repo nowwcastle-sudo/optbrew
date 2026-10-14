@@ -59,6 +59,10 @@
   "protocol_hash": "b39c10f35660df3f97f97e14091b589f1463367ab80facd7905e76f70a3b2da4",
   "files": [
     {
+      "path": "LICENSE",
+      "sha256": "a1f84c2d40d254820eaa9f184eee3efb677f9b2bf7e071afff404266b8a1462a"
+    },
+    {
       "path": "SKILL.md",
       "sha256": "3b6122d18d6a4f9e6549109c91de41e29aa518972dc44b66c842380d74c6d534"
     },
@@ -655,5 +659,5 @@
       "sha256": "e9041a0ff06c5395027c25646cf210958e38e969d34b329d7b165a865e77e313"
     }
   ],
-  "bundle_hash": "3b9c684d09e306dc57b771df23aa215a535bb0c1cca30b428b2944db1a7e0d26"
+  "bundle_hash": "444b69ad2cf1f015e926aea30d6c0513fcdcf6da1a23d545a39a491ab3fcfea8"
 }

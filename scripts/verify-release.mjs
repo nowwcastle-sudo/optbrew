@@ -9,8 +9,59 @@ const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 const prohibited = /(?:^|\/)(?:private|tests|evals|runs|dist|_백업_원본_[^/]*|__pycache__)(?:\/|$)|(?:^|\/)test_[^/]*\.py$|\.pyc$|modules\/naver-searchadvisor\/references\/guide\//i;
 
+/** Source metadata must describe one release and one contained skill. */
+export async function releaseMetadataErrors(root, version) {
+  const read = async name => JSON.parse(await readFile(path.join(root, name), 'utf8'));
+  const [pkg, lock, portable, codex, claude, marketplace] = await Promise.all([
+    read('package.json'), read('package-lock.json'), read('plugin.json'),
+    read('.codex-plugin/plugin.json'), read('.claude-plugin/plugin.json'),
+    read('.claude-plugin/marketplace.json'),
+  ]);
+  const errors = [];
+  const expect = (condition, file, code) => { if (!condition) errors.push({ path: file, code }); };
+  expect(pkg.name === 'optbrew' && lock.name === 'optbrew' && lock.packages?.['']?.name === 'optbrew' &&
+    pkg.version === version && lock.version === version && lock.packages?.['']?.version === version,
+    'package.json', 'release_version_mismatch');
+  expect(pkg.bin?.optbrew === 'bin/optbrew.mjs' &&
+    JSON.stringify(pkg.pi?.skills) === JSON.stringify(['./skills/optbrew']), 'package.json', 'package_skill_path_mismatch');
+  for (const [file, value] of [['plugin.json', portable], ['.codex-plugin/plugin.json', codex]]) {
+    expect(value.name === 'optbrew' &&
+      value.$schema === 'https://agent-plugins.org/schemas/1.0.0/plugin.schema.json' &&
+      value.version === version && value.extensions?.['com.openai']?.release_version === version &&
+      JSON.stringify(value.extensions?.['com.openai']?.skills) === JSON.stringify(['./skills/optbrew']),
+    file, 'plugin_release_mismatch');
+  }
+  expect(claude.name === 'optbrew' && claude.version === version &&
+    JSON.stringify(claude.skills) === JSON.stringify(['./skills/optbrew']),
+    '.claude-plugin/plugin.json', 'claude_release_mismatch');
+  expect(marketplace.plugins?.length === 1 && marketplace.plugins[0]?.name === 'optbrew' &&
+    marketplace.plugins[0]?.source === './' && marketplace.plugins[0]?.version === version,
+  '.claude-plugin/marketplace.json', 'marketplace_release_mismatch');
+  return errors;
+}
+
+async function expectedNpmFiles(root) {
+  // npm supplies the packlist; trusted checkout bytes, never tar metadata, supply every expected hash.
+  const args = ['pack', '--dry-run', '--ignore-scripts', '--json'];
+  const npmCli = process.env.npm_execpath || path.join(path.dirname(process.execPath), 'node_modules/npm/bin/npm-cli.js');
+  const command = process.platform === 'win32' ? process.execPath : 'npm';
+  const result = spawnSync(command, process.platform === 'win32' ? [npmCli, ...args] : args,
+    { cwd: root, encoding: 'utf8' });
+  if (result.status !== 0) throw new Error(`npm pack dry-run failed: ${result.stderr || result.error?.message}`);
+  const output = JSON.parse(result.stdout);
+  const listing = Array.isArray(output) ? output[0] : output.optbrew;
+  if (!Array.isArray(listing?.files) || !listing.files.length) throw new Error('npm pack dry-run returned no file list');
+  const expected = new Map();
+  for (const { path: name } of listing.files) {
+    const archiveName = `package/${name}`;
+    if (expected.has(archiveName)) throw new Error(`duplicate npm packlist path: ${name}`);
+    expected.set(archiveName, hash(await readFile(path.join(root, name))));
+  }
+  return expected;
+}
+
 function inspectArchive(kind, archive) {
-  const script = `import hashlib,json,sys,zipfile,tarfile\nout={}\nif sys.argv[1]=='zip':\n with zipfile.ZipFile(sys.argv[2]) as z:\n  for item in z.infolist():\n   if not item.is_dir(): out[item.filename]=hashlib.sha256(z.read(item)).hexdigest()\nelse:\n with tarfile.open(sys.argv[2], 'r:gz') as t:\n  for item in t:\n   if item.isfile(): out[item.name]=hashlib.sha256(t.extractfile(item).read()).hexdigest()\nprint(json.dumps(out,sort_keys=True))\n`;
+  const script = `import hashlib,json,sys,zipfile,tarfile\nout={}\nif sys.argv[1]=='zip':\n with zipfile.ZipFile(sys.argv[2]) as z:\n  for item in z.infolist():\n   if item.filename in out: raise ValueError('duplicate archive path: '+item.filename)\n   if not item.is_dir(): out[item.filename]=hashlib.sha256(z.read(item)).hexdigest()\nelse:\n with tarfile.open(sys.argv[2], 'r:gz') as t:\n  for item in t:\n   if item.name in out: raise ValueError('duplicate archive path: '+item.name)\n   if item.isfile(): out[item.name]=hashlib.sha256(t.extractfile(item).read()).hexdigest()\n   elif not item.isdir(): raise ValueError('special archive path: '+item.name)\nprint(json.dumps(out,sort_keys=True))\n`;
   const result = spawnSync('python', ['-c', script, kind, archive], { encoding: 'utf8' });
   if (result.status !== 0) throw new Error(result.stderr || result.error?.message || 'archive inspection failed');
   return JSON.parse(result.stdout);
@@ -23,6 +74,10 @@ export async function verifyRelease({ root = projectRoot, artifacts }) {
   try {
     const bundleRoot = path.join(root, 'skills', 'optbrew');
     const manifest = JSON.parse(await readFile(path.join(bundleRoot, 'bundle-manifest.json')));
+    const version = JSON.parse(await readFile(path.join(root, 'package.json'))).version;
+    errors.push(...await releaseMetadataErrors(root, version));
+    if (artifacts.version !== version || manifest.release_version !== version)
+      errors.push({ path: 'bundle-manifest.json', code: 'artifact_release_mismatch' });
     const bundle = await verifyBundle({ bundleRoot, manifest });
     errors.push(...bundle.errors);
     if (manifest.evaluation_sources?.length !== evaluationSourcePaths.length ||
@@ -38,19 +93,20 @@ export async function verifyRelease({ root = projectRoot, artifacts }) {
     checked_files += Object.keys(zip).length;
     const skillNames = Object.keys(zip).filter(name => name.endsWith('/SKILL.md'));
     if (skillNames.length !== 1 || skillNames[0] !== 'optbrew/SKILL.md') errors.push({ path: 'SKILL.md', code: 'skill_count' });
+    if (!(await readFile(path.join(root, 'LICENSE'))).equals(await readFile(path.join(bundleRoot, 'LICENSE'))))
+      errors.push({ path: 'skills/optbrew/LICENSE', code: 'own_license_mismatch' });
     if (artifacts.npm_tarball) {
       const tar = inspectArchive('tar', artifacts.npm_tarball);
       artifact_hashes.npm_tarball = hash(await readFile(artifacts.npm_tarball));
       checked_files += Object.keys(tar).length;
-      for (const [name, sha] of expected) {
-        const tarName = `package/skills/${name}`;
-        if (tar[tarName] !== sha) errors.push({ path: tarName, code: 'npm_hash_mismatch' });
-      }
-      for (const name of Object.keys(tar)) if (name.startsWith('package/skills/') &&
-        !expected.has(name.slice('package/skills/'.length))) errors.push({ path: name, code: 'npm_unexpected_skill_file' });
+      const npmExpected = await expectedNpmFiles(root);
+      for (const [name, sha] of npmExpected)
+        if (tar[name] !== sha) errors.push({ path: name, code: tar[name] ? 'npm_hash_mismatch' : 'npm_missing_file' });
+      for (const name of Object.keys(tar)) if (!npmExpected.has(name)) errors.push({ path: name, code: 'npm_unexpected_file' });
       for (const name of Object.keys(tar)) if (prohibited.test(name)) errors.push({ path: name, code: 'npm_prohibited_file' });
-      for (const required of ['package/bin/optbrew.mjs', 'package/LICENSE', 'package/plugin.json', 'package/THIRD_PARTY_NOTICES.md', 'package/source-lock.json'])
-        if (!tar[required]) errors.push({ path: required, code: 'npm_missing_file' });
+      for (const required of ['package/bin/optbrew.mjs', 'package/LICENSE', 'package/skills/optbrew/LICENSE',
+        'package/plugin.json', 'package/THIRD_PARTY_NOTICES.md', 'package/source-lock.json'])
+        if (!npmExpected.has(required)) errors.push({ path: required, code: 'npm_source_missing_file' });
     }
     for (const name of ['THIRD_PARTY_NOTICES.md', 'source-lock.json']) {
       const a = await readFile(path.join(root, name));

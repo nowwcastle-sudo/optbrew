@@ -22,6 +22,7 @@ test('ZIP contains a self-contained skill with exact selected guides and refuses
     const listing = spawnSync('python', ['-c', 'import sys,zipfile,json; print(json.dumps(zipfile.ZipFile(sys.argv[1]).namelist()))', artifacts.skill_zip], { encoding: 'utf8' });
     assert.equal(listing.status, 0, listing.stderr);
     const names = JSON.parse(listing.stdout);
+    assert.ok(names.includes('optbrew/LICENSE'), 'standalone ZIP must include own MIT license');
     assert.equal(names.filter(name => name.endsWith('/SKILL.md')).length, 1);
     assert.equal(names.filter(name => name.endsWith('/GUIDE.md') && name.includes('/marketing-search/skills/')).length, 7);
     assert.equal(names.filter(name => name.endsWith('/GUIDE.md') && name.includes('/seranking-seo/skills/')).length, 13);
@@ -36,6 +37,8 @@ test('ZIP contains a self-contained skill with exact selected guides and refuses
     const unzip = spawnSync('python', ['-c', 'import sys,zipfile; zipfile.ZipFile(sys.argv[1]).extractall(sys.argv[2])', artifacts.skill_zip, extracted], { encoding: 'utf8' });
     assert.equal(unzip.status, 0, unzip.stderr);
     const isolatedCli = path.join(extracted, 'optbrew/scripts/cli.mjs');
+    assert.deepEqual(await readFile(path.join(extracted, 'optbrew/LICENSE')),
+      await readFile(path.join(root, 'LICENSE')));
     const scoreFile = path.join(outputDir, 'score.json');
     const score = spawnSync(process.execPath, [isolatedCli, 'score', '--input', path.join(root, 'tests/fixtures/scoring/before.json'), '--output', scoreFile], { encoding: 'utf8' });
     assert.equal(score.status, 0, score.stderr);
@@ -106,6 +109,50 @@ test('npm tarball includes matching skill bytes and excludes authoring files', a
     artifacts.npm_tarball = path.join(outputDir, filename);
     const receipt = await verifyRelease({ root, artifacts });
     assert.equal(receipt.status, 'valid', JSON.stringify(receipt.errors));
+    assert.ok(files.some(file => file.path === 'skills/optbrew/LICENSE'));
+    const extracted = path.join(outputDir, 'npm-extract');
+    const unpack = spawnSync('python', ['-c', 'import sys,tarfile; tarfile.open(sys.argv[1],"r:gz").extractall(sys.argv[2])', artifacts.npm_tarball, extracted], { encoding: 'utf8' });
+    assert.equal(unpack.status, 0, unpack.stderr);
+    const scoreFile = path.join(outputDir, 'npm-score.json');
+    const score = spawnSync(process.execPath, [path.join(extracted, 'package/bin/optbrew.mjs'), 'score', '--input',
+      path.join(root, 'tests/fixtures/scoring/before.json'), '--output', scoreFile], { encoding: 'utf8' });
+    assert.equal(score.status, 0, score.stderr);
+    assert.equal(JSON.parse(await readFile(scoreFile, 'utf8')).length, 4);
+    passed = true;
+  } finally {
+    if (passed) await rm(outputDir, { recursive: true, force: true });
+  }
+});
+
+test('npm verifier rejects tampered entrypoint, missing libs, and false package or overlay versions', async () => {
+  const outputDir = await mkdtemp(path.join(tmpdir(), 'optbrew-npm-tamper-'));
+  let passed = false;
+  try {
+    const artifacts = await buildRelease({ root, version: '0.1.0', outputDir });
+    const packed = spawnSync('npm', ['pack', '--ignore-scripts', '--json', '--pack-destination', outputDir],
+      { cwd: root, encoding: 'utf8', shell: process.platform === 'win32' });
+    assert.equal(packed.status, 0, packed.stderr);
+    const info = JSON.parse(packed.stdout);
+    artifacts.npm_tarball = path.join(outputDir, (Array.isArray(info) ? info[0] : info.optbrew).filename);
+    const results = {};
+    for (const kind of ['cli-tamper', 'missing-lib', 'wrong-version', 'overlay-version', 'extra-file']) {
+      const mutated = path.join(outputDir, `${kind}.tgz`);
+      const script = `import io,json,sys,tarfile\nsrc,dst,kind=sys.argv[1:]\nwith tarfile.open(src,'r:gz') as source,tarfile.open(dst,'w:gz') as target:\n for item in source:\n  if kind=='missing-lib' and item.name.startswith('package/lib/'): continue\n  if item.isfile():\n   data=source.extractfile(item).read()\n   if kind=='cli-tamper' and item.name=='package/bin/optbrew.mjs': data=b'throw new Error("broken")\\n'\n   if kind=='wrong-version' and item.name=='package/package.json':\n    obj=json.loads(data); obj['version']='99.0.0'; data=json.dumps(obj).encode()\n   if kind=='overlay-version' and item.name=='package/.claude-plugin/plugin.json':\n    obj=json.loads(data); obj['version']='99.0.0'; data=json.dumps(obj).encode()\n   item.size=len(data); target.addfile(item,io.BytesIO(data))\n  else: target.addfile(item)\n if kind=='extra-file':\n  data=b'unexpected'; item=tarfile.TarInfo('package/extra.txt'); item.size=len(data); target.addfile(item,io.BytesIO(data))\n`;
+      const mutation = spawnSync('python', ['-c', script, artifacts.npm_tarball, mutated, kind], { encoding: 'utf8' });
+      assert.equal(mutation.status, 0, mutation.stderr);
+      results[kind] = await verifyRelease({ root, artifacts: { ...artifacts, npm_tarball: mutated } });
+    }
+    const target = { 'cli-tamper': ['package/bin/optbrew.mjs', 'npm_hash_mismatch'],
+      'missing-lib': ['package/lib/cli.mjs', 'npm_missing_file'],
+      'wrong-version': ['package/package.json', 'npm_hash_mismatch'],
+      'overlay-version': ['package/.claude-plugin/plugin.json', 'npm_hash_mismatch'],
+      'extra-file': ['package/extra.txt', 'npm_unexpected_file'] };
+    for (const [kind, result] of Object.entries(results)) {
+      assert.equal(result.status, 'invalid', `${kind}: ${JSON.stringify(result)}`);
+      assert.ok(result.errors.some(error => error.path === target[kind][0] && error.code === target[kind][1]),
+        `${kind}: ${JSON.stringify(result.errors)}`);
+      process.stdout.write(`npm mutation ${kind}: ${target[kind][1]}\n`);
+    }
     passed = true;
   } finally {
     if (passed) await rm(outputDir, { recursive: true, force: true });
