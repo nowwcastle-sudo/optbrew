@@ -1,0 +1,31 @@
+import assert from 'node:assert/strict';
+import { mkdtemp, mkdir, writeFile, readFile } from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
+import { test } from 'node:test';
+import { createBundleManifest } from '../skills/optbrew/scripts/core/bundle.mjs';
+import { install } from '../lib/install.mjs';
+import { doctor } from '../lib/doctor.mjs';
+
+test('doctor separates disk, record, discovery and invocation evidence', async () => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'optbrew-doctor-'));
+  const bundleRoot = path.join(root, 'bundle');
+  const home = path.join(root, 'home');
+  await mkdir(bundleRoot);
+  await writeFile(path.join(bundleRoot, 'SKILL.md'), 'skill');
+  await writeFile(path.join(bundleRoot, 'bundle-manifest.json'), JSON.stringify(await createBundleManifest({ bundleRoot, releaseVersion: '0.1.0' })));
+  const before = await doctor({ agents: ['codex'], scope: 'user', home });
+  assert.equal(before.targets[0].file_present, false);
+  assert.equal(before.targets[0].registered, false);
+  await install({ bundleRoot, agents: ['codex'], scope: 'user', home });
+  const after = await doctor({ agents: ['codex', 'claude-code'], scope: 'user', home });
+  assert.equal(after.targets[0].file_present, true);
+  assert.equal(after.targets[0].hash_ok, true);
+  assert.equal(after.targets[0].registered, true);
+  assert.equal(after.targets[0].session_discovery, 'not_verified');
+  assert.equal(after.targets[0].invocation_verified, 'not_verified');
+  assert.equal(after.targets[1].registered, false);
+  assert.ok(after.warnings.some(w => w.includes('.agents')));
+  const record = JSON.parse(await readFile(path.join(home, '.optbrew/installs/user/install-record.json')));
+  assert.equal(record.schema_version, '1.0.0');
+});

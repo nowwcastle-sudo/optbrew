@@ -22,6 +22,7 @@
   ],
   "scripts": {
     "test": "node --test",
+    "build-bundle": "node scripts/build-bundle.mjs --bundle skills/optbrew --version 0.1.0",
     "vendor": "node scripts/vendor.mjs",
     "scan-secrets": "node scripts/scan-secrets.mjs --tracked-and-staged"
   }

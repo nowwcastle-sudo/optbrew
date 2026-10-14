@@ -1,0 +1,651 @@
+{
+  "schema_version": "1.0.0",
+  "release_version": "0.1.0",
+  "files": [
+    {
+      "path": "SKILL.md",
+      "sha256": "3b6122d18d6a4f9e6549109c91de41e29aa518972dc44b66c842380d74c6d534"
+    },
+    {
+      "path": "THIRD_PARTY_NOTICES.md",
+      "sha256": "077c99f2f462d6f1cdfdf991a1c98034e0d29d7f53c0f4c6a8a41fdca98aa23c"
+    },
+    {
+      "path": "agents/openai.yaml",
+      "sha256": "d7640bcb885250b050b3b6413868363808de6574601572bdd1a5ab5dcd8d88e4"
+    },
+    {
+      "path": "licenses/firecrawl-seo-audit.txt",
+      "sha256": "7bb9acac4ebb53a0fda17dd8a764ae184ff8ebf2563a9dd7915a023f73d55c3a"
+    },
+    {
+      "path": "licenses/magnus-seo.txt",
+      "sha256": "22fa3b1ec405fe440e86d0d293ce21de0c637ebc37f263dbe3032ee47215cfe2"
+    },
+    {
+      "path": "licenses/marketing-search.txt",
+      "sha256": "b70d71e24e40fce5da8f4b6f9cd862096a048e433db7f3c8cac5e348e6d34591"
+    },
+    {
+      "path": "licenses/mblode-seo.txt",
+      "sha256": "81ac64b19ea7ae7f9a8d197705df58f48ffca02c74fca13e565dedf4f7595b46"
+    },
+    {
+      "path": "licenses/naver-searchadvisor.txt",
+      "sha256": "1d2bc5241a4f81062bdd3a2064046e89a207379e3470f2a49c57207c535ef04c"
+    },
+    {
+      "path": "licenses/seranking-seo.txt",
+      "sha256": "be37f39e84329222181a6d75c84b73a514e691d52da9741db864e057ce8e3eee"
+    },
+    {
+      "path": "modules/firecrawl-seo-audit/GUIDE.md",
+      "sha256": "5629bc931c568880b7a730338ae5dcbdf7bdc96218819b9bc8d55a7d7d90bd15"
+    },
+    {
+      "path": "modules/magnus-seo/GUIDE.md",
+      "sha256": "881b30f5b9cd42922384b38dea89367119e88d07423cf19fa70fcae376e89c30"
+    },
+    {
+      "path": "modules/magnus-seo/README.md",
+      "sha256": "1f4647485a2abba92b83f4badf4f11f9012f1903a8df01c8aecc2dcf8c726ce5"
+    },
+    {
+      "path": "modules/magnus-seo/assets/audit-report-template.md",
+      "sha256": "c7d0948abe800929001a4604114160bb881c422d2720ce2c39d589fda8792d77"
+    },
+    {
+      "path": "modules/magnus-seo/evals/evals.json",
+      "sha256": "2d231a7b088a0ed307cd1a9cd2a1e202ea11d39b2494315bf016eb24c4aaab6e"
+    },
+    {
+      "path": "modules/magnus-seo/references/aeo-methodology.md",
+      "sha256": "ee4ee7c36373886d42181b575fff3692efe588cbefc1397472e419f672ad30f8"
+    },
+    {
+      "path": "modules/magnus-seo/references/agent-readable-content.md",
+      "sha256": "6c09204caf144a24ae421d488d63cb48371c741309c89eda0a91a69511371714"
+    },
+    {
+      "path": "modules/magnus-seo/references/content-and-entity-architecture.md",
+      "sha256": "cb470c5370ac70c08fd608f32974cd3516c5179add2b1b3ecf0955a4903c3cef"
+    },
+    {
+      "path": "modules/magnus-seo/references/content-strategy-seo.md",
+      "sha256": "48c281282dffc3929a0e8c3ee1d5d8ded9603b22ba50546fe84ad967bb3c1714"
+    },
+    {
+      "path": "modules/magnus-seo/references/discovery-and-freshness.md",
+      "sha256": "c547d49e91dcabb99e133fac53f533e898a13eaf169d16691efde89425e07dfa"
+    },
+    {
+      "path": "modules/magnus-seo/references/evidence-boundaries.md",
+      "sha256": "11b76c49cf6fdb297f3befa16cfd1545e932b4ae17a2a66555ee120fd4e412d5"
+    },
+    {
+      "path": "modules/magnus-seo/references/ghost-metadata.md",
+      "sha256": "ed0e2dbe6dcc5fd001c35cd41d58d4368b24223dce2b4779a54b1f15dbc2a61f"
+    },
+    {
+      "path": "modules/magnus-seo/references/implementation-playbook.md",
+      "sha256": "cad085cd4788d8447d7795e0725e72b8c449c336b301a2e109da0d89e022602b"
+    },
+    {
+      "path": "modules/magnus-seo/references/measurement-and-experimentation.md",
+      "sha256": "cc10d4e944abb25813520697cd67f03fb7586d619e177296918fe2d7f7c1ccd5"
+    },
+    {
+      "path": "modules/magnus-seo/references/onpage-seo.md",
+      "sha256": "5a1d133abd639336f43fe3003cf513a13e5f761f2a69d2111db7f70a3fcb2ef7"
+    },
+    {
+      "path": "modules/magnus-seo/references/platform-guidance.md",
+      "sha256": "2341314982e6d82d31098e73ef89ec8ff4dfc83d53a441b5b8aab61fafda81bc"
+    },
+    {
+      "path": "modules/magnus-seo/references/schema-markup.md",
+      "sha256": "2f2a47178656addd664d4ecdc1b8292821a0710343b528fec85a97ff3c15c019"
+    },
+    {
+      "path": "modules/magnus-seo/references/source-index.md",
+      "sha256": "622c98a8aa80160aebe5ecde0e6460f2863e28c696218e3f3b6c0966d2abbfb1"
+    },
+    {
+      "path": "modules/magnus-seo/references/structured-data.md",
+      "sha256": "74fb617291ad6e123374c0239942fd7ee8055c0d4f170a38649c4d50d52343e3"
+    },
+    {
+      "path": "modules/magnus-seo/references/technical-seo.md",
+      "sha256": "dd84d1306c4cbe1a4184c6342382f1718d7187af5cf3b79af12e034b6a5c7eaa"
+    },
+    {
+      "path": "modules/magnus-seo/scripts/__pycache__/aeo_audit.cpython-314.pyc",
+      "sha256": "70283a1a13b58453965ed3c5e5a40ef2d8909c99ac8f38cff9f134b6b1b48998"
+    },
+    {
+      "path": "modules/magnus-seo/scripts/__pycache__/test_aeo_scripts.cpython-314.pyc",
+      "sha256": "37df8e6fc8e8c10beb48ae289d443448cac024f116c8162d98430e519b94af62"
+    },
+    {
+      "path": "modules/magnus-seo/scripts/aeo_audit.py",
+      "sha256": "7e556b725a523f33fcb3ebe6fafc42d0bbaf5267bfd3bb85d080762ed5e686f9"
+    },
+    {
+      "path": "modules/magnus-seo/scripts/build_prompt_matrix.py",
+      "sha256": "66ed1b74fe26e608d4e25ec651de44ae08ec807bd20dafeacdc80a2a490bc0e0"
+    },
+    {
+      "path": "modules/magnus-seo/scripts/test_aeo_scripts.py",
+      "sha256": "533c2dc730ad8bdcf2805d8026e51b405361e7d841128cff128856affdff6cd2"
+    },
+    {
+      "path": "modules/magnus-seo/templates/aeo-implementation-plan.md",
+      "sha256": "e21c11aef62812e1e4f8f7fa428dc0838a50a9d0db0c7963be026f409d027b17"
+    },
+    {
+      "path": "modules/magnus-seo/templates/citation-observation-log.md",
+      "sha256": "8acd06272d6615df90a9d9f3032083c246a9604106bc35e180b2b8a78cee55ba"
+    },
+    {
+      "path": "modules/magnus-seo/templates/llms.txt.template",
+      "sha256": "cbc4ae80a3c41ef650911d94c76971cd7e9f1829c9e6b0df271931687f46286a"
+    },
+    {
+      "path": "modules/magnus-seo/templates/question-cluster.md",
+      "sha256": "d153674d772f8d7f17dc8a9274ccc9432b865b454d58d090758cc4d7b6e3e1f8"
+    },
+    {
+      "path": "modules/magnus-seo/templates/robots-ai-crawlers.txt",
+      "sha256": "a11e05c967c9113e0fc039f4d5dd6e7aeb3f0a005ff1d873382346102e3668cc"
+    },
+    {
+      "path": "modules/marketing-search/skills/ai-seo/GUIDE.md",
+      "sha256": "7968cc1a6990369e606ed95e257f62e9273b3378960f14cf474584ce31c6196f"
+    },
+    {
+      "path": "modules/marketing-search/skills/ai-seo/evals/evals.json",
+      "sha256": "010677ebde7b375f5569d5ef654c15edfc50f44efc55f9ca2f70a02a1ff1ab17"
+    },
+    {
+      "path": "modules/marketing-search/skills/ai-seo/references/agent-readiness.md",
+      "sha256": "0371710bb2194b5cb0d9a9ebf19ac8a07843b0d16194d7ca7dae4c95d009ddae"
+    },
+    {
+      "path": "modules/marketing-search/skills/ai-seo/references/citations-vs-recommendations.md",
+      "sha256": "efcd140ee76deff1984f1c28e715f06420e9422126b13a3b66303b8f54931878"
+    },
+    {
+      "path": "modules/marketing-search/skills/ai-seo/references/content-patterns.md",
+      "sha256": "8adcfcc020a3529eda71f783e4893d3e39e8b0f503fd2fa126e8b75a80963824"
+    },
+    {
+      "path": "modules/marketing-search/skills/ai-seo/references/content-types.md",
+      "sha256": "de1e5da42d09568bd95a3f364e1af72f4cd1bac4f98c5d5a575d2772651699d6"
+    },
+    {
+      "path": "modules/marketing-search/skills/ai-seo/references/format-volatility.md",
+      "sha256": "4d16bbf46b9702b7ee9cf968005dc21cdd74821d5d8e31bb8dcc52b09457ae59"
+    },
+    {
+      "path": "modules/marketing-search/skills/ai-seo/references/okf.md",
+      "sha256": "4abcab5b8ee90b63c5d09c98387a8ec3cdb8f5df33e75d3b4b91eb817283bfd8"
+    },
+    {
+      "path": "modules/marketing-search/skills/ai-seo/references/platform-ranking-factors.md",
+      "sha256": "74bd4e0776b97a3636e48dc5715e03a1eab2cbf5804ede696463100ce3e55e45"
+    },
+    {
+      "path": "modules/marketing-search/skills/ai-seo/references/youtube-ai-citations.md",
+      "sha256": "e4e3356d4c813e460f29dd37a46a212f9d3f3f06e35320cf62bc3e621e1a53b2"
+    },
+    {
+      "path": "modules/marketing-search/skills/analytics/GUIDE.md",
+      "sha256": "1ab1bca9b00b7508bf8025ff97901ebc6f710ed391d4a2c42777404a1ff0c6bb"
+    },
+    {
+      "path": "modules/marketing-search/skills/analytics/evals/evals.json",
+      "sha256": "56932e864114d69a61b6b55e639d207329c0a8b7df8b61a0e1188b249cbef1e8"
+    },
+    {
+      "path": "modules/marketing-search/skills/analytics/references/event-library.md",
+      "sha256": "efc7bdb0a7b3efdea9e67ff0d1bc894dcf89ec9b9b8f3414f123d12bee109412"
+    },
+    {
+      "path": "modules/marketing-search/skills/analytics/references/ga4-implementation.md",
+      "sha256": "f33fd6db0cbdb1bdc183af5f52bedd956d14680e54bca2e2c3917de29698636e"
+    },
+    {
+      "path": "modules/marketing-search/skills/analytics/references/gtm-implementation.md",
+      "sha256": "112da33832439d2ae0b2729e5031fc927df444cd1ae8eb20542d45c1b5690f52"
+    },
+    {
+      "path": "modules/marketing-search/skills/content-strategy/GUIDE.md",
+      "sha256": "f7361a1c44115198477eb581814c5d1ef1d546044205380861571f5084bc7891"
+    },
+    {
+      "path": "modules/marketing-search/skills/content-strategy/evals/evals.json",
+      "sha256": "10167e7125ee77cbabe4f03953750dd99ea147f7461027fdbb0cf8e089e5506d"
+    },
+    {
+      "path": "modules/marketing-search/skills/content-strategy/references/content-distribution.md",
+      "sha256": "1861a1aab0627ab29c279000879a9889242da1ba85e677acdc759c66a6241778"
+    },
+    {
+      "path": "modules/marketing-search/skills/content-strategy/references/headless-cms.md",
+      "sha256": "5d40d89e31d9ee134c8f3379bc1a731cc114adf130217464255c92555e34fb9c"
+    },
+    {
+      "path": "modules/marketing-search/skills/programmatic-seo/GUIDE.md",
+      "sha256": "938fe70c2e4a84b8e7437de7b9dc38b45d08675511a2375a0322294414bbdaa8"
+    },
+    {
+      "path": "modules/marketing-search/skills/programmatic-seo/evals/evals.json",
+      "sha256": "e76b704edfc50210224aa82131dc4e917d6daa3a1467b9f7fe54b2d42af2a264"
+    },
+    {
+      "path": "modules/marketing-search/skills/programmatic-seo/references/playbooks.md",
+      "sha256": "b2b3fd7c58c686f0670b94cf7192ff79436ccf0d602650b33a83a9d01102f11d"
+    },
+    {
+      "path": "modules/marketing-search/skills/schema/GUIDE.md",
+      "sha256": "6a8f5be94636cd73f562f802e8e178e2b9cbf49580ef2849169c6d4a54d64594"
+    },
+    {
+      "path": "modules/marketing-search/skills/schema/evals/evals.json",
+      "sha256": "084545e9aa789dace8c4d4d5daf330ffaa4fe4c64266bd76dc6688b3f8281202"
+    },
+    {
+      "path": "modules/marketing-search/skills/schema/references/schema-examples.md",
+      "sha256": "5d55c96ae9859a5fb84cb18828c4a96dcd468e7aeec667c88fdf9032558ab318"
+    },
+    {
+      "path": "modules/marketing-search/skills/seo-audit/GUIDE.md",
+      "sha256": "768a367154fb85b6ea6da260b012df9fff2cfd282ce5a77d06875af9a332ea6a"
+    },
+    {
+      "path": "modules/marketing-search/skills/seo-audit/evals/evals.json",
+      "sha256": "b808dfa7ee1e312cda39cfac57f44674bd3cee6eaa151af7008760a9514bb6cf"
+    },
+    {
+      "path": "modules/marketing-search/skills/seo-audit/references/ai-writing-detection.md",
+      "sha256": "f1e273f56ce7e2215ff218bf903680ddcec0fd026ab90c3ebfb3439ed0edfaa4"
+    },
+    {
+      "path": "modules/marketing-search/skills/seo-audit/references/international-seo.md",
+      "sha256": "d2fc76f40eccc422ae0f1d7e5b770095e89a045f38e1d0370811203da57996ff"
+    },
+    {
+      "path": "modules/marketing-search/skills/site-architecture/GUIDE.md",
+      "sha256": "0aa77a0c440fc77ca340307ef598a8b2d6f05b2097d47c531a15534184ff3336"
+    },
+    {
+      "path": "modules/marketing-search/skills/site-architecture/evals/evals.json",
+      "sha256": "64b76ab82488fd168919fad1b038b7117392ff9748a835104ddde95aac4a5cee"
+    },
+    {
+      "path": "modules/marketing-search/skills/site-architecture/references/mermaid-templates.md",
+      "sha256": "362190c7d3f419d5f445170f1fb17beecc163937d2068922893b7a69eeb25f0f"
+    },
+    {
+      "path": "modules/marketing-search/skills/site-architecture/references/navigation-patterns.md",
+      "sha256": "2efa772709b753e33d5018c007147ca30aaa95a04b04dc0df6227ea5a053078b"
+    },
+    {
+      "path": "modules/marketing-search/skills/site-architecture/references/site-type-templates.md",
+      "sha256": "3c3cd7ce5e31c502dc071baf82bb58cb30f5edf4a2fd8ca052fbc8f3777db140"
+    },
+    {
+      "path": "modules/mblode-seo/GUIDE.md",
+      "sha256": "228b715f5b75f3fe87033bde98b050e520b6d5bfe1ef6c77ce88da0aacb8c6a4"
+    },
+    {
+      "path": "modules/mblode-seo/evals/evals.json",
+      "sha256": "8bda87a2e1140c6c735745af18a17616a0c3bd16b812b7d19654bf0ae1a1bd6c"
+    },
+    {
+      "path": "modules/mblode-seo/references/answer-engines.md",
+      "sha256": "ca51e137e56b7eb7c02c8ca6de22177468ddaa92e69c2506d08b4cee55e43f14"
+    },
+    {
+      "path": "modules/mblode-seo/references/audit.md",
+      "sha256": "829293a23952c689bdd0ae5490e9261258f04576114579e9e866a011921ad44c"
+    },
+    {
+      "path": "modules/mblode-seo/references/brief-template.md",
+      "sha256": "b4a207f43abc05007f2a9ecf61f895160b4da9046e1ee11e67bb532a67c07e65"
+    },
+    {
+      "path": "modules/mblode-seo/references/monitoring.md",
+      "sha256": "dd31124a6202816cda9395b19dd50c2f055e792bc00cd62e6c4016d1c6b13c9c"
+    },
+    {
+      "path": "modules/mblode-seo/references/nextjs-implementation.md",
+      "sha256": "4552d3026b29a40bf58f5c139e51e22391092abdd620cf745cf270a205b6dac5"
+    },
+    {
+      "path": "modules/mblode-seo/references/research-protocol.md",
+      "sha256": "2a82f99a70a162637ada300d9812b82f41c053151b2fcf1db5f9215f5c7c0a9b"
+    },
+    {
+      "path": "modules/mblode-seo/references/sources.md",
+      "sha256": "70bf6f9b894775668a1b6eee0b56f5d3a1c9be7d3c646b0d4165330796eb0913"
+    },
+    {
+      "path": "modules/mblode-seo/references/validation-evidence.md",
+      "sha256": "f3b7d76edb71fb9e55722b817fcb2350cfba8ccc94cdba34537a0806c56845fd"
+    },
+    {
+      "path": "modules/naver-searchadvisor/GUIDE.md",
+      "sha256": "a25b30472dcb61036995ba5f4c986e6f6dfb4033a9f83f4d95791ee23a8a64a1"
+    },
+    {
+      "path": "modules/naver-searchadvisor/NOTICE.md",
+      "sha256": "dff28b7def4d09efd705e7cf5751ba4a439ba0523ca2abd6cdce7ef2de95015b"
+    },
+    {
+      "path": "modules/naver-searchadvisor/references/INDEX.md",
+      "sha256": "00b1dbde02a62e4577ae06474864aed1e198bdcfc7133655ec214f39a171ae2d"
+    },
+    {
+      "path": "modules/naver-searchadvisor/scripts/audit.mjs",
+      "sha256": "870fd4d74483ad8a9ae5a0fdef996294ec3bb8a59775447680bfbe6b07fdbf17"
+    },
+    {
+      "path": "modules/naver-searchadvisor/scripts/robots.mjs",
+      "sha256": "20acf1a7401fbe42c0455fceb21b32346d1594135186eb18e1a32033ad97632a"
+    },
+    {
+      "path": "modules/seranking-seo/skills/seo-ai-search-share-of-voice/GUIDE.md",
+      "sha256": "855553a3208c03e3d454c2609ab136b3a4ee0533074246bc521959ed6fb83f34"
+    },
+    {
+      "path": "modules/seranking-seo/skills/seo-api/GUIDE.md",
+      "sha256": "fa9769a7958a9f1049a2eece7969e518a559d7a92ccc0d9b01b852aff4b065e5"
+    },
+    {
+      "path": "modules/seranking-seo/skills/seo-api/references/api-surface-map.md",
+      "sha256": "d5555bb128b3997341802f4e881e516370b4f3bae36b5b90799bf58727a7fd9e"
+    },
+    {
+      "path": "modules/seranking-seo/skills/seo-api/references/auth-and-keys.md",
+      "sha256": "cf65b297d0038036c17f39bf7542056cd37946fbd49441508ffd1789d119aa53"
+    },
+    {
+      "path": "modules/seranking-seo/skills/seo-api/references/integration-patterns.md",
+      "sha256": "304efd93f4f4e245441cf906cdbeb75ebbead859202e24a135b8534116d4bf72"
+    },
+    {
+      "path": "modules/seranking-seo/skills/seo-api/references/rate-limits-and-credits.md",
+      "sha256": "7c2c1fc4b44ae308222b3c4f92de1b02b1f5cebc67be259780d0bf652b875fdf"
+    },
+    {
+      "path": "modules/seranking-seo/skills/seo-competitor-gap-analysis/GUIDE.md",
+      "sha256": "d627e18118608cc81f9937697fb7588e747ee77173ef259df13c03b668f7a36c"
+    },
+    {
+      "path": "modules/seranking-seo/skills/seo-content-audit/GUIDE.md",
+      "sha256": "0bf50f0ad97cf712f2c9228d33dc99d16daea6e96978cf64e76dc1f81ac66b39"
+    },
+    {
+      "path": "modules/seranking-seo/skills/seo-content-audit/references/cite.md",
+      "sha256": "9b779d275b3832aa8fcc52ecd27200e8a0b01603f55f8c376f38383b83521498"
+    },
+    {
+      "path": "modules/seranking-seo/skills/seo-content-audit/references/core-eeat.md",
+      "sha256": "e8bcffb3ae07d77ab272a45c55cd4d8ce19e933f955cd3ed720fa58b5bd78b7c"
+    },
+    {
+      "path": "modules/seranking-seo/skills/seo-content-audit/templates/verdict.md",
+      "sha256": "3ac294680cd86afe2936d75e2890d17e24290f64cdc5a5ce113e6bd12d028614"
+    },
+    {
+      "path": "modules/seranking-seo/skills/seo-firecrawl/GUIDE.md",
+      "sha256": "5f95839ba6db9f730dd619e2d192bf1adab396df9227cfa33dea3d99a25382e0"
+    },
+    {
+      "path": "modules/seranking-seo/skills/seo-firecrawl/references/preflight.md",
+      "sha256": "e88dee59c3595dcd778bdd02be5770a6e36e182b16039687ac90301d7a4668e2"
+    },
+    {
+      "path": "modules/seranking-seo/skills/seo-geo/GUIDE.md",
+      "sha256": "97b7a73fd5789b95107b5249013ac9d98ae45f88a55d3993f3cc489fc8074f09"
+    },
+    {
+      "path": "modules/seranking-seo/skills/seo-google/GUIDE.md",
+      "sha256": "a4c3d55109fadc582301cc55d3d4e2e3d90479715a56acd7c1025949d19b30d5"
+    },
+    {
+      "path": "modules/seranking-seo/skills/seo-google/assets/templates/cwv-audit-report.md",
+      "sha256": "94e81dd051757c8fe588756206eb83cc2d1c3907a76610862f01a1bcd1c2ac5d"
+    },
+    {
+      "path": "modules/seranking-seo/skills/seo-google/assets/templates/gsc-performance-report.md",
+      "sha256": "7248f2e7e20d87a863ccbf8c31eaa7af3645aa6483646cdeb1385c953c2d6738"
+    },
+    {
+      "path": "modules/seranking-seo/skills/seo-google/assets/templates/indexation-status-report.md",
+      "sha256": "afc337905d82f83659a229382432876edba9bd9af6e589b3e4de4786974f13b3"
+    },
+    {
+      "path": "modules/seranking-seo/skills/seo-google/references/auth-setup.md",
+      "sha256": "2e8b13eea1605717750b9730aec24e50ff97deda50a267f3a46ce6db13d3f263"
+    },
+    {
+      "path": "modules/seranking-seo/skills/seo-google/references/cross-skill-integration.md",
+      "sha256": "4643c2848b77c95e2ec35688d589997d426712b60223030bab8eeea1d4177df2"
+    },
+    {
+      "path": "modules/seranking-seo/skills/seo-google/references/ga4-data-api.md",
+      "sha256": "b6c29f9d830df1a406339c5776a7aebd648c5d2fd33eb7a2689106c5b3c7bbb9"
+    },
+    {
+      "path": "modules/seranking-seo/skills/seo-google/references/indexing-api.md",
+      "sha256": "1d667da2a82c6b14725f69f7fa52fe0c36bf7dd38ace4702cea9a0b074cd7177"
+    },
+    {
+      "path": "modules/seranking-seo/skills/seo-google/references/keyword-planner-api.md",
+      "sha256": "43962273a47273ac5b43e4451cb3facac50bc330d65397be523560959e46626f"
+    },
+    {
+      "path": "modules/seranking-seo/skills/seo-google/references/nlp-api.md",
+      "sha256": "a2b2796179b929425bfe184f761bebf180f6a4f5638bed03510b3f6b15a61d48"
+    },
+    {
+      "path": "modules/seranking-seo/skills/seo-google/references/pagespeed-crux-api.md",
+      "sha256": "14d3fa5cbe7d0a82b4c2c6dee45842cf5273cda3a6b79e076da752df4530e4fe"
+    },
+    {
+      "path": "modules/seranking-seo/skills/seo-google/references/rate-limits-quotas.md",
+      "sha256": "ad1f7d096e229526c8fe9026a98124a05221f53636eb6023f362dfd5fd3c2f96"
+    },
+    {
+      "path": "modules/seranking-seo/skills/seo-google/references/search-console-api.md",
+      "sha256": "be75b999840b60f0a0980269c31046070f0915030c638521a8df2072dfd83767"
+    },
+    {
+      "path": "modules/seranking-seo/skills/seo-google/references/supplementary-apis.md",
+      "sha256": "b8937fb31fa09b2c2a09ad2573191183cad219cebafc09136a88eac133cddbc1"
+    },
+    {
+      "path": "modules/seranking-seo/skills/seo-google/references/youtube-api.md",
+      "sha256": "d6c7c0ea2205ce533bfe63f277d5497bf25239c119bfea1cf093eef30a186a6a"
+    },
+    {
+      "path": "modules/seranking-seo/skills/seo-keyword-niche/GUIDE.md",
+      "sha256": "33ad7bbf3e5bc9782ec1f0af167323032a14b0c5f416e0dc1efb923c2fdcbcad"
+    },
+    {
+      "path": "modules/seranking-seo/skills/seo-page/GUIDE.md",
+      "sha256": "f2ddec8f0a342ed43634256c254c7e9e11c6723c315df1e4d91e2eb4baea3f50"
+    },
+    {
+      "path": "modules/seranking-seo/skills/seo-plan/GUIDE.md",
+      "sha256": "071c708fcf975fbe5d623ddcdc653029094707659fa4826384354b18ff8b9f1a"
+    },
+    {
+      "path": "modules/seranking-seo/skills/seo-schema/GUIDE.md",
+      "sha256": "ece8386527284826ba9447c1e2cc6075606bb99817f7d07e3a0c2a05c9e2e19f"
+    },
+    {
+      "path": "modules/seranking-seo/skills/seo-schema/references/google-rich-results.md",
+      "sha256": "754deef92b4f0c50fef68b504768e1504d128c405377e9b66df82d4e67b5d818"
+    },
+    {
+      "path": "modules/seranking-seo/skills/seo-schema/templates/article.json",
+      "sha256": "9d3c7e6ae03fb0d68a342adfa7a95b8b9fd0e34d587aef3d5423a296e5afffcc"
+    },
+    {
+      "path": "modules/seranking-seo/skills/seo-schema/templates/breadcrumb-list.json",
+      "sha256": "35934a3855ff5726613be6e97dc11f0526c956a21cdac8192ad75b9068f245ad"
+    },
+    {
+      "path": "modules/seranking-seo/skills/seo-schema/templates/faq-page.json",
+      "sha256": "6149f3d8d78725d91d2647021247f7f38fc233e0a45957c30d47d3270d679ee9"
+    },
+    {
+      "path": "modules/seranking-seo/skills/seo-schema/templates/local-business.json",
+      "sha256": "e73fbe6eda3de4359f0ea1438dbd4fae2f8df19fc498fd752b4e682e4e18bb76"
+    },
+    {
+      "path": "modules/seranking-seo/skills/seo-schema/templates/product.json",
+      "sha256": "720bbf08c163aa26d523cd4ca713b80528be9543f92e88f33f00cddc7a40e171"
+    },
+    {
+      "path": "modules/seranking-seo/skills/seo-sitemap/GUIDE.md",
+      "sha256": "9f5db49ce631052338f5a76124f8a4e00f6f8632513bffc824446b88ffe8a81b"
+    },
+    {
+      "path": "modules/seranking-seo/skills/seo-technical-audit/GUIDE.md",
+      "sha256": "882cf2532cfcc19ead596dfb1e683548977a2f652c8ba02cb3294709e8ce7c2d"
+    },
+    {
+      "path": "modules/seranking-seo/skills/seo-technical-audit/references/severity-mapping.md",
+      "sha256": "045af638727fe18fbb1fc07d7609cd7a1847a46c06da138c8c6ed144e371ecca"
+    },
+    {
+      "path": "references/api.md",
+      "sha256": "e6d8d9e568a4b7b7efe9ec9b30f91fbeefe9a3c3f20f44424e0203ef4160e5a8"
+    },
+    {
+      "path": "references/check-registry.json",
+      "sha256": "c792c7fc291aaddf0774e55aebaed998364ce067df1ec9aaa4ad43ab86790fc4"
+    },
+    {
+      "path": "references/evidence.md",
+      "sha256": "784cdfd5cdf8ad1cb096a4a321c81708c9ffce63a785c31839d42348c5f02879"
+    },
+    {
+      "path": "references/intake.md",
+      "sha256": "86b2d7d3fc900f32a6af805dc1f6997087272ebf125d424d352630ed5004779a"
+    },
+    {
+      "path": "references/measurement.md",
+      "sha256": "8879fc0e24bff3f9a691ce8e0c5c4c35733e78f854acc973d0b43bd9b076be1d"
+    },
+    {
+      "path": "references/policies.md",
+      "sha256": "1ee2a5faaa35da104ad1c32f2bdb3d4fe200601da83334bfa42519c2f35a96cd"
+    },
+    {
+      "path": "references/profiles.json",
+      "sha256": "71be1492fa8fc9c8321d0e9b511b2bb56097b4ce607c6ee02e2df537949b3ac7"
+    },
+    {
+      "path": "references/remediations.json",
+      "sha256": "97ea1207007f2944c7530d6eb11e7af0580948f61670ac2e4653c0d2923ff9fc"
+    },
+    {
+      "path": "references/report.md",
+      "sha256": "019fcc59e7ace9157dba55f917e366f1d95b28e4af89ac3cd5f1843e7b116b4e"
+    },
+    {
+      "path": "references/routing.md",
+      "sha256": "1fc3f475804dea6cac75832f9b76c0710f7c08b5080688a784243ef11756f528"
+    },
+    {
+      "path": "references/schemas/contract.schema.json",
+      "sha256": "d530eb89d7b6fcb1af83bf10c34ba4aeec188c260f91890128cdcd87b0df0aab"
+    },
+    {
+      "path": "references/scoring.md",
+      "sha256": "342f485653466be2e4e464801e144d89d99b97fa0eba15f282d4ea23de96f18c"
+    },
+    {
+      "path": "scripts/adapters/anthropic.mjs",
+      "sha256": "d066b4810e58a113fb96da898b5f36169447459d4f78260f2b2149252b5b36e4"
+    },
+    {
+      "path": "scripts/adapters/imports.mjs",
+      "sha256": "f05c719f6c422675019b8ff5e4bd9863936f39367ba881ef9cb3bbb0b585e2c8"
+    },
+    {
+      "path": "scripts/audit.mjs",
+      "sha256": "72251d428b6f45b786d0b01cbc57e0c811b9afb4d040e2be0a16b1ad6d773160"
+    },
+    {
+      "path": "scripts/cli.mjs",
+      "sha256": "b327a9c56ad99ebb098a458f75f8a41269bfa158958efaad01ab914a5aad2a44"
+    },
+    {
+      "path": "scripts/core/bootstrap.mjs",
+      "sha256": "703d5c16878c526114afb540e4a6d54bd74831f35a824c03a839e2480097d279"
+    },
+    {
+      "path": "scripts/core/bundle.mjs",
+      "sha256": "1196d40565c97090ca64208c7ed8657e40714c5ab3233d9531dd3f0839460dac"
+    },
+    {
+      "path": "scripts/core/capabilities.mjs",
+      "sha256": "4c1d894f34556a2b72371b9534222ae4e4a0653d3c9a196dd4722fcb7fdba3d9"
+    },
+    {
+      "path": "scripts/core/collector.mjs",
+      "sha256": "8a46d2dd77fb1b7a464c1e4a53957f5a7aae4ae8decba43de7c7e4fcc5925120"
+    },
+    {
+      "path": "scripts/core/compare.mjs",
+      "sha256": "16d43532285072d6d4a3489d1e4392651a3013ce5d34b5dc5057fdcbd13e5356"
+    },
+    {
+      "path": "scripts/core/contracts.mjs",
+      "sha256": "a2c493b9c97915aa3b5ec08c477008123e1c3dd39f8b0a5ed0a400cae0651b6a"
+    },
+    {
+      "path": "scripts/core/cost-ledger.mjs",
+      "sha256": "f2ccec324e4462dcce054c5c55e18e417180e8ee75b1bed9a15dbe95f40c080b"
+    },
+    {
+      "path": "scripts/core/findings.mjs",
+      "sha256": "ec3b1758468add607219dc963e32d8305a341ef7a8a34632d7dd6a534dbf93ab"
+    },
+    {
+      "path": "scripts/core/metrics.mjs",
+      "sha256": "b2579fe7a6b46f285334b341de3e289e805614b41728b625c65508cbc584dc0b"
+    },
+    {
+      "path": "scripts/core/protocol.mjs",
+      "sha256": "f921e2b39192e719c5959023e09fe907771dd2326886d03d40b4424b537f9555"
+    },
+    {
+      "path": "scripts/core/report.mjs",
+      "sha256": "00c6407ff2c034cbd324563ce3bce9d36d3867256bbc0d75466824660cc1ede6"
+    },
+    {
+      "path": "scripts/core/scope.mjs",
+      "sha256": "fc824ed721cccb27f654b8a92f15e679487e42151752155a1fd52393b3541641"
+    },
+    {
+      "path": "scripts/core/score.mjs",
+      "sha256": "924210e252505394e772ce9fe7f38daccc93b893371df679801c21c59cad7970"
+    },
+    {
+      "path": "scripts/core/weights.mjs",
+      "sha256": "a565192fdd9151f1b069f721eb5b6ee3be051c4a6c572b9b1bfa6e2a2fb5abee"
+    },
+    {
+      "path": "source-lock.json",
+      "sha256": "e9041a0ff06c5395027c25646cf210958e38e969d34b329d7b165a865e77e313"
+    }
+  ],
+  "bundle_hash": "e69d5d88e0447749831a3d2e5072ae0bf84b6a8d2780c39076ead6d1c5f1945e"
+}
