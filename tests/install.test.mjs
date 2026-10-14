@@ -12,6 +12,9 @@ import { createBundleManifest, verifyBundle } from '../skills/optbrew/scripts/co
 import { install } from '../lib/install.mjs';
 import { resolveTargets } from '../lib/paths.mjs';
 import { readInstallRecord } from '../lib/records.mjs';
+import { fixture as updateFixture } from './fixtures/releases/create.mjs';
+import { update } from '../lib/update.mjs';
+import { recoverTransaction } from '../lib/transaction.mjs';
 
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
@@ -166,4 +169,44 @@ test('second target failure preserves first registration and copy retry adds onl
   assert.deepEqual(retry.record.targets.map(t => [t.agent, t.strategy]), [['codex', 'link'], ['claude-code', 'copy']]);
   assert.equal(retry.record.transaction.state, 'committed');
   assert.equal((await lstat(codexPath)).isSymbolicLink(), true);
+});
+
+for (const dryRun of [false, true]) test(`installer refuses outstanding journal before ${dryRun ? 'planning' : 'writing'} an added target`, async () => {
+  const f = await updateFixture();
+  const interrupted = await update({ bundleRoot: f.next, recordRoot: f.recordRoot, faultHook: phase => {
+    if (phase === 'after_staging') throw new Error('interrupt update');
+  } });
+  assert.equal(interrupted.status, 'recovery_required');
+  const recordFile = path.join(f.recordRoot, 'install-record.json');
+  const journalFile = path.join(f.recordRoot, 'transaction.json');
+  const before = await Promise.all([recordFile, journalFile].map(p => readFile(p, 'utf8')));
+  await assert.rejects(install({ bundleRoot: f.old, home: f.home, scope: 'user', agents: ['pi'], strategy: 'copy', dryRun }), /recovery_required.*optbrew update/);
+  assert.deepEqual(await Promise.all([recordFile, journalFile].map(p => readFile(p, 'utf8'))), before);
+  await assert.rejects(lstat(resolveTargets({ home: f.home, scope: 'user', agents: ['pi'] })[0].path), { code: 'ENOENT' });
+  assert.equal((await recoverTransaction(f.recordRoot)).status, 'recovered');
+});
+
+test('installer rechecks outstanding journal after obtaining its lock', async () => {
+  const f = await updateFixture();
+  const before = await readFile(path.join(f.recordRoot, 'install-record.json'), 'utf8');
+  const original = fs.open;
+  let injected = false;
+  fs.open = async (file, ...args) => {
+    if (!injected && file === path.join(f.recordRoot, 'install.lock') && args[0] === 'wx') {
+      injected = true;
+      const result = await update({ bundleRoot: f.next, recordRoot: f.recordRoot, faultHook: phase => {
+        if (phase === 'after_staging') throw new Error('interrupt between installer inspect and lock');
+      } });
+      assert.equal(result.status, 'recovery_required');
+    }
+    return original(file, ...args);
+  };
+  syncBuiltinESMExports();
+  try {
+    await assert.rejects(install({ bundleRoot: f.old, home: f.home, scope: 'user', agents: ['pi'], strategy: 'copy' }), /recovery_required.*optbrew update/);
+  } finally { fs.open = original; syncBuiltinESMExports(); }
+  assert.equal(injected, true);
+  assert.equal(await readFile(path.join(f.recordRoot, 'install-record.json'), 'utf8'), before);
+  await assert.rejects(lstat(resolveTargets({ home: f.home, scope: 'user', agents: ['pi'] })[0].path), { code: 'ENOENT' });
+  assert.equal((await recoverTransaction(f.recordRoot)).status, 'recovered');
 });

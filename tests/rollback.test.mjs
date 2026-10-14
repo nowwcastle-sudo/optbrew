@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { readFile, writeFile, rm, symlink, lstat } from 'node:fs/promises';
+import { readFile, writeFile, rm, symlink, lstat, readdir } from 'node:fs/promises';
 import { spawnSync } from 'node:child_process';
 import { pathToFileURL } from 'node:url';
 import path from 'node:path';
@@ -140,4 +140,50 @@ test('an edit just before record replacement cannot be reported as success', asy
   assert.equal((await readInstallRecord(f.recordRoot)).release_version, '0.1.0');
   assert.equal((await recoverTransaction(f.recordRoot)).status, 'recovery_required');
   assert.equal(await readFile(target, 'utf8'), 'late user edit');
+});
+
+for (const command of ['update', 'rollback']) test(`${command} CLI recovers a dead owner before journal creation`, async t => {
+  const f = await fixture();
+  if (command === 'rollback') assert.equal((await update({ bundleRoot: f.next, recordRoot: f.recordRoot })).status, 'updated');
+  const recordBefore = await readFile(path.join(f.recordRoot, 'install-record.json'), 'utf8');
+  const moduleUrl = pathToFileURL(path.resolve('lib/update.mjs')).href;
+  const script = `import fs from 'node:fs/promises'; import { syncBuiltinESMExports } from 'node:module';
+    const original = fs.cp; fs.cp = async (from, to, ...rest) => { if (to.endsWith('.stage')) process.exit(74); return original(from, to, ...rest); }; syncBuiltinESMExports();
+    const { update, rollback } = await import(${JSON.stringify(moduleUrl)});
+    if (process.argv[3] === 'update') await update({ bundleRoot: process.argv[1], recordRoot: process.argv[2] });
+    else await rollback({ recordRoot: process.argv[2], releaseVersion: '0.1.0' });`;
+  const argv = ['--input-type=module', '-e', script, f.next, f.recordRoot, command];
+  const child = spawnSync(process.execPath, argv, { encoding: 'utf8' });
+  t.diagnostic(JSON.stringify({ argv: [process.execPath, ...argv], cwd: process.cwd(), child_status: child.status, child_stdout: child.stdout, child_stderr: child.stderr }));
+  assert.equal(child.status, 74);
+  assert.equal(child.stderr, '');
+  await assert.rejects(lstat(path.join(f.recordRoot, 'transaction.json')), { code: 'ENOENT' });
+  const deadOwner = JSON.parse(await readFile(path.join(f.recordRoot, 'install.lock'), 'utf8'));
+  assert.equal(deadOwner.pid, child.pid);
+  assert.equal(await readFile(path.join(f.recordRoot, 'install-record.json'), 'utf8'), recordBefore);
+  const snapshots = await readdir(path.join(f.recordRoot, 'releases'));
+  let output = '', error = '';
+  const args = [command, '--record-root', f.recordRoot, '--json'];
+  if (command === 'rollback') args.push('--release-version', '0.1.0');
+  const exit = await main(args, { bundleRoot: f.next, stdout: { write: s => output += s }, stderr: { write: s => error += s } });
+  assert.equal(exit, 0, error);
+  assert.equal(JSON.parse(output).status, command === 'update' ? 'updated' : 'rolled_back');
+  await assert.rejects(lstat(path.join(f.recordRoot, 'install.lock')), { code: 'ENOENT' });
+  const retained = await readdir(path.join(f.recordRoot, 'releases'));
+  assert.ok(snapshots.every(id => retained.includes(id)));
+  for (const p of f.preserved) assert.equal(await readFile(p, 'utf8'), `private ${path.basename(p)}`);
+});
+
+for (const owner of ['active', 'unknown']) test(`journal-free ${owner} lock is preserved by update CLI`, async () => {
+  const f = await fixture();
+  const lockFile = path.join(f.recordRoot, 'install.lock');
+  const content = owner === 'active' ? JSON.stringify({ pid: process.pid, token: 'active-test-owner' }) : '';
+  await writeFile(lockFile, content);
+  const before = await readFile(path.join(f.recordRoot, 'install-record.json'), 'utf8');
+  let error = '';
+  assert.equal(await main(['update', '--record-root', f.recordRoot], { bundleRoot: f.next, stdout: { write() {} }, stderr: { write: s => error += s } }), 1);
+  assert.match(error, owner === 'active' ? /lock already held/ : /unknown lock owner/);
+  assert.equal(await readFile(lockFile, 'utf8'), content);
+  assert.equal(await readFile(path.join(f.recordRoot, 'install-record.json'), 'utf8'), before);
+  for (const target of f.record.targets) assert.equal(await readFile(path.join(target.path, 'SKILL.md'), 'utf8'), 'optbrew 0.1.0\n');
 });
