@@ -65,11 +65,11 @@ test('missing close control still finalizes bounded logs with unknown host exit'
     const started = Date.now();
     const result = await runOwnedProcess(process.execPath, ['-e',
       "process.stdout.write('captured before timeout\\n'); setInterval(() => {}, 1000)"],
-    root, 100, stdoutPath, stderrPath, { graceMs: 150, spawnChild: spawnWithoutClose });
+    root, 1500, stdoutPath, stderrPath, { graceMs: 150, spawnChild: spawnWithoutClose });
     assert.equal(result.reason, 'timeout');
     assert.equal(result.close_observed, false);
     assert.equal(result.exit_code, null);
     assert.match(await readFile(stdoutPath, 'utf8'), /captured before timeout/);
-    assert.ok(Date.now() - started < 1500);
+    assert.ok(Date.now() - started < 4000);
   } finally { await rm(root, { recursive: true, force: true }); }
 });

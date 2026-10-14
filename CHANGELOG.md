@@ -2,7 +2,8 @@
 
 ## 0.1.1 — local release candidate
 
-- Verified a real localhost noindex/title baseline, backed-up local edit, same-condition rescan and evidence-bound JSON/Markdown report. The collector emits pass observations for completed title/index checks, and the report checks their module evidence.
+- Verified a real localhost noindex/title baseline, backed-up local edit, same-condition rescan and evidence-bound JSON/Markdown report. The collector emits pass or fail observations for completed index checks, a fail for a missing title and unknown for a present one (uniqueness and descriptiveness need separate evidence), and the report replays title, index and crawl-policy verdicts from the preserved raw bytes.
+- Final review fixes: index directives ignore commented or script text and follow the target engine's meta and X-Robots-Tag scope; report replay accepts permitted redirects and header-only noindex findings and re-derives robots verdicts; a byte-hash receipt alone no longer marks a fix verified locally; redirect hops count against the 50-request budget; native path mappings match whole path segments; the release verifier rejects unextractable ZIP layouts.
 - Bound runtime scoring to the installed evaluation/protocol source hashes and versions. The evaluation and observation protocol versions remain 0.1.0. Root notice links resolve to the packaged skill licenses.
 - Fixed direct audit and calculation entrypoints invoked through managed Windows junctions or Unix symlinks. Ordinary imports remain inert.
 - The report separates baseline and after blocker counts. Locally verified fixes now lead to production deployment/reobservation work instead of repeating the original edit instruction.
