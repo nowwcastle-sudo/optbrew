@@ -92,6 +92,9 @@ export async function tamperRecord(t, f, name) {
   else if (name === 'T3') first.path = '';
   else if (name === 'T4') first.path = `${f.project}/.agents/skills/optbrew/../../../../${path.basename(victim)}`.replaceAll('\\', '/');
   else if (name === 'T5') first.path = path.join(f.project, '.agents', 'skills', 'other');
+  else if (name === 'T7') first.path = `${first.path}${String.fromCharCode(10)}${victim}`;
+  else if (name === 'T8') first.path = `${first.path}${String.fromCharCode(9)}${victim}`;
+  else if (name === 'T9') first.path = `${first.path}${String.fromCharCode(27)}[2J`;
   else if (name === 'T6') { await rm(first.path, { recursive: true, force: true }); await symlink(victim, first.path, 'junction'); first.strategy = 'link'; }
   else throw new Error(name);
   await writeFile(recordFile, JSON.stringify(record, null, 2));

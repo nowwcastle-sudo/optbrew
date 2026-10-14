@@ -22,7 +22,7 @@ test('the documented blocks delete only what the validated plan prints and never
 
 // T1-T6 against the plan command itself, in process: a tampered install record is refused before anything could be deleted.
 describe('reinstall-plan refuses a tampered install record before anything could be deleted', { concurrency: 6 }, () => {
-  for (const name of ['T1', 'T2', 'T3', 'T4', 'T5', 'T6']) {
+  for (const name of ['T1', 'T2', 'T3', 'T4', 'T5', 'T6', 'T7', 'T8', 'T9']) {
     it(`${name}`, { skip: skipUnreachable }, async t => {
       const f = await sandbox(t);
       const v = await tamperRecord(t, f, name);
@@ -31,6 +31,7 @@ describe('reinstall-plan refuses a tampered install record before anything could
       assert.equal(code, 1);
       assert.equal(out, '', 'a refused plan prints nothing to delete');
       assert.match(err, /^reinstall plan refused: /);
+      if (['T7', 'T8', 'T9'].includes(name)) assert.match(err, /control character/, 'a path with a line break, tab or control character is named as such');
       await assertNothingDeleted(f, v);
     });
   }
