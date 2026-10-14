@@ -4,6 +4,8 @@
   "type": "module",
   "description": "Pinned search audit and improvement skill bundle",
   "license": "MIT",
+  "keywords": ["pi-package", "seo", "agent-skill"],
+  "pi": { "skills": ["./skills/optbrew"] },
   "engines": { "node": ">=22" },
   "bin": { "optbrew": "bin/optbrew.mjs" },
   "files": [
@@ -17,8 +19,13 @@
     "README.ko.md",
     "CHANGELOG.md",
     "LICENSE",
+    "THIRD_PARTY_NOTICES.md",
+    "source-lock.json",
     "!**/__pycache__/**",
-    "!**/*.pyc"
+    "!**/*.pyc",
+    "!**/evals/**",
+    "!**/tests/**",
+    "!**/test_*.py"
   ],
   "scripts": {
     "test": "node --test",

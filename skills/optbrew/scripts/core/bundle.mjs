@@ -4,10 +4,16 @@ import path from 'node:path';
 
 const digest = bytes => createHash('sha256').update(bytes).digest('hex');
 const manifestName = 'bundle-manifest.json';
+export const evaluationSourcePaths = ['references/check-registry.json', 'references/profiles.json',
+  'references/scoring.md', 'references/measurement.md', 'scripts/core/score.mjs', 'scripts/core/weights.mjs',
+  'scripts/core/contracts.mjs', 'scripts/core/compare.mjs', 'scripts/core/metrics.mjs', 'scripts/core/bootstrap.mjs'];
+export const protocolSourcePaths = ['references/schemas/contract.schema.json', 'scripts/core/protocol.mjs'];
 
 /** Match the package.json skill exclusions for generated Python cache files. */
 export function isDistributedBundlePath(relative) {
-  return !relative.split(/[\\/]/).includes('__pycache__') && !relative.endsWith('.pyc');
+  const parts = relative.split(/[\\/]/);
+  return !parts.some(part => ['__pycache__', 'tests', 'evals'].includes(part) || part.startsWith('_백업_원본_')) &&
+    !relative.endsWith('.pyc') && !/^test_.*\.py$/.test(parts.at(-1));
 }
 
 async function listFiles(root, relative = '') {
@@ -30,7 +36,17 @@ export async function createBundleManifest({ bundleRoot, releaseVersion }) {
   for (const name of await listFiles(bundleRoot)) {
     files.push({ path: name, sha256: digest(await readFile(path.join(bundleRoot, name))) });
   }
-  return { schema_version: '1.0.0', release_version: releaseVersion, files, bundle_hash: digest(JSON.stringify(files)) };
+  // Synthetic install fixtures contain only SKILL.md; production release checks completeness.
+  const selected = paths => paths.every(name => files.some(file => file.path === name))
+    ? paths.map(name => files.find(file => file.path === name)) : [];
+  const evaluation_sources = selected(evaluationSourcePaths);
+  const protocol_sources = selected(protocolSourcePaths);
+  const identity = evaluation_sources.length && protocol_sources.length ? {
+    evaluation_version: '0.1.0', protocol_version: '0.1.0',
+    evaluation_sources, evaluation_hash: digest(JSON.stringify(evaluation_sources)),
+    protocol_sources, protocol_hash: digest(JSON.stringify(protocol_sources)) } : {};
+  return { schema_version: '1.0.0', release_version: releaseVersion,
+    ...identity, files, bundle_hash: digest(JSON.stringify(files)) };
 }
 
 /** Verify the exact allowlist, byte hashes, and aggregate hash. */
@@ -50,5 +66,8 @@ export async function verifyBundle({ bundleRoot, manifest }) {
   for (const name of expected.keys()) if (!found.has(name)) errors.push({ path: name, code: 'missing_file' });
   if (manifest?.bundle_hash !== actual.bundle_hash ||
       JSON.stringify(manifest?.files) !== JSON.stringify(actual.files)) errors.push({ path: manifestName, code: 'bundle_hash_mismatch' });
+  for (const field of ['evaluation_version', 'protocol_version', 'evaluation_sources', 'protocol_sources', 'evaluation_hash', 'protocol_hash'])
+    if (JSON.stringify(manifest?.[field]) !== JSON.stringify(actual[field]))
+      errors.push({ path: manifestName, code: field.endsWith('_version') ? 'migration_required' : `${field}_mismatch` });
   return { status: errors.length ? 'invalid' : 'valid', checked_files: actual.files.length, errors, bundle_hash: actual.bundle_hash };
 }

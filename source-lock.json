@@ -1,0 +1,2686 @@
+{
+  "schema_version": "1.0.0",
+  "modules": [
+    {
+      "module_id": "mblode-seo",
+      "repo": "mblode/agent-skills",
+      "commit": "872bc83bdb6dd54a9ff456fbf1181beea6db7875",
+      "license": "MIT",
+      "license_path": "LICENSE.md",
+      "license_blob_sha": "c5a1d56c6d623c72d077f8aab56b31d7dc371cbb",
+      "excluded_files": [
+        "Unselected agent skills in the upstream repository"
+      ]
+    },
+    {
+      "module_id": "naver-searchadvisor",
+      "repo": "JaceProgramming/naver-searchadvisor-expert",
+      "commit": "cd95f6281090416b3dfbf15fb0f66f0ffa67a19c",
+      "license": "MIT (limited scope)",
+      "license_path": "LICENSE",
+      "license_blob_sha": "4434edf30edce0a41c07fbc776b0d5cebd044547",
+      "excluded_files": [
+        "references/guide/*.md: 55 Naver copyrighted article bodies outside MIT scope; official URLs retained in INDEX",
+        "README.md: documents upstream offline corpus and is not a runtime guide",
+        "tools/fetch-guide.mjs: would retrieve excluded articles",
+        "tools/fix-index.mjs and tools/package.json: authoring tools, not runtime"
+      ]
+    },
+    {
+      "module_id": "firecrawl-seo-audit",
+      "repo": "firecrawl/firecrawl-workflows",
+      "commit": "94cc91229d6cedc0613f140d3d013b150bc8e1b0",
+      "license": "ISC",
+      "license_path": "LICENSE",
+      "license_blob_sha": "ee221a2151d63ddc1db9857f9c5d346a3de9d816",
+      "excluded_files": [
+        "Unselected Firecrawl workflows"
+      ]
+    },
+    {
+      "module_id": "magnus-seo",
+      "repo": "magnus919/agent-skills",
+      "commit": "2e8fb962819b2b01b270620f92f0cc7213d77ef1",
+      "license": "MIT",
+      "license_path": "LICENSE.md",
+      "license_blob_sha": "9745e19f4b20d77c134964ae1bf0af0ace5c4db7",
+      "excluded_files": [
+        "Unselected agent skills"
+      ]
+    },
+    {
+      "module_id": "seranking-seo",
+      "repo": "seranking/seo-skills",
+      "commit": "fd6d1408f2e6a06454d81c07c29e0f04342eb9ba",
+      "license": "MIT",
+      "license_path": "LICENSE",
+      "license_blob_sha": "ca6b9a33c8234bf47cdcfb2dc157b308195845c5",
+      "excluded_files": [
+        "extensions/google/install.sh and extensions/firecrawl/install.sh: upstream installers disabled",
+        "scripts/google_auth.py and root scripts: upstream authentication and provider execution disabled; optbrew capability adapters replace active commands",
+        "Unselected campaign, ad, social and other upstream skills"
+      ]
+    },
+    {
+      "module_id": "marketing-search",
+      "repo": "coreyhaines31/marketingskills",
+      "commit": "5b2c0007766c6a1cf1d53fd8fc73e979e0821022",
+      "license": "MIT",
+      "license_path": "LICENSE",
+      "license_blob_sha": "7c48dd638a9ebed49a8ef0c0c4eea90105381cdf",
+      "excluded_files": [
+        "Unselected marketing skills, installers and authoring utilities"
+      ]
+    }
+  ],
+  "files": [
+    {
+      "module_id": "mblode-seo",
+      "repo": "mblode/agent-skills",
+      "commit": "872bc83bdb6dd54a9ff456fbf1181beea6db7875",
+      "license": "MIT",
+      "license_blob_sha": "c5a1d56c6d623c72d077f8aab56b31d7dc371cbb",
+      "upstream_path": "LICENSE.md",
+      "package_path": "skills/optbrew/licenses/mblode-seo.txt",
+      "original_git_blob_sha": "c5a1d56c6d623c72d077f8aab56b31d7dc371cbb",
+      "original_sha256": "81ac64b19ea7ae7f9a8d197705df58f48ffca02c74fca13e565dedf4f7595b46",
+      "distributed_sha256": "81ac64b19ea7ae7f9a8d197705df58f48ffca02c74fca13e565dedf4f7595b46",
+      "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": null,
+      "excluded_files": [
+        "Unselected agent skills in the upstream repository"
+      ]
+    },
+    {
+      "module_id": "mblode-seo",
+      "repo": "mblode/agent-skills",
+      "commit": "872bc83bdb6dd54a9ff456fbf1181beea6db7875",
+      "license": "MIT",
+      "license_blob_sha": "c5a1d56c6d623c72d077f8aab56b31d7dc371cbb",
+      "upstream_path": "skills/seo/SKILL.md",
+      "package_path": "skills/optbrew/modules/mblode-seo/GUIDE.md",
+      "original_git_blob_sha": "2a13eec5a6b21b9b2765f5d7d87b09f79f2c3def",
+      "original_sha256": "3101c946bb29a76b6a2ceafb27b5084d80b0ac45281002d94de1a755095d35af",
+      "distributed_sha256": "228b715f5b75f3fe87033bde98b050e520b6d5bfe1ef6c77ce88da0aacb8c6a4",
+      "transformations": [
+        "SKILL.md to GUIDE.md; YAML frontmatter removed"
+      ],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": "Portable optbrew GUIDE and capability routing",
+      "excluded_files": [
+        "Unselected agent skills in the upstream repository"
+      ]
+    },
+    {
+      "module_id": "mblode-seo",
+      "repo": "mblode/agent-skills",
+      "commit": "872bc83bdb6dd54a9ff456fbf1181beea6db7875",
+      "license": "MIT",
+      "license_blob_sha": "c5a1d56c6d623c72d077f8aab56b31d7dc371cbb",
+      "upstream_path": "skills/seo/evals/evals.json",
+      "package_path": "skills/optbrew/modules/mblode-seo/evals/evals.json",
+      "original_git_blob_sha": "57e711767606d46c07b34d6fdee10beca3e5a61a",
+      "original_sha256": "8bda87a2e1140c6c735745af18a17616a0c3bd16b812b7d19654bf0ae1a1bd6c",
+      "distributed_sha256": "8bda87a2e1140c6c735745af18a17616a0c3bd16b812b7d19654bf0ae1a1bd6c",
+      "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": null,
+      "excluded_files": [
+        "Unselected agent skills in the upstream repository"
+      ]
+    },
+    {
+      "module_id": "mblode-seo",
+      "repo": "mblode/agent-skills",
+      "commit": "872bc83bdb6dd54a9ff456fbf1181beea6db7875",
+      "license": "MIT",
+      "license_blob_sha": "c5a1d56c6d623c72d077f8aab56b31d7dc371cbb",
+      "upstream_path": "skills/seo/references/answer-engines.md",
+      "package_path": "skills/optbrew/modules/mblode-seo/references/answer-engines.md",
+      "original_git_blob_sha": "68bb2310507fa7c2a53c6eca66f6f59fa852fc76",
+      "original_sha256": "ca51e137e56b7eb7c02c8ca6de22177468ddaa92e69c2506d08b4cee55e43f14",
+      "distributed_sha256": "ca51e137e56b7eb7c02c8ca6de22177468ddaa92e69c2506d08b4cee55e43f14",
+      "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": null,
+      "excluded_files": [
+        "Unselected agent skills in the upstream repository"
+      ]
+    },
+    {
+      "module_id": "mblode-seo",
+      "repo": "mblode/agent-skills",
+      "commit": "872bc83bdb6dd54a9ff456fbf1181beea6db7875",
+      "license": "MIT",
+      "license_blob_sha": "c5a1d56c6d623c72d077f8aab56b31d7dc371cbb",
+      "upstream_path": "skills/seo/references/audit.md",
+      "package_path": "skills/optbrew/modules/mblode-seo/references/audit.md",
+      "original_git_blob_sha": "968e3c158c2714bf832303433ee78c577a18fc59",
+      "original_sha256": "829293a23952c689bdd0ae5490e9261258f04576114579e9e866a011921ad44c",
+      "distributed_sha256": "829293a23952c689bdd0ae5490e9261258f04576114579e9e866a011921ad44c",
+      "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": null,
+      "excluded_files": [
+        "Unselected agent skills in the upstream repository"
+      ]
+    },
+    {
+      "module_id": "mblode-seo",
+      "repo": "mblode/agent-skills",
+      "commit": "872bc83bdb6dd54a9ff456fbf1181beea6db7875",
+      "license": "MIT",
+      "license_blob_sha": "c5a1d56c6d623c72d077f8aab56b31d7dc371cbb",
+      "upstream_path": "skills/seo/references/brief-template.md",
+      "package_path": "skills/optbrew/modules/mblode-seo/references/brief-template.md",
+      "original_git_blob_sha": "af8f1c047d0a9f73b9f676d952ed6129d8f14553",
+      "original_sha256": "b4a207f43abc05007f2a9ecf61f895160b4da9046e1ee11e67bb532a67c07e65",
+      "distributed_sha256": "b4a207f43abc05007f2a9ecf61f895160b4da9046e1ee11e67bb532a67c07e65",
+      "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": null,
+      "excluded_files": [
+        "Unselected agent skills in the upstream repository"
+      ]
+    },
+    {
+      "module_id": "mblode-seo",
+      "repo": "mblode/agent-skills",
+      "commit": "872bc83bdb6dd54a9ff456fbf1181beea6db7875",
+      "license": "MIT",
+      "license_blob_sha": "c5a1d56c6d623c72d077f8aab56b31d7dc371cbb",
+      "upstream_path": "skills/seo/references/monitoring.md",
+      "package_path": "skills/optbrew/modules/mblode-seo/references/monitoring.md",
+      "original_git_blob_sha": "dfa753cb89f9f7e9f2746e0dff3cedd696feb40f",
+      "original_sha256": "dd31124a6202816cda9395b19dd50c2f055e792bc00cd62e6c4016d1c6b13c9c",
+      "distributed_sha256": "dd31124a6202816cda9395b19dd50c2f055e792bc00cd62e6c4016d1c6b13c9c",
+      "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": null,
+      "excluded_files": [
+        "Unselected agent skills in the upstream repository"
+      ]
+    },
+    {
+      "module_id": "mblode-seo",
+      "repo": "mblode/agent-skills",
+      "commit": "872bc83bdb6dd54a9ff456fbf1181beea6db7875",
+      "license": "MIT",
+      "license_blob_sha": "c5a1d56c6d623c72d077f8aab56b31d7dc371cbb",
+      "upstream_path": "skills/seo/references/nextjs-implementation.md",
+      "package_path": "skills/optbrew/modules/mblode-seo/references/nextjs-implementation.md",
+      "original_git_blob_sha": "2f2ea85302f5e2f422e43a1509c7dfb935082796",
+      "original_sha256": "4552d3026b29a40bf58f5c139e51e22391092abdd620cf745cf270a205b6dac5",
+      "distributed_sha256": "4552d3026b29a40bf58f5c139e51e22391092abdd620cf745cf270a205b6dac5",
+      "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": null,
+      "excluded_files": [
+        "Unselected agent skills in the upstream repository"
+      ]
+    },
+    {
+      "module_id": "mblode-seo",
+      "repo": "mblode/agent-skills",
+      "commit": "872bc83bdb6dd54a9ff456fbf1181beea6db7875",
+      "license": "MIT",
+      "license_blob_sha": "c5a1d56c6d623c72d077f8aab56b31d7dc371cbb",
+      "upstream_path": "skills/seo/references/research-protocol.md",
+      "package_path": "skills/optbrew/modules/mblode-seo/references/research-protocol.md",
+      "original_git_blob_sha": "20085a30bb0347ff4bccfb8f6b093f0968f6917c",
+      "original_sha256": "2a82f99a70a162637ada300d9812b82f41c053151b2fcf1db5f9215f5c7c0a9b",
+      "distributed_sha256": "2a82f99a70a162637ada300d9812b82f41c053151b2fcf1db5f9215f5c7c0a9b",
+      "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": null,
+      "excluded_files": [
+        "Unselected agent skills in the upstream repository"
+      ]
+    },
+    {
+      "module_id": "mblode-seo",
+      "repo": "mblode/agent-skills",
+      "commit": "872bc83bdb6dd54a9ff456fbf1181beea6db7875",
+      "license": "MIT",
+      "license_blob_sha": "c5a1d56c6d623c72d077f8aab56b31d7dc371cbb",
+      "upstream_path": "skills/seo/references/sources.md",
+      "package_path": "skills/optbrew/modules/mblode-seo/references/sources.md",
+      "original_git_blob_sha": "92305e3d1941a3780bbe2da70457160970cbf27e",
+      "original_sha256": "70bf6f9b894775668a1b6eee0b56f5d3a1c9be7d3c646b0d4165330796eb0913",
+      "distributed_sha256": "70bf6f9b894775668a1b6eee0b56f5d3a1c9be7d3c646b0d4165330796eb0913",
+      "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": null,
+      "excluded_files": [
+        "Unselected agent skills in the upstream repository"
+      ]
+    },
+    {
+      "module_id": "mblode-seo",
+      "repo": "mblode/agent-skills",
+      "commit": "872bc83bdb6dd54a9ff456fbf1181beea6db7875",
+      "license": "MIT",
+      "license_blob_sha": "c5a1d56c6d623c72d077f8aab56b31d7dc371cbb",
+      "upstream_path": "skills/seo/references/validation-evidence.md",
+      "package_path": "skills/optbrew/modules/mblode-seo/references/validation-evidence.md",
+      "original_git_blob_sha": "920eca41655ef21b71fe5d8aca9fcab2497df9e0",
+      "original_sha256": "f3b7d76edb71fb9e55722b817fcb2350cfba8ccc94cdba34537a0806c56845fd",
+      "distributed_sha256": "f3b7d76edb71fb9e55722b817fcb2350cfba8ccc94cdba34537a0806c56845fd",
+      "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": null,
+      "excluded_files": [
+        "Unselected agent skills in the upstream repository"
+      ]
+    },
+    {
+      "module_id": "naver-searchadvisor",
+      "repo": "JaceProgramming/naver-searchadvisor-expert",
+      "commit": "cd95f6281090416b3dfbf15fb0f66f0ffa67a19c",
+      "license": "MIT (limited scope)",
+      "license_blob_sha": "4434edf30edce0a41c07fbc776b0d5cebd044547",
+      "upstream_path": "LICENSE",
+      "package_path": "skills/optbrew/licenses/naver-searchadvisor.txt",
+      "original_git_blob_sha": "4434edf30edce0a41c07fbc776b0d5cebd044547",
+      "original_sha256": "1d2bc5241a4f81062bdd3a2064046e89a207379e3470f2a49c57207c535ef04c",
+      "distributed_sha256": "1d2bc5241a4f81062bdd3a2064046e89a207379e3470f2a49c57207c535ef04c",
+      "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": null,
+      "excluded_files": [
+        "references/guide/*.md: 55 Naver copyrighted article bodies outside MIT scope; official URLs retained in INDEX",
+        "README.md: documents upstream offline corpus and is not a runtime guide",
+        "tools/fetch-guide.mjs: would retrieve excluded articles",
+        "tools/fix-index.mjs and tools/package.json: authoring tools, not runtime"
+      ]
+    },
+    {
+      "module_id": "naver-searchadvisor",
+      "repo": "JaceProgramming/naver-searchadvisor-expert",
+      "commit": "cd95f6281090416b3dfbf15fb0f66f0ffa67a19c",
+      "license": "MIT (limited scope)",
+      "license_blob_sha": "4434edf30edce0a41c07fbc776b0d5cebd044547",
+      "upstream_path": "NOTICE.md",
+      "package_path": "skills/optbrew/modules/naver-searchadvisor/NOTICE.md",
+      "original_git_blob_sha": "3460229198e7bf2c35e9d5b267eb471b8ceb3795",
+      "original_sha256": "748821b6e236d154bd9e08983786149bb61a0b854078d37b262242f3e92b38ff",
+      "distributed_sha256": "dff28b7def4d09efd705e7cf5751ba4a439ba0523ca2abd6cdce7ef2de95015b",
+      "transformations": [
+        "Prepended distribution-specific exclusion notice; original upstream notice preserved below"
+      ],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": "Portable optbrew GUIDE and capability routing",
+      "excluded_files": [
+        "references/guide/*.md: 55 Naver copyrighted article bodies outside MIT scope; official URLs retained in INDEX",
+        "README.md: documents upstream offline corpus and is not a runtime guide",
+        "tools/fetch-guide.mjs: would retrieve excluded articles",
+        "tools/fix-index.mjs and tools/package.json: authoring tools, not runtime"
+      ]
+    },
+    {
+      "module_id": "naver-searchadvisor",
+      "repo": "JaceProgramming/naver-searchadvisor-expert",
+      "commit": "cd95f6281090416b3dfbf15fb0f66f0ffa67a19c",
+      "license": "MIT (limited scope)",
+      "license_blob_sha": "4434edf30edce0a41c07fbc776b0d5cebd044547",
+      "upstream_path": "SKILL.md",
+      "package_path": "skills/optbrew/modules/naver-searchadvisor/GUIDE.md",
+      "original_git_blob_sha": "7536957694e77333f54d1870aff49d1fffd25621",
+      "original_sha256": "baab29832210c4fe0a92dbb5ca2b9603931fd1ad167d8502a043e89030e21dc1",
+      "distributed_sha256": "a25b30472dcb61036995ba5f4c986e6f6dfb4033a9f83f4d95791ee23a8a64a1",
+      "transformations": [
+        "SKILL.md to GUIDE.md; YAML frontmatter removed",
+        "Replaced offline copyrighted-guide workflow with official-index routing",
+        "reviewed distribution patch naver-bounded-guide",
+        "reviewed distribution overlay naver-policy-boundaries"
+      ],
+      "patch_id": "naver-bounded-guide",
+      "patch_base_sha256": "962baa5b9dee48c301ef53d201268e21a210aefd8ca995e687b705d0fbf2c174",
+      "patch_reason": "Route Naver audit through bounded optbrew collector and clarify bot-response evidence",
+      "overlay_id": "naver-policy-boundaries",
+      "overlay_base_sha256": "d7cdc695bd18aeb19060acaaa5d7db70ca3ebef322664d360c5df2eff097c610",
+      "overlay_reason": "Clarify nosourceinfo, site query and IndexNow evidence boundaries",
+      "excluded_files": [
+        "references/guide/*.md: 55 Naver copyrighted article bodies outside MIT scope; official URLs retained in INDEX",
+        "README.md: documents upstream offline corpus and is not a runtime guide",
+        "tools/fetch-guide.mjs: would retrieve excluded articles",
+        "tools/fix-index.mjs and tools/package.json: authoring tools, not runtime"
+      ]
+    },
+    {
+      "module_id": "naver-searchadvisor",
+      "repo": "JaceProgramming/naver-searchadvisor-expert",
+      "commit": "cd95f6281090416b3dfbf15fb0f66f0ffa67a19c",
+      "license": "MIT (limited scope)",
+      "license_blob_sha": "4434edf30edce0a41c07fbc776b0d5cebd044547",
+      "upstream_path": "references/INDEX.md",
+      "package_path": "skills/optbrew/modules/naver-searchadvisor/references/INDEX.md",
+      "original_git_blob_sha": "532c4220c64e1990422653c55572868a6220c412",
+      "original_sha256": "ddc88a93a0e1a6bbb683fad37a4c02d083d84a9e81feecc98031be7d6d4310f0",
+      "distributed_sha256": "00b1dbde02a62e4577ae06474864aed1e198bdcfc7133655ec214f39a171ae2d",
+      "transformations": [
+        "INDEX links point to official Naver URLs; article bodies excluded"
+      ],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": "Portable optbrew GUIDE and capability routing",
+      "excluded_files": [
+        "references/guide/*.md: 55 Naver copyrighted article bodies outside MIT scope; official URLs retained in INDEX",
+        "README.md: documents upstream offline corpus and is not a runtime guide",
+        "tools/fetch-guide.mjs: would retrieve excluded articles",
+        "tools/fix-index.mjs and tools/package.json: authoring tools, not runtime"
+      ]
+    },
+    {
+      "module_id": "naver-searchadvisor",
+      "repo": "JaceProgramming/naver-searchadvisor-expert",
+      "commit": "cd95f6281090416b3dfbf15fb0f66f0ffa67a19c",
+      "license": "MIT (limited scope)",
+      "license_blob_sha": "4434edf30edce0a41c07fbc776b0d5cebd044547",
+      "upstream_path": "scripts/audit.mjs",
+      "package_path": "skills/optbrew/modules/naver-searchadvisor/scripts/audit.mjs",
+      "original_git_blob_sha": "de8c4a3430633cb2445e339d7a943d944cbf45a9",
+      "original_sha256": "3fd83141a00a9d45d4fbffa9d8ff515c7a49e7b1ea4637844e92375ea7797ff9",
+      "distributed_sha256": "870fd4d74483ad8a9ae5a0fdef996294ec3bb8a59775447680bfbe6b07fdbf17",
+      "transformations": [
+        "Audit output routes policy evidence to official URL index",
+        "reviewed distribution patch naver-robots-rfc9309"
+      ],
+      "patch_id": "naver-robots-rfc9309",
+      "patch_base_sha256": "b6d29d55e94b3e152f65c5590290dd2f0e8711466c00f93579bf545582db55d2",
+      "patch_reason": "Use pure RFC 9309 robots parser; disable direct remote fetch and inspect bounded collector evidence",
+      "excluded_files": [
+        "references/guide/*.md: 55 Naver copyrighted article bodies outside MIT scope; official URLs retained in INDEX",
+        "README.md: documents upstream offline corpus and is not a runtime guide",
+        "tools/fetch-guide.mjs: would retrieve excluded articles",
+        "tools/fix-index.mjs and tools/package.json: authoring tools, not runtime"
+      ]
+    },
+    {
+      "module_id": "firecrawl-seo-audit",
+      "repo": "firecrawl/firecrawl-workflows",
+      "commit": "94cc91229d6cedc0613f140d3d013b150bc8e1b0",
+      "license": "ISC",
+      "license_blob_sha": "ee221a2151d63ddc1db9857f9c5d346a3de9d816",
+      "upstream_path": "LICENSE",
+      "package_path": "skills/optbrew/licenses/firecrawl-seo-audit.txt",
+      "original_git_blob_sha": "ee221a2151d63ddc1db9857f9c5d346a3de9d816",
+      "original_sha256": "7bb9acac4ebb53a0fda17dd8a764ae184ff8ebf2563a9dd7915a023f73d55c3a",
+      "distributed_sha256": "7bb9acac4ebb53a0fda17dd8a764ae184ff8ebf2563a9dd7915a023f73d55c3a",
+      "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": null,
+      "excluded_files": [
+        "Unselected Firecrawl workflows"
+      ]
+    },
+    {
+      "module_id": "firecrawl-seo-audit",
+      "repo": "firecrawl/firecrawl-workflows",
+      "commit": "94cc91229d6cedc0613f140d3d013b150bc8e1b0",
+      "license": "ISC",
+      "license_blob_sha": "ee221a2151d63ddc1db9857f9c5d346a3de9d816",
+      "upstream_path": "skills/firecrawl-seo-audit/SKILL.md",
+      "package_path": "skills/optbrew/modules/firecrawl-seo-audit/GUIDE.md",
+      "original_git_blob_sha": "136bfc2fb7532bf12bbc0741ffd7da2cced6d3c1",
+      "original_sha256": "a04bf7f3806fef718e48ad05ad20d38548410b2d51b92a4ad43cd8838068e0bc",
+      "distributed_sha256": "5629bc931c568880b7a730338ae5dcbdf7bdc96218819b9bc8d55a7d7d90bd15",
+      "transformations": [
+        "SKILL.md to GUIDE.md; YAML frontmatter removed"
+      ],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": "Portable optbrew GUIDE and capability routing",
+      "excluded_files": [
+        "Unselected Firecrawl workflows"
+      ]
+    },
+    {
+      "module_id": "magnus-seo",
+      "repo": "magnus919/agent-skills",
+      "commit": "2e8fb962819b2b01b270620f92f0cc7213d77ef1",
+      "license": "MIT",
+      "license_blob_sha": "9745e19f4b20d77c134964ae1bf0af0ace5c4db7",
+      "upstream_path": "LICENSE.md",
+      "package_path": "skills/optbrew/licenses/magnus-seo.txt",
+      "original_git_blob_sha": "9745e19f4b20d77c134964ae1bf0af0ace5c4db7",
+      "original_sha256": "22fa3b1ec405fe440e86d0d293ce21de0c637ebc37f263dbe3032ee47215cfe2",
+      "distributed_sha256": "22fa3b1ec405fe440e86d0d293ce21de0c637ebc37f263dbe3032ee47215cfe2",
+      "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": null,
+      "excluded_files": [
+        "Unselected agent skills"
+      ]
+    },
+    {
+      "module_id": "magnus-seo",
+      "repo": "magnus919/agent-skills",
+      "commit": "2e8fb962819b2b01b270620f92f0cc7213d77ef1",
+      "license": "MIT",
+      "license_blob_sha": "9745e19f4b20d77c134964ae1bf0af0ace5c4db7",
+      "upstream_path": "seo/README.md",
+      "package_path": "skills/optbrew/modules/magnus-seo/README.md",
+      "original_git_blob_sha": "edc164040bb81442b478af3bae26e2e2ec35f60e",
+      "original_sha256": "994a8ad1a381503541e6e57095f1886aeb4f31761238d6bea207f520c25eb89f",
+      "distributed_sha256": "1f4647485a2abba92b83f4badf4f11f9012f1903a8df01c8aecc2dcf8c726ce5",
+      "transformations": [
+        "Inline SKILL.md mentions mapped to GUIDE.md"
+      ],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": "Portable optbrew GUIDE and capability routing",
+      "excluded_files": [
+        "Unselected agent skills"
+      ]
+    },
+    {
+      "module_id": "magnus-seo",
+      "repo": "magnus919/agent-skills",
+      "commit": "2e8fb962819b2b01b270620f92f0cc7213d77ef1",
+      "license": "MIT",
+      "license_blob_sha": "9745e19f4b20d77c134964ae1bf0af0ace5c4db7",
+      "upstream_path": "seo/SKILL.md",
+      "package_path": "skills/optbrew/modules/magnus-seo/GUIDE.md",
+      "original_git_blob_sha": "dd9db8ef191b3c433750fd322e2edeb6336027d0",
+      "original_sha256": "6abe5e0005c66e1fd98eee10fc84d75995ba5bcda8e64907d8376873ddffd149",
+      "distributed_sha256": "881b30f5b9cd42922384b38dea89367119e88d07423cf19fa70fcae376e89c30",
+      "transformations": [
+        "SKILL.md to GUIDE.md; YAML frontmatter removed",
+        "reviewed distribution patch magnus-bounded-guide"
+      ],
+      "patch_id": "magnus-bounded-guide",
+      "patch_base_sha256": "b04c8adc4554281f92a40529b22df4207996b0f4a29a62f051d749cab6636037",
+      "patch_reason": "Document offline Magnus HTML input and disabled direct URL fetch",
+      "excluded_files": [
+        "Unselected agent skills"
+      ]
+    },
+    {
+      "module_id": "magnus-seo",
+      "repo": "magnus919/agent-skills",
+      "commit": "2e8fb962819b2b01b270620f92f0cc7213d77ef1",
+      "license": "MIT",
+      "license_blob_sha": "9745e19f4b20d77c134964ae1bf0af0ace5c4db7",
+      "upstream_path": "seo/assets/audit-report-template.md",
+      "package_path": "skills/optbrew/modules/magnus-seo/assets/audit-report-template.md",
+      "original_git_blob_sha": "80cf795e495eb6261047b171f3de6095b345d0b1",
+      "original_sha256": "c7d0948abe800929001a4604114160bb881c422d2720ce2c39d589fda8792d77",
+      "distributed_sha256": "c7d0948abe800929001a4604114160bb881c422d2720ce2c39d589fda8792d77",
+      "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": null,
+      "excluded_files": [
+        "Unselected agent skills"
+      ]
+    },
+    {
+      "module_id": "magnus-seo",
+      "repo": "magnus919/agent-skills",
+      "commit": "2e8fb962819b2b01b270620f92f0cc7213d77ef1",
+      "license": "MIT",
+      "license_blob_sha": "9745e19f4b20d77c134964ae1bf0af0ace5c4db7",
+      "upstream_path": "seo/evals/evals.json",
+      "package_path": "skills/optbrew/modules/magnus-seo/evals/evals.json",
+      "original_git_blob_sha": "065a04d2d34fe668e9a6da8510ee2434d94204a0",
+      "original_sha256": "2d231a7b088a0ed307cd1a9cd2a1e202ea11d39b2494315bf016eb24c4aaab6e",
+      "distributed_sha256": "2d231a7b088a0ed307cd1a9cd2a1e202ea11d39b2494315bf016eb24c4aaab6e",
+      "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": null,
+      "excluded_files": [
+        "Unselected agent skills"
+      ]
+    },
+    {
+      "module_id": "magnus-seo",
+      "repo": "magnus919/agent-skills",
+      "commit": "2e8fb962819b2b01b270620f92f0cc7213d77ef1",
+      "license": "MIT",
+      "license_blob_sha": "9745e19f4b20d77c134964ae1bf0af0ace5c4db7",
+      "upstream_path": "seo/references/aeo-methodology.md",
+      "package_path": "skills/optbrew/modules/magnus-seo/references/aeo-methodology.md",
+      "original_git_blob_sha": "412440a6f1678ab2b51f9e42f293fbcd31b40f29",
+      "original_sha256": "ee4ee7c36373886d42181b575fff3692efe588cbefc1397472e419f672ad30f8",
+      "distributed_sha256": "ee4ee7c36373886d42181b575fff3692efe588cbefc1397472e419f672ad30f8",
+      "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": null,
+      "excluded_files": [
+        "Unselected agent skills"
+      ]
+    },
+    {
+      "module_id": "magnus-seo",
+      "repo": "magnus919/agent-skills",
+      "commit": "2e8fb962819b2b01b270620f92f0cc7213d77ef1",
+      "license": "MIT",
+      "license_blob_sha": "9745e19f4b20d77c134964ae1bf0af0ace5c4db7",
+      "upstream_path": "seo/references/agent-readable-content.md",
+      "package_path": "skills/optbrew/modules/magnus-seo/references/agent-readable-content.md",
+      "original_git_blob_sha": "fdef9f10d10bbc2a6631e29f3b051117c030b716",
+      "original_sha256": "6c09204caf144a24ae421d488d63cb48371c741309c89eda0a91a69511371714",
+      "distributed_sha256": "6c09204caf144a24ae421d488d63cb48371c741309c89eda0a91a69511371714",
+      "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": null,
+      "excluded_files": [
+        "Unselected agent skills"
+      ]
+    },
+    {
+      "module_id": "magnus-seo",
+      "repo": "magnus919/agent-skills",
+      "commit": "2e8fb962819b2b01b270620f92f0cc7213d77ef1",
+      "license": "MIT",
+      "license_blob_sha": "9745e19f4b20d77c134964ae1bf0af0ace5c4db7",
+      "upstream_path": "seo/references/content-and-entity-architecture.md",
+      "package_path": "skills/optbrew/modules/magnus-seo/references/content-and-entity-architecture.md",
+      "original_git_blob_sha": "ad91b37a0a31bae932e779d51cb76d6dcadb86a2",
+      "original_sha256": "cb470c5370ac70c08fd608f32974cd3516c5179add2b1b3ecf0955a4903c3cef",
+      "distributed_sha256": "cb470c5370ac70c08fd608f32974cd3516c5179add2b1b3ecf0955a4903c3cef",
+      "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": null,
+      "excluded_files": [
+        "Unselected agent skills"
+      ]
+    },
+    {
+      "module_id": "magnus-seo",
+      "repo": "magnus919/agent-skills",
+      "commit": "2e8fb962819b2b01b270620f92f0cc7213d77ef1",
+      "license": "MIT",
+      "license_blob_sha": "9745e19f4b20d77c134964ae1bf0af0ace5c4db7",
+      "upstream_path": "seo/references/content-strategy-seo.md",
+      "package_path": "skills/optbrew/modules/magnus-seo/references/content-strategy-seo.md",
+      "original_git_blob_sha": "04ff24dfd87a3b255007f4c36f072687e89fa031",
+      "original_sha256": "cfcbcd47b07769360aa029b2021e82ce39a50391ebf0fe8ed46f23d6316fd4bc",
+      "distributed_sha256": "48c281282dffc3929a0e8c3ee1d5d8ded9603b22ba50546fe84ad967bb3c1714",
+      "transformations": [
+        "Removed source trailing whitespace for clean Git diff"
+      ],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": "Portable optbrew GUIDE and capability routing",
+      "excluded_files": [
+        "Unselected agent skills"
+      ]
+    },
+    {
+      "module_id": "magnus-seo",
+      "repo": "magnus919/agent-skills",
+      "commit": "2e8fb962819b2b01b270620f92f0cc7213d77ef1",
+      "license": "MIT",
+      "license_blob_sha": "9745e19f4b20d77c134964ae1bf0af0ace5c4db7",
+      "upstream_path": "seo/references/discovery-and-freshness.md",
+      "package_path": "skills/optbrew/modules/magnus-seo/references/discovery-and-freshness.md",
+      "original_git_blob_sha": "fe15d9f559aaff7e76d726ccd33c995ca8931632",
+      "original_sha256": "c547d49e91dcabb99e133fac53f533e898a13eaf169d16691efde89425e07dfa",
+      "distributed_sha256": "c547d49e91dcabb99e133fac53f533e898a13eaf169d16691efde89425e07dfa",
+      "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": null,
+      "excluded_files": [
+        "Unselected agent skills"
+      ]
+    },
+    {
+      "module_id": "magnus-seo",
+      "repo": "magnus919/agent-skills",
+      "commit": "2e8fb962819b2b01b270620f92f0cc7213d77ef1",
+      "license": "MIT",
+      "license_blob_sha": "9745e19f4b20d77c134964ae1bf0af0ace5c4db7",
+      "upstream_path": "seo/references/evidence-boundaries.md",
+      "package_path": "skills/optbrew/modules/magnus-seo/references/evidence-boundaries.md",
+      "original_git_blob_sha": "48eb7924a4fea5d3fe2689cda0f4b1ebb6563cde",
+      "original_sha256": "11b76c49cf6fdb297f3befa16cfd1545e932b4ae17a2a66555ee120fd4e412d5",
+      "distributed_sha256": "11b76c49cf6fdb297f3befa16cfd1545e932b4ae17a2a66555ee120fd4e412d5",
+      "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": null,
+      "excluded_files": [
+        "Unselected agent skills"
+      ]
+    },
+    {
+      "module_id": "magnus-seo",
+      "repo": "magnus919/agent-skills",
+      "commit": "2e8fb962819b2b01b270620f92f0cc7213d77ef1",
+      "license": "MIT",
+      "license_blob_sha": "9745e19f4b20d77c134964ae1bf0af0ace5c4db7",
+      "upstream_path": "seo/references/ghost-metadata.md",
+      "package_path": "skills/optbrew/modules/magnus-seo/references/ghost-metadata.md",
+      "original_git_blob_sha": "0100b6dbe63b654ee38e51ac85e07a6b81f2c178",
+      "original_sha256": "ed0e2dbe6dcc5fd001c35cd41d58d4368b24223dce2b4779a54b1f15dbc2a61f",
+      "distributed_sha256": "ed0e2dbe6dcc5fd001c35cd41d58d4368b24223dce2b4779a54b1f15dbc2a61f",
+      "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": null,
+      "excluded_files": [
+        "Unselected agent skills"
+      ]
+    },
+    {
+      "module_id": "magnus-seo",
+      "repo": "magnus919/agent-skills",
+      "commit": "2e8fb962819b2b01b270620f92f0cc7213d77ef1",
+      "license": "MIT",
+      "license_blob_sha": "9745e19f4b20d77c134964ae1bf0af0ace5c4db7",
+      "upstream_path": "seo/references/implementation-playbook.md",
+      "package_path": "skills/optbrew/modules/magnus-seo/references/implementation-playbook.md",
+      "original_git_blob_sha": "d913ee05b982d662038ffad8fed64075b7574a50",
+      "original_sha256": "cad085cd4788d8447d7795e0725e72b8c449c336b301a2e109da0d89e022602b",
+      "distributed_sha256": "cad085cd4788d8447d7795e0725e72b8c449c336b301a2e109da0d89e022602b",
+      "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": null,
+      "excluded_files": [
+        "Unselected agent skills"
+      ]
+    },
+    {
+      "module_id": "magnus-seo",
+      "repo": "magnus919/agent-skills",
+      "commit": "2e8fb962819b2b01b270620f92f0cc7213d77ef1",
+      "license": "MIT",
+      "license_blob_sha": "9745e19f4b20d77c134964ae1bf0af0ace5c4db7",
+      "upstream_path": "seo/references/measurement-and-experimentation.md",
+      "package_path": "skills/optbrew/modules/magnus-seo/references/measurement-and-experimentation.md",
+      "original_git_blob_sha": "e0905e4e5536cc771b8626826c4a8ac31a63c376",
+      "original_sha256": "cc10d4e944abb25813520697cd67f03fb7586d619e177296918fe2d7f7c1ccd5",
+      "distributed_sha256": "cc10d4e944abb25813520697cd67f03fb7586d619e177296918fe2d7f7c1ccd5",
+      "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": null,
+      "excluded_files": [
+        "Unselected agent skills"
+      ]
+    },
+    {
+      "module_id": "magnus-seo",
+      "repo": "magnus919/agent-skills",
+      "commit": "2e8fb962819b2b01b270620f92f0cc7213d77ef1",
+      "license": "MIT",
+      "license_blob_sha": "9745e19f4b20d77c134964ae1bf0af0ace5c4db7",
+      "upstream_path": "seo/references/onpage-seo.md",
+      "package_path": "skills/optbrew/modules/magnus-seo/references/onpage-seo.md",
+      "original_git_blob_sha": "47670dc901c3fc35abf517432026ca5ac0d18c10",
+      "original_sha256": "af552ef702350d78890f8e48c58fd343d27ac10acfba00e1e3518a66ce870d2c",
+      "distributed_sha256": "5a1d133abd639336f43fe3003cf513a13e5f761f2a69d2111db7f70a3fcb2ef7",
+      "transformations": [
+        "Removed source trailing whitespace for clean Git diff"
+      ],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": "Portable optbrew GUIDE and capability routing",
+      "excluded_files": [
+        "Unselected agent skills"
+      ]
+    },
+    {
+      "module_id": "magnus-seo",
+      "repo": "magnus919/agent-skills",
+      "commit": "2e8fb962819b2b01b270620f92f0cc7213d77ef1",
+      "license": "MIT",
+      "license_blob_sha": "9745e19f4b20d77c134964ae1bf0af0ace5c4db7",
+      "upstream_path": "seo/references/platform-guidance.md",
+      "package_path": "skills/optbrew/modules/magnus-seo/references/platform-guidance.md",
+      "original_git_blob_sha": "2d638149f245a0e8d08ac713df9352cff73c5bc2",
+      "original_sha256": "2341314982e6d82d31098e73ef89ec8ff4dfc83d53a441b5b8aab61fafda81bc",
+      "distributed_sha256": "2341314982e6d82d31098e73ef89ec8ff4dfc83d53a441b5b8aab61fafda81bc",
+      "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": null,
+      "excluded_files": [
+        "Unselected agent skills"
+      ]
+    },
+    {
+      "module_id": "magnus-seo",
+      "repo": "magnus919/agent-skills",
+      "commit": "2e8fb962819b2b01b270620f92f0cc7213d77ef1",
+      "license": "MIT",
+      "license_blob_sha": "9745e19f4b20d77c134964ae1bf0af0ace5c4db7",
+      "upstream_path": "seo/references/schema-markup.md",
+      "package_path": "skills/optbrew/modules/magnus-seo/references/schema-markup.md",
+      "original_git_blob_sha": "42e104b98e8fbf7bb2d4114ddcf2d4c8a7191212",
+      "original_sha256": "2f2a47178656addd664d4ecdc1b8292821a0710343b528fec85a97ff3c15c019",
+      "distributed_sha256": "2f2a47178656addd664d4ecdc1b8292821a0710343b528fec85a97ff3c15c019",
+      "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": null,
+      "excluded_files": [
+        "Unselected agent skills"
+      ]
+    },
+    {
+      "module_id": "magnus-seo",
+      "repo": "magnus919/agent-skills",
+      "commit": "2e8fb962819b2b01b270620f92f0cc7213d77ef1",
+      "license": "MIT",
+      "license_blob_sha": "9745e19f4b20d77c134964ae1bf0af0ace5c4db7",
+      "upstream_path": "seo/references/source-index.md",
+      "package_path": "skills/optbrew/modules/magnus-seo/references/source-index.md",
+      "original_git_blob_sha": "2cc8b9425b77e6509d6383ac426be5fb423e2e28",
+      "original_sha256": "622c98a8aa80160aebe5ecde0e6460f2863e28c696218e3f3b6c0966d2abbfb1",
+      "distributed_sha256": "622c98a8aa80160aebe5ecde0e6460f2863e28c696218e3f3b6c0966d2abbfb1",
+      "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": null,
+      "excluded_files": [
+        "Unselected agent skills"
+      ]
+    },
+    {
+      "module_id": "magnus-seo",
+      "repo": "magnus919/agent-skills",
+      "commit": "2e8fb962819b2b01b270620f92f0cc7213d77ef1",
+      "license": "MIT",
+      "license_blob_sha": "9745e19f4b20d77c134964ae1bf0af0ace5c4db7",
+      "upstream_path": "seo/references/structured-data.md",
+      "package_path": "skills/optbrew/modules/magnus-seo/references/structured-data.md",
+      "original_git_blob_sha": "d6d9772ab88f6a06df9e262017743d8745b66b66",
+      "original_sha256": "74fb617291ad6e123374c0239942fd7ee8055c0d4f170a38649c4d50d52343e3",
+      "distributed_sha256": "74fb617291ad6e123374c0239942fd7ee8055c0d4f170a38649c4d50d52343e3",
+      "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": null,
+      "excluded_files": [
+        "Unselected agent skills"
+      ]
+    },
+    {
+      "module_id": "magnus-seo",
+      "repo": "magnus919/agent-skills",
+      "commit": "2e8fb962819b2b01b270620f92f0cc7213d77ef1",
+      "license": "MIT",
+      "license_blob_sha": "9745e19f4b20d77c134964ae1bf0af0ace5c4db7",
+      "upstream_path": "seo/references/technical-seo.md",
+      "package_path": "skills/optbrew/modules/magnus-seo/references/technical-seo.md",
+      "original_git_blob_sha": "013252c304b69099638b3dbf9bd19b8c3265c7fb",
+      "original_sha256": "dd84d1306c4cbe1a4184c6342382f1718d7187af5cf3b79af12e034b6a5c7eaa",
+      "distributed_sha256": "dd84d1306c4cbe1a4184c6342382f1718d7187af5cf3b79af12e034b6a5c7eaa",
+      "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": null,
+      "excluded_files": [
+        "Unselected agent skills"
+      ]
+    },
+    {
+      "module_id": "magnus-seo",
+      "repo": "magnus919/agent-skills",
+      "commit": "2e8fb962819b2b01b270620f92f0cc7213d77ef1",
+      "license": "MIT",
+      "license_blob_sha": "9745e19f4b20d77c134964ae1bf0af0ace5c4db7",
+      "upstream_path": "seo/scripts/aeo_audit.py",
+      "package_path": "skills/optbrew/modules/magnus-seo/scripts/aeo_audit.py",
+      "original_git_blob_sha": "6334d79b6b9d304ab2f147e80f1bde0bc11d9fa7",
+      "original_sha256": "b5e6320db5b176df13b16c7e256b27308be33ed349e4cad199f88a9ca6f395e8",
+      "distributed_sha256": "7e556b725a523f33fcb3ebe6fafc42d0bbaf5267bfd3bb85d080762ed5e686f9",
+      "transformations": [
+        "reviewed distribution patch magnus-html-parser"
+      ],
+      "patch_id": "magnus-html-parser",
+      "patch_base_sha256": "b5e6320db5b176df13b16c7e256b27308be33ed349e4cad199f88a9ca6f395e8",
+      "patch_reason": "Parse JSON-LD arrays and nested visible HTML; require offline input for optbrew audit",
+      "excluded_files": [
+        "Unselected agent skills"
+      ]
+    },
+    {
+      "module_id": "magnus-seo",
+      "repo": "magnus919/agent-skills",
+      "commit": "2e8fb962819b2b01b270620f92f0cc7213d77ef1",
+      "license": "MIT",
+      "license_blob_sha": "9745e19f4b20d77c134964ae1bf0af0ace5c4db7",
+      "upstream_path": "seo/scripts/build_prompt_matrix.py",
+      "package_path": "skills/optbrew/modules/magnus-seo/scripts/build_prompt_matrix.py",
+      "original_git_blob_sha": "5be5c465041608cfa8cd397675f22bf2a864c2e6",
+      "original_sha256": "66ed1b74fe26e608d4e25ec651de44ae08ec807bd20dafeacdc80a2a490bc0e0",
+      "distributed_sha256": "66ed1b74fe26e608d4e25ec651de44ae08ec807bd20dafeacdc80a2a490bc0e0",
+      "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": null,
+      "excluded_files": [
+        "Unselected agent skills"
+      ]
+    },
+    {
+      "module_id": "magnus-seo",
+      "repo": "magnus919/agent-skills",
+      "commit": "2e8fb962819b2b01b270620f92f0cc7213d77ef1",
+      "license": "MIT",
+      "license_blob_sha": "9745e19f4b20d77c134964ae1bf0af0ace5c4db7",
+      "upstream_path": "seo/scripts/test_aeo_scripts.py",
+      "package_path": "skills/optbrew/modules/magnus-seo/scripts/test_aeo_scripts.py",
+      "original_git_blob_sha": "eeddf6544268b161229c5c316809609e8de7dceb",
+      "original_sha256": "533c2dc730ad8bdcf2805d8026e51b405361e7d841128cff128856affdff6cd2",
+      "distributed_sha256": "533c2dc730ad8bdcf2805d8026e51b405361e7d841128cff128856affdff6cd2",
+      "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": null,
+      "excluded_files": [
+        "Unselected agent skills"
+      ]
+    },
+    {
+      "module_id": "magnus-seo",
+      "repo": "magnus919/agent-skills",
+      "commit": "2e8fb962819b2b01b270620f92f0cc7213d77ef1",
+      "license": "MIT",
+      "license_blob_sha": "9745e19f4b20d77c134964ae1bf0af0ace5c4db7",
+      "upstream_path": "seo/templates/aeo-implementation-plan.md",
+      "package_path": "skills/optbrew/modules/magnus-seo/templates/aeo-implementation-plan.md",
+      "original_git_blob_sha": "7deda09c5bb434bd0ff363ee23e2541f3e05da94",
+      "original_sha256": "e21c11aef62812e1e4f8f7fa428dc0838a50a9d0db0c7963be026f409d027b17",
+      "distributed_sha256": "e21c11aef62812e1e4f8f7fa428dc0838a50a9d0db0c7963be026f409d027b17",
+      "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": null,
+      "excluded_files": [
+        "Unselected agent skills"
+      ]
+    },
+    {
+      "module_id": "magnus-seo",
+      "repo": "magnus919/agent-skills",
+      "commit": "2e8fb962819b2b01b270620f92f0cc7213d77ef1",
+      "license": "MIT",
+      "license_blob_sha": "9745e19f4b20d77c134964ae1bf0af0ace5c4db7",
+      "upstream_path": "seo/templates/citation-observation-log.md",
+      "package_path": "skills/optbrew/modules/magnus-seo/templates/citation-observation-log.md",
+      "original_git_blob_sha": "3c53fd67d6b14e5ef0c0d65ee2ff2f0f3d6b29b3",
+      "original_sha256": "8acd06272d6615df90a9d9f3032083c246a9604106bc35e180b2b8a78cee55ba",
+      "distributed_sha256": "8acd06272d6615df90a9d9f3032083c246a9604106bc35e180b2b8a78cee55ba",
+      "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": null,
+      "excluded_files": [
+        "Unselected agent skills"
+      ]
+    },
+    {
+      "module_id": "magnus-seo",
+      "repo": "magnus919/agent-skills",
+      "commit": "2e8fb962819b2b01b270620f92f0cc7213d77ef1",
+      "license": "MIT",
+      "license_blob_sha": "9745e19f4b20d77c134964ae1bf0af0ace5c4db7",
+      "upstream_path": "seo/templates/llms.txt.template",
+      "package_path": "skills/optbrew/modules/magnus-seo/templates/llms.txt.template",
+      "original_git_blob_sha": "030f9f0515a22486b399e2cfcc401889ecd56400",
+      "original_sha256": "cbc4ae80a3c41ef650911d94c76971cd7e9f1829c9e6b0df271931687f46286a",
+      "distributed_sha256": "cbc4ae80a3c41ef650911d94c76971cd7e9f1829c9e6b0df271931687f46286a",
+      "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": null,
+      "excluded_files": [
+        "Unselected agent skills"
+      ]
+    },
+    {
+      "module_id": "magnus-seo",
+      "repo": "magnus919/agent-skills",
+      "commit": "2e8fb962819b2b01b270620f92f0cc7213d77ef1",
+      "license": "MIT",
+      "license_blob_sha": "9745e19f4b20d77c134964ae1bf0af0ace5c4db7",
+      "upstream_path": "seo/templates/question-cluster.md",
+      "package_path": "skills/optbrew/modules/magnus-seo/templates/question-cluster.md",
+      "original_git_blob_sha": "3c094e9e49fba0bdb0dfab32ef1d5218944d6d72",
+      "original_sha256": "d153674d772f8d7f17dc8a9274ccc9432b865b454d58d090758cc4d7b6e3e1f8",
+      "distributed_sha256": "d153674d772f8d7f17dc8a9274ccc9432b865b454d58d090758cc4d7b6e3e1f8",
+      "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": null,
+      "excluded_files": [
+        "Unselected agent skills"
+      ]
+    },
+    {
+      "module_id": "magnus-seo",
+      "repo": "magnus919/agent-skills",
+      "commit": "2e8fb962819b2b01b270620f92f0cc7213d77ef1",
+      "license": "MIT",
+      "license_blob_sha": "9745e19f4b20d77c134964ae1bf0af0ace5c4db7",
+      "upstream_path": "seo/templates/robots-ai-crawlers.txt",
+      "package_path": "skills/optbrew/modules/magnus-seo/templates/robots-ai-crawlers.txt",
+      "original_git_blob_sha": "324c739a91997ccd700d85469bde07a4e128037a",
+      "original_sha256": "a11e05c967c9113e0fc039f4d5dd6e7aeb3f0a005ff1d873382346102e3668cc",
+      "distributed_sha256": "a11e05c967c9113e0fc039f4d5dd6e7aeb3f0a005ff1d873382346102e3668cc",
+      "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": null,
+      "excluded_files": [
+        "Unselected agent skills"
+      ]
+    },
+    {
+      "module_id": "seranking-seo",
+      "repo": "seranking/seo-skills",
+      "commit": "fd6d1408f2e6a06454d81c07c29e0f04342eb9ba",
+      "license": "MIT",
+      "license_blob_sha": "ca6b9a33c8234bf47cdcfb2dc157b308195845c5",
+      "upstream_path": "LICENSE",
+      "package_path": "skills/optbrew/licenses/seranking-seo.txt",
+      "original_git_blob_sha": "ca6b9a33c8234bf47cdcfb2dc157b308195845c5",
+      "original_sha256": "be37f39e84329222181a6d75c84b73a514e691d52da9741db864e057ce8e3eee",
+      "distributed_sha256": "be37f39e84329222181a6d75c84b73a514e691d52da9741db864e057ce8e3eee",
+      "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": null,
+      "excluded_files": [
+        "extensions/google/install.sh and extensions/firecrawl/install.sh: upstream installers disabled",
+        "scripts/google_auth.py and root scripts: upstream authentication and provider execution disabled; optbrew capability adapters replace active commands",
+        "Unselected campaign, ad, social and other upstream skills"
+      ]
+    },
+    {
+      "module_id": "seranking-seo",
+      "repo": "seranking/seo-skills",
+      "commit": "fd6d1408f2e6a06454d81c07c29e0f04342eb9ba",
+      "license": "MIT",
+      "license_blob_sha": "ca6b9a33c8234bf47cdcfb2dc157b308195845c5",
+      "upstream_path": "skills/seo-ai-search-share-of-voice/SKILL.md",
+      "package_path": "skills/optbrew/modules/seranking-seo/skills/seo-ai-search-share-of-voice/GUIDE.md",
+      "original_git_blob_sha": "be7d1d8596fdc2853eaa588760a47d2ef4ab3aa3",
+      "original_sha256": "0826c8d49586e09649ec3262c34483d152c9d5bc784b95a6511db4602e83c61a",
+      "distributed_sha256": "855553a3208c03e3d454c2609ab136b3a4ee0533074246bc521959ed6fb83f34",
+      "transformations": [
+        "SKILL.md to GUIDE.md; YAML frontmatter removed",
+        "Unbundled relative link ../../examples/seo-ai-search-share-of-voice-wix-com-20260427/REPORT.md changed to upstream-only text"
+      ],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": "Portable optbrew GUIDE and capability routing",
+      "excluded_files": [
+        "extensions/google/install.sh and extensions/firecrawl/install.sh: upstream installers disabled",
+        "scripts/google_auth.py and root scripts: upstream authentication and provider execution disabled; optbrew capability adapters replace active commands",
+        "Unselected campaign, ad, social and other upstream skills"
+      ]
+    },
+    {
+      "module_id": "seranking-seo",
+      "repo": "seranking/seo-skills",
+      "commit": "fd6d1408f2e6a06454d81c07c29e0f04342eb9ba",
+      "license": "MIT",
+      "license_blob_sha": "ca6b9a33c8234bf47cdcfb2dc157b308195845c5",
+      "upstream_path": "skills/seo-api/SKILL.md",
+      "package_path": "skills/optbrew/modules/seranking-seo/skills/seo-api/GUIDE.md",
+      "original_git_blob_sha": "6466262af43b24f4ee32bc9c64847adca3a0d6f7",
+      "original_sha256": "37b80f498c389e14b9dc4d641b9ac93499871bf538ba0769f48ef88b1fd00054",
+      "distributed_sha256": "fa9769a7958a9f1049a2eece7969e518a559d7a92ccc0d9b01b852aff4b065e5",
+      "transformations": [
+        "SKILL.md to GUIDE.md; YAML frontmatter removed"
+      ],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": "Portable optbrew GUIDE and capability routing",
+      "excluded_files": [
+        "extensions/google/install.sh and extensions/firecrawl/install.sh: upstream installers disabled",
+        "scripts/google_auth.py and root scripts: upstream authentication and provider execution disabled; optbrew capability adapters replace active commands",
+        "Unselected campaign, ad, social and other upstream skills"
+      ]
+    },
+    {
+      "module_id": "seranking-seo",
+      "repo": "seranking/seo-skills",
+      "commit": "fd6d1408f2e6a06454d81c07c29e0f04342eb9ba",
+      "license": "MIT",
+      "license_blob_sha": "ca6b9a33c8234bf47cdcfb2dc157b308195845c5",
+      "upstream_path": "skills/seo-api/references/api-surface-map.md",
+      "package_path": "skills/optbrew/modules/seranking-seo/skills/seo-api/references/api-surface-map.md",
+      "original_git_blob_sha": "5819079ac81c68bca88e8307ebbf84e7a22bda7b",
+      "original_sha256": "d5555bb128b3997341802f4e881e516370b4f3bae36b5b90799bf58727a7fd9e",
+      "distributed_sha256": "d5555bb128b3997341802f4e881e516370b4f3bae36b5b90799bf58727a7fd9e",
+      "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": null,
+      "excluded_files": [
+        "extensions/google/install.sh and extensions/firecrawl/install.sh: upstream installers disabled",
+        "scripts/google_auth.py and root scripts: upstream authentication and provider execution disabled; optbrew capability adapters replace active commands",
+        "Unselected campaign, ad, social and other upstream skills"
+      ]
+    },
+    {
+      "module_id": "seranking-seo",
+      "repo": "seranking/seo-skills",
+      "commit": "fd6d1408f2e6a06454d81c07c29e0f04342eb9ba",
+      "license": "MIT",
+      "license_blob_sha": "ca6b9a33c8234bf47cdcfb2dc157b308195845c5",
+      "upstream_path": "skills/seo-api/references/auth-and-keys.md",
+      "package_path": "skills/optbrew/modules/seranking-seo/skills/seo-api/references/auth-and-keys.md",
+      "original_git_blob_sha": "35f29c319853a0f699fc9871d5a23a16cc5a7600",
+      "original_sha256": "cf65b297d0038036c17f39bf7542056cd37946fbd49441508ffd1789d119aa53",
+      "distributed_sha256": "cf65b297d0038036c17f39bf7542056cd37946fbd49441508ffd1789d119aa53",
+      "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": null,
+      "excluded_files": [
+        "extensions/google/install.sh and extensions/firecrawl/install.sh: upstream installers disabled",
+        "scripts/google_auth.py and root scripts: upstream authentication and provider execution disabled; optbrew capability adapters replace active commands",
+        "Unselected campaign, ad, social and other upstream skills"
+      ]
+    },
+    {
+      "module_id": "seranking-seo",
+      "repo": "seranking/seo-skills",
+      "commit": "fd6d1408f2e6a06454d81c07c29e0f04342eb9ba",
+      "license": "MIT",
+      "license_blob_sha": "ca6b9a33c8234bf47cdcfb2dc157b308195845c5",
+      "upstream_path": "skills/seo-api/references/integration-patterns.md",
+      "package_path": "skills/optbrew/modules/seranking-seo/skills/seo-api/references/integration-patterns.md",
+      "original_git_blob_sha": "c3a70f9ca52075f88120af40b1ec566c9433a933",
+      "original_sha256": "304efd93f4f4e245441cf906cdbeb75ebbead859202e24a135b8534116d4bf72",
+      "distributed_sha256": "304efd93f4f4e245441cf906cdbeb75ebbead859202e24a135b8534116d4bf72",
+      "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": null,
+      "excluded_files": [
+        "extensions/google/install.sh and extensions/firecrawl/install.sh: upstream installers disabled",
+        "scripts/google_auth.py and root scripts: upstream authentication and provider execution disabled; optbrew capability adapters replace active commands",
+        "Unselected campaign, ad, social and other upstream skills"
+      ]
+    },
+    {
+      "module_id": "seranking-seo",
+      "repo": "seranking/seo-skills",
+      "commit": "fd6d1408f2e6a06454d81c07c29e0f04342eb9ba",
+      "license": "MIT",
+      "license_blob_sha": "ca6b9a33c8234bf47cdcfb2dc157b308195845c5",
+      "upstream_path": "skills/seo-api/references/rate-limits-and-credits.md",
+      "package_path": "skills/optbrew/modules/seranking-seo/skills/seo-api/references/rate-limits-and-credits.md",
+      "original_git_blob_sha": "61b4b0fddb0d48c2b7811a6cc69d4557cce39ac2",
+      "original_sha256": "7c2c1fc4b44ae308222b3c4f92de1b02b1f5cebc67be259780d0bf652b875fdf",
+      "distributed_sha256": "7c2c1fc4b44ae308222b3c4f92de1b02b1f5cebc67be259780d0bf652b875fdf",
+      "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": null,
+      "excluded_files": [
+        "extensions/google/install.sh and extensions/firecrawl/install.sh: upstream installers disabled",
+        "scripts/google_auth.py and root scripts: upstream authentication and provider execution disabled; optbrew capability adapters replace active commands",
+        "Unselected campaign, ad, social and other upstream skills"
+      ]
+    },
+    {
+      "module_id": "seranking-seo",
+      "repo": "seranking/seo-skills",
+      "commit": "fd6d1408f2e6a06454d81c07c29e0f04342eb9ba",
+      "license": "MIT",
+      "license_blob_sha": "ca6b9a33c8234bf47cdcfb2dc157b308195845c5",
+      "upstream_path": "skills/seo-competitor-gap-analysis/SKILL.md",
+      "package_path": "skills/optbrew/modules/seranking-seo/skills/seo-competitor-gap-analysis/GUIDE.md",
+      "original_git_blob_sha": "88894b9644d907bd4fbb213f180ae36f20ff3b3e",
+      "original_sha256": "1783fb7af4d803c1435235be7ee26ccd9b409b5f5dbe9f9b3e59230bbe86c5b2",
+      "distributed_sha256": "d627e18118608cc81f9937697fb7588e747ee77173ef259df13c03b668f7a36c",
+      "transformations": [
+        "SKILL.md to GUIDE.md; YAML frontmatter removed",
+        "Unbundled relative link ../../examples/seo-competitor-gap-analysis-wix-com-20260514/REPORT.md changed to upstream-only text"
+      ],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": "Portable optbrew GUIDE and capability routing",
+      "excluded_files": [
+        "extensions/google/install.sh and extensions/firecrawl/install.sh: upstream installers disabled",
+        "scripts/google_auth.py and root scripts: upstream authentication and provider execution disabled; optbrew capability adapters replace active commands",
+        "Unselected campaign, ad, social and other upstream skills"
+      ]
+    },
+    {
+      "module_id": "seranking-seo",
+      "repo": "seranking/seo-skills",
+      "commit": "fd6d1408f2e6a06454d81c07c29e0f04342eb9ba",
+      "license": "MIT",
+      "license_blob_sha": "ca6b9a33c8234bf47cdcfb2dc157b308195845c5",
+      "upstream_path": "skills/seo-content-audit/SKILL.md",
+      "package_path": "skills/optbrew/modules/seranking-seo/skills/seo-content-audit/GUIDE.md",
+      "original_git_blob_sha": "d1a6ec1c8878af18ad0ca8c875a98fce78402f4c",
+      "original_sha256": "c5ab619b6b050cf636a73d15b9d1f04de9f3170c6da19928d3696adb5fdcbc05",
+      "distributed_sha256": "0bf50f0ad97cf712f2c9228d33dc99d16daea6e96978cf64e76dc1f81ac66b39",
+      "transformations": [
+        "SKILL.md to GUIDE.md; YAML frontmatter removed",
+        "Upstream install/auth/script commands disabled; optbrew capability routing required",
+        "Unbundled relative link ../../examples/seo-content-audit-stripe-rate-limiters-20260514/VERDICT.md changed to upstream-only text"
+      ],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": "Portable optbrew GUIDE and capability routing",
+      "excluded_files": [
+        "extensions/google/install.sh and extensions/firecrawl/install.sh: upstream installers disabled",
+        "scripts/google_auth.py and root scripts: upstream authentication and provider execution disabled; optbrew capability adapters replace active commands",
+        "Unselected campaign, ad, social and other upstream skills"
+      ]
+    },
+    {
+      "module_id": "seranking-seo",
+      "repo": "seranking/seo-skills",
+      "commit": "fd6d1408f2e6a06454d81c07c29e0f04342eb9ba",
+      "license": "MIT",
+      "license_blob_sha": "ca6b9a33c8234bf47cdcfb2dc157b308195845c5",
+      "upstream_path": "skills/seo-content-audit/references/cite.md",
+      "package_path": "skills/optbrew/modules/seranking-seo/skills/seo-content-audit/references/cite.md",
+      "original_git_blob_sha": "5b77908838baa4d8fda6f1dcbe59bc0da7e557f1",
+      "original_sha256": "9b779d275b3832aa8fcc52ecd27200e8a0b01603f55f8c376f38383b83521498",
+      "distributed_sha256": "9b779d275b3832aa8fcc52ecd27200e8a0b01603f55f8c376f38383b83521498",
+      "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": null,
+      "excluded_files": [
+        "extensions/google/install.sh and extensions/firecrawl/install.sh: upstream installers disabled",
+        "scripts/google_auth.py and root scripts: upstream authentication and provider execution disabled; optbrew capability adapters replace active commands",
+        "Unselected campaign, ad, social and other upstream skills"
+      ]
+    },
+    {
+      "module_id": "seranking-seo",
+      "repo": "seranking/seo-skills",
+      "commit": "fd6d1408f2e6a06454d81c07c29e0f04342eb9ba",
+      "license": "MIT",
+      "license_blob_sha": "ca6b9a33c8234bf47cdcfb2dc157b308195845c5",
+      "upstream_path": "skills/seo-content-audit/references/core-eeat.md",
+      "package_path": "skills/optbrew/modules/seranking-seo/skills/seo-content-audit/references/core-eeat.md",
+      "original_git_blob_sha": "c3b37d3bd19c72c0d514cc5f802c9e00feab5f3f",
+      "original_sha256": "e8bcffb3ae07d77ab272a45c55cd4d8ce19e933f955cd3ed720fa58b5bd78b7c",
+      "distributed_sha256": "e8bcffb3ae07d77ab272a45c55cd4d8ce19e933f955cd3ed720fa58b5bd78b7c",
+      "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": null,
+      "excluded_files": [
+        "extensions/google/install.sh and extensions/firecrawl/install.sh: upstream installers disabled",
+        "scripts/google_auth.py and root scripts: upstream authentication and provider execution disabled; optbrew capability adapters replace active commands",
+        "Unselected campaign, ad, social and other upstream skills"
+      ]
+    },
+    {
+      "module_id": "seranking-seo",
+      "repo": "seranking/seo-skills",
+      "commit": "fd6d1408f2e6a06454d81c07c29e0f04342eb9ba",
+      "license": "MIT",
+      "license_blob_sha": "ca6b9a33c8234bf47cdcfb2dc157b308195845c5",
+      "upstream_path": "skills/seo-content-audit/templates/verdict.md",
+      "package_path": "skills/optbrew/modules/seranking-seo/skills/seo-content-audit/templates/verdict.md",
+      "original_git_blob_sha": "14ed6c41c89848c8aded31aae1b9ac5bec884e3a",
+      "original_sha256": "3ac294680cd86afe2936d75e2890d17e24290f64cdc5a5ce113e6bd12d028614",
+      "distributed_sha256": "3ac294680cd86afe2936d75e2890d17e24290f64cdc5a5ce113e6bd12d028614",
+      "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": null,
+      "excluded_files": [
+        "extensions/google/install.sh and extensions/firecrawl/install.sh: upstream installers disabled",
+        "scripts/google_auth.py and root scripts: upstream authentication and provider execution disabled; optbrew capability adapters replace active commands",
+        "Unselected campaign, ad, social and other upstream skills"
+      ]
+    },
+    {
+      "module_id": "seranking-seo",
+      "repo": "seranking/seo-skills",
+      "commit": "fd6d1408f2e6a06454d81c07c29e0f04342eb9ba",
+      "license": "MIT",
+      "license_blob_sha": "ca6b9a33c8234bf47cdcfb2dc157b308195845c5",
+      "upstream_path": "skills/seo-firecrawl/SKILL.md",
+      "package_path": "skills/optbrew/modules/seranking-seo/skills/seo-firecrawl/GUIDE.md",
+      "original_git_blob_sha": "dc4ffc87d701546ee9f72fd3997cf66a49bab91d",
+      "original_sha256": "a59bdf93a808f0501761d25065ea5a4345f06ba8871d097a8bec9d85fefb91dd",
+      "distributed_sha256": "5f95839ba6db9f730dd619e2d192bf1adab396df9227cfa33dea3d99a25382e0",
+      "transformations": [
+        "SKILL.md to GUIDE.md; YAML frontmatter removed",
+        "Upstream install/auth/script commands disabled; optbrew capability routing required",
+        "Unbundled relative link ../../examples/seo-firecrawl-stripe-com-20260514/scrape/FIRECRAWL.md changed to upstream-only text"
+      ],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": "Portable optbrew GUIDE and capability routing",
+      "excluded_files": [
+        "extensions/google/install.sh and extensions/firecrawl/install.sh: upstream installers disabled",
+        "scripts/google_auth.py and root scripts: upstream authentication and provider execution disabled; optbrew capability adapters replace active commands",
+        "Unselected campaign, ad, social and other upstream skills"
+      ]
+    },
+    {
+      "module_id": "seranking-seo",
+      "repo": "seranking/seo-skills",
+      "commit": "fd6d1408f2e6a06454d81c07c29e0f04342eb9ba",
+      "license": "MIT",
+      "license_blob_sha": "ca6b9a33c8234bf47cdcfb2dc157b308195845c5",
+      "upstream_path": "skills/seo-firecrawl/references/preflight.md",
+      "package_path": "skills/optbrew/modules/seranking-seo/skills/seo-firecrawl/references/preflight.md",
+      "original_git_blob_sha": "223a52042db042b7c0421cf2a56079f925a79cfa",
+      "original_sha256": "75770e2c1ba908f490472db2c9b0e62d5ceadfab5b0a23d6b27ae9a5035bad8a",
+      "distributed_sha256": "e88dee59c3595dcd778bdd02be5770a6e36e182b16039687ac90301d7a4668e2",
+      "transformations": [
+        "Upstream install/auth/script commands disabled; optbrew capability routing required",
+        "Inline SKILL.md mentions mapped to GUIDE.md"
+      ],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": "Portable optbrew GUIDE and capability routing",
+      "excluded_files": [
+        "extensions/google/install.sh and extensions/firecrawl/install.sh: upstream installers disabled",
+        "scripts/google_auth.py and root scripts: upstream authentication and provider execution disabled; optbrew capability adapters replace active commands",
+        "Unselected campaign, ad, social and other upstream skills"
+      ]
+    },
+    {
+      "module_id": "seranking-seo",
+      "repo": "seranking/seo-skills",
+      "commit": "fd6d1408f2e6a06454d81c07c29e0f04342eb9ba",
+      "license": "MIT",
+      "license_blob_sha": "ca6b9a33c8234bf47cdcfb2dc157b308195845c5",
+      "upstream_path": "skills/seo-geo/SKILL.md",
+      "package_path": "skills/optbrew/modules/seranking-seo/skills/seo-geo/GUIDE.md",
+      "original_git_blob_sha": "18339cad2d1638b113b987ff505793192ddb23c3",
+      "original_sha256": "353dfa52c1099c4aa906d8c7bb6e16ef436b06a523370f7d1e81d629f35b28e9",
+      "distributed_sha256": "97b7a73fd5789b95107b5249013ac9d98ae45f88a55d3993f3cc489fc8074f09",
+      "transformations": [
+        "SKILL.md to GUIDE.md; YAML frontmatter removed",
+        "Upstream install/auth/script commands disabled; optbrew capability routing required",
+        "Unbundled relative link ../../examples/seo-geo-notion-share-pages-20260514/GEO.md changed to upstream-only text"
+      ],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": "Portable optbrew GUIDE and capability routing",
+      "excluded_files": [
+        "extensions/google/install.sh and extensions/firecrawl/install.sh: upstream installers disabled",
+        "scripts/google_auth.py and root scripts: upstream authentication and provider execution disabled; optbrew capability adapters replace active commands",
+        "Unselected campaign, ad, social and other upstream skills"
+      ]
+    },
+    {
+      "module_id": "seranking-seo",
+      "repo": "seranking/seo-skills",
+      "commit": "fd6d1408f2e6a06454d81c07c29e0f04342eb9ba",
+      "license": "MIT",
+      "license_blob_sha": "ca6b9a33c8234bf47cdcfb2dc157b308195845c5",
+      "upstream_path": "skills/seo-google/SKILL.md",
+      "package_path": "skills/optbrew/modules/seranking-seo/skills/seo-google/GUIDE.md",
+      "original_git_blob_sha": "cb948303dd384a94943c5aceaa617bb3f1248e93",
+      "original_sha256": "b094e9ae1314317209b6118a07f7b3e22b529e249fd3bf05f5c910b72dae99cd",
+      "distributed_sha256": "a4c3d55109fadc582301cc55d3d4e2e3d90479715a56acd7c1025949d19b30d5",
+      "transformations": [
+        "SKILL.md to GUIDE.md; YAML frontmatter removed",
+        "Google index and index-batch submission commands disabled",
+        "Upstream install/auth/script commands disabled; optbrew capability routing required",
+        "Unbundled relative link ../../examples/seo-google-quickstart-20260514/README.md changed to upstream-only text"
+      ],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": "Portable optbrew GUIDE and capability routing",
+      "excluded_files": [
+        "extensions/google/install.sh and extensions/firecrawl/install.sh: upstream installers disabled",
+        "scripts/google_auth.py and root scripts: upstream authentication and provider execution disabled; optbrew capability adapters replace active commands",
+        "Unselected campaign, ad, social and other upstream skills"
+      ]
+    },
+    {
+      "module_id": "seranking-seo",
+      "repo": "seranking/seo-skills",
+      "commit": "fd6d1408f2e6a06454d81c07c29e0f04342eb9ba",
+      "license": "MIT",
+      "license_blob_sha": "ca6b9a33c8234bf47cdcfb2dc157b308195845c5",
+      "upstream_path": "skills/seo-google/assets/templates/cwv-audit-report.md",
+      "package_path": "skills/optbrew/modules/seranking-seo/skills/seo-google/assets/templates/cwv-audit-report.md",
+      "original_git_blob_sha": "0e978893893238602e8632c43895b8876a05e526",
+      "original_sha256": "94e81dd051757c8fe588756206eb83cc2d1c3907a76610862f01a1bcd1c2ac5d",
+      "distributed_sha256": "94e81dd051757c8fe588756206eb83cc2d1c3907a76610862f01a1bcd1c2ac5d",
+      "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": null,
+      "excluded_files": [
+        "extensions/google/install.sh and extensions/firecrawl/install.sh: upstream installers disabled",
+        "scripts/google_auth.py and root scripts: upstream authentication and provider execution disabled; optbrew capability adapters replace active commands",
+        "Unselected campaign, ad, social and other upstream skills"
+      ]
+    },
+    {
+      "module_id": "seranking-seo",
+      "repo": "seranking/seo-skills",
+      "commit": "fd6d1408f2e6a06454d81c07c29e0f04342eb9ba",
+      "license": "MIT",
+      "license_blob_sha": "ca6b9a33c8234bf47cdcfb2dc157b308195845c5",
+      "upstream_path": "skills/seo-google/assets/templates/gsc-performance-report.md",
+      "package_path": "skills/optbrew/modules/seranking-seo/skills/seo-google/assets/templates/gsc-performance-report.md",
+      "original_git_blob_sha": "9a19a80a6a7fbe755e1f68e92eeebed72a425a69",
+      "original_sha256": "7248f2e7e20d87a863ccbf8c31eaa7af3645aa6483646cdeb1385c953c2d6738",
+      "distributed_sha256": "7248f2e7e20d87a863ccbf8c31eaa7af3645aa6483646cdeb1385c953c2d6738",
+      "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": null,
+      "excluded_files": [
+        "extensions/google/install.sh and extensions/firecrawl/install.sh: upstream installers disabled",
+        "scripts/google_auth.py and root scripts: upstream authentication and provider execution disabled; optbrew capability adapters replace active commands",
+        "Unselected campaign, ad, social and other upstream skills"
+      ]
+    },
+    {
+      "module_id": "seranking-seo",
+      "repo": "seranking/seo-skills",
+      "commit": "fd6d1408f2e6a06454d81c07c29e0f04342eb9ba",
+      "license": "MIT",
+      "license_blob_sha": "ca6b9a33c8234bf47cdcfb2dc157b308195845c5",
+      "upstream_path": "skills/seo-google/assets/templates/indexation-status-report.md",
+      "package_path": "skills/optbrew/modules/seranking-seo/skills/seo-google/assets/templates/indexation-status-report.md",
+      "original_git_blob_sha": "c7d2ec09fcc29777293c89b64dacd502fe3211e7",
+      "original_sha256": "afc337905d82f83659a229382432876edba9bd9af6e589b3e4de4786974f13b3",
+      "distributed_sha256": "afc337905d82f83659a229382432876edba9bd9af6e589b3e4de4786974f13b3",
+      "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": null,
+      "excluded_files": [
+        "extensions/google/install.sh and extensions/firecrawl/install.sh: upstream installers disabled",
+        "scripts/google_auth.py and root scripts: upstream authentication and provider execution disabled; optbrew capability adapters replace active commands",
+        "Unselected campaign, ad, social and other upstream skills"
+      ]
+    },
+    {
+      "module_id": "seranking-seo",
+      "repo": "seranking/seo-skills",
+      "commit": "fd6d1408f2e6a06454d81c07c29e0f04342eb9ba",
+      "license": "MIT",
+      "license_blob_sha": "ca6b9a33c8234bf47cdcfb2dc157b308195845c5",
+      "upstream_path": "skills/seo-google/references/auth-setup.md",
+      "package_path": "skills/optbrew/modules/seranking-seo/skills/seo-google/references/auth-setup.md",
+      "original_git_blob_sha": "86a38d5fc7148af51b02c59ddd20b177c89cdf51",
+      "original_sha256": "74d90a5e9aa6b49093bc3a0aab9266736c9bc8edc80ca0ce0640cd6080b1d5a2",
+      "distributed_sha256": "2e8b13eea1605717750b9730aec24e50ff97deda50a267f3a46ce6db13d3f263",
+      "transformations": [
+        "Upstream install/auth/script commands disabled; optbrew capability routing required"
+      ],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": "Portable optbrew GUIDE and capability routing",
+      "excluded_files": [
+        "extensions/google/install.sh and extensions/firecrawl/install.sh: upstream installers disabled",
+        "scripts/google_auth.py and root scripts: upstream authentication and provider execution disabled; optbrew capability adapters replace active commands",
+        "Unselected campaign, ad, social and other upstream skills"
+      ]
+    },
+    {
+      "module_id": "seranking-seo",
+      "repo": "seranking/seo-skills",
+      "commit": "fd6d1408f2e6a06454d81c07c29e0f04342eb9ba",
+      "license": "MIT",
+      "license_blob_sha": "ca6b9a33c8234bf47cdcfb2dc157b308195845c5",
+      "upstream_path": "skills/seo-google/references/cross-skill-integration.md",
+      "package_path": "skills/optbrew/modules/seranking-seo/skills/seo-google/references/cross-skill-integration.md",
+      "original_git_blob_sha": "2dcddf69e522bfdfdbdc52a5090d32bebb233240",
+      "original_sha256": "10b8e8dc21d165141e35b419bef51c09ef2e10fdc625a6057ee60c448ce1f319",
+      "distributed_sha256": "4643c2848b77c95e2ec35688d589997d426712b60223030bab8eeea1d4177df2",
+      "transformations": [
+        "Upstream install/auth/script commands disabled; optbrew capability routing required",
+        "Inline SKILL.md mentions mapped to GUIDE.md"
+      ],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": "Portable optbrew GUIDE and capability routing",
+      "excluded_files": [
+        "extensions/google/install.sh and extensions/firecrawl/install.sh: upstream installers disabled",
+        "scripts/google_auth.py and root scripts: upstream authentication and provider execution disabled; optbrew capability adapters replace active commands",
+        "Unselected campaign, ad, social and other upstream skills"
+      ]
+    },
+    {
+      "module_id": "seranking-seo",
+      "repo": "seranking/seo-skills",
+      "commit": "fd6d1408f2e6a06454d81c07c29e0f04342eb9ba",
+      "license": "MIT",
+      "license_blob_sha": "ca6b9a33c8234bf47cdcfb2dc157b308195845c5",
+      "upstream_path": "skills/seo-google/references/ga4-data-api.md",
+      "package_path": "skills/optbrew/modules/seranking-seo/skills/seo-google/references/ga4-data-api.md",
+      "original_git_blob_sha": "870a9afd4eb395dedc3e3ef7d0ef7e302bb3a23c",
+      "original_sha256": "b6c29f9d830df1a406339c5776a7aebd648c5d2fd33eb7a2689106c5b3c7bbb9",
+      "distributed_sha256": "b6c29f9d830df1a406339c5776a7aebd648c5d2fd33eb7a2689106c5b3c7bbb9",
+      "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": null,
+      "excluded_files": [
+        "extensions/google/install.sh and extensions/firecrawl/install.sh: upstream installers disabled",
+        "scripts/google_auth.py and root scripts: upstream authentication and provider execution disabled; optbrew capability adapters replace active commands",
+        "Unselected campaign, ad, social and other upstream skills"
+      ]
+    },
+    {
+      "module_id": "seranking-seo",
+      "repo": "seranking/seo-skills",
+      "commit": "fd6d1408f2e6a06454d81c07c29e0f04342eb9ba",
+      "license": "MIT",
+      "license_blob_sha": "ca6b9a33c8234bf47cdcfb2dc157b308195845c5",
+      "upstream_path": "skills/seo-google/references/indexing-api.md",
+      "package_path": "skills/optbrew/modules/seranking-seo/skills/seo-google/references/indexing-api.md",
+      "original_git_blob_sha": "ef23cae8e493c019e20a5d3e12d4cac295c95888",
+      "original_sha256": "2c05cd03ab4e8abe255d3fed38b2638d6d38002392fc8ce6e7cbd50ebc3ec03a",
+      "distributed_sha256": "1d667da2a82c6b14725f69f7fa52fe0c36bf7dd38ace4702cea9a0b074cd7177",
+      "transformations": [
+        "Indexing API write examples marked disabled pending separate authority",
+        "Upstream install/auth/script commands disabled; optbrew capability routing required"
+      ],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": "Portable optbrew GUIDE and capability routing",
+      "excluded_files": [
+        "extensions/google/install.sh and extensions/firecrawl/install.sh: upstream installers disabled",
+        "scripts/google_auth.py and root scripts: upstream authentication and provider execution disabled; optbrew capability adapters replace active commands",
+        "Unselected campaign, ad, social and other upstream skills"
+      ]
+    },
+    {
+      "module_id": "seranking-seo",
+      "repo": "seranking/seo-skills",
+      "commit": "fd6d1408f2e6a06454d81c07c29e0f04342eb9ba",
+      "license": "MIT",
+      "license_blob_sha": "ca6b9a33c8234bf47cdcfb2dc157b308195845c5",
+      "upstream_path": "skills/seo-google/references/keyword-planner-api.md",
+      "package_path": "skills/optbrew/modules/seranking-seo/skills/seo-google/references/keyword-planner-api.md",
+      "original_git_blob_sha": "8bd690486842bbb871ccd99f62d28926a095b68c",
+      "original_sha256": "43962273a47273ac5b43e4451cb3facac50bc330d65397be523560959e46626f",
+      "distributed_sha256": "43962273a47273ac5b43e4451cb3facac50bc330d65397be523560959e46626f",
+      "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": null,
+      "excluded_files": [
+        "extensions/google/install.sh and extensions/firecrawl/install.sh: upstream installers disabled",
+        "scripts/google_auth.py and root scripts: upstream authentication and provider execution disabled; optbrew capability adapters replace active commands",
+        "Unselected campaign, ad, social and other upstream skills"
+      ]
+    },
+    {
+      "module_id": "seranking-seo",
+      "repo": "seranking/seo-skills",
+      "commit": "fd6d1408f2e6a06454d81c07c29e0f04342eb9ba",
+      "license": "MIT",
+      "license_blob_sha": "ca6b9a33c8234bf47cdcfb2dc157b308195845c5",
+      "upstream_path": "skills/seo-google/references/nlp-api.md",
+      "package_path": "skills/optbrew/modules/seranking-seo/skills/seo-google/references/nlp-api.md",
+      "original_git_blob_sha": "705c84ba3498ff1834c523ac3a09dccc6cf5c053",
+      "original_sha256": "a2b2796179b929425bfe184f761bebf180f6a4f5638bed03510b3f6b15a61d48",
+      "distributed_sha256": "a2b2796179b929425bfe184f761bebf180f6a4f5638bed03510b3f6b15a61d48",
+      "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": null,
+      "excluded_files": [
+        "extensions/google/install.sh and extensions/firecrawl/install.sh: upstream installers disabled",
+        "scripts/google_auth.py and root scripts: upstream authentication and provider execution disabled; optbrew capability adapters replace active commands",
+        "Unselected campaign, ad, social and other upstream skills"
+      ]
+    },
+    {
+      "module_id": "seranking-seo",
+      "repo": "seranking/seo-skills",
+      "commit": "fd6d1408f2e6a06454d81c07c29e0f04342eb9ba",
+      "license": "MIT",
+      "license_blob_sha": "ca6b9a33c8234bf47cdcfb2dc157b308195845c5",
+      "upstream_path": "skills/seo-google/references/pagespeed-crux-api.md",
+      "package_path": "skills/optbrew/modules/seranking-seo/skills/seo-google/references/pagespeed-crux-api.md",
+      "original_git_blob_sha": "b33b7b8d4c1547618981beb4383a7d587d441c3e",
+      "original_sha256": "14d3fa5cbe7d0a82b4c2c6dee45842cf5273cda3a6b79e076da752df4530e4fe",
+      "distributed_sha256": "14d3fa5cbe7d0a82b4c2c6dee45842cf5273cda3a6b79e076da752df4530e4fe",
+      "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": null,
+      "excluded_files": [
+        "extensions/google/install.sh and extensions/firecrawl/install.sh: upstream installers disabled",
+        "scripts/google_auth.py and root scripts: upstream authentication and provider execution disabled; optbrew capability adapters replace active commands",
+        "Unselected campaign, ad, social and other upstream skills"
+      ]
+    },
+    {
+      "module_id": "seranking-seo",
+      "repo": "seranking/seo-skills",
+      "commit": "fd6d1408f2e6a06454d81c07c29e0f04342eb9ba",
+      "license": "MIT",
+      "license_blob_sha": "ca6b9a33c8234bf47cdcfb2dc157b308195845c5",
+      "upstream_path": "skills/seo-google/references/rate-limits-quotas.md",
+      "package_path": "skills/optbrew/modules/seranking-seo/skills/seo-google/references/rate-limits-quotas.md",
+      "original_git_blob_sha": "dc6b6da416a45087aa812fc6d4d55ade3b98f26f",
+      "original_sha256": "ad1f7d096e229526c8fe9026a98124a05221f53636eb6023f362dfd5fd3c2f96",
+      "distributed_sha256": "ad1f7d096e229526c8fe9026a98124a05221f53636eb6023f362dfd5fd3c2f96",
+      "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": null,
+      "excluded_files": [
+        "extensions/google/install.sh and extensions/firecrawl/install.sh: upstream installers disabled",
+        "scripts/google_auth.py and root scripts: upstream authentication and provider execution disabled; optbrew capability adapters replace active commands",
+        "Unselected campaign, ad, social and other upstream skills"
+      ]
+    },
+    {
+      "module_id": "seranking-seo",
+      "repo": "seranking/seo-skills",
+      "commit": "fd6d1408f2e6a06454d81c07c29e0f04342eb9ba",
+      "license": "MIT",
+      "license_blob_sha": "ca6b9a33c8234bf47cdcfb2dc157b308195845c5",
+      "upstream_path": "skills/seo-google/references/search-console-api.md",
+      "package_path": "skills/optbrew/modules/seranking-seo/skills/seo-google/references/search-console-api.md",
+      "original_git_blob_sha": "59eb0f7ca1a153f16417398e1e6adb4eea4c7aa9",
+      "original_sha256": "be75b999840b60f0a0980269c31046070f0915030c638521a8df2072dfd83767",
+      "distributed_sha256": "be75b999840b60f0a0980269c31046070f0915030c638521a8df2072dfd83767",
+      "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": null,
+      "excluded_files": [
+        "extensions/google/install.sh and extensions/firecrawl/install.sh: upstream installers disabled",
+        "scripts/google_auth.py and root scripts: upstream authentication and provider execution disabled; optbrew capability adapters replace active commands",
+        "Unselected campaign, ad, social and other upstream skills"
+      ]
+    },
+    {
+      "module_id": "seranking-seo",
+      "repo": "seranking/seo-skills",
+      "commit": "fd6d1408f2e6a06454d81c07c29e0f04342eb9ba",
+      "license": "MIT",
+      "license_blob_sha": "ca6b9a33c8234bf47cdcfb2dc157b308195845c5",
+      "upstream_path": "skills/seo-google/references/supplementary-apis.md",
+      "package_path": "skills/optbrew/modules/seranking-seo/skills/seo-google/references/supplementary-apis.md",
+      "original_git_blob_sha": "2662f4b3b9f866df3fab9a0cd21c8661553e0b09",
+      "original_sha256": "b8937fb31fa09b2c2a09ad2573191183cad219cebafc09136a88eac133cddbc1",
+      "distributed_sha256": "b8937fb31fa09b2c2a09ad2573191183cad219cebafc09136a88eac133cddbc1",
+      "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": null,
+      "excluded_files": [
+        "extensions/google/install.sh and extensions/firecrawl/install.sh: upstream installers disabled",
+        "scripts/google_auth.py and root scripts: upstream authentication and provider execution disabled; optbrew capability adapters replace active commands",
+        "Unselected campaign, ad, social and other upstream skills"
+      ]
+    },
+    {
+      "module_id": "seranking-seo",
+      "repo": "seranking/seo-skills",
+      "commit": "fd6d1408f2e6a06454d81c07c29e0f04342eb9ba",
+      "license": "MIT",
+      "license_blob_sha": "ca6b9a33c8234bf47cdcfb2dc157b308195845c5",
+      "upstream_path": "skills/seo-google/references/youtube-api.md",
+      "package_path": "skills/optbrew/modules/seranking-seo/skills/seo-google/references/youtube-api.md",
+      "original_git_blob_sha": "5d29fee533c1cfac1fb8c75d829d2999a80439ae",
+      "original_sha256": "d6c7c0ea2205ce533bfe63f277d5497bf25239c119bfea1cf093eef30a186a6a",
+      "distributed_sha256": "d6c7c0ea2205ce533bfe63f277d5497bf25239c119bfea1cf093eef30a186a6a",
+      "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": null,
+      "excluded_files": [
+        "extensions/google/install.sh and extensions/firecrawl/install.sh: upstream installers disabled",
+        "scripts/google_auth.py and root scripts: upstream authentication and provider execution disabled; optbrew capability adapters replace active commands",
+        "Unselected campaign, ad, social and other upstream skills"
+      ]
+    },
+    {
+      "module_id": "seranking-seo",
+      "repo": "seranking/seo-skills",
+      "commit": "fd6d1408f2e6a06454d81c07c29e0f04342eb9ba",
+      "license": "MIT",
+      "license_blob_sha": "ca6b9a33c8234bf47cdcfb2dc157b308195845c5",
+      "upstream_path": "skills/seo-keyword-niche/SKILL.md",
+      "package_path": "skills/optbrew/modules/seranking-seo/skills/seo-keyword-niche/GUIDE.md",
+      "original_git_blob_sha": "d7334b9b2397c11e9760527ea3012f4d6d66e0a5",
+      "original_sha256": "7e517ba60c061309bf26833d797616261b3a09d197ba348def0950a31bcaaa73",
+      "distributed_sha256": "33ad7bbf3e5bc9782ec1f0af167323032a14b0c5f416e0dc1efb923c2fdcbcad",
+      "transformations": [
+        "SKILL.md to GUIDE.md; YAML frontmatter removed",
+        "Unbundled relative link ../../examples/seo-keyword-niche-espresso-machine-reviews-20260514/KEYWORD-NICHE-PLAN.md changed to upstream-only text"
+      ],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": "Portable optbrew GUIDE and capability routing",
+      "excluded_files": [
+        "extensions/google/install.sh and extensions/firecrawl/install.sh: upstream installers disabled",
+        "scripts/google_auth.py and root scripts: upstream authentication and provider execution disabled; optbrew capability adapters replace active commands",
+        "Unselected campaign, ad, social and other upstream skills"
+      ]
+    },
+    {
+      "module_id": "seranking-seo",
+      "repo": "seranking/seo-skills",
+      "commit": "fd6d1408f2e6a06454d81c07c29e0f04342eb9ba",
+      "license": "MIT",
+      "license_blob_sha": "ca6b9a33c8234bf47cdcfb2dc157b308195845c5",
+      "upstream_path": "skills/seo-page/SKILL.md",
+      "package_path": "skills/optbrew/modules/seranking-seo/skills/seo-page/GUIDE.md",
+      "original_git_blob_sha": "e1233941f8412dd9892dbea9c73553aedfc37e73",
+      "original_sha256": "d6f67d115ec01ce9f87a9e634960b7b0dccb0fefc27ec9ac47b02c84ea236048",
+      "distributed_sha256": "f2ddec8f0a342ed43634256c254c7e9e11c6723c315df1e4d91e2eb4baea3f50",
+      "transformations": [
+        "SKILL.md to GUIDE.md; YAML frontmatter removed",
+        "Upstream install/auth/script commands disabled; optbrew capability routing required",
+        "Unbundled relative link ../../examples/seo-page-notion-keyboard-shortcuts-20260514/PAGE.md changed to upstream-only text"
+      ],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": "Portable optbrew GUIDE and capability routing",
+      "excluded_files": [
+        "extensions/google/install.sh and extensions/firecrawl/install.sh: upstream installers disabled",
+        "scripts/google_auth.py and root scripts: upstream authentication and provider execution disabled; optbrew capability adapters replace active commands",
+        "Unselected campaign, ad, social and other upstream skills"
+      ]
+    },
+    {
+      "module_id": "seranking-seo",
+      "repo": "seranking/seo-skills",
+      "commit": "fd6d1408f2e6a06454d81c07c29e0f04342eb9ba",
+      "license": "MIT",
+      "license_blob_sha": "ca6b9a33c8234bf47cdcfb2dc157b308195845c5",
+      "upstream_path": "skills/seo-plan/SKILL.md",
+      "package_path": "skills/optbrew/modules/seranking-seo/skills/seo-plan/GUIDE.md",
+      "original_git_blob_sha": "c45c1e996ae1cb121e54aed3101ec11accbd5354",
+      "original_sha256": "06778d068b2abc8c727043f54d77774dc8446819af9cb10cc286360d2c767cb5",
+      "distributed_sha256": "071c708fcf975fbe5d623ddcdc653029094707659fa4826384354b18ff8b9f1a",
+      "transformations": [
+        "SKILL.md to GUIDE.md; YAML frontmatter removed",
+        "Upstream install/auth/script commands disabled; optbrew capability routing required",
+        "Unbundled relative link ../../examples/seo-plan-wix-com-20260514/PLAN.md changed to upstream-only text",
+        "Inline SKILL.md mentions mapped to GUIDE.md"
+      ],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": "Portable optbrew GUIDE and capability routing",
+      "excluded_files": [
+        "extensions/google/install.sh and extensions/firecrawl/install.sh: upstream installers disabled",
+        "scripts/google_auth.py and root scripts: upstream authentication and provider execution disabled; optbrew capability adapters replace active commands",
+        "Unselected campaign, ad, social and other upstream skills"
+      ]
+    },
+    {
+      "module_id": "seranking-seo",
+      "repo": "seranking/seo-skills",
+      "commit": "fd6d1408f2e6a06454d81c07c29e0f04342eb9ba",
+      "license": "MIT",
+      "license_blob_sha": "ca6b9a33c8234bf47cdcfb2dc157b308195845c5",
+      "upstream_path": "skills/seo-schema/SKILL.md",
+      "package_path": "skills/optbrew/modules/seranking-seo/skills/seo-schema/GUIDE.md",
+      "original_git_blob_sha": "fac71833a92e471d9e793a98a6a8be7a38ce5162",
+      "original_sha256": "a331e3e5258eb2fd31fe87e8090180279598e6ea94412217d8834cc1c465c49b",
+      "distributed_sha256": "ece8386527284826ba9447c1e2cc6075606bb99817f7d07e3a0c2a05c9e2e19f",
+      "transformations": [
+        "SKILL.md to GUIDE.md; YAML frontmatter removed",
+        "Upstream install/auth/script commands disabled; optbrew capability routing required",
+        "Unbundled relative link ../../examples/seo-schema-budgetbytes-slow-cooker-chicken-noodle-soup-20260514/SCHEMA.md changed to upstream-only text"
+      ],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": "Portable optbrew GUIDE and capability routing",
+      "excluded_files": [
+        "extensions/google/install.sh and extensions/firecrawl/install.sh: upstream installers disabled",
+        "scripts/google_auth.py and root scripts: upstream authentication and provider execution disabled; optbrew capability adapters replace active commands",
+        "Unselected campaign, ad, social and other upstream skills"
+      ]
+    },
+    {
+      "module_id": "seranking-seo",
+      "repo": "seranking/seo-skills",
+      "commit": "fd6d1408f2e6a06454d81c07c29e0f04342eb9ba",
+      "license": "MIT",
+      "license_blob_sha": "ca6b9a33c8234bf47cdcfb2dc157b308195845c5",
+      "upstream_path": "skills/seo-schema/references/google-rich-results.md",
+      "package_path": "skills/optbrew/modules/seranking-seo/skills/seo-schema/references/google-rich-results.md",
+      "original_git_blob_sha": "9afcc6d7e074715980aa987a1342562866081e60",
+      "original_sha256": "754deef92b4f0c50fef68b504768e1504d128c405377e9b66df82d4e67b5d818",
+      "distributed_sha256": "754deef92b4f0c50fef68b504768e1504d128c405377e9b66df82d4e67b5d818",
+      "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": null,
+      "excluded_files": [
+        "extensions/google/install.sh and extensions/firecrawl/install.sh: upstream installers disabled",
+        "scripts/google_auth.py and root scripts: upstream authentication and provider execution disabled; optbrew capability adapters replace active commands",
+        "Unselected campaign, ad, social and other upstream skills"
+      ]
+    },
+    {
+      "module_id": "seranking-seo",
+      "repo": "seranking/seo-skills",
+      "commit": "fd6d1408f2e6a06454d81c07c29e0f04342eb9ba",
+      "license": "MIT",
+      "license_blob_sha": "ca6b9a33c8234bf47cdcfb2dc157b308195845c5",
+      "upstream_path": "skills/seo-schema/templates/article.json",
+      "package_path": "skills/optbrew/modules/seranking-seo/skills/seo-schema/templates/article.json",
+      "original_git_blob_sha": "85d179185f75afa56b71506d46fa7b2fa9a699b8",
+      "original_sha256": "9d3c7e6ae03fb0d68a342adfa7a95b8b9fd0e34d587aef3d5423a296e5afffcc",
+      "distributed_sha256": "9d3c7e6ae03fb0d68a342adfa7a95b8b9fd0e34d587aef3d5423a296e5afffcc",
+      "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": null,
+      "excluded_files": [
+        "extensions/google/install.sh and extensions/firecrawl/install.sh: upstream installers disabled",
+        "scripts/google_auth.py and root scripts: upstream authentication and provider execution disabled; optbrew capability adapters replace active commands",
+        "Unselected campaign, ad, social and other upstream skills"
+      ]
+    },
+    {
+      "module_id": "seranking-seo",
+      "repo": "seranking/seo-skills",
+      "commit": "fd6d1408f2e6a06454d81c07c29e0f04342eb9ba",
+      "license": "MIT",
+      "license_blob_sha": "ca6b9a33c8234bf47cdcfb2dc157b308195845c5",
+      "upstream_path": "skills/seo-schema/templates/breadcrumb-list.json",
+      "package_path": "skills/optbrew/modules/seranking-seo/skills/seo-schema/templates/breadcrumb-list.json",
+      "original_git_blob_sha": "eff04ee64011db8cc4935aa896b37f5ba2fc375a",
+      "original_sha256": "35934a3855ff5726613be6e97dc11f0526c956a21cdac8192ad75b9068f245ad",
+      "distributed_sha256": "35934a3855ff5726613be6e97dc11f0526c956a21cdac8192ad75b9068f245ad",
+      "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": null,
+      "excluded_files": [
+        "extensions/google/install.sh and extensions/firecrawl/install.sh: upstream installers disabled",
+        "scripts/google_auth.py and root scripts: upstream authentication and provider execution disabled; optbrew capability adapters replace active commands",
+        "Unselected campaign, ad, social and other upstream skills"
+      ]
+    },
+    {
+      "module_id": "seranking-seo",
+      "repo": "seranking/seo-skills",
+      "commit": "fd6d1408f2e6a06454d81c07c29e0f04342eb9ba",
+      "license": "MIT",
+      "license_blob_sha": "ca6b9a33c8234bf47cdcfb2dc157b308195845c5",
+      "upstream_path": "skills/seo-schema/templates/faq-page.json",
+      "package_path": "skills/optbrew/modules/seranking-seo/skills/seo-schema/templates/faq-page.json",
+      "original_git_blob_sha": "b1757a95ebf1cddcd5640828978bd68544a4b1e4",
+      "original_sha256": "6149f3d8d78725d91d2647021247f7f38fc233e0a45957c30d47d3270d679ee9",
+      "distributed_sha256": "6149f3d8d78725d91d2647021247f7f38fc233e0a45957c30d47d3270d679ee9",
+      "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": null,
+      "excluded_files": [
+        "extensions/google/install.sh and extensions/firecrawl/install.sh: upstream installers disabled",
+        "scripts/google_auth.py and root scripts: upstream authentication and provider execution disabled; optbrew capability adapters replace active commands",
+        "Unselected campaign, ad, social and other upstream skills"
+      ]
+    },
+    {
+      "module_id": "seranking-seo",
+      "repo": "seranking/seo-skills",
+      "commit": "fd6d1408f2e6a06454d81c07c29e0f04342eb9ba",
+      "license": "MIT",
+      "license_blob_sha": "ca6b9a33c8234bf47cdcfb2dc157b308195845c5",
+      "upstream_path": "skills/seo-schema/templates/local-business.json",
+      "package_path": "skills/optbrew/modules/seranking-seo/skills/seo-schema/templates/local-business.json",
+      "original_git_blob_sha": "cd8bfa8a9a7a99018b204cf39350634fc3bc3f7a",
+      "original_sha256": "e73fbe6eda3de4359f0ea1438dbd4fae2f8df19fc498fd752b4e682e4e18bb76",
+      "distributed_sha256": "e73fbe6eda3de4359f0ea1438dbd4fae2f8df19fc498fd752b4e682e4e18bb76",
+      "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": null,
+      "excluded_files": [
+        "extensions/google/install.sh and extensions/firecrawl/install.sh: upstream installers disabled",
+        "scripts/google_auth.py and root scripts: upstream authentication and provider execution disabled; optbrew capability adapters replace active commands",
+        "Unselected campaign, ad, social and other upstream skills"
+      ]
+    },
+    {
+      "module_id": "seranking-seo",
+      "repo": "seranking/seo-skills",
+      "commit": "fd6d1408f2e6a06454d81c07c29e0f04342eb9ba",
+      "license": "MIT",
+      "license_blob_sha": "ca6b9a33c8234bf47cdcfb2dc157b308195845c5",
+      "upstream_path": "skills/seo-schema/templates/product.json",
+      "package_path": "skills/optbrew/modules/seranking-seo/skills/seo-schema/templates/product.json",
+      "original_git_blob_sha": "cd796d3fb071978fd54afc31f51f7ef7ef28b3b0",
+      "original_sha256": "720bbf08c163aa26d523cd4ca713b80528be9543f92e88f33f00cddc7a40e171",
+      "distributed_sha256": "720bbf08c163aa26d523cd4ca713b80528be9543f92e88f33f00cddc7a40e171",
+      "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": null,
+      "excluded_files": [
+        "extensions/google/install.sh and extensions/firecrawl/install.sh: upstream installers disabled",
+        "scripts/google_auth.py and root scripts: upstream authentication and provider execution disabled; optbrew capability adapters replace active commands",
+        "Unselected campaign, ad, social and other upstream skills"
+      ]
+    },
+    {
+      "module_id": "seranking-seo",
+      "repo": "seranking/seo-skills",
+      "commit": "fd6d1408f2e6a06454d81c07c29e0f04342eb9ba",
+      "license": "MIT",
+      "license_blob_sha": "ca6b9a33c8234bf47cdcfb2dc157b308195845c5",
+      "upstream_path": "skills/seo-sitemap/SKILL.md",
+      "package_path": "skills/optbrew/modules/seranking-seo/skills/seo-sitemap/GUIDE.md",
+      "original_git_blob_sha": "5896c62937cca3ec7d64bfca474206a0c44677c2",
+      "original_sha256": "ae8c38eaf1f951895ff22f409d4e2181ffd0ee2b9c6adca789619d7647d9d06d",
+      "distributed_sha256": "9f5db49ce631052338f5a76124f8a4e00f6f8632513bffc824446b88ffe8a81b",
+      "transformations": [
+        "SKILL.md to GUIDE.md; YAML frontmatter removed",
+        "Unbundled relative link ../../examples/seo-sitemap-notion-so-20260514/SITEMAP.md changed to upstream-only text"
+      ],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": "Portable optbrew GUIDE and capability routing",
+      "excluded_files": [
+        "extensions/google/install.sh and extensions/firecrawl/install.sh: upstream installers disabled",
+        "scripts/google_auth.py and root scripts: upstream authentication and provider execution disabled; optbrew capability adapters replace active commands",
+        "Unselected campaign, ad, social and other upstream skills"
+      ]
+    },
+    {
+      "module_id": "seranking-seo",
+      "repo": "seranking/seo-skills",
+      "commit": "fd6d1408f2e6a06454d81c07c29e0f04342eb9ba",
+      "license": "MIT",
+      "license_blob_sha": "ca6b9a33c8234bf47cdcfb2dc157b308195845c5",
+      "upstream_path": "skills/seo-technical-audit/SKILL.md",
+      "package_path": "skills/optbrew/modules/seranking-seo/skills/seo-technical-audit/GUIDE.md",
+      "original_git_blob_sha": "c8b2481441d3ca68a4a64e558aa2183d05e77657",
+      "original_sha256": "59fbd07ad075576385157fa500d7ca26f25029e6b74b2a78be16c1223a95de71",
+      "distributed_sha256": "882cf2532cfcc19ead596dfb1e683548977a2f652c8ba02cb3294709e8ce7c2d",
+      "transformations": [
+        "SKILL.md to GUIDE.md; YAML frontmatter removed",
+        "Upstream install/auth/script commands disabled; optbrew capability routing required",
+        "Unbundled relative link ../../examples/seo-technical-audit-linear-app-20260514/TECH-AUDIT.md changed to upstream-only text"
+      ],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": "Portable optbrew GUIDE and capability routing",
+      "excluded_files": [
+        "extensions/google/install.sh and extensions/firecrawl/install.sh: upstream installers disabled",
+        "scripts/google_auth.py and root scripts: upstream authentication and provider execution disabled; optbrew capability adapters replace active commands",
+        "Unselected campaign, ad, social and other upstream skills"
+      ]
+    },
+    {
+      "module_id": "seranking-seo",
+      "repo": "seranking/seo-skills",
+      "commit": "fd6d1408f2e6a06454d81c07c29e0f04342eb9ba",
+      "license": "MIT",
+      "license_blob_sha": "ca6b9a33c8234bf47cdcfb2dc157b308195845c5",
+      "upstream_path": "skills/seo-technical-audit/references/severity-mapping.md",
+      "package_path": "skills/optbrew/modules/seranking-seo/skills/seo-technical-audit/references/severity-mapping.md",
+      "original_git_blob_sha": "d7206a76c7aa73e726ec7cf2b6fd291a22a40f54",
+      "original_sha256": "6e08f487f31fe3e82efb753ded7822b4af7946fe05c9b420eb7f6cafd360f1c0",
+      "distributed_sha256": "045af638727fe18fbb1fc07d7609cd7a1847a46c06da138c8c6ed144e371ecca",
+      "transformations": [
+        "Inline SKILL.md mentions mapped to GUIDE.md"
+      ],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": "Portable optbrew GUIDE and capability routing",
+      "excluded_files": [
+        "extensions/google/install.sh and extensions/firecrawl/install.sh: upstream installers disabled",
+        "scripts/google_auth.py and root scripts: upstream authentication and provider execution disabled; optbrew capability adapters replace active commands",
+        "Unselected campaign, ad, social and other upstream skills"
+      ]
+    },
+    {
+      "module_id": "marketing-search",
+      "repo": "coreyhaines31/marketingskills",
+      "commit": "5b2c0007766c6a1cf1d53fd8fc73e979e0821022",
+      "license": "MIT",
+      "license_blob_sha": "7c48dd638a9ebed49a8ef0c0c4eea90105381cdf",
+      "upstream_path": "LICENSE",
+      "package_path": "skills/optbrew/licenses/marketing-search.txt",
+      "original_git_blob_sha": "7c48dd638a9ebed49a8ef0c0c4eea90105381cdf",
+      "original_sha256": "b70d71e24e40fce5da8f4b6f9cd862096a048e433db7f3c8cac5e348e6d34591",
+      "distributed_sha256": "b70d71e24e40fce5da8f4b6f9cd862096a048e433db7f3c8cac5e348e6d34591",
+      "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": null,
+      "excluded_files": [
+        "Unselected marketing skills, installers and authoring utilities"
+      ]
+    },
+    {
+      "module_id": "marketing-search",
+      "repo": "coreyhaines31/marketingskills",
+      "commit": "5b2c0007766c6a1cf1d53fd8fc73e979e0821022",
+      "license": "MIT",
+      "license_blob_sha": "7c48dd638a9ebed49a8ef0c0c4eea90105381cdf",
+      "upstream_path": "skills/ai-seo/SKILL.md",
+      "package_path": "skills/optbrew/modules/marketing-search/skills/ai-seo/GUIDE.md",
+      "original_git_blob_sha": "39d0384e8d93a7a069fed6d6d3c88389877c1c68",
+      "original_sha256": "b1ecd93ebc65af886f81bc0a90645c8fd4ffdf68c5b3d4495a9e61481d954d00",
+      "distributed_sha256": "7968cc1a6990369e606ed95e257f62e9273b3378960f14cf474584ce31c6196f",
+      "transformations": [
+        "SKILL.md to GUIDE.md; YAML frontmatter removed",
+        "Unbundled relative link ../../tools/REGISTRY.md changed to upstream-only text",
+        "reviewed distribution overlay ai-seo-policy-boundaries"
+      ],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": "Portable optbrew GUIDE and capability routing",
+      "overlay_id": "ai-seo-policy-boundaries",
+      "overlay_base_sha256": "a94828753a68b58d72a8364efc4b915b77e7ec7ccfb696d88dd4e033cfe78fe3",
+      "overlay_reason": "Correct optional AI files and separate measured citations from readiness",
+      "excluded_files": [
+        "Unselected marketing skills, installers and authoring utilities"
+      ]
+    },
+    {
+      "module_id": "marketing-search",
+      "repo": "coreyhaines31/marketingskills",
+      "commit": "5b2c0007766c6a1cf1d53fd8fc73e979e0821022",
+      "license": "MIT",
+      "license_blob_sha": "7c48dd638a9ebed49a8ef0c0c4eea90105381cdf",
+      "upstream_path": "skills/ai-seo/evals/evals.json",
+      "package_path": "skills/optbrew/modules/marketing-search/skills/ai-seo/evals/evals.json",
+      "original_git_blob_sha": "9488bb332c18c0dff8ed8758ff5af6dbcaf1db47",
+      "original_sha256": "010677ebde7b375f5569d5ef654c15edfc50f44efc55f9ca2f70a02a1ff1ab17",
+      "distributed_sha256": "010677ebde7b375f5569d5ef654c15edfc50f44efc55f9ca2f70a02a1ff1ab17",
+      "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": null,
+      "excluded_files": [
+        "Unselected marketing skills, installers and authoring utilities"
+      ]
+    },
+    {
+      "module_id": "marketing-search",
+      "repo": "coreyhaines31/marketingskills",
+      "commit": "5b2c0007766c6a1cf1d53fd8fc73e979e0821022",
+      "license": "MIT",
+      "license_blob_sha": "7c48dd638a9ebed49a8ef0c0c4eea90105381cdf",
+      "upstream_path": "skills/ai-seo/references/agent-readiness.md",
+      "package_path": "skills/optbrew/modules/marketing-search/skills/ai-seo/references/agent-readiness.md",
+      "original_git_blob_sha": "feb047ebda9eff8579eb68085a62a366e9c5b454",
+      "original_sha256": "4753dc17755cacba2bf783373399baaf98c82a5d45c645848465ab6a11331cd9",
+      "distributed_sha256": "0371710bb2194b5cb0d9a9ebf19ac8a07843b0d16194d7ca7dae4c95d009ddae",
+      "transformations": [
+        "Inline SKILL.md mentions mapped to GUIDE.md"
+      ],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": "Portable optbrew GUIDE and capability routing",
+      "excluded_files": [
+        "Unselected marketing skills, installers and authoring utilities"
+      ]
+    },
+    {
+      "module_id": "marketing-search",
+      "repo": "coreyhaines31/marketingskills",
+      "commit": "5b2c0007766c6a1cf1d53fd8fc73e979e0821022",
+      "license": "MIT",
+      "license_blob_sha": "7c48dd638a9ebed49a8ef0c0c4eea90105381cdf",
+      "upstream_path": "skills/ai-seo/references/citations-vs-recommendations.md",
+      "package_path": "skills/optbrew/modules/marketing-search/skills/ai-seo/references/citations-vs-recommendations.md",
+      "original_git_blob_sha": "9dacb9309b1fcea6ab3b0e79f7fe086b49bf2d0b",
+      "original_sha256": "88016418b43b7e798dd950eb1240f76dec08c3408038f9a5d83005aff5a4daa3",
+      "distributed_sha256": "efcd140ee76deff1984f1c28e715f06420e9422126b13a3b66303b8f54931878",
+      "transformations": [
+        "Inline SKILL.md mentions mapped to GUIDE.md"
+      ],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": "Portable optbrew GUIDE and capability routing",
+      "excluded_files": [
+        "Unselected marketing skills, installers and authoring utilities"
+      ]
+    },
+    {
+      "module_id": "marketing-search",
+      "repo": "coreyhaines31/marketingskills",
+      "commit": "5b2c0007766c6a1cf1d53fd8fc73e979e0821022",
+      "license": "MIT",
+      "license_blob_sha": "7c48dd638a9ebed49a8ef0c0c4eea90105381cdf",
+      "upstream_path": "skills/ai-seo/references/content-patterns.md",
+      "package_path": "skills/optbrew/modules/marketing-search/skills/ai-seo/references/content-patterns.md",
+      "original_git_blob_sha": "4c30c81506c7da617a02afcf9eef829fa1be3e51",
+      "original_sha256": "8adcfcc020a3529eda71f783e4893d3e39e8b0f503fd2fa126e8b75a80963824",
+      "distributed_sha256": "8adcfcc020a3529eda71f783e4893d3e39e8b0f503fd2fa126e8b75a80963824",
+      "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": null,
+      "excluded_files": [
+        "Unselected marketing skills, installers and authoring utilities"
+      ]
+    },
+    {
+      "module_id": "marketing-search",
+      "repo": "coreyhaines31/marketingskills",
+      "commit": "5b2c0007766c6a1cf1d53fd8fc73e979e0821022",
+      "license": "MIT",
+      "license_blob_sha": "7c48dd638a9ebed49a8ef0c0c4eea90105381cdf",
+      "upstream_path": "skills/ai-seo/references/content-types.md",
+      "package_path": "skills/optbrew/modules/marketing-search/skills/ai-seo/references/content-types.md",
+      "original_git_blob_sha": "aa588a37045b98498d9470c3010501664fa23c6a",
+      "original_sha256": "9ad0a871f866efa307fc0d6fe2bd19d443a2276cb396afdd5b4d81fe9b4167e3",
+      "distributed_sha256": "de1e5da42d09568bd95a3f364e1af72f4cd1bac4f98c5d5a575d2772651699d6",
+      "transformations": [
+        "Inline SKILL.md mentions mapped to GUIDE.md"
+      ],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": "Portable optbrew GUIDE and capability routing",
+      "excluded_files": [
+        "Unselected marketing skills, installers and authoring utilities"
+      ]
+    },
+    {
+      "module_id": "marketing-search",
+      "repo": "coreyhaines31/marketingskills",
+      "commit": "5b2c0007766c6a1cf1d53fd8fc73e979e0821022",
+      "license": "MIT",
+      "license_blob_sha": "7c48dd638a9ebed49a8ef0c0c4eea90105381cdf",
+      "upstream_path": "skills/ai-seo/references/format-volatility.md",
+      "package_path": "skills/optbrew/modules/marketing-search/skills/ai-seo/references/format-volatility.md",
+      "original_git_blob_sha": "08aaf559f8968b9642b627285a2160cd51ede82e",
+      "original_sha256": "4d16bbf46b9702b7ee9cf968005dc21cdd74821d5d8e31bb8dcc52b09457ae59",
+      "distributed_sha256": "4d16bbf46b9702b7ee9cf968005dc21cdd74821d5d8e31bb8dcc52b09457ae59",
+      "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": null,
+      "excluded_files": [
+        "Unselected marketing skills, installers and authoring utilities"
+      ]
+    },
+    {
+      "module_id": "marketing-search",
+      "repo": "coreyhaines31/marketingskills",
+      "commit": "5b2c0007766c6a1cf1d53fd8fc73e979e0821022",
+      "license": "MIT",
+      "license_blob_sha": "7c48dd638a9ebed49a8ef0c0c4eea90105381cdf",
+      "upstream_path": "skills/ai-seo/references/okf.md",
+      "package_path": "skills/optbrew/modules/marketing-search/skills/ai-seo/references/okf.md",
+      "original_git_blob_sha": "e99bc7ca1b1417fd0643c9e772b75b227a9af1da",
+      "original_sha256": "4abcab5b8ee90b63c5d09c98387a8ec3cdb8f5df33e75d3b4b91eb817283bfd8",
+      "distributed_sha256": "4abcab5b8ee90b63c5d09c98387a8ec3cdb8f5df33e75d3b4b91eb817283bfd8",
+      "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": null,
+      "excluded_files": [
+        "Unselected marketing skills, installers and authoring utilities"
+      ]
+    },
+    {
+      "module_id": "marketing-search",
+      "repo": "coreyhaines31/marketingskills",
+      "commit": "5b2c0007766c6a1cf1d53fd8fc73e979e0821022",
+      "license": "MIT",
+      "license_blob_sha": "7c48dd638a9ebed49a8ef0c0c4eea90105381cdf",
+      "upstream_path": "skills/ai-seo/references/platform-ranking-factors.md",
+      "package_path": "skills/optbrew/modules/marketing-search/skills/ai-seo/references/platform-ranking-factors.md",
+      "original_git_blob_sha": "643ab65caf0276599c4e4d65406b9a1f7efc1da5",
+      "original_sha256": "ca3fb8c09fec3445abe611bab2cd1b5f20751c5d51a3a5c63ecd2b85cd458ee8",
+      "distributed_sha256": "74bd4e0776b97a3636e48dc5715e03a1eab2cbf5804ede696463100ce3e55e45",
+      "transformations": [
+        "Inline SKILL.md mentions mapped to GUIDE.md"
+      ],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": "Portable optbrew GUIDE and capability routing",
+      "excluded_files": [
+        "Unselected marketing skills, installers and authoring utilities"
+      ]
+    },
+    {
+      "module_id": "marketing-search",
+      "repo": "coreyhaines31/marketingskills",
+      "commit": "5b2c0007766c6a1cf1d53fd8fc73e979e0821022",
+      "license": "MIT",
+      "license_blob_sha": "7c48dd638a9ebed49a8ef0c0c4eea90105381cdf",
+      "upstream_path": "skills/ai-seo/references/youtube-ai-citations.md",
+      "package_path": "skills/optbrew/modules/marketing-search/skills/ai-seo/references/youtube-ai-citations.md",
+      "original_git_blob_sha": "e3b1464ed863ddaff2f92c10cf6348a51e5b5b60",
+      "original_sha256": "e4e3356d4c813e460f29dd37a46a212f9d3f3f06e35320cf62bc3e621e1a53b2",
+      "distributed_sha256": "e4e3356d4c813e460f29dd37a46a212f9d3f3f06e35320cf62bc3e621e1a53b2",
+      "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": null,
+      "excluded_files": [
+        "Unselected marketing skills, installers and authoring utilities"
+      ]
+    },
+    {
+      "module_id": "marketing-search",
+      "repo": "coreyhaines31/marketingskills",
+      "commit": "5b2c0007766c6a1cf1d53fd8fc73e979e0821022",
+      "license": "MIT",
+      "license_blob_sha": "7c48dd638a9ebed49a8ef0c0c4eea90105381cdf",
+      "upstream_path": "skills/analytics/SKILL.md",
+      "package_path": "skills/optbrew/modules/marketing-search/skills/analytics/GUIDE.md",
+      "original_git_blob_sha": "e20a3df64f984d048ab769ec1bb609faf05f8a65",
+      "original_sha256": "3eda97d96b2329daa933b6fdb94bf81aaa1196e3e344e56a8805f972a7438404",
+      "distributed_sha256": "1ab1bca9b00b7508bf8025ff97901ebc6f710ed391d4a2c42777404a1ff0c6bb",
+      "transformations": [
+        "SKILL.md to GUIDE.md; YAML frontmatter removed",
+        "Unbundled relative link ../../tools/REGISTRY.md changed to upstream-only text",
+        "Unbundled relative link ../../tools/integrations/ga4.md changed to upstream-only text",
+        "Unbundled relative link ../../tools/integrations/mixpanel.md changed to upstream-only text",
+        "Unbundled relative link ../../tools/integrations/amplitude.md changed to upstream-only text",
+        "Unbundled relative link ../../tools/integrations/posthog.md changed to upstream-only text",
+        "Unbundled relative link ../../tools/integrations/segment.md changed to upstream-only text"
+      ],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": "Portable optbrew GUIDE and capability routing",
+      "excluded_files": [
+        "Unselected marketing skills, installers and authoring utilities"
+      ]
+    },
+    {
+      "module_id": "marketing-search",
+      "repo": "coreyhaines31/marketingskills",
+      "commit": "5b2c0007766c6a1cf1d53fd8fc73e979e0821022",
+      "license": "MIT",
+      "license_blob_sha": "7c48dd638a9ebed49a8ef0c0c4eea90105381cdf",
+      "upstream_path": "skills/analytics/evals/evals.json",
+      "package_path": "skills/optbrew/modules/marketing-search/skills/analytics/evals/evals.json",
+      "original_git_blob_sha": "fd3df6a1371488d2d11fbfbc8628a91489a8423c",
+      "original_sha256": "56932e864114d69a61b6b55e639d207329c0a8b7df8b61a0e1188b249cbef1e8",
+      "distributed_sha256": "56932e864114d69a61b6b55e639d207329c0a8b7df8b61a0e1188b249cbef1e8",
+      "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": null,
+      "excluded_files": [
+        "Unselected marketing skills, installers and authoring utilities"
+      ]
+    },
+    {
+      "module_id": "marketing-search",
+      "repo": "coreyhaines31/marketingskills",
+      "commit": "5b2c0007766c6a1cf1d53fd8fc73e979e0821022",
+      "license": "MIT",
+      "license_blob_sha": "7c48dd638a9ebed49a8ef0c0c4eea90105381cdf",
+      "upstream_path": "skills/analytics/references/event-library.md",
+      "package_path": "skills/optbrew/modules/marketing-search/skills/analytics/references/event-library.md",
+      "original_git_blob_sha": "c381b56c44b5b987e66de708d6061af873f68e55",
+      "original_sha256": "efc7bdb0a7b3efdea9e67ff0d1bc894dcf89ec9b9b8f3414f123d12bee109412",
+      "distributed_sha256": "efc7bdb0a7b3efdea9e67ff0d1bc894dcf89ec9b9b8f3414f123d12bee109412",
+      "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": null,
+      "excluded_files": [
+        "Unselected marketing skills, installers and authoring utilities"
+      ]
+    },
+    {
+      "module_id": "marketing-search",
+      "repo": "coreyhaines31/marketingskills",
+      "commit": "5b2c0007766c6a1cf1d53fd8fc73e979e0821022",
+      "license": "MIT",
+      "license_blob_sha": "7c48dd638a9ebed49a8ef0c0c4eea90105381cdf",
+      "upstream_path": "skills/analytics/references/ga4-implementation.md",
+      "package_path": "skills/optbrew/modules/marketing-search/skills/analytics/references/ga4-implementation.md",
+      "original_git_blob_sha": "f2656dcbf0f4336eb756d9796e2d2cdab87452c7",
+      "original_sha256": "f33fd6db0cbdb1bdc183af5f52bedd956d14680e54bca2e2c3917de29698636e",
+      "distributed_sha256": "f33fd6db0cbdb1bdc183af5f52bedd956d14680e54bca2e2c3917de29698636e",
+      "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": null,
+      "excluded_files": [
+        "Unselected marketing skills, installers and authoring utilities"
+      ]
+    },
+    {
+      "module_id": "marketing-search",
+      "repo": "coreyhaines31/marketingskills",
+      "commit": "5b2c0007766c6a1cf1d53fd8fc73e979e0821022",
+      "license": "MIT",
+      "license_blob_sha": "7c48dd638a9ebed49a8ef0c0c4eea90105381cdf",
+      "upstream_path": "skills/analytics/references/gtm-implementation.md",
+      "package_path": "skills/optbrew/modules/marketing-search/skills/analytics/references/gtm-implementation.md",
+      "original_git_blob_sha": "956e63840d545b7ad5bbef8373e1f19e0bc258f7",
+      "original_sha256": "112da33832439d2ae0b2729e5031fc927df444cd1ae8eb20542d45c1b5690f52",
+      "distributed_sha256": "112da33832439d2ae0b2729e5031fc927df444cd1ae8eb20542d45c1b5690f52",
+      "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": null,
+      "excluded_files": [
+        "Unselected marketing skills, installers and authoring utilities"
+      ]
+    },
+    {
+      "module_id": "marketing-search",
+      "repo": "coreyhaines31/marketingskills",
+      "commit": "5b2c0007766c6a1cf1d53fd8fc73e979e0821022",
+      "license": "MIT",
+      "license_blob_sha": "7c48dd638a9ebed49a8ef0c0c4eea90105381cdf",
+      "upstream_path": "skills/content-strategy/SKILL.md",
+      "package_path": "skills/optbrew/modules/marketing-search/skills/content-strategy/GUIDE.md",
+      "original_git_blob_sha": "b8a26a008ed59a4eef2b46794be9baeeb7e22d57",
+      "original_sha256": "0ad572d607884c561668810f77cd21bbe3e0508c64090f2997661a728360f946",
+      "distributed_sha256": "f7361a1c44115198477eb581814c5d1ef1d546044205380861571f5084bc7891",
+      "transformations": [
+        "SKILL.md to GUIDE.md; YAML frontmatter removed"
+      ],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": "Portable optbrew GUIDE and capability routing",
+      "excluded_files": [
+        "Unselected marketing skills, installers and authoring utilities"
+      ]
+    },
+    {
+      "module_id": "marketing-search",
+      "repo": "coreyhaines31/marketingskills",
+      "commit": "5b2c0007766c6a1cf1d53fd8fc73e979e0821022",
+      "license": "MIT",
+      "license_blob_sha": "7c48dd638a9ebed49a8ef0c0c4eea90105381cdf",
+      "upstream_path": "skills/content-strategy/evals/evals.json",
+      "package_path": "skills/optbrew/modules/marketing-search/skills/content-strategy/evals/evals.json",
+      "original_git_blob_sha": "23310228166d5b0bf579299c40e9a5e4b33d5779",
+      "original_sha256": "10167e7125ee77cbabe4f03953750dd99ea147f7461027fdbb0cf8e089e5506d",
+      "distributed_sha256": "10167e7125ee77cbabe4f03953750dd99ea147f7461027fdbb0cf8e089e5506d",
+      "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": null,
+      "excluded_files": [
+        "Unselected marketing skills, installers and authoring utilities"
+      ]
+    },
+    {
+      "module_id": "marketing-search",
+      "repo": "coreyhaines31/marketingskills",
+      "commit": "5b2c0007766c6a1cf1d53fd8fc73e979e0821022",
+      "license": "MIT",
+      "license_blob_sha": "7c48dd638a9ebed49a8ef0c0c4eea90105381cdf",
+      "upstream_path": "skills/content-strategy/references/content-distribution.md",
+      "package_path": "skills/optbrew/modules/marketing-search/skills/content-strategy/references/content-distribution.md",
+      "original_git_blob_sha": "6f4a3c38a15e9949727ebcf621f0054710a02a83",
+      "original_sha256": "1861a1aab0627ab29c279000879a9889242da1ba85e677acdc759c66a6241778",
+      "distributed_sha256": "1861a1aab0627ab29c279000879a9889242da1ba85e677acdc759c66a6241778",
+      "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": null,
+      "excluded_files": [
+        "Unselected marketing skills, installers and authoring utilities"
+      ]
+    },
+    {
+      "module_id": "marketing-search",
+      "repo": "coreyhaines31/marketingskills",
+      "commit": "5b2c0007766c6a1cf1d53fd8fc73e979e0821022",
+      "license": "MIT",
+      "license_blob_sha": "7c48dd638a9ebed49a8ef0c0c4eea90105381cdf",
+      "upstream_path": "skills/content-strategy/references/headless-cms.md",
+      "package_path": "skills/optbrew/modules/marketing-search/skills/content-strategy/references/headless-cms.md",
+      "original_git_blob_sha": "c40aeafafc83f7ba9f96cd0ef0186bd8213d436c",
+      "original_sha256": "c0a7b87f47c8f7af907ce73facf1ed4721ade811e53f86ddf22f4bc0d7ca324e",
+      "distributed_sha256": "5d40d89e31d9ee134c8f3379bc1a731cc114adf130217464255c92555e34fb9c",
+      "transformations": [
+        "Unbundled relative link ../../../tools/integrations/sanity.md changed to upstream-only text",
+        "Unbundled relative link ../../../tools/integrations/contentful.md changed to upstream-only text",
+        "Unbundled relative link ../../../tools/integrations/strapi.md changed to upstream-only text"
+      ],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": "Portable optbrew GUIDE and capability routing",
+      "excluded_files": [
+        "Unselected marketing skills, installers and authoring utilities"
+      ]
+    },
+    {
+      "module_id": "marketing-search",
+      "repo": "coreyhaines31/marketingskills",
+      "commit": "5b2c0007766c6a1cf1d53fd8fc73e979e0821022",
+      "license": "MIT",
+      "license_blob_sha": "7c48dd638a9ebed49a8ef0c0c4eea90105381cdf",
+      "upstream_path": "skills/programmatic-seo/SKILL.md",
+      "package_path": "skills/optbrew/modules/marketing-search/skills/programmatic-seo/GUIDE.md",
+      "original_git_blob_sha": "e96bf82ed07475262490f60108258d8dfccb6389",
+      "original_sha256": "15cb5979cab5263ede902a830e03342869256ece17905bff240eef498e27cde1",
+      "distributed_sha256": "938fe70c2e4a84b8e7437de7b9dc38b45d08675511a2375a0322294414bbdaa8",
+      "transformations": [
+        "SKILL.md to GUIDE.md; YAML frontmatter removed"
+      ],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": "Portable optbrew GUIDE and capability routing",
+      "excluded_files": [
+        "Unselected marketing skills, installers and authoring utilities"
+      ]
+    },
+    {
+      "module_id": "marketing-search",
+      "repo": "coreyhaines31/marketingskills",
+      "commit": "5b2c0007766c6a1cf1d53fd8fc73e979e0821022",
+      "license": "MIT",
+      "license_blob_sha": "7c48dd638a9ebed49a8ef0c0c4eea90105381cdf",
+      "upstream_path": "skills/programmatic-seo/evals/evals.json",
+      "package_path": "skills/optbrew/modules/marketing-search/skills/programmatic-seo/evals/evals.json",
+      "original_git_blob_sha": "d953573b34e4b4968e76bf1b0ef1bf3043b6a0e3",
+      "original_sha256": "e76b704edfc50210224aa82131dc4e917d6daa3a1467b9f7fe54b2d42af2a264",
+      "distributed_sha256": "e76b704edfc50210224aa82131dc4e917d6daa3a1467b9f7fe54b2d42af2a264",
+      "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": null,
+      "excluded_files": [
+        "Unselected marketing skills, installers and authoring utilities"
+      ]
+    },
+    {
+      "module_id": "marketing-search",
+      "repo": "coreyhaines31/marketingskills",
+      "commit": "5b2c0007766c6a1cf1d53fd8fc73e979e0821022",
+      "license": "MIT",
+      "license_blob_sha": "7c48dd638a9ebed49a8ef0c0c4eea90105381cdf",
+      "upstream_path": "skills/programmatic-seo/references/playbooks.md",
+      "package_path": "skills/optbrew/modules/marketing-search/skills/programmatic-seo/references/playbooks.md",
+      "original_git_blob_sha": "227f6759de62ec4de4dd1bf7e16e4e915d211ca6",
+      "original_sha256": "b2b3fd7c58c686f0670b94cf7192ff79436ccf0d602650b33a83a9d01102f11d",
+      "distributed_sha256": "b2b3fd7c58c686f0670b94cf7192ff79436ccf0d602650b33a83a9d01102f11d",
+      "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": null,
+      "excluded_files": [
+        "Unselected marketing skills, installers and authoring utilities"
+      ]
+    },
+    {
+      "module_id": "marketing-search",
+      "repo": "coreyhaines31/marketingskills",
+      "commit": "5b2c0007766c6a1cf1d53fd8fc73e979e0821022",
+      "license": "MIT",
+      "license_blob_sha": "7c48dd638a9ebed49a8ef0c0c4eea90105381cdf",
+      "upstream_path": "skills/schema/SKILL.md",
+      "package_path": "skills/optbrew/modules/marketing-search/skills/schema/GUIDE.md",
+      "original_git_blob_sha": "e6012136a998d5881d320dce58360bac1809b246",
+      "original_sha256": "d8b7aa7bcd9727a87fb5470a6c9ee252b99a7ccb84f637d7c67c5d155b507e0b",
+      "distributed_sha256": "6a8f5be94636cd73f562f802e8e178e2b9cbf49580ef2849169c6d4a54d64594",
+      "transformations": [
+        "SKILL.md to GUIDE.md; YAML frontmatter removed"
+      ],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": "Portable optbrew GUIDE and capability routing",
+      "excluded_files": [
+        "Unselected marketing skills, installers and authoring utilities"
+      ]
+    },
+    {
+      "module_id": "marketing-search",
+      "repo": "coreyhaines31/marketingskills",
+      "commit": "5b2c0007766c6a1cf1d53fd8fc73e979e0821022",
+      "license": "MIT",
+      "license_blob_sha": "7c48dd638a9ebed49a8ef0c0c4eea90105381cdf",
+      "upstream_path": "skills/schema/evals/evals.json",
+      "package_path": "skills/optbrew/modules/marketing-search/skills/schema/evals/evals.json",
+      "original_git_blob_sha": "684edf276032b69bf7ae1fbf520be5445b3e416e",
+      "original_sha256": "084545e9aa789dace8c4d4d5daf330ffaa4fe4c64266bd76dc6688b3f8281202",
+      "distributed_sha256": "084545e9aa789dace8c4d4d5daf330ffaa4fe4c64266bd76dc6688b3f8281202",
+      "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": null,
+      "excluded_files": [
+        "Unselected marketing skills, installers and authoring utilities"
+      ]
+    },
+    {
+      "module_id": "marketing-search",
+      "repo": "coreyhaines31/marketingskills",
+      "commit": "5b2c0007766c6a1cf1d53fd8fc73e979e0821022",
+      "license": "MIT",
+      "license_blob_sha": "7c48dd638a9ebed49a8ef0c0c4eea90105381cdf",
+      "upstream_path": "skills/schema/references/schema-examples.md",
+      "package_path": "skills/optbrew/modules/marketing-search/skills/schema/references/schema-examples.md",
+      "original_git_blob_sha": "2987e9ecaa18e11fc769f86b8e0969453328aea7",
+      "original_sha256": "5d55c96ae9859a5fb84cb18828c4a96dcd468e7aeec667c88fdf9032558ab318",
+      "distributed_sha256": "5d55c96ae9859a5fb84cb18828c4a96dcd468e7aeec667c88fdf9032558ab318",
+      "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": null,
+      "excluded_files": [
+        "Unselected marketing skills, installers and authoring utilities"
+      ]
+    },
+    {
+      "module_id": "marketing-search",
+      "repo": "coreyhaines31/marketingskills",
+      "commit": "5b2c0007766c6a1cf1d53fd8fc73e979e0821022",
+      "license": "MIT",
+      "license_blob_sha": "7c48dd638a9ebed49a8ef0c0c4eea90105381cdf",
+      "upstream_path": "skills/seo-audit/SKILL.md",
+      "package_path": "skills/optbrew/modules/marketing-search/skills/seo-audit/GUIDE.md",
+      "original_git_blob_sha": "af014ef82989c61a672cdab26cd898821ef9518b",
+      "original_sha256": "9420a6c1ffcf7212766bcb618c28766ecb084631bed8045f3115d42b1230d368",
+      "distributed_sha256": "768a367154fb85b6ea6da260b012df9fff2cfd282ce5a77d06875af9a332ea6a",
+      "transformations": [
+        "SKILL.md to GUIDE.md; YAML frontmatter removed"
+      ],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": "Portable optbrew GUIDE and capability routing",
+      "excluded_files": [
+        "Unselected marketing skills, installers and authoring utilities"
+      ]
+    },
+    {
+      "module_id": "marketing-search",
+      "repo": "coreyhaines31/marketingskills",
+      "commit": "5b2c0007766c6a1cf1d53fd8fc73e979e0821022",
+      "license": "MIT",
+      "license_blob_sha": "7c48dd638a9ebed49a8ef0c0c4eea90105381cdf",
+      "upstream_path": "skills/seo-audit/evals/evals.json",
+      "package_path": "skills/optbrew/modules/marketing-search/skills/seo-audit/evals/evals.json",
+      "original_git_blob_sha": "e3415c5b703987948b8709f84783c32be868e333",
+      "original_sha256": "b808dfa7ee1e312cda39cfac57f44674bd3cee6eaa151af7008760a9514bb6cf",
+      "distributed_sha256": "b808dfa7ee1e312cda39cfac57f44674bd3cee6eaa151af7008760a9514bb6cf",
+      "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": null,
+      "excluded_files": [
+        "Unselected marketing skills, installers and authoring utilities"
+      ]
+    },
+    {
+      "module_id": "marketing-search",
+      "repo": "coreyhaines31/marketingskills",
+      "commit": "5b2c0007766c6a1cf1d53fd8fc73e979e0821022",
+      "license": "MIT",
+      "license_blob_sha": "7c48dd638a9ebed49a8ef0c0c4eea90105381cdf",
+      "upstream_path": "skills/seo-audit/references/ai-writing-detection.md",
+      "package_path": "skills/optbrew/modules/marketing-search/skills/seo-audit/references/ai-writing-detection.md",
+      "original_git_blob_sha": "cb67ece4135f4153575bbbdfbf722364babff61d",
+      "original_sha256": "f1e273f56ce7e2215ff218bf903680ddcec0fd026ab90c3ebfb3439ed0edfaa4",
+      "distributed_sha256": "f1e273f56ce7e2215ff218bf903680ddcec0fd026ab90c3ebfb3439ed0edfaa4",
+      "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": null,
+      "excluded_files": [
+        "Unselected marketing skills, installers and authoring utilities"
+      ]
+    },
+    {
+      "module_id": "marketing-search",
+      "repo": "coreyhaines31/marketingskills",
+      "commit": "5b2c0007766c6a1cf1d53fd8fc73e979e0821022",
+      "license": "MIT",
+      "license_blob_sha": "7c48dd638a9ebed49a8ef0c0c4eea90105381cdf",
+      "upstream_path": "skills/seo-audit/references/international-seo.md",
+      "package_path": "skills/optbrew/modules/marketing-search/skills/seo-audit/references/international-seo.md",
+      "original_git_blob_sha": "d2a2d1e6959214142ad5cc13b8f82852960c79d3",
+      "original_sha256": "d2fc76f40eccc422ae0f1d7e5b770095e89a045f38e1d0370811203da57996ff",
+      "distributed_sha256": "d2fc76f40eccc422ae0f1d7e5b770095e89a045f38e1d0370811203da57996ff",
+      "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": null,
+      "excluded_files": [
+        "Unselected marketing skills, installers and authoring utilities"
+      ]
+    },
+    {
+      "module_id": "marketing-search",
+      "repo": "coreyhaines31/marketingskills",
+      "commit": "5b2c0007766c6a1cf1d53fd8fc73e979e0821022",
+      "license": "MIT",
+      "license_blob_sha": "7c48dd638a9ebed49a8ef0c0c4eea90105381cdf",
+      "upstream_path": "skills/site-architecture/SKILL.md",
+      "package_path": "skills/optbrew/modules/marketing-search/skills/site-architecture/GUIDE.md",
+      "original_git_blob_sha": "b7658d5f3035a77be3474be2cf25065e9b6df713",
+      "original_sha256": "a47f693c6a4f45db89276d8c341b3aa3054090cc8002dd4a2635448d7d152492",
+      "distributed_sha256": "0aa77a0c440fc77ca340307ef598a8b2d6f05b2097d47c531a15534184ff3336",
+      "transformations": [
+        "SKILL.md to GUIDE.md; YAML frontmatter removed",
+        "Unbundled relative link /features/analytics changed to upstream-only text"
+      ],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": "Portable optbrew GUIDE and capability routing",
+      "excluded_files": [
+        "Unselected marketing skills, installers and authoring utilities"
+      ]
+    },
+    {
+      "module_id": "marketing-search",
+      "repo": "coreyhaines31/marketingskills",
+      "commit": "5b2c0007766c6a1cf1d53fd8fc73e979e0821022",
+      "license": "MIT",
+      "license_blob_sha": "7c48dd638a9ebed49a8ef0c0c4eea90105381cdf",
+      "upstream_path": "skills/site-architecture/evals/evals.json",
+      "package_path": "skills/optbrew/modules/marketing-search/skills/site-architecture/evals/evals.json",
+      "original_git_blob_sha": "63fd1d4c0d22a542cbb9ba51494f4ad23c3d46cc",
+      "original_sha256": "64b76ab82488fd168919fad1b038b7117392ff9748a835104ddde95aac4a5cee",
+      "distributed_sha256": "64b76ab82488fd168919fad1b038b7117392ff9748a835104ddde95aac4a5cee",
+      "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": null,
+      "excluded_files": [
+        "Unselected marketing skills, installers and authoring utilities"
+      ]
+    },
+    {
+      "module_id": "marketing-search",
+      "repo": "coreyhaines31/marketingskills",
+      "commit": "5b2c0007766c6a1cf1d53fd8fc73e979e0821022",
+      "license": "MIT",
+      "license_blob_sha": "7c48dd638a9ebed49a8ef0c0c4eea90105381cdf",
+      "upstream_path": "skills/site-architecture/references/mermaid-templates.md",
+      "package_path": "skills/optbrew/modules/marketing-search/skills/site-architecture/references/mermaid-templates.md",
+      "original_git_blob_sha": "9f911083427ea01298569b1173ae24474c298015",
+      "original_sha256": "362190c7d3f419d5f445170f1fb17beecc163937d2068922893b7a69eeb25f0f",
+      "distributed_sha256": "362190c7d3f419d5f445170f1fb17beecc163937d2068922893b7a69eeb25f0f",
+      "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": null,
+      "excluded_files": [
+        "Unselected marketing skills, installers and authoring utilities"
+      ]
+    },
+    {
+      "module_id": "marketing-search",
+      "repo": "coreyhaines31/marketingskills",
+      "commit": "5b2c0007766c6a1cf1d53fd8fc73e979e0821022",
+      "license": "MIT",
+      "license_blob_sha": "7c48dd638a9ebed49a8ef0c0c4eea90105381cdf",
+      "upstream_path": "skills/site-architecture/references/navigation-patterns.md",
+      "package_path": "skills/optbrew/modules/marketing-search/skills/site-architecture/references/navigation-patterns.md",
+      "original_git_blob_sha": "b8e69acc4a0f73335afc94db11e199e377d006ab",
+      "original_sha256": "2efa772709b753e33d5018c007147ca30aaa95a04b04dc0df6227ea5a053078b",
+      "distributed_sha256": "2efa772709b753e33d5018c007147ca30aaa95a04b04dc0df6227ea5a053078b",
+      "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": null,
+      "excluded_files": [
+        "Unselected marketing skills, installers and authoring utilities"
+      ]
+    },
+    {
+      "module_id": "marketing-search",
+      "repo": "coreyhaines31/marketingskills",
+      "commit": "5b2c0007766c6a1cf1d53fd8fc73e979e0821022",
+      "license": "MIT",
+      "license_blob_sha": "7c48dd638a9ebed49a8ef0c0c4eea90105381cdf",
+      "upstream_path": "skills/site-architecture/references/site-type-templates.md",
+      "package_path": "skills/optbrew/modules/marketing-search/skills/site-architecture/references/site-type-templates.md",
+      "original_git_blob_sha": "6abe73efdcbb42e9d000c35d5c7e9987b06bd000",
+      "original_sha256": "3c3cd7ce5e31c502dc071baf82bb58cb30f5edf4a2fd8ca052fbc8f3777db140",
+      "distributed_sha256": "3c3cd7ce5e31c502dc071baf82bb58cb30f5edf4a2fd8ca052fbc8f3777db140",
+      "transformations": [],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": null,
+      "excluded_files": [
+        "Unselected marketing skills, installers and authoring utilities"
+      ]
+    },
+    {
+      "module_id": "optbrew",
+      "repo": null,
+      "commit": null,
+      "license": "MIT",
+      "license_blob_sha": null,
+      "upstream_path": null,
+      "package_path": "skills/optbrew/modules/naver-searchadvisor/scripts/robots.mjs",
+      "original_git_blob_sha": null,
+      "original_sha256": null,
+      "distributed_sha256": "20acf1a7401fbe42c0455fceb21b32346d1594135186eb18e1a32033ad97632a",
+      "transformations": [
+        "Reviewed first-party artifact copied"
+      ],
+      "patch_id": null,
+      "patch_base_sha256": null,
+      "patch_reason": null,
+      "excluded_files": [],
+      "source_kind": "first_party",
+      "canonical_path": "patches/naver-robots.mjs",
+      "canonical_sha256": "20acf1a7401fbe42c0455fceb21b32346d1594135186eb18e1a32033ad97632a"
+    }
+  ]
+}

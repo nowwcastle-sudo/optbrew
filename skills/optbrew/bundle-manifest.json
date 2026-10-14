@@ -1,6 +1,62 @@
 {
   "schema_version": "1.0.0",
   "release_version": "0.1.0",
+  "evaluation_version": "0.1.0",
+  "protocol_version": "0.1.0",
+  "evaluation_sources": [
+    {
+      "path": "references/check-registry.json",
+      "sha256": "c792c7fc291aaddf0774e55aebaed998364ce067df1ec9aaa4ad43ab86790fc4"
+    },
+    {
+      "path": "references/profiles.json",
+      "sha256": "71be1492fa8fc9c8321d0e9b511b2bb56097b4ce607c6ee02e2df537949b3ac7"
+    },
+    {
+      "path": "references/scoring.md",
+      "sha256": "342f485653466be2e4e464801e144d89d99b97fa0eba15f282d4ea23de96f18c"
+    },
+    {
+      "path": "references/measurement.md",
+      "sha256": "8879fc0e24bff3f9a691ce8e0c5c4c35733e78f854acc973d0b43bd9b076be1d"
+    },
+    {
+      "path": "scripts/core/score.mjs",
+      "sha256": "924210e252505394e772ce9fe7f38daccc93b893371df679801c21c59cad7970"
+    },
+    {
+      "path": "scripts/core/weights.mjs",
+      "sha256": "a565192fdd9151f1b069f721eb5b6ee3be051c4a6c572b9b1bfa6e2a2fb5abee"
+    },
+    {
+      "path": "scripts/core/contracts.mjs",
+      "sha256": "a2c493b9c97915aa3b5ec08c477008123e1c3dd39f8b0a5ed0a400cae0651b6a"
+    },
+    {
+      "path": "scripts/core/compare.mjs",
+      "sha256": "16d43532285072d6d4a3489d1e4392651a3013ce5d34b5dc5057fdcbd13e5356"
+    },
+    {
+      "path": "scripts/core/metrics.mjs",
+      "sha256": "b2579fe7a6b46f285334b341de3e289e805614b41728b625c65508cbc584dc0b"
+    },
+    {
+      "path": "scripts/core/bootstrap.mjs",
+      "sha256": "703d5c16878c526114afb540e4a6d54bd74831f35a824c03a839e2480097d279"
+    }
+  ],
+  "evaluation_hash": "a693671128b4093fbafa25c05689afb74884f60b3914fd31e45cc1404fdec0d8",
+  "protocol_sources": [
+    {
+      "path": "references/schemas/contract.schema.json",
+      "sha256": "d530eb89d7b6fcb1af83bf10c34ba4aeec188c260f91890128cdcd87b0df0aab"
+    },
+    {
+      "path": "scripts/core/protocol.mjs",
+      "sha256": "f921e2b39192e719c5959023e09fe907771dd2326886d03d40b4424b537f9555"
+    }
+  ],
+  "protocol_hash": "b39c10f35660df3f97f97e14091b589f1463367ab80facd7905e76f70a3b2da4",
   "files": [
     {
       "path": "SKILL.md",
@@ -53,10 +109,6 @@
     {
       "path": "modules/magnus-seo/assets/audit-report-template.md",
       "sha256": "c7d0948abe800929001a4604114160bb881c422d2720ce2c39d589fda8792d77"
-    },
-    {
-      "path": "modules/magnus-seo/evals/evals.json",
-      "sha256": "2d231a7b088a0ed307cd1a9cd2a1e202ea11d39b2494315bf016eb24c4aaab6e"
     },
     {
       "path": "modules/magnus-seo/references/aeo-methodology.md",
@@ -127,10 +179,6 @@
       "sha256": "66ed1b74fe26e608d4e25ec651de44ae08ec807bd20dafeacdc80a2a490bc0e0"
     },
     {
-      "path": "modules/magnus-seo/scripts/test_aeo_scripts.py",
-      "sha256": "533c2dc730ad8bdcf2805d8026e51b405361e7d841128cff128856affdff6cd2"
-    },
-    {
       "path": "modules/magnus-seo/templates/aeo-implementation-plan.md",
       "sha256": "e21c11aef62812e1e4f8f7fa428dc0838a50a9d0db0c7963be026f409d027b17"
     },
@@ -153,10 +201,6 @@
     {
       "path": "modules/marketing-search/skills/ai-seo/GUIDE.md",
       "sha256": "7968cc1a6990369e606ed95e257f62e9273b3378960f14cf474584ce31c6196f"
-    },
-    {
-      "path": "modules/marketing-search/skills/ai-seo/evals/evals.json",
-      "sha256": "010677ebde7b375f5569d5ef654c15edfc50f44efc55f9ca2f70a02a1ff1ab17"
     },
     {
       "path": "modules/marketing-search/skills/ai-seo/references/agent-readiness.md",
@@ -195,10 +239,6 @@
       "sha256": "1ab1bca9b00b7508bf8025ff97901ebc6f710ed391d4a2c42777404a1ff0c6bb"
     },
     {
-      "path": "modules/marketing-search/skills/analytics/evals/evals.json",
-      "sha256": "56932e864114d69a61b6b55e639d207329c0a8b7df8b61a0e1188b249cbef1e8"
-    },
-    {
       "path": "modules/marketing-search/skills/analytics/references/event-library.md",
       "sha256": "efc7bdb0a7b3efdea9e67ff0d1bc894dcf89ec9b9b8f3414f123d12bee109412"
     },
@@ -215,10 +255,6 @@
       "sha256": "f7361a1c44115198477eb581814c5d1ef1d546044205380861571f5084bc7891"
     },
     {
-      "path": "modules/marketing-search/skills/content-strategy/evals/evals.json",
-      "sha256": "10167e7125ee77cbabe4f03953750dd99ea147f7461027fdbb0cf8e089e5506d"
-    },
-    {
       "path": "modules/marketing-search/skills/content-strategy/references/content-distribution.md",
       "sha256": "1861a1aab0627ab29c279000879a9889242da1ba85e677acdc759c66a6241778"
     },
@@ -231,10 +267,6 @@
       "sha256": "938fe70c2e4a84b8e7437de7b9dc38b45d08675511a2375a0322294414bbdaa8"
     },
     {
-      "path": "modules/marketing-search/skills/programmatic-seo/evals/evals.json",
-      "sha256": "e76b704edfc50210224aa82131dc4e917d6daa3a1467b9f7fe54b2d42af2a264"
-    },
-    {
       "path": "modules/marketing-search/skills/programmatic-seo/references/playbooks.md",
       "sha256": "b2b3fd7c58c686f0670b94cf7192ff79436ccf0d602650b33a83a9d01102f11d"
     },
@@ -243,20 +275,12 @@
       "sha256": "6a8f5be94636cd73f562f802e8e178e2b9cbf49580ef2849169c6d4a54d64594"
     },
     {
-      "path": "modules/marketing-search/skills/schema/evals/evals.json",
-      "sha256": "084545e9aa789dace8c4d4d5daf330ffaa4fe4c64266bd76dc6688b3f8281202"
-    },
-    {
       "path": "modules/marketing-search/skills/schema/references/schema-examples.md",
       "sha256": "5d55c96ae9859a5fb84cb18828c4a96dcd468e7aeec667c88fdf9032558ab318"
     },
     {
       "path": "modules/marketing-search/skills/seo-audit/GUIDE.md",
       "sha256": "768a367154fb85b6ea6da260b012df9fff2cfd282ce5a77d06875af9a332ea6a"
-    },
-    {
-      "path": "modules/marketing-search/skills/seo-audit/evals/evals.json",
-      "sha256": "b808dfa7ee1e312cda39cfac57f44674bd3cee6eaa151af7008760a9514bb6cf"
     },
     {
       "path": "modules/marketing-search/skills/seo-audit/references/ai-writing-detection.md",
@@ -269,10 +293,6 @@
     {
       "path": "modules/marketing-search/skills/site-architecture/GUIDE.md",
       "sha256": "0aa77a0c440fc77ca340307ef598a8b2d6f05b2097d47c531a15534184ff3336"
-    },
-    {
-      "path": "modules/marketing-search/skills/site-architecture/evals/evals.json",
-      "sha256": "64b76ab82488fd168919fad1b038b7117392ff9748a835104ddde95aac4a5cee"
     },
     {
       "path": "modules/marketing-search/skills/site-architecture/references/mermaid-templates.md",
@@ -289,10 +309,6 @@
     {
       "path": "modules/mblode-seo/GUIDE.md",
       "sha256": "228b715f5b75f3fe87033bde98b050e520b6d5bfe1ef6c77ce88da0aacb8c6a4"
-    },
-    {
-      "path": "modules/mblode-seo/evals/evals.json",
-      "sha256": "8bda87a2e1140c6c735745af18a17616a0c3bd16b812b7d19654bf0ae1a1bd6c"
     },
     {
       "path": "modules/mblode-seo/references/answer-engines.md",
@@ -584,7 +600,7 @@
     },
     {
       "path": "scripts/core/bundle.mjs",
-      "sha256": "706b2b1dee874a904b806375579bca5d62910b82f0a2dbdf71854713c1d8a414"
+      "sha256": "827ba5b0d5aa31ec84312f5e5bf80fb6b57f86b9a8b0052deffd85bf949c18ba"
     },
     {
       "path": "scripts/core/capabilities.mjs",
@@ -639,5 +655,5 @@
       "sha256": "e9041a0ff06c5395027c25646cf210958e38e969d34b329d7b165a865e77e313"
     }
   ],
-  "bundle_hash": "efdade0df270f17e4884681fc93cb25895295c79ad58b1b4e9789b3a3003f9b5"
+  "bundle_hash": "3b9c684d09e306dc57b771df23aa215a535bb0c1cca30b428b2944db1a7e0d26"
 }

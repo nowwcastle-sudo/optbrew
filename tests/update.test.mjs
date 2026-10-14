@@ -106,7 +106,8 @@ test('actual distributed bundle and source-lock update in isolated project with 
   await install({ bundleRoot: actual, agents: ['pi'], scope: 'project', projectRoot, strategy: 'copy' });
   const result = await update({ bundleRoot: release, recordRoot: linked.record.managed_root });
   assert.equal(result.status, 'updated');
-  assert.ok(result.verification.checked_files >= 159);
+  assert.equal(result.verification.checked_files,
+    JSON.parse(await readFile(path.join(release, 'bundle-manifest.json'), 'utf8')).files.length);
   assert.deepEqual(result.record.targets.map(t => t.strategy), ['link', 'copy']);
   assert.ok((await doctor({ scope: 'project', projectRoot, agents: ['codex', 'pi'] })).targets.every(t => t.hash_ok));
 });
