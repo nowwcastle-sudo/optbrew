@@ -1,6 +1,6 @@
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
-import { ContractError, validateEntity } from './contracts.mjs';
+import { ContractError, validateEntity, validateApplicabilityDecision } from './contracts.mjs';
 
 const registry = JSON.parse(readFileSync(new URL('../../references/check-registry.json', import.meta.url)));
 const knownFamilies = new Map(registry.families.map(x => [x.family_id, x]));
@@ -11,6 +11,7 @@ function unique(values, label) {
 }
 
 const compare = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+const sameSet = (a, b) => a.length === b.length && a.every(value => b.includes(value));
 
 function stable(value) {
   if (Array.isArray(value)) return value.map(stable);
@@ -32,26 +33,55 @@ export function freezeProtocol(context) {
   if (p.question_panel.some(x => !x.question.trim())) throw new ContractError('question_panel: empty question');
   const urls = p.page_types.flatMap(x => x.urls.map(u => u.normalized));
   unique(urls, 'normalized URLs');
+  if (!urls.length) throw new ContractError('protocol requires selected public audit URLs');
   for (const pageType of p.page_types) {
     if (!pageType.urls.length) throw new ContractError(`empty page type: ${pageType.id}`);
-    for (const url of pageType.urls) for (const value of [url.original, url.normalized]) {
-      try { if (!['http:', 'https:'].includes(new URL(value).protocol)) throw new Error(); }
-      catch { throw new ContractError(`invalid HTTP URL: ${value}`); }
+    for (const url of pageType.urls) {
+      for (const value of [url.original, url.normalized]) {
+        try { if (!['http:', 'https:'].includes(new URL(value).protocol)) throw new Error(); }
+        catch { throw new ContractError(`invalid HTTP URL: ${value}`); }
+      }
+      if (url.public_indexing === false) validateApplicabilityDecision(url.indexing_decision,
+        ['not_public_index_target'], `${url.normalized}.indexing_decision`);
+      else if (url.indexing_decision) throw new ContractError(`${url.normalized}: indexing decision requires public_indexing=false`);
     }
   }
+  const publicUrls = p.page_types.flatMap(type => type.urls.filter(url => url.public_indexing !== false).map(url => url.normalized));
   for (const family of p.families) {
     const definition = knownFamilies.get(family.family_id);
     if (!definition) throw new ContractError(`unregistered family: ${family.family_id}`);
+    const requiredUrls = ['index-policy', 'search-crawl-policy', 'discovery'].includes(family.family_id) ? publicUrls : urls;
     if (family.urls) {
       unique(family.urls, `${family.family_id}.urls`);
-      if (family.urls.some(url => !urls.includes(url))) throw new ContractError(`${family.family_id}: URL outside selected protocol`);
+      if (definition.unit_scope === 'site' || !sameSet(family.urls, requiredUrls))
+        throw new ContractError(`${family.family_id}: use unit not_applicable decisions instead of omitting selected URLs`);
     }
     if (family.engines) {
       unique(family.engines, `${family.family_id}.engines`);
-      if (family.engines.some(engine => !p.engines.includes(engine))) throw new ContractError(`${family.family_id}: engine outside protocol`);
+      const requiredEngines = definition.engines ?? p.engines;
+      if (definition.unit_scope !== 'engine_url' || !sameSet(family.engines, requiredEngines))
+        throw new ContractError(`${family.family_id}: target engine units cannot be omitted`);
     }
-    if (family.applicable && definition.engines && !definition.engines.some(engine => p.engines.includes(engine)))
-      throw new ContractError(`${family.family_id}: required target engine absent`);
+    const expected = family.family_id === 'fetch-response' ? true :
+      ['index-policy', 'discovery'].includes(family.family_id) ? publicUrls.length > 0 :
+      family.family_id === 'search-crawl-policy' ? publicUrls.length > 0 && p.engines.length > 0 :
+      family.family_id === 'question-coverage' ? p.question_panel.length > 0 :
+      family.family_id === 'naver-markup' ? p.engines.includes('naver') : null;
+    if (expected !== null && family.applicable !== expected)
+      throw new ContractError(`${family.family_id}: applicability contradicts fixed URL/engine conditions`);
+    if (family.applicable) {
+      if (family.applicability_decision) throw new ContractError(`${family.family_id}: decision only allowed when inapplicable`);
+    } else {
+      const decision = validateApplicabilityDecision(family.applicability_decision,
+        definition.na_conditions, `${family.family_id}.applicability_decision`);
+      const automaticCondition = family.family_id === 'search-crawl-policy' ?
+        (p.engines.length ? 'no_public_index_target' : 'no_target_engine') :
+        ['index-policy', 'discovery'].includes(family.family_id) ? 'no_public_index_target' :
+        family.family_id === 'question-coverage' ? 'no_fixed_questions' :
+        family.family_id === 'naver-markup' ? 'naver_not_target' : null;
+      if (automaticCondition && decision.condition !== automaticCondition)
+        throw new ContractError(`${family.family_id}: decision conflicts with fixed conditions`);
+    }
     if (family.applicable && ['question-coverage', 'answer-clarity'].includes(family.family_id) && !p.question_panel.length)
       throw new ContractError(`${family.family_id}: fixed question panel required`);
   }
@@ -61,8 +91,14 @@ export function freezeProtocol(context) {
       ...(f.urls ? { urls: [...f.urls].sort() } : {}),
       ...(f.engines ? { engines: [...f.engines].sort() } : {}) })),
     page_types: [...p.page_types].sort((a, b) => compare(a.id, b.id)).map(t => ({ ...t,
-      urls: [...t.urls].sort((a, b) => compare(a.normalized, b.normalized)) })) };
+      urls: [...t.urls].sort((a, b) => compare(a.normalized, b.normalized)).map(url => ({ ...url,
+        public_indexing: url.public_indexing !== false })) })) };
   const protocol = stable({ ...sorted, target: context.target, environment: context.environment,
     evaluation_version: context.evaluation_version, protocol_version: context.protocol_version });
-  return { protocol, protocol_hash: createHash('sha256').update(JSON.stringify(protocol)).digest('hex') };
+  const hashInput = structuredClone(protocol);
+  for (const type of hashInput.page_types) for (const url of type.urls) if (url.indexing_decision)
+    url.indexing_decision = { condition: url.indexing_decision.condition };
+  for (const family of hashInput.families) if (family.applicability_decision)
+    family.applicability_decision = { condition: family.applicability_decision.condition };
+  return { protocol, protocol_hash: createHash('sha256').update(JSON.stringify(stable(hashInput))).digest('hex') };
 }

@@ -67,3 +67,60 @@ test('question panel has fixed question identity and category', () => {
   valid.protocol.question_panel = [{ id: 'q1', question: 'Who?', category: 'brand' }];
   assert.equal(freezeProtocol(valid).protocol.question_panel.length, 1);
 });
+
+test('selected URLs cannot opt out of fetch or public index policy with bare flags', () => {
+  for (const familyId of ['fetch-response', 'search-crawl-policy', 'index-policy']) {
+    const changed = context();
+    changed.protocol.families.push({ family_id: familyId, applicable: false });
+    if (familyId === 'fetch-response') changed.protocol.families.shift();
+    assert.throws(() => freezeProtocol(changed), ContractError, familyId);
+  }
+  const changed = context();
+  changed.protocol.page_types[0].urls[0].public_indexing = false;
+  assert.throws(() => freezeProtocol(changed), ContractError);
+});
+
+test('family-specific verdict modes reject partial core policy and invented ratios', () => {
+  const base = { schema_version: '1.0.0', observation_id: 'policy', check_id: 'index-policy',
+    family_id: 'index-policy', unit_key: 'index-policy|https://example.com/',
+    state: 'partial', q: 0.5, partial_basis: { kind: 'threshold_half' },
+    reason: 'confirmed noindex', evaluator_type: 'code', source_ref: 'synthetic', evidence_ref: 'e/policy' };
+  for (const family_id of ['fetch-response', 'search-crawl-policy', 'index-policy', 'document-title'])
+    assert.throws(() => validateEntity('CheckObservation', { ...base, family_id, check_id: family_id }), ContractError);
+  assert.throws(() => validateEntity('CheckObservation', { ...base, family_id: 'question-coverage',
+    check_id: 'question-coverage', unit_key: 'question-coverage|site' }), ContractError);
+  assert.throws(() => validateEntity('CheckObservation', { ...base, state: 'partial', q: 1 / 2,
+    partial_basis: { kind: 'ratio', numerator: 1, denominator: 2 } }), ContractError);
+  assert.equal(validateEntity('CheckObservation', { ...base, family_id: 'answer-clarity',
+    check_id: 'answer-clarity' }).state, 'partial');
+});
+
+test('condition codes affect protocol hash but evidence paths do not', () => {
+  const first = context();
+  first.protocol.families.push({ family_id: 'document-title', applicable: false,
+    applicability_decision: { condition: 'not_html', reason: 'verified type', evidence_ref: 'e/one' } });
+  const second = structuredClone(first);
+  second.protocol.families[1].applicability_decision.reason = 'same condition from another run';
+  second.protocol.families[1].applicability_decision.evidence_ref = 'e/two';
+  assert.equal(freezeProtocol(first).protocol_hash, freezeProtocol(second).protocol_hash);
+  const indexed = structuredClone(first);
+  indexed.protocol.page_types[0].urls[0].public_indexing = false;
+  indexed.protocol.page_types[0].urls[0].indexing_decision = {
+    condition: 'not_public_index_target', reason: 'documented exclusion', evidence_ref: 'e/index' };
+  assert.notEqual(freezeProtocol(first).protocol_hash, freezeProtocol(indexed).protocol_hash);
+});
+
+test('a family cannot silently omit selected URL units', () => {
+  const changed = context();
+  changed.protocol.page_types[0].urls.push({ original: 'https://example.com/about', normalized: 'https://example.com/about' });
+  changed.protocol.families[0].urls = ['https://example.com/'];
+  assert.throws(() => freezeProtocol(changed), ContractError);
+});
+
+test('a fixed question panel cannot be called absent to remove question coverage', () => {
+  const changed = context();
+  changed.protocol.question_panel = [{ id: 'q1', question: 'What?', category: 'brand' }];
+  changed.protocol.families.push({ family_id: 'question-coverage', applicable: false,
+    applicability_decision: { condition: 'no_fixed_questions', reason: 'claimed absent', evidence_ref: 'e/panel' } });
+  assert.throws(() => freezeProtocol(changed), ContractError);
+});

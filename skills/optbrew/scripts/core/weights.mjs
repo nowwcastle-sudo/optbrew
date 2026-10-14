@@ -3,12 +3,15 @@ import { ContractError, validateEntity } from './contracts.mjs';
 import { freezeProtocol } from './protocol.mjs';
 
 const registry = JSON.parse(readFileSync(new URL('../../references/check-registry.json', import.meta.url)));
+const familyById = new Map(registry.families.map(family => [family.family_id, family]));
 const profiles = JSON.parse(readFileSync(new URL('../../references/profiles.json', import.meta.url)));
 const tolerance = 1e-9;
 
 function candidateUnits(definition, plan, protocol) {
+  const publicOnly = ['index-policy', 'search-crawl-policy', 'discovery'].includes(definition.family_id);
   const pageTypes = protocol.page_types.map(type => ({ ...type,
-    urls: type.urls.filter(url => !plan.urls || plan.urls.includes(url.normalized)) })).filter(type => type.urls.length);
+    urls: type.urls.filter(url => (!publicOnly || url.public_indexing) &&
+      (!plan.urls || plan.urls.includes(url.normalized))) })).filter(type => type.urls.length);
   const pages = pageTypes.flatMap(type => type.urls.map(url => ({ url: url.normalized,
     share: 1 / pageTypes.length / type.urls.length })));
   const scope = definition.unit_scope;
@@ -34,6 +37,7 @@ function observationsByUnit(input) {
     const previous = result.get(obs.unit_key);
     if (previous && (previous.family_id !== obs.family_id || previous.state !== obs.state ||
       previous.q !== obs.q || JSON.stringify(previous.partial_basis) !== JSON.stringify(obs.partial_basis) ||
+      previous.applicability_decision?.condition !== obs.applicability_decision?.condition ||
       Boolean(previous.blocker) !== Boolean(obs.blocker)))
       throw new ContractError(`conflicting observation for ${obs.unit_key}`);
     result.set(obs.unit_key, previous ?? obs);
@@ -51,6 +55,12 @@ export function compileUnits(input, profile) {
   if (plans.size !== registry.families.length || registry.families.some(def => !plans.has(def.family_id)))
     throw new ContractError('protocol must state applicability for all 22 families');
   const observed = observationsByUnit(input);
+  for (const obs of input.observations) if (obs.state === 'not_applicable') {
+    const definition = familyById.get(obs.family_id);
+    if (definition.unit_scope === 'site' || obs.family_id === 'discovery' ||
+        (obs.family_id === 'naver-markup' && obs.applicability_decision.condition === 'naver_not_target'))
+      throw new ContractError(`${obs.family_id}: unit N/A contradicts fixed protocol conditions`);
+  }
   const questionCoverage = observed.get('question-coverage|site');
   if (questionCoverage?.partial_basis?.kind === 'ratio' &&
       questionCoverage.partial_basis.denominator !== protocol.question_panel.length)
@@ -102,8 +112,10 @@ export function scoreWeighted(units) {
       !Number.isFinite(unit.weight) || unit.weight < 0) throw new ContractError('invalid or duplicate weighted unit');
     keys.add(unit.key);
     const { state, q, weight } = unit;
+    const definition = familyById.get(unit.family_id);
     if (state === 'not_applicable') {
       if (q !== null) throw new ContractError('not_applicable q must be null');
+      if (definition?.core_policy) throw new ContractError(`${unit.family_id}: core policy unit cannot be not_applicable`);
       continue;
     }
     A += weight;
@@ -114,7 +126,9 @@ export function scoreWeighted(units) {
     if (!['pass', 'partial', 'fail'].includes(state) || !Number.isFinite(q) || q < 0 || q > 1 ||
       (state === 'pass' && Math.abs(q - 1) > tolerance) ||
       (state === 'fail' && Math.abs(q) > tolerance) ||
-      (state === 'partial' && !(q > 0 && q < 1))) throw new ContractError(`invalid weighted verdict: ${unit.key}`);
+      (state === 'partial' && (!(q > 0 && q < 1) || definition?.verdict_mode === 'binary' ||
+        (definition?.verdict_mode === 'threshold_half' && Math.abs(q - 0.5) > tolerance))))
+      throw new ContractError(`invalid weighted verdict: ${unit.key}`);
     M += weight;
     N += weight * q;
   }

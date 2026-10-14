@@ -1,6 +1,8 @@
 import { readFileSync } from 'node:fs';
 
 const schema = JSON.parse(readFileSync(new URL('../../references/schemas/contract.schema.json', import.meta.url)));
+const registry = JSON.parse(readFileSync(new URL('../../references/check-registry.json', import.meta.url)));
+const families = new Map(registry.families.map(family => [family.family_id, family]));
 const tolerance = 1e-9;
 const cwv = { 'lcp-field': [2500, 4000, 'ms'], 'inp-field': [200, 500, 'ms'], 'cls-field': [0.1, 0.25, 'unitless'] };
 
@@ -46,6 +48,15 @@ function checkRule(rule, value, path) {
   if (Array.isArray(value) && rule.items) value.forEach((item, i) => checkRule(rule.items, item, `${path}[${i}]`));
 }
 
+/** A decision is traceable evidence for a condition, never evidence of a measured score. */
+export function validateApplicabilityDecision(decision, allowedConditions, path = 'applicability_decision') {
+  if (!decision) fail(path, 'structured condition decision required');
+  checkRule(schema.$defs.ApplicabilityDecision, decision, path);
+  if (!allowedConditions.includes(decision.condition)) fail(path, `condition not allowed: ${decision.condition}`);
+  if (!decision.reason.trim() || !decision.evidence_ref.trim()) fail(path, 'reason and evidence_ref required');
+  return decision;
+}
+
 /** Official p75 thresholds; optbrew assigns the middle interval q=0.5. */
 export function cwvVerdict(familyId, value, { percentile = 75, source_type = 'field', unit } = {}) {
   const limits = cwv[familyId];
@@ -59,20 +70,30 @@ export function cwvVerdict(familyId, value, { percentile = 75, source_type = 'fi
 
 function checkObservation(value) {
   const { state, q, partial_basis: basis } = value;
+  const definition = families.get(value.family_id);
+  if (!definition) fail('CheckObservation.family_id', 'unregistered family');
   if (state === 'unknown' || state === 'not_applicable') {
     if (q !== null || basis !== null) fail('CheckObservation', `${state} requires null q and basis`);
+    if (state === 'not_applicable') {
+      if (definition.core_policy) fail('CheckObservation', 'core policy unit cannot be not_applicable');
+      validateApplicabilityDecision(value.applicability_decision, definition.na_conditions, 'CheckObservation.applicability_decision');
+    }
   } else if (state === 'pass' || state === 'fail') {
     if (typeof q !== 'number' || Math.abs(q - (state === 'pass' ? 1 : 0)) > tolerance || basis !== null) fail('CheckObservation', `${state} requires fixed q and null basis`);
   } else if (state === 'partial') {
     if (!plainObject(basis) || !(q > 0 && q < 1)) fail('CheckObservation', 'partial requires a supported basis and interior q');
+    if (definition.verdict_mode === 'binary') fail('CheckObservation', `${value.family_id} is binary`);
     if (basis.kind === 'threshold_half') {
+      if (definition.verdict_mode !== 'threshold_half') fail('CheckObservation', `${value.family_id} does not allow threshold_half`);
       if (Math.abs(q - 0.5) > tolerance) fail('CheckObservation', 'threshold_half requires q=0.5');
     } else if (basis.kind === 'ratio') {
+      if (definition.verdict_mode !== 'ratio') fail('CheckObservation', `${value.family_id} does not allow ratio`);
       if (!Number.isInteger(basis.numerator) || !Number.isInteger(basis.denominator) || basis.denominator <= 0 ||
           basis.numerator <= 0 || basis.numerator >= basis.denominator || Math.abs(q - basis.numerator / basis.denominator) > tolerance)
         fail('CheckObservation', 'ratio requires matching integer numerator and positive denominator');
     } else fail('CheckObservation', 'unsupported partial basis');
   }
+  if (state !== 'not_applicable' && value.applicability_decision) fail('CheckObservation', 'decision only allowed for not_applicable');
   if (value.measurement && cwv[value.family_id]) {
     const expected = cwvVerdict(value.family_id, value.measurement.value, value.measurement);
     if (expected.state !== state || Math.abs(expected.q - q) > tolerance) fail('CheckObservation', 'CWV state/q differs from field p75');
