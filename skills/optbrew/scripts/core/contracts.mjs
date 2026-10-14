@@ -111,6 +111,9 @@ function checkMetric(value) {
     fail(path, 'value_state and value disagree');
   if (!value.sample_selection || !['all', 'positive_only', 'unknown'].includes(value.sample_selection.kind))
     fail(path, 'sample_selection.kind required');
+  if (value.value_state === 'not_applicable' &&
+      (typeof value.sample_selection.exclusion_reason !== 'string' || !value.sample_selection.exclusion_reason.trim()))
+    fail(path, 'not_applicable requires an exclusion reason');
   const { start, end, timezone } = value.window;
   for (const [name, date] of [['start', start], ['end', end]]) {
     const timestamp = Date.parse(`${date}T00:00:00Z`);

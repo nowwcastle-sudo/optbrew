@@ -63,7 +63,9 @@ export function normalizeImport(provider, rows, metadata) {
         path: dimension('path') },
       window: { ...window }, panel_hash: null,
       provider_definition: row.provider_definition ?? metadata.provider_definition,
-      sample_selection: { ...sample_selection }, source_ref: metadata.source_ref,
+      sample_selection: { ...sample_selection,
+        ...(value_state === 'not_applicable' ? { exclusion_reason: row.not_applicable_reason } : {}) },
+      source_ref: metadata.source_ref,
       evidence_ref: row.evidence_ref ?? metadata.evidence_ref };
     return validateEntity('MetricObservation', observation);
   });

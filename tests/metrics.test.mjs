@@ -81,6 +81,14 @@ test('positive-only exports cannot claim an all-question citation rate', () => {
   assert.equal(item.sample_selection.kind, 'positive_only');
 });
 
+test('missing provider data cannot be relabelled not applicable without an exclusion', () => {
+  assert.throws(() => normalizeImport('gsc', [{ metric_id: 'native_count', value_state: 'not_applicable', value: null }], meta));
+  const [excluded] = normalizeImport('gsc', [{ metric_id: 'native_count', value_state: 'not_applicable', value: null,
+    not_applicable_reason: 'field is outside this property export' }], meta);
+  assert.equal(excluded.value_state, 'not_applicable');
+  assert.equal(excluded.sample_selection.exclusion_reason, 'field is outside this property export');
+});
+
 test('28-day windows use a supplied complete local date and remain adjacent', () => {
   assert.deepEqual(completeWindows('2026-10-13', 'Asia/Seoul'), {
     before: { start: '2026-08-19', end: '2026-09-15', timezone: 'Asia/Seoul' },
