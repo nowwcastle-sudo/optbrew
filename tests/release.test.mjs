@@ -136,9 +136,9 @@ test('npm verifier rejects tampered entrypoint, missing libs, and false package 
     artifacts.npm_tarball = path.join(outputDir, (Array.isArray(info) ? info[0] : info.optbrew).filename);
     const results = {};
     for (const kind of ['cli-tamper', 'missing-lib', 'wrong-version', 'overlay-version', 'extra-file',
-      'dir-file-conflict', 'duplicate-directory']) {
+      'dir-file-conflict', 'duplicate-directory', 'trailing-file-name', 'unchanged-repack']) {
       const mutated = path.join(outputDir, `${kind}.tgz`);
-      const script = `import io,json,sys,tarfile\nsrc,dst,kind=sys.argv[1:]\nwith tarfile.open(src,'r:gz') as source,tarfile.open(dst,'w:gz') as target:\n if kind=='dir-file-conflict':\n  item=tarfile.TarInfo('package/bin/optbrew.mjs'); item.type=tarfile.DIRTYPE; target.addfile(item)\n if kind=='duplicate-directory':\n  for _ in range(2):\n   item=tarfile.TarInfo('package/duplicate/'); item.type=tarfile.DIRTYPE; target.addfile(item)\n for item in source:\n  if kind=='missing-lib' and item.name.startswith('package/lib/'): continue\n  if item.isfile():\n   data=source.extractfile(item).read()\n   if kind=='cli-tamper' and item.name=='package/bin/optbrew.mjs': data=b'throw new Error("broken")\\n'\n   if kind=='wrong-version' and item.name=='package/package.json':\n    obj=json.loads(data); obj['version']='99.0.0'; data=json.dumps(obj).encode()\n   if kind=='overlay-version' and item.name=='package/.claude-plugin/plugin.json':\n    obj=json.loads(data); obj['version']='99.0.0'; data=json.dumps(obj).encode()\n   item.size=len(data); target.addfile(item,io.BytesIO(data))\n  else: target.addfile(item)\n if kind=='extra-file':\n  data=b'unexpected'; item=tarfile.TarInfo('package/extra.txt'); item.size=len(data); target.addfile(item,io.BytesIO(data))\n`;
+      const script = `import io,json,sys,tarfile\nsrc,dst,kind=sys.argv[1:]\nwith tarfile.open(src,'r:gz') as source,tarfile.open(dst,'w:gz') as target:\n if kind=='dir-file-conflict':\n  item=tarfile.TarInfo('package/bin/optbrew.mjs'); item.type=tarfile.DIRTYPE; target.addfile(item)\n if kind=='duplicate-directory':\n  for _ in range(2):\n   item=tarfile.TarInfo('package/duplicate/'); item.type=tarfile.DIRTYPE; target.addfile(item)\n for item in source:\n  if kind=='trailing-file-name' and item.name=='package/bin/optbrew.mjs': item.name += '/'\n  if kind=='missing-lib' and item.name.startswith('package/lib/'): continue\n  if item.isfile():\n   data=source.extractfile(item).read()\n   if kind=='cli-tamper' and item.name=='package/bin/optbrew.mjs': data=b'throw new Error("broken")\\n'\n   if kind=='wrong-version' and item.name=='package/package.json':\n    obj=json.loads(data); obj['version']='99.0.0'; data=json.dumps(obj).encode()\n   if kind=='overlay-version' and item.name=='package/.claude-plugin/plugin.json':\n    obj=json.loads(data); obj['version']='99.0.0'; data=json.dumps(obj).encode()\n   item.size=len(data); target.addfile(item,io.BytesIO(data))\n  else: target.addfile(item)\n if kind=='extra-file':\n  data=b'unexpected'; item=tarfile.TarInfo('package/extra.txt'); item.size=len(data); target.addfile(item,io.BytesIO(data))\n`;
       const mutation = spawnSync('python', ['-c', script, artifacts.npm_tarball, mutated, kind], { encoding: 'utf8' });
       assert.equal(mutation.status, 0, mutation.stderr);
       results[kind] = await verifyRelease({ root, artifacts: { ...artifacts, npm_tarball: mutated } });
@@ -149,13 +149,21 @@ test('npm verifier rejects tampered entrypoint, missing libs, and false package 
       'overlay-version': ['package/.claude-plugin/plugin.json', 'npm_hash_mismatch'],
       'extra-file': ['package/extra.txt', 'npm_unexpected_file'] };
     for (const [kind, result] of Object.entries(results)) {
+      if (kind === 'unchanged-repack') {
+        assert.equal(result.status, 'valid', JSON.stringify(result.errors));
+        process.stdout.write('npm mutation unchanged-repack: valid\n');
+        continue;
+      }
       assert.equal(result.status, 'invalid', `${kind}: ${JSON.stringify(result)}`);
       if (target[kind])
         assert.ok(result.errors.some(error => error.path === target[kind][0] && error.code === target[kind][1]),
           `${kind}: ${JSON.stringify(result.errors)}`);
+      else if (kind === 'trailing-file-name')
+        assert.ok(result.errors.some(error => /regular file path ends with slash/.test(error.code)),
+          `${kind}: ${JSON.stringify(result.errors)}`);
       else assert.ok(result.errors.some(error => /duplicate archive path/.test(error.code)),
         `${kind}: ${JSON.stringify(result.errors)}`);
-      process.stdout.write(`npm mutation ${kind}: ${target[kind]?.[1] ?? 'duplicate archive path'}\n`);
+      process.stdout.write(`npm mutation ${kind}: ${target[kind]?.[1] ?? (kind === 'trailing-file-name' ? 'regular file path ends with slash' : 'duplicate archive path')}\n`);
     }
     passed = true;
   } finally {
