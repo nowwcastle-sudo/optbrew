@@ -64,7 +64,7 @@ node bin/optbrew.mjs update --scope project --project ./site --json
 node bin/optbrew.mjs rollback --scope project --project ./site --release-version 0.1.0 --json
 ```
 
-Without a confirmed registry package, `check-updates` reports `local_only`. `update` uses the current CLI bundle, verifies it, and updates all targets in that install record; it does not silently replace local edits. `rollback` needs that version in the record's retained prior releases. The shown rollback will therefore fail on a fresh 0.1.1 install and applies to a managed installation that retains local 0.1.0. `npm update -g optbrew` updates npm's package files after release; it does not rewrite a copy already placed in an agent skills directory. Run the managed `update` command again after updating the CLI. Native plugin and Pi package update paths are in [platform support](docs/platforms.md).
+`check-updates --package optbrew` reads the latest version from the npm registry; without `--package` it reports `local_only`. `update` uses the current CLI bundle, verifies it, and updates all targets in that install record; it does not silently replace local edits. `rollback` needs that version in the record's retained prior releases. The shown rollback will therefore fail on a fresh 0.1.1 install and applies to a managed installation that retains local 0.1.0. `npm update -g optbrew` updates npm's package files after release; it does not rewrite a copy already placed in an agent skills directory. Run the managed `update` command again after updating the CLI. Native plugin and Pi package update paths are in [platform support](docs/platforms.md).
 
 ## Support and license
 

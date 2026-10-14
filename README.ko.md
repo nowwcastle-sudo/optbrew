@@ -64,7 +64,7 @@ node bin/optbrew.mjs update --scope project --project ./site --json
 node bin/optbrew.mjs rollback --scope project --project ./site --release-version 0.1.0 --json
 ```
 
-확인된 registry 패키지가 없으면 `check-updates`는 `local_only`를 반환합니다. `update`는 현재 CLI 번들을 검증한 뒤 관리 기록의 모든 대상에 적용합니다. 로컬 편집은 자동으로 덮어쓰지 않습니다. `rollback`은 관리 기록에 해당 이전 버전이 남아 있어야 합니다. 새 0.1.1 설치에서는 위 복원 예시가 실패하며, 로컬 0.1.0을 보존한 관리 설치에 적용됩니다. 출시 후 `npm update -g optbrew`는 npm 패키지를 갱신하지만 이전에 agent 스킬 폴더로 복사한 파일까지 바꾸지는 않습니다. CLI를 갱신한 다음 관리 `update`를 다시 실행합니다. 호스트 고유 갱신은 [플랫폼 안내](docs/platforms.md)를 보십시오.
+`check-updates --package optbrew`는 npm 레지스트리에서 최신 버전을 읽습니다. `--package`를 빼면 `local_only`를 반환합니다. `update`는 현재 CLI 번들을 검증한 뒤 관리 기록의 모든 대상에 적용합니다. 로컬 편집은 자동으로 덮어쓰지 않습니다. `rollback`은 관리 기록에 해당 이전 버전이 남아 있어야 합니다. 새 0.1.1 설치에서는 위 복원 예시가 실패하며, 로컬 0.1.0을 보존한 관리 설치에 적용됩니다. 출시 후 `npm update -g optbrew`는 npm 패키지를 갱신하지만 이전에 agent 스킬 폴더로 복사한 파일까지 바꾸지는 않습니다. CLI를 갱신한 다음 관리 `update`를 다시 실행합니다. 호스트 고유 갱신은 [플랫폼 안내](docs/platforms.md)를 보십시오.
 
 ## 지원 범위와 라이선스
 

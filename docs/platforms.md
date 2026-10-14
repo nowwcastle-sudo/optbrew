@@ -16,7 +16,7 @@ The CLI maps only these default targets. Custom roots, host policies, remote age
 
 The [README](../README.md) shows parser-checked checkout commands for install, doctor, update, and rollback. The CLI validates bundle hashes before an install or update. `update` replaces every target in one managed record as a unit. An edited target makes the default update stop; the explicit `--local-changes backup-and-replace` policy retains a readable backup. `rollback --release-version VERSION` works only when that version is in the record's retained prior releases. A fresh installation has no older release.
 
-After a public npm release, `npm install -g optbrew` and `npm update -g optbrew` manage the package in npm. Neither command rewrites an old copied skill target. Run the installed CLI's managed `update` after the package update, then `doctor` and a new-session invocation check. `check-updates --json` is read-only; without a confirmed registry name it returns `local_only`. The package is not public merely because `package.json` names it.
+After a public npm release, `npm install -g optbrew` and `npm update -g optbrew` manage the package in npm. Neither command rewrites an old copied skill target. Run the installed CLI's managed `update` after the package update, then `doctor` and a new-session invocation check. `check-updates --package optbrew --json` is read-only and compares the installed release with the npm registry; without `--package` it returns `local_only`.
 
 ## Native host routes
 
