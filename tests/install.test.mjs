@@ -210,3 +210,18 @@ test('installer rechecks outstanding journal after obtaining its lock', async ()
   await assert.rejects(lstat(resolveTargets({ home: f.home, scope: 'user', agents: ['pi'] })[0].path), { code: 'ENOENT' });
   assert.equal((await recoverTransaction(f.recordRoot)).status, 'recovered');
 });
+
+test('final review M3: the recovery hint uses literal single quotes for PowerShell and POSIX shells', async () => {
+  const { root, bundleRoot } = await fixture();
+  const projectRoot = path.join(root, "proj $HOME $(x) it's");
+  const managed = path.join(path.resolve(projectRoot), '.optbrew/install');
+  await mkdir(managed, { recursive: true });
+  await writeFile(path.join(managed, 'transaction.json'), '{}');
+  await assert.rejects(install({ bundleRoot, scope: 'project', projectRoot, agents: ['pi'] }), error => {
+    assert.match(error.message, /recovery_required.*optbrew update/);
+    assert.ok(error.message.includes(`PowerShell: optbrew update --record-root '${managed.replaceAll("'", "''")}'`), error.message);
+    assert.ok(error.message.includes(`POSIX shell: optbrew update --record-root '${managed.replaceAll("'", "'\\''")}'`), error.message);
+    assert.equal(error.message.includes(`"${managed}"`), false, 'double quotes would let a shell expand $ in the path');
+    return true;
+  });
+});
