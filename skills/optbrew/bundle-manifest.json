@@ -536,7 +536,7 @@
     },
     {
       "path": "references/api.md",
-      "sha256": "e6d8d9e568a4b7b7efe9ec9b30f91fbeefe9a3c3f20f44424e0203ef4160e5a8"
+      "sha256": "17f613a49b90e17995281119858ea9dd20666c9676aff92bd12647701721a2a7"
     },
     {
       "path": "references/check-registry.json",
@@ -659,5 +659,5 @@
       "sha256": "e9041a0ff06c5395027c25646cf210958e38e969d34b329d7b165a865e77e313"
     }
   ],
-  "bundle_hash": "444b69ad2cf1f015e926aea30d6c0513fcdcf6da1a23d545a39a491ab3fcfea8"
+  "bundle_hash": "e0ba573e39a63c0b2d9a620f0d1f80505fe7c37dabf5cba4a32dd2385b7ef53a"
 }

@@ -4,8 +4,42 @@ The optbrew audit command is `node skills/optbrew/scripts/audit.mjs --context <r
 
 `RunContext.scope.allowed` is a nonempty list of `{ "origin": "https://example.org", "path_prefix": "/owned/" }`. An origin fixes scheme, host and effective port. The path prefix is segment bounded. `scope.local_targets` may list explicit `{ "host": "localhost", "port": 8765 }` pairs for a declared local target. Without this pair, loopback, private, link-local, ULA and mapped IPv4 addresses are blocked. The default ceilings are 50 URLs, depth 3, concurrency 2, 20 seconds, 5 MiB and 10 redirects. Lower limits may be set with `max_urls`, `max_depth` and `concurrency`. The 20-second deadline covers DNS, redirects, connection and response together. Every redirect is checked against scope and fresh DNS; the Node transport connects to the vetted address and preserves TLS hostname verification. A host MCP or bulk crawler is selected only if it can guarantee the same boundary and cost controls.
 
-The v0.1.0 direct Anthropic Messages adapter accepts only text-only `{model,max_tokens,messages}` requests. Each message has only `{role,content}` with string content. It accepts these exact model IDs: `claude-fable-5-1`, `claude-opus-5-5`, `claude-sonnet-5-5`, `claude-haiku-5-5`. Anthropic's [model overview](https://platform.claude.com/docs/en/about-claude/models/overview), checked 2026-10-14, lists a 1,000,000-token context window and 128,000 maximum output tokens for each. Every attempt must reserve at least `1,000,000 + request.max_tokens` in the `tokens` unit. The adapter requires exactly one token upper bound, a matching ledger budget and approval reference, and an `ANTHROPIC_API_KEY` environment variable. It rejects unknown models, extra fields, tools, web search, non-text input, currency-only bounds and smaller token reservations before any provider request. The official [token-counting guide](https://platform.claude.com/docs/en/build-with-claude/token-counting), checked 2026-10-14, calls count results estimates that may differ from billed input usage; they are not accepted as hard upper bounds.
+The v0.1.0 direct Anthropic Messages adapter accepts only text-only `{model,max_tokens,messages}` requests. Each message has only `{role,content}` with string content. It accepts these exact model IDs: `claude-fable-5-1`, `claude-opus-5-5`, `claude-sonnet-5-5`, `claude-haiku-5-5`. Anthropic's [model overview](https://platform.claude.com/docs/en/models/overview), checked 2026-10-14, lists a 1,000,000-token context window and 128,000 maximum output tokens for each. Every attempt must reserve at least `1,000,000 + request.max_tokens` in the `tokens` unit. The adapter requires exactly one token upper bound, a matching ledger budget and approval reference, and an `ANTHROPIC_API_KEY` environment variable. It rejects unknown models, extra fields, tools, web search, non-text input, currency-only bounds and smaller token reservations before any provider request. The official [token-counting guide](https://platform.claude.com/docs/en/build-with-claude/token-counting), checked 2026-10-14, calls count results estimates that may differ from billed input usage; they are not accepted as hard upper bounds.
 
 The reserved worst-case token bound is not an estimate of actual billing. Record estimated spend, its price source/date and the user-approved stop condition separately in the cost decision. `CostLedger` keeps credits, tokens, search calls and minor currency units separate; `currency_minor` requires a currency code. This direct adapter enforces only its verified token boundary. Tools, paid search and other API shapes remain unavailable in direct mode until their hard bounds are verified. They may be routed through separately approved host capabilities or other provider data with `cost_enforcement: host_policy` explicitly reported when code cannot lock spending. Optbrew never substitutes a model or silently turns search off. The direct adapter tries at most twice for retryable HTTP errors. A timeout, malformed response or unmeasurable charge settles as `unknown`, retaining the reservation. Provider-reported usage above the reservation is stored at its observed amount and blocks subsequent spending. Successful responses are redacted and stored beside the ledger under `evidence/provider/`.
 
 Primary syntax checked 2026-10-14: [Anthropic Messages API](https://docs.anthropic.com/en/api/messages), [Anthropic web search tool](https://platform.claude.com/docs/en/agents-and-tools/tool-use/web-search-tool), [Node HTTPS request](https://nodejs.org/api/https.html#httpsrequesturl-options-callback), [Node DNS lookup](https://nodejs.org/api/dns.html#dnslookuphostname-options-callback). These describe API/CLI mechanics, not a price approval or evidence of an actual paid call.
+
+## Getting an Anthropic API key
+
+An Anthropic Console API key is separate from a Claude web or Claude Code subscription. Follow the official [API key guide](https://platform.claude.com/docs/en/get-api-key): open the Console, go to **Settings → API keys**, and create a key with the intended scope. Put it in the local `ANTHROPIC_API_KEY` environment variable. These examples contain placeholders only; replace the placeholder in your own shell, never in a report, issue, or shared command log.
+
+```bash
+export ANTHROPIC_API_KEY="<YOUR_ANTHROPIC_API_KEY>"
+```
+
+```powershell
+$env:ANTHROPIC_API_KEY = '<YOUR_ANTHROPIC_API_KEY>'
+```
+
+The current key guide notes that a key spanning multiple Anthropic workspaces can require `anthropic-workspace-id`. The direct v0.1.0 adapter sends `x-api-key`, `anthropic-version`, and JSON content headers; it does **not** set a workspace ID header. Do not promise this direct path for a key requiring that header. Use a compatible key or a separately approved host capability. The env-var examples configure a shell only; they do not initiate a paid request or confirm account access.
+
+Before the first paid attempt, record a current pricing source/date, estimated spend, a user-approved limit or stop condition, and the separate token reservation described above. Unknown price is not zero price. A host subscription is not an API allowance. The ledger's reserved token capacity is intentionally conservative and differs from provider-billed usage. Provider timeout or uncertain usage remains `unknown`; reported usage over a reservation remains an overrun and blocks further spending.
+
+## SE Ranking is a separate capability
+
+SE Ranking has a separate [API Dashboard and account plan](https://seranking.com/api.html). Its [MCP guide](https://seranking.com/api/integrations/mcp) documents a Streamable HTTP endpoint at `https://api.seranking.com/mcp`, OAuth 2.1 and an explicit `X-Api-Key` option where supported. Available tools and credits depend on the subscribed account. An Anthropic key neither authenticates SE Ranking nor pays its credits. A connected host capability must disclose its cost enforcement and tool access before use; the direct Anthropic token guard does not cover SE Ranking.
+
+The installed Codex CLI's `codex mcp add --help` accepts `NAME --url URL` for Streamable HTTP and an optional bearer-token env var. It does not expose a generic header option in the checked version. For the SE Ranking OAuth route, registration syntax is:
+
+```sh
+codex mcp add se-ranking --url https://api.seranking.com/mcp
+```
+
+The installed Claude Code CLI's `claude mcp add --help` accepts `--transport http`, `--scope local|user|project`, and `--header` for explicit headers. Its OAuth registration syntax is:
+
+```sh
+claude mcp add --transport http --scope local se-ranking https://api.seranking.com/mcp
+```
+
+These commands change host MCP configuration and may start OAuth. They are reference syntax only; this repository's local tests check help output and do not register a server or authenticate an account. Use the host's current help and the SE Ranking guide before connecting. Never place a real `X-Api-Key` value in a committed config, command transcript, or report. The former `rmcp` setup shown in some older SE Ranking material is not the checked Codex CLI syntax.

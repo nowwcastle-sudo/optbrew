@@ -18,6 +18,8 @@
     "README.md",
     "README.ko.md",
     "CHANGELOG.md",
+    "docs/platforms.md",
+    "docs/release.md",
     "LICENSE",
     "THIRD_PARTY_NOTICES.md",
     "source-lock.json",

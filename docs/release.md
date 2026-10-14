@@ -1,0 +1,14 @@
+# Release procedure
+
+This checkout is version 0.1.0. A package name, local manifest, or generated ZIP does not establish a public release. Publication, a Git tag, a push, and account changes require their own authorization. This page describes the reviewable local release artifacts and the checks to run before that decision.
+
+1. Confirm the source commit and clean intended diff. Match `package.json`, the portable plugin, Codex plugin, Claude plugin, marketplace entry, and ZIP name to one release version. Keep `evaluation_version` and `protocol_version` separate from the release version.
+2. Run `npm test` and `python -m unittest discover -s tests/python` on Python 3.10 or later. Run the focused `node --test tests/docs-commands.test.mjs` check when changing examples. The command check runs optbrew against isolated local fixtures; it makes no provider call.
+3. Run `npm run build-bundle`, `node scripts/build-release.mjs --version 0.1.0 --output-dir dist`, `npm pack --pack-destination dist`, `node scripts/verify-release.mjs --dist dist`, and `npm pack --dry-run --json` from the repository root. Rebuild after changing the README or packaged files. Do not treat an older tarball as containing a later documentation edit.
+4. Inspect the npm file list, the ZIP file list, `bundle-manifest.json`, `source-lock.json`, licenses, and secret scan output. The same skill bytes and version must be traceable across the npm package and ZIP. Source notices belong in both. User run evidence, account configuration, keys, private cards, and authoring materials must stay outside both.
+5. Test a fresh isolated managed install, `doctor`, update from a retained earlier release, rollback, and fresh host discovery or invocation where a host is available. A dry run or manifest check does not prove invocation. Record the untested hosts and capabilities.
+6. Only after a reviewed release decision, publish or upload the approved artifacts and verify the public npm and repository readback. Do not infer publication from successful local builds.
+
+The bundle includes five pinned source bundles plus seven selected marketing guides. The Naver source articles under `references/guide/` (55 original bodies) remain excluded; the index links to official pages and full offline article lookup is unavailable. The published notice must retain upstream MIT/ISC permission texts and modifications. Optbrew's own code uses MIT. These code licenses do not grant service subscriptions or API data rights.
+
+The v0.1.0 direct Anthropic adapter is limited to the exact text request shape and four model IDs in [API boundaries](../skills/optbrew/references/api.md). No live paid result, host invocation, search indexing, traffic change, or customer adoption is established by a passing package check. See [platform paths](platforms.md) for update mechanisms after release.
