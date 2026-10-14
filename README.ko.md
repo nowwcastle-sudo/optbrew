@@ -20,7 +20,7 @@ node bin/optbrew.mjs doctor --agents codex,claude-code,cursor,opencode,pi --scop
 
 저장소 루트에서 실행하십시오. 기본 전략은 `--strategy link`입니다. 링크를 쓸 수 없으면 `copy`를 선택할 수 있습니다. 관리 기록은 프로젝트의 `.optbrew/install`에 둡니다. 한 호스트만 설치하려면 목록 대신 `codex`, `claude-code`, `cursor`, `opencode`, `pi` 중 한 ID를 적습니다. 사용자 전체 범위에 설치할 때만 `--scope user`를 씁니다. 설치 명령은 번들 manifest를 확인하며 관리 대상이 아닌 기존 폴더를 덮어쓰지 않습니다.
 
-공개 npm 출시 후에는 `npm install -g optbrew`로 `optbrew` 명령을 받을 수 있습니다. 이 checkout에서 아직 npm 게시를 확인하지 않았으므로, 이 명령은 **출시 후 안내**입니다. 위 로컬 checkout 명령은 지금 사용할 수 있습니다. 호스트 고유 설치와 ZIP은 [플랫폼 안내](docs/platforms.md)를 보십시오.
+checkout은 `https://github.com/nowwcastle-sudo/optbrew`를 clone해서 받고, 위 명령은 그 저장소 최상위에서 실행합니다. `npm install -g optbrew`로 설치하면 같은 CLI를 `optbrew` 명령으로 쓸 수 있습니다. 이때는 위 명령의 `node bin/optbrew.mjs`를 `optbrew`로 바꿉니다. 호스트 고유 설치와 ZIP은 [플랫폼 안내](docs/platforms.md)를 보십시오.
 
 ## 첫 실행
 

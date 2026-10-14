@@ -20,7 +20,7 @@ node bin/optbrew.mjs doctor --agents codex,claude-code,cursor,opencode,pi --scop
 
 Create `site` first and run these commands from the repository root. `--strategy link` is the default; `copy` also works when links are unavailable. The managed record lives under that project's `.optbrew/install`. For one host, replace the comma-separated list with its exact ID: `codex`, `claude-code`, `cursor`, `opencode`, or `pi`. Use `--scope user` only when you intend to install into user-level host directories. The install command checks the bundle manifest and refuses to replace an unmanaged target.
 
-After an npm release is public, `npm install -g optbrew` can provide the `optbrew` command. The package has not been published by this checkout, so that public install command is **after-release guidance**. The source checkout commands above work now. Native host distribution and the ZIP path are described in [platform support](docs/platforms.md).
+To get the checkout, clone `https://github.com/nowwcastle-sudo/optbrew` and run the commands above from its root. `npm install -g optbrew` installs the same CLI as an `optbrew` command; replace `node bin/optbrew.mjs` with `optbrew` in the commands above. Native host distribution and the ZIP path are described in [platform support](docs/platforms.md).
 
 ## First use
 
