@@ -1,0 +1,46 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://optbrew.local/schemas/contract.schema.json",
+  "title": "optbrew persisted entities v1.0.0",
+  "$defs": {
+    "UrlRef": { "type": "object", "required": ["original", "normalized"], "properties": { "original": { "type": "string", "format": "uri" }, "normalized": { "type": "string", "format": "uri" } } },
+    "PageType": { "type": "object", "required": ["id", "urls"], "properties": { "id": { "type": "string" }, "urls": { "type": "array", "items": { "$ref": "#/$defs/UrlRef" } } } },
+    "FamilyPlan": { "type": "object", "required": ["family_id", "applicable"], "properties": { "family_id": { "type": "string" }, "applicable": { "type": "boolean" }, "urls": { "type": "array", "items": { "type": "string" } }, "engines": { "type": "array", "items": { "type": "string" } }, "reason": { "type": "string" } } },
+    "Question": { "type": "object", "required": ["id", "question", "category"], "properties": { "id": { "type": "string" }, "question": { "type": "string" }, "category": { "enum": ["brand", "non_brand"] }, "goal": { "type": "string" } } },
+    "Protocol": { "type": "object", "additionalProperties": false, "required": ["page_types", "engines", "families", "locale", "region", "browser", "device", "question_panel", "surfaces", "models", "search_enabled"], "properties": {
+      "page_types": { "type": "array", "items": { "$ref": "#/$defs/PageType" } }, "engines": { "type": "array", "items": { "type": "string" } }, "families": { "type": "array", "items": { "$ref": "#/$defs/FamilyPlan" } },
+      "locale": { "type": "string" }, "region": { "type": "string" }, "browser": { "type": "string" }, "device": { "type": "string" }, "question_panel": { "type": "array", "items": { "$ref": "#/$defs/Question" } }, "surfaces": { "type": "array" }, "models": { "type": "array" }, "search_enabled": { "type": ["boolean", "null"] },
+      "target": { "type": ["string", "object"] }, "environment": { "type": "string" }, "evaluation_version": { "type": "string" }, "protocol_version": { "type": "string" }
+    } },
+    "RunContext": { "type": "object", "required": ["schema_version", "run_id", "target", "environment", "goals", "allowed_changes", "scope", "protocol", "evaluation_version", "protocol_version", "data_sources", "cost_decision", "evidence_ref"], "properties": {
+      "schema_version": { "const": "1.0.0" }, "run_id": { "type": "string" }, "target": { "type": ["string", "object"] }, "environment": { "type": "string" }, "goals": { "type": "array" }, "allowed_changes": { "type": "array" }, "scope": { "type": "object" }, "protocol": { "$ref": "#/$defs/Protocol" }, "evaluation_version": { "type": "string" }, "protocol_version": { "type": "string" }, "data_sources": { "type": "array" }, "cost_decision": { "type": "object" }, "evidence_ref": { "type": "string" }
+    } },
+    "CheckObservation": { "type": "object", "required": ["schema_version", "observation_id", "check_id", "family_id", "unit_key", "state", "q", "partial_basis", "reason", "evaluator_type", "source_ref", "evidence_ref"], "properties": {
+      "schema_version": { "const": "1.0.0" }, "observation_id": { "type": "string" }, "check_id": { "type": "string" }, "family_id": { "type": "string" }, "unit_key": { "type": "string" }, "state": { "enum": ["pass", "partial", "fail", "unknown", "not_applicable"] }, "q": { "type": ["number", "null"], "minimum": 0, "maximum": 1 }, "partial_basis": { "type": ["object", "null"] }, "reason": { "type": "string" }, "evaluator_type": { "enum": ["human", "host_model", "external_model", "code"] }, "source_ref": { "type": "string" }, "evidence_ref": { "type": "string" }, "blocker": { "type": "boolean" }, "measurement": { "type": "object" }
+    } },
+    "MetricObservation": { "type": "object", "required": ["schema_version", "metric_id", "value_state", "value", "numerator", "denominator", "definition", "filters", "window", "panel_hash", "provider_definition", "sample_selection", "source_ref", "evidence_ref"], "properties": {
+      "schema_version": { "const": "1.0.0" }, "metric_id": { "type": "string" }, "value_state": { "enum": ["measured", "unknown", "zero_or_missing", "not_applicable"] }, "value": { "type": ["number", "null"] }, "numerator": { "type": ["number", "null"] }, "denominator": { "type": ["number", "null"] }, "definition": { "type": "string" }, "filters": { "type": "object" }, "window": { "type": "object" }, "panel_hash": { "type": ["string", "null"] }, "provider_definition": { "type": "string" }, "sample_selection": { "type": "object" }, "source_ref": { "type": "string" }, "evidence_ref": { "type": "string" }
+    } },
+    "Finding": { "type": "object", "required": ["schema_version", "finding_id", "check_id", "unit_key", "priority", "blocker", "message", "source_ref", "evidence_ref", "remediation_ids", "status"], "properties": {
+      "schema_version": { "const": "1.0.0" }, "finding_id": { "type": "string" }, "check_id": { "type": "string" }, "unit_key": { "type": "string" }, "priority": { "type": "string" }, "blocker": { "type": "boolean" }, "message": { "type": "string" }, "source_ref": { "type": "string" }, "evidence_ref": { "type": "string" }, "remediation_ids": { "type": "array" }, "status": { "type": "string" }
+    } },
+    "ChangeRecord": { "type": "object", "required": ["schema_version", "change_id", "finding_ids", "environment", "path", "before_hash", "after_hash", "backup_ref", "verification", "evidence_ref"], "properties": {
+      "schema_version": { "const": "1.0.0" }, "change_id": { "type": "string" }, "finding_ids": { "type": "array" }, "environment": { "type": "string" }, "path": { "type": "string" }, "before_hash": { "type": "string" }, "after_hash": { "type": "string" }, "backup_ref": { "type": "string" }, "verification": { "type": "object" }, "evidence_ref": { "type": "string" }
+    } },
+    "CostLedger": { "type": "object", "required": ["schema_version", "run_id", "budgets", "reservations", "settlements", "approval_ref", "source_ref"], "properties": {
+      "schema_version": { "const": "1.0.0" }, "run_id": { "type": "string" }, "budgets": { "type": "array" }, "reservations": { "type": "array" }, "settlements": { "type": "array" }, "approval_ref": { "type": ["string", "null"] }, "source_ref": { "type": "string" }
+    } },
+    "ScoreResult": { "type": "object", "required": ["schema_version", "evaluation_version", "profile", "A", "M", "N", "score", "coverage", "missing_bounds", "band", "readiness_status", "blockers", "unknown_core", "source_ref"], "properties": {
+      "schema_version": { "const": "1.0.0" }, "evaluation_version": { "type": "string" }, "profile": { "type": "string" }, "A": { "type": "number" }, "M": { "type": "number" }, "N": { "type": "number" }, "score": { "type": ["number", "null"] }, "coverage": { "type": ["number", "null"] }, "missing_bounds": { "type": ["array", "null"] }, "band": { "type": ["string", "null"] }, "readiness_status": { "enum": ["blocked", "unverified", "provisional", "measured", "not_applicable"] }, "blockers": { "type": "array" }, "unknown_core": { "type": "array" }, "source_ref": { "type": "string" }
+    } },
+    "ScoreInput": { "type": "object", "required": ["schema_version", "run_context", "observations"], "properties": {
+      "schema_version": { "const": "1.0.0" }, "run_context": { "$ref": "#/$defs/RunContext" }, "observations": { "type": "array", "items": { "$ref": "#/$defs/CheckObservation" } }
+    } },
+    "ReportPacket": { "type": "object", "required": ["schema_version", "run_context", "baseline", "after", "comparison", "metrics", "findings", "changes", "costs", "remaining", "evidence_index", "source_ref"], "properties": {
+      "schema_version": { "const": "1.0.0" }, "run_context": { "$ref": "#/$defs/RunContext" }, "baseline": { "type": "object" }, "after": { "type": ["object", "null"] }, "comparison": { "type": "object" }, "metrics": { "type": "array", "items": { "$ref": "#/$defs/MetricObservation" } }, "findings": { "type": "array", "items": { "$ref": "#/$defs/Finding" } }, "changes": { "type": "array", "items": { "$ref": "#/$defs/ChangeRecord" } }, "costs": { "$ref": "#/$defs/CostLedger" }, "remaining": { "type": "array" }, "evidence_index": { "type": "array" }, "source_ref": { "type": "string" }
+    } },
+    "InstallRecord": { "type": "object", "required": ["schema_version", "scope_id", "release_version", "bundle_hash", "source", "managed_root", "targets", "file_hashes", "previous_releases", "transaction", "source_ref"], "properties": {
+      "schema_version": { "const": "1.0.0" }, "scope_id": { "type": "string" }, "release_version": { "type": "string" }, "bundle_hash": { "type": "string" }, "source": { "type": "string" }, "managed_root": { "type": "string" }, "targets": { "type": "array" }, "file_hashes": { "type": "object" }, "previous_releases": { "type": "array" }, "transaction": { "type": "object" }, "source_ref": { "type": "string" }
+    } }
+  }
+}

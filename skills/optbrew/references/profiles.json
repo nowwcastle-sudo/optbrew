@@ -1,0 +1,13 @@
+{
+  "schema_version": "1.0.0",
+  "axes": ["T", "S", "P", "C", "E"],
+  "default_profile": "SEO",
+  "profile_applicability": { "NEO": "Only when Naver is a target engine" },
+  "profiles": {
+    "SEO": { "T": 30, "S": 20, "P": 15, "C": 20, "E": 15 },
+    "NEO": { "T": 35, "S": 30, "P": 10, "C": 15, "E": 10 },
+    "AEO": { "T": 20, "S": 20, "P": 10, "C": 35, "E": 15 },
+    "GEO": { "T": 25, "S": 15, "P": 5, "C": 30, "E": 25 },
+    "LLMO": { "T": 10, "S": 10, "P": 0, "C": 30, "E": 50 }
+  }
+}

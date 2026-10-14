@@ -1,0 +1,53 @@
+import { readFileSync } from 'node:fs';
+import { validateEntity, cwvVerdict } from './contracts.mjs';
+import { compileUnits, scoreWeighted } from './weights.mjs';
+
+const registry = JSON.parse(readFileSync(new URL('../../references/check-registry.json', import.meta.url)));
+const profiles = JSON.parse(readFileSync(new URL('../../references/profiles.json', import.meta.url)));
+
+export { cwvVerdict };
+
+function band(score) {
+  if (score === null) return null;
+  if (score < 60) return 'focus_improvement';
+  if (score < 80) return 'major_improvement';
+  if (score < 95) return 'additional_improvement';
+  return 'remaining_review';
+}
+
+/** Readiness scores are local audit status, never predicted search or AI outcomes. */
+export function score(input) {
+  validateEntity('ScoreInput', input);
+  const units = compileUnits(input, 'SEO');
+  const coreIds = new Set(registry.families.filter(x => x.core_policy).map(x => x.family_id));
+  const blockingIds = new Set(registry.families.filter(x => x.blocker_on_fail).map(x => x.family_id));
+  const canonicalObservations = [...input.observations].sort((a, b) => {
+    const left = [a.unit_key, a.observation_id, a.source_ref, a.evidence_ref, a.reason].join('\0');
+    const right = [b.unit_key, b.observation_id, b.source_ref, b.evidence_ref, b.reason].join('\0');
+    return left < right ? -1 : left > right ? 1 : 0;
+  });
+  const observations = new Map();
+  for (const obs of canonicalObservations) if (!observations.has(obs.unit_key)) observations.set(obs.unit_key, obs);
+  const blockers = [], unknown_core = [];
+  for (const unit of units) {
+    const obs = observations.get(unit.key);
+    if ((blockingIds.has(unit.family_id) || obs?.blocker) && unit.state === 'fail')
+      blockers.push({ family_id: unit.family_id, unit_key: unit.key, reason: obs?.reason ?? 'confirmed failure', evidence_ref: obs?.evidence_ref ?? null });
+    if (coreIds.has(unit.family_id) && unit.state === 'unknown')
+      unknown_core.push({ family_id: unit.family_id, unit_key: unit.key });
+  }
+  for (const obs of canonicalObservations) if (obs.blocker && obs.state === 'fail' &&
+    !blockers.some(x => x.unit_key === obs.unit_key))
+    blockers.push({ family_id: obs.family_id, unit_key: obs.unit_key, reason: obs.reason, evidence_ref: obs.evidence_ref });
+  blockers.sort((a, b) => a.unit_key < b.unit_key ? -1 : a.unit_key > b.unit_key ? 1 : 0);
+  const selectedProfiles = Object.keys(profiles.profiles).filter(name => name !== 'NEO' || input.run_context.protocol.engines.includes('naver'));
+  return selectedProfiles.map(profile => {
+    const weighted = scoreWeighted(compileUnits(input, profile));
+    const readiness_status = weighted.A === 0 ? 'not_applicable' : blockers.length ? 'blocked' :
+      unknown_core.length ? 'unverified' : 100 * weighted.M / weighted.A < 80 - 1e-9 ? 'provisional' : 'measured';
+    const result = { schema_version: '1.0.0', evaluation_version: input.run_context.evaluation_version,
+      profile, ...weighted, band: band(weighted.M === 0 ? null : 100 * weighted.N / weighted.M), readiness_status,
+      blockers, unknown_core, source_ref: 'optbrew:scoring:0.1.0' };
+    return validateEntity('ScoreResult', result);
+  });
+}

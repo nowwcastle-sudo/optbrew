@@ -1,0 +1,53 @@
+{
+  "schema_version": "1.0.0",
+  "run_context": {
+    "schema_version": "1.0.0", "run_id": "synthetic-partial", "target": "example.com",
+    "environment": "local", "goals": ["SEO"], "allowed_changes": [], "scope": {},
+    "evaluation_version": "0.1.0", "protocol_version": "0.1.0",
+    "data_sources": [], "cost_decision": {}, "evidence_ref": "synthetic/context",
+    "protocol": {
+      "page_types": [
+        { "id": "primary", "urls": [
+          { "original": "https://example.com/", "normalized": "https://example.com/" },
+          { "original": "https://example.com/about", "normalized": "https://example.com/about" }
+        ] },
+        { "id": "support", "urls": [
+          { "original": "https://example.com/help", "normalized": "https://example.com/help" }
+        ] }
+      ],
+      "engines": ["google"], "locale": "ko-KR", "region": "KR", "browser": "Chrome",
+      "device": "mobile", "surfaces": [], "models": [], "search_enabled": null,
+      "question_panel": [],
+      "families": [
+        { "family_id": "fetch-response", "applicable": true },
+        { "family_id": "search-crawl-policy", "applicable": false },
+        { "family_id": "index-policy", "applicable": true },
+        { "family_id": "render-content", "applicable": false },
+        { "family_id": "discovery", "applicable": false },
+        { "family_id": "document-title", "applicable": true },
+        { "family_id": "canonical-consistency", "applicable": false },
+        { "family_id": "internal-navigation", "applicable": false },
+        { "family_id": "structured-data-truth", "applicable": false },
+        { "family_id": "locale-links", "applicable": false },
+        { "family_id": "naver-markup", "applicable": false },
+        { "family_id": "lcp-field", "applicable": true },
+        { "family_id": "inp-field", "applicable": true },
+        { "family_id": "cls-field", "applicable": true },
+        { "family_id": "question-coverage", "applicable": false },
+        { "family_id": "claim-support", "applicable": false },
+        { "family_id": "answer-clarity", "applicable": false },
+        { "family_id": "original-value", "applicable": false },
+        { "family_id": "entity-identity", "applicable": false },
+        { "family_id": "fact-consistency", "applicable": false },
+        { "family_id": "freshness-truth", "applicable": false },
+        { "family_id": "source-transparency", "applicable": false }
+      ]
+    }
+  },
+  "observations": [
+    { "schema_version": "1.0.0", "observation_id": "fetch-pass", "check_id": "fetch-response",
+      "family_id": "fetch-response", "unit_key": "fetch-response|https://example.com/",
+      "state": "pass", "q": 1, "partial_basis": null, "reason": "HTTP 200",
+      "evaluator_type": "code", "source_ref": "synthetic", "evidence_ref": "synthetic/fetch" }
+  ]
+}
