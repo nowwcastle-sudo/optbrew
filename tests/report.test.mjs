@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { readFileSync, mkdtempSync, rmSync, writeFileSync, copyFileSync } from 'node:fs';
+import { readFileSync, mkdtempSync, rmSync, writeFileSync, copyFileSync, cpSync, existsSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
 import { createHash } from 'node:crypto';
@@ -349,10 +349,53 @@ test('collector observations bind to the owning audit index and raw content hash
   } finally { rmSync(run.dir, { recursive: true, force: true }); }
 });
 
-test('a local passing receipt stays local and a deployment claim needs its own receipt', () => {
+function localRun({ evidenceHtml = '<html><head><meta name="robots" content="index"></head></html>\n', state = 'pass' } = {}) {
   const run = copyRun();
+  addChange(run, 'c1');
+  const afterInput = structuredClone(run.packet.baseline.input);
+  const observation = afterInput.observations.find(x => x.check_id === 'index-policy');
+  Object.assign(observation, { state, q: state === 'pass' ? 1 : 0, reason: 'local rescan', evidence_ref: 'after-response.html' });
+  addEvidence(run, 'after-response.html', evidenceHtml, 'raw_html', 'synthetic');
+  Object.assign(run.packet.evidence_index.find(x => x.ref === 'after-response.html'),
+    { phase: 'after', target: 'example.com', environment: 'local' });
+  run.packet.after = { input: afterInput, scores: score(afterInput) };
+  retargetAfter(run, { environment: 'local' });
+  return run;
+}
+
+test('final review I2: a byte-hash receipt alone cannot mark a finding verified_local', () => {
+  const hashOnly = copyRun();
   try {
-    addChange(run, 'c1');
+    addChange(hashOnly, 'c1');
+    const report = buildReport(hashOnly.packet).json;
+    assert.equal(report.findings[0].status, 'modified_unverified');
+    assert.equal(report.remaining.filter(x => x.reason === 'production_deployment_pending').length, 0);
+    assert.ok(report.remaining.some(x => x.reason === 'modified_unverified'));
+  } finally { rmSync(hashOnly.dir, { recursive: true, force: true }); }
+  const resolved = localRun();
+  try {
+    const report = buildReport(resolved.packet).json;
+    assert.equal(report.findings[0].status, 'verified_local');
+    assert.ok(report.remaining.some(x => x.reason === 'production_deployment_pending'));
+  } finally { rmSync(resolved.dir, { recursive: true, force: true }); }
+  const unresolved = localRun({ evidenceHtml: '<html><head><meta name="robots" content="noindex"></head></html>\n', state: 'fail' });
+  try { assert.equal(buildReport(unresolved.packet).json.findings[0].status, 'modified_unverified'); }
+  finally { rmSync(unresolved.dir, { recursive: true, force: true }); }
+  const otherTarget = localRun();
+  try {
+    retargetAfter(otherTarget, { target: 'other.example' });
+    assert.equal(buildReport(otherTarget.packet).json.findings[0].status, 'modified_unverified');
+  } finally { rmSync(otherTarget.dir, { recursive: true, force: true }); }
+  const baselineSource = localRun();
+  try {
+    baselineSource.packet.evidence_index.find(x => x.ref === 'after-response.html').phase = 'baseline';
+    assert.equal(buildReport(baselineSource.packet).json.findings[0].status, 'modified_unverified');
+  } finally { rmSync(baselineSource.dir, { recursive: true, force: true }); }
+});
+
+test('a local passing receipt stays local and a deployment claim needs its own receipt', () => {
+  const run = localRun();
+  try {
     assert.equal(buildReport(run.packet).json.findings[0].status, 'verified_local');
     run.packet.changes[0].environment = 'production';
     run.packet.changes[0].verification.deployed = true;
@@ -360,7 +403,7 @@ test('a local passing receipt stays local and a deployment claim needs its own r
   } finally { rmSync(run.dir, { recursive: true, force: true }); }
 });
 
-test('CLI writes both formats with readback and no partial output on invalid packet', () => {
+test('CLI writes both formats with readback', () => {
   const dir = mkdtempSync(path.join(os.tmpdir(), 'optbrew report '));
   try {
     const input = path.resolve('tests/fixtures/reports/remote-only.json');
@@ -624,4 +667,81 @@ test('review P2-8: before and after collector snapshots use their own evidence r
       { phase: 'after', audit_ref: 'a-audit.json', context_ref: 'context.json' }];
     assert.doesNotThrow(() => buildReport(run.packet));
   } finally { rmSync(run.dir, { recursive: true, force: true }); }
+});
+
+test('final review I7: native path mapping matches whole path segments only', () => {
+  const build = (filterPath, prefix = '/owned') => {
+    const run = copyRun();
+    const mapping = { provider: 'gsc', property: 'example.com', target: 'example.com', hostname: 'example.com',
+      path_prefix: prefix, evidence_ref: 'target-map.json' };
+    run.packet.run_context.protocol.target_identity = { target: 'example.com', native_properties: [mapping] };
+    addEvidence(run, 'target-map.json', { run_id: 'synthetic-report', target: 'example.com', provider: 'gsc',
+      property: 'example.com', hostname: 'example.com', path_prefix: prefix, approved_by: 'synthetic-fixture' }, 'target_mapping');
+    refreshContext(run);
+    const source = { kind: 'native_export', run_id: 'synthetic-report', provider: 'gsc',
+      rows: [{ metric_id: 'clicks', value: 7, filters: { hostname: 'example.com', path: filterPath }, provider_definition: 'GSC clicks' }],
+      metadata: { timezone: 'Asia/Seoul', collected_at: '2026-10-14T10:00:00+09:00', last_complete_date: '2026-10-13',
+        source_ref: 'owner:gsc', evidence_ref: 'scoped-export.json', window: { start: '2026-09-01', end: '2026-09-28', timezone: 'Asia/Seoul' },
+        sample_selection: { kind: 'all' }, property: 'example.com', aggregation: 'page' } };
+    run.packet.metrics = normalizeImport(source.provider, source.rows, source.metadata);
+    addEvidence(run, 'scoped-export.json', source, 'native_export', 'owner:gsc');
+    return run;
+  };
+  for (const [filterPath, prefix, accepted] of [
+    ['/owned/page', '/owned', true], ['/owned', '/owned', true], ['/owned/', '/owned', true],
+    ['/owned/page?x=1', '/owned', true], ['/owned-other/page', '/owned', false], ['/ownedness', '/owned', false],
+    ['/owned/../other/page', '/owned', false], ['/owned/page', '/owned/', true], ['/owned', '/owned/', false],
+    ['/anything', '/', true]]) {
+    const run = build(filterPath, prefix);
+    try {
+      if (accepted) assert.doesNotThrow(() => buildReport(run.packet), `${filterPath} within ${prefix}`);
+      else assert.throws(() => buildReport(run.packet), /hostname or URL scope/, `${filterPath} within ${prefix}`);
+    } finally { rmSync(run.dir, { recursive: true, force: true }); }
+  }
+});
+
+test('final review M1: a single measured window keeps its raw value and state with the difference unknown', () => {
+  const run = copyRun();
+  try {
+    setNativeIdentity(run);
+    addNative(run, 'only-export.json', { start: '2026-09-01', end: '2026-09-28', value: 7 });
+    const row = buildReport(run.packet).json.tables.actual_outcomes[0];
+    assert.deepEqual(row.slice(3, 6), [7, 'unknown', 'unknown']);
+    assert.match(row.at(-1), /not_comparable_or_missing_window; measured/);
+    const markdown = buildReport(run.packet).markdown;
+    assert.match(markdown, /\| 7 \| unknown \| unknown \|/);
+  } finally { rmSync(run.dir, { recursive: true, force: true }); }
+});
+
+test('final review I9: a verified duplicate-title verdict over a present title is not rejected by a presence check', () => {
+  const run = copyRun();
+  try {
+    const unit_key = 'document-title|https://example.com/about';
+    run.packet.baseline.input.observations.push({ schema_version: '1.0.0', observation_id: 'duplicate-title',
+      check_id: 'document-title', family_id: 'document-title', unit_key, state: 'fail', q: 0, partial_basis: null,
+      reason: 'Title duplicates https://example.com/ (reviewed uniqueness evidence)', evaluator_type: 'human',
+      source_ref: 'synthetic', evidence_ref: 'raw.html' });
+    run.packet.baseline.scores = score(run.packet.baseline.input);
+    run.packet.comparison = compare(run.packet.baseline.input, null);
+    assert.match(readFileSync(path.join(run.dir, 'raw.html'), 'utf8'), /<title>Example<\/title>/);
+    assert.doesNotThrow(() => buildReport(run.packet));
+  } finally { rmSync(run.dir, { recursive: true, force: true }); }
+});
+
+test('final review M2: the CLI refuses an invalid packet before creating any output', () => {
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'optbrew report invalid '));
+  try {
+    cpSync(path.resolve('tests/fixtures/reports'), path.join(dir, 'run'), { recursive: true });
+    const input = path.join(dir, 'run', 'remote-only.json');
+    const packet = JSON.parse(readFileSync(input, 'utf8'));
+    packet.baseline.scores[0].score = 100;
+    writeFileSync(input, JSON.stringify(packet));
+    const out = path.join(dir, 'out');
+    const run = spawnSync(process.execPath, [path.resolve('skills/optbrew/scripts/cli.mjs'), 'report', '--input', input, '--output-dir', out], { encoding: 'utf8' });
+    assert.equal(run.status, 1);
+    assert.match(run.stderr, /baseline score differs from raw observations/);
+    assert.equal(existsSync(path.join(out, 'report.json')), false);
+    assert.equal(existsSync(path.join(out, 'report.md')), false);
+    assert.deepEqual(existsSync(out) ? readdirSync(out) : [], []);
+  } finally { rmSync(dir, { recursive: true, force: true }); }
 });

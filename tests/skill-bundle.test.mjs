@@ -33,3 +33,14 @@ test('one discoverable skill and closed progressive references', async () => {
   assert.ok(scenarios.length >= 9);
   assert.ok(scenarios.every(s => s.id && s.request && s.allowed_material && s.required_output && s.pass_criteria));
 });
+
+test('final review M5: the distributed Magnus guide does not instruct a pytest run of an excluded test file', async () => {
+  const root = fileURLToPath(new URL('..', import.meta.url));
+  const guide = await readFile(path.join(root, 'skills/optbrew/modules/magnus-seo/GUIDE.md'), 'utf8');
+  const patch = await readFile(path.join(root, 'scripts/patches/magnus-guide.patch'), 'utf8');
+  for (const [name, text] of [['GUIDE.md', guide], ['magnus-guide.patch', patch]]) {
+    assert.doesNotMatch(text, /pytest/, name);
+    assert.match(text, /source-maintenance/, name);
+  }
+  assert.equal(guide, patch);
+});

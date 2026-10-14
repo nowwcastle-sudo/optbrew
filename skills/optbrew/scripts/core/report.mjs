@@ -9,7 +9,8 @@ import { freezeProtocol } from './protocol.mjs';
 import { measurePanel } from './metrics.mjs';
 import { normalizeImport } from '../adapters/imports.mjs';
 import { mergeFindings, selectRemediations } from './findings.mjs';
-import { auditCollected } from '../../modules/naver-searchadvisor/scripts/audit.mjs';
+import { auditCollected, indexingDirectives } from '../../modules/naver-searchadvisor/scripts/audit.mjs';
+import { parseRobots, robotsVerdict } from '../../modules/naver-searchadvisor/scripts/robots.mjs';
 
 const catalog = JSON.parse(readFileSync(new URL('../../references/remediations.json', import.meta.url))).items;
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
@@ -52,9 +53,13 @@ function metricRows(metrics) {
     const completion = group.map(m => m.metric_id.endsWith('observation_completion_rate') && m.value_state === 'measured' ? m.value :
       m.sample_selection.valid_responses != null && m.sample_selection.planned_responses > 0 ?
         m.sample_selection.valid_responses / m.sample_selection.planned_responses : null);
+    // One measured window keeps its raw value and state; the difference stays unknown without a matched pair.
+    const single = !paired && group.length === 1 && before.value_state === 'measured' ? before.value ?? 'unknown' : 'unknown';
+    const singleIsAfter = before.filters.phase === 'after';
     return [Object.entries(before.filters).filter(([k]) => ['provider', 'engine', 'property', 'surface'].includes(k)).map(([k, v]) => `${k}:${v}`).join('; ') || 'unknown',
       before.metric_id, group.map(m => `${m.window.start}–${m.window.end} (${m.sample_selection.kind})`).join(' → '),
-      paired ? before.value ?? 'unknown' : 'unknown', paired ? after.value ?? 'unknown' : 'unknown',
+      paired ? before.value ?? 'unknown' : singleIsAfter ? 'unknown' : single,
+      paired ? after.value ?? 'unknown' : singleIsAfter ? single : 'unknown',
       measured ? after.value - before.value : 'unknown', completion.map(x => x ?? 'unknown').join(' → '),
       `${paired ? 'comparable_windows' : 'not_comparable_or_missing_window'}; ${group.map(m => m.value_state).join(' → ')}; ` +
         group.map(m => m.sample_selection.missing_reason ?? m.sample_selection.inference ?? '').filter(Boolean).join('; ')];
@@ -89,8 +94,53 @@ function indexedEvidence(packet) {
   return { requireRef, index };
 }
 
-function checkDecisions(input, requireRef, auditRef) {
+/** Collected responses by raw evidence reference across the packet's audit snapshots (lazy, memoized). */
+function collectedResponses(snapshots, requireRef) {
+  let byRef = null;
+  return ref => {
+    if (!byRef) {
+      byRef = new Map();
+      for (const snapshot of snapshots) {
+        try {
+          const audit = JSON.parse(requireRef(snapshot.audit_ref).text);
+          const collection = JSON.parse(requireRef(audit.collection_ref).text);
+          for (const artifact of collection.artifacts ?? []) byRef.set(artifact.evidence_ref, [...(byRef.get(artifact.evidence_ref) ?? []), artifact]);
+        } catch { /* an unreadable snapshot supplies no response headers; collector observations are replayed separately */ }
+      }
+    }
+    return byRef.get(ref) ?? [];
+  };
+}
+const unitUrl = unitKey => String(unitKey).split('|').at(-1);
+
+/**
+ * Replay the index-policy verdict from preserved raw evidence. HTML meta and the collected X-Robots-Tag header
+ * go through the same extractor as the audit; a collected response must belong to the named unit URL.
+ */
+function evidenceBlocksIndexing(evidence, engines, collectedFor, unit) {
+  const responses = collectedFor(evidence.ref);
+  const scoped = unit ? responses.filter(x => x.normalized_url === unit || x.final_url === unit) : responses;
+  if (responses.length && !scoped.length) return false;
+  if (evidence.kind === 'raw_html') {
+    const headers = scoped.length ? scoped.map(x => x.headers?.['x-robots-tag'] ?? x.headers?.['X-Robots-Tag'] ?? null) : [null];
+    return headers.some(xRobotsTag => indexingDirectives({ html: evidence.text, xRobotsTag, engines }).blocked);
+  }
+  if (evidence.kind === 'http_response')
+    return [...evidence.text.matchAll(/^x-robots-tag:[ \t]*(.*)$/gim)].some(match =>
+      indexingDirectives({ html: '', xRobotsTag: match[1], engines }).blocked);
+  return false;
+}
+const pathWithin = (value, prefix) => {
+  try {
+    const base = 'http://path.invalid';
+    const actual = new URL(value, base).pathname, wanted = new URL(prefix, base).pathname;
+    return wanted === '/' || actual === wanted || actual.startsWith(wanted.endsWith('/') ? wanted : `${wanted}/`);
+  } catch { return false; }
+};
+
+function checkDecisions(input, requireRef, collectedFor) {
   const protocolHash = freezeProtocol(input.run_context).protocol_hash;
+  const engines = input.run_context.protocol.engines;
   const decisionRecord = (decision, scope, identity) => {
     const record = JSON.parse(requireRef(decision.evidence_ref).text);
     if (record.run_id !== input.run_context.run_id || !same(record.target, input.run_context.target) ||
@@ -109,19 +159,9 @@ function checkDecisions(input, requireRef, auditRef) {
     if (observation.check_id === 'index-policy' && observation.state === 'fail') {
       if (evidence.kind !== 'raw_html' && evidence.kind !== 'http_response')
         throw new ContractError('index-policy failure requires raw HTML or response-header evidence');
-      const rawDirective = /(?:name=["']robots["'][^>]*\b(?:noindex|none)\b|\b(?:noindex|none)\b[^>]*name=["']robots["']|x-robots-tag[^\r\n]*\b(?:noindex|none)\b)/i.test(evidence.text);
-      let headerDirective = false;
-      if (!rawDirective && auditRef) {
-        const audit = JSON.parse(requireRef(auditRef).text);
-        const collection = JSON.parse(requireRef(audit.collection_ref).text);
-        headerDirective = collection.artifacts.some(x => x.evidence_ref === observation.evidence_ref &&
-          /\b(?:noindex|none)\b/i.test(String(x.headers?.['x-robots-tag'] ?? x.headers?.['X-Robots-Tag'] ?? '')));
-      }
-      if (!rawDirective && !headerDirective) throw new ContractError('index-policy noindex verdict is absent from raw response evidence');
+      if (!evidenceBlocksIndexing(evidence, engines, collectedFor, unitUrl(observation.unit_key)))
+        throw new ContractError('index-policy noindex verdict is absent from raw response evidence');
     }
-    if (observation.check_id === 'document-title' && observation.state === 'fail' && evidence.kind === 'raw_html' &&
-        /<title\b[^>]*>\s*\S/i.test(evidence.text))
-      throw new ContractError('document-title failure conflicts with raw HTML evidence');
     if (observation.check_id === 'structured-data-truth' && observation.state !== 'unknown' && evidence.kind === 'markdown')
       throw new ContractError('Markdown cannot establish raw HTML structured-data truth');
   }
@@ -144,7 +184,7 @@ function checkMetricEvidence(metric, packet, requireRef) {
     if (!mapping || !same(mapping.target, packet.run_context.target) || !mapping.evidence_ref || !property || property === 'unknown')
       throw new ContractError('native property target mapping missing');
     if (metric.filters.hostname !== 'unknown' && metric.filters.hostname !== mapping.hostname ||
-        metric.filters.path !== 'unknown' && (!mapping.path_prefix || !metric.filters.path.startsWith(mapping.path_prefix)))
+        metric.filters.path !== 'unknown' && (!mapping.path_prefix || !pathWithin(metric.filters.path, mapping.path_prefix)))
       throw new ContractError('native hostname or URL scope differs from approved target mapping');
     const decision = JSON.parse(requireRef(mapping.evidence_ref).text);
     if (decision.run_id !== packet.run_context.run_id || !same(decision.target, packet.run_context.target) ||
@@ -231,7 +271,15 @@ function statusFor(finding, changes, afterInput, target, requireRef) {
     }));
   if (linked.every(change => change.environment === 'production' && change.verification.deployed === true))
     return afterResolved ? 'verified_production' : 'modified_unverified';
-  return linked.every(change => change.environment === 'local') ? 'verified_local' : 'modified_unverified';
+  // A byte-hash receipt proves which file changed, not that the finding is resolved. Local verification
+  // needs a same-target local after observation of the same check and unit.
+  const localResolved = same(afterInput?.run_context.target, target) && afterInput?.run_context.environment === 'local' &&
+    linked.every(change => afterInput.observations.some(obs => {
+      if (obs.check_id !== finding.check_id || obs.unit_key !== finding.unit_key || !['pass', 'partial'].includes(obs.state)) return false;
+      const source = requireRef(obs.evidence_ref, obs.source_ref);
+      return source.phase !== 'baseline' && (source.environment === undefined || source.environment === 'local');
+    }));
+  return linked.every(change => change.environment === 'local') && localResolved ? 'verified_local' : 'modified_unverified';
 }
 
 function checkAuditPhase(input, phase, snapshot, requireRef) {
@@ -262,31 +310,56 @@ function checkAuditPhase(input, phase, snapshot, requireRef) {
   for (const obs of observations) {
     if (!savedObservations.some(x => same(x, obs)) || !rawRefs.has(obs.evidence_ref))
       throw new ContractError('collector observation is not bound to audit index and raw evidence');
-    const url = obs.unit_key.split('|').at(-1);
+    const url = unitUrl(obs.unit_key);
     const artifact = collection.artifacts.find(x => x.normalized_url === url && x.evidence_ref === obs.evidence_ref);
-    const modules = (moduleOutputs['naver-searchadvisor'] ?? []).filter(x => x.url === url);
+    // Bind the requested unit to its collected artifact first; the module must describe that artifact's final URL.
+    const pageArtifact = artifact ?? collection.artifacts.find(x => x.normalized_url === url && x.status === 200 && x.capability === 'raw_html');
+    const modules = pageArtifact?.final_url ? (moduleOutputs['naver-searchadvisor'] ?? []).filter(x =>
+      x.url === pageArtifact.final_url && (x.requested_url ?? url) === url) : [];
     const module = modules.length === 1 ? modules[0] : null;
+    const engines = input.run_context.protocol.engines;
     if (obs.check_id === 'fetch-response' && (!artifact ||
         (obs.state === 'pass' && !(artifact.status >= 200 && artifact.status < 300)) ||
         (obs.state === 'fail' && artifact.status < 400) ||
         (artifact.content_hash === null && obs.state !== 'unknown')))
       throw new ContractError('fetch response verdict differs from collected artifact');
-    if (['index-policy', 'document-title'].includes(obs.check_id) && ['pass', 'fail'].includes(obs.state)) {
+    if (['index-policy', 'document-title'].includes(obs.check_id) &&
+        (['pass', 'fail'].includes(obs.state) || obs.check_id === 'document-title' && obs.state === 'unknown')) {
       const raw = artifact && requireRef(obs.evidence_ref);
       if (!module || !artifact || artifact.status !== 200 || artifact.capability !== 'raw_html' ||
           artifact.raw_html_ref !== obs.evidence_ref || artifact.content_hash !== raw.sha256 || raw.kind !== 'raw_html')
         throw new ContractError('title/index verdict lacks bound raw response');
-      const replay = auditCollected({ artifact, html: raw.text });
+      const replay = auditCollected({ artifact, html: raw.text, engines });
       if (!same([module.title, module.robots_meta, module.x_robots_tag],
-        [replay.title, replay.robots_meta, replay.x_robots_tag]))
+        [replay.title, replay.robots_meta, replay.x_robots_tag]) ||
+        (module.requested_url !== undefined && module.requested_url !== artifact.normalized_url) ||
+        (module.redirect_chain !== undefined && !same(module.redirect_chain, artifact.redirect_chain ?? [])))
         throw new ContractError('title/index module differs from raw response and headers');
-      const blocked = /\b(?:noindex|none)\b/i.test(`${replay.robots_meta ?? ''},${replay.x_robots_tag ?? ''}`);
-      if (obs.state !== (obs.check_id === 'document-title' ? replay.title ? 'pass' : 'fail' : blocked ? 'fail' : 'pass'))
+      // A present title proves existence only; uniqueness and descriptiveness need separate evidence.
+      const expected = obs.check_id === 'document-title' ? replay.title ? 'unknown' : 'fail' : replay.index_blocked ? 'fail' : 'pass';
+      if (obs.state !== expected)
         throw new ContractError('title/index verdict differs from raw response and headers');
     }
-    if (obs.check_id === 'search-crawl-policy' && obs.state === 'fail' &&
-        (!module || module.robots_evidence_ref !== obs.evidence_ref || module.robots?.yeti_allowed !== false))
-      throw new ContractError('crawl verdict differs from bound robots evidence and module output');
+    if (obs.check_id === 'search-crawl-policy' && ['pass', 'fail'].includes(obs.state)) {
+      const [, engine] = obs.unit_key.split('|');
+      const robotsArtifact = collection.artifacts.find(x => x.evidence_ref === obs.evidence_ref && x.status === 200);
+      const declared = robotsArtifact && (input.run_context.protocol.auxiliary_resources ?? []).some(resource =>
+        resource.kind === 'robots' && resource.normalized === robotsArtifact.normalized_url);
+      const robotsRaw = robotsArtifact && requireRef(obs.evidence_ref);
+      let sameOriginRobots = false;
+      try {
+        const robotsUrl = new URL(robotsArtifact.final_url), pageUrl = new URL(pageArtifact.final_url);
+        sameOriginRobots = robotsUrl.origin === pageUrl.origin && robotsUrl.pathname === '/robots.txt';
+      } catch { /* missing or invalid URLs leave the binding false */ }
+      if (engine !== 'naver' || !engines.includes(engine) || !declared || !sameOriginRobots || !module ||
+          robotsRaw.sha256 !== robotsArtifact.content_hash || module.robots_evidence_ref !== obs.evidence_ref || !module.robots)
+        throw new ContractError('crawl verdict differs from bound robots evidence and module output');
+      const target = new URL(pageArtifact.final_url);
+      const verdict = robotsVerdict(parseRobots(robotsRaw.text), 'yeti', target.pathname + target.search);
+      if (module.robots.yeti_allowed !== verdict.allowed || module.robots.reason !== verdict.reason ||
+          obs.state !== (verdict.allowed ? 'pass' : 'fail'))
+        throw new ContractError('crawl verdict differs from bound robots evidence and module output');
+    }
   }
 }
 
@@ -306,7 +379,8 @@ export function buildReport(packet) {
   const snapshotFor = phase => snapshots.find(x => x.phase === phase);
   const baselineScores = score(packet.baseline.input);
   if (!same(packet.baseline.scores, baselineScores)) throw new ContractError('baseline score differs from raw observations');
-  checkDecisions(packet.baseline.input, requireRef, snapshotFor('baseline')?.audit_ref);
+  const collectedIn = phase => collectedResponses(snapshotFor(phase) ? [snapshotFor(phase)] : [], requireRef);
+  checkDecisions(packet.baseline.input, requireRef, collectedIn('baseline'));
   let afterScores = null;
   if (packet.after) {
     if (packet.after.input.run_context.run_id !== packet.run_context.run_id) throw new ContractError('after run ID mismatch');
@@ -314,7 +388,7 @@ export function buildReport(packet) {
       throw new ContractError('after context evidence differs from input');
     afterScores = score(packet.after.input);
     if (!same(packet.after.scores, afterScores)) throw new ContractError('after score differs from raw observations');
-    checkDecisions(packet.after.input, requireRef, snapshotFor('after')?.audit_ref);
+    checkDecisions(packet.after.input, requireRef, collectedIn('after'));
   }
   const comparison = compare(packet.baseline.input, packet.after?.input ?? null);
   if (!same(packet.comparison, comparison)) throw new ContractError('comparison differs from raw inputs');
@@ -325,6 +399,7 @@ export function buildReport(packet) {
   checkAuditPhase(packet.after?.input, 'after', snapshotFor('after'), requireRef);
   const merged = mergeFindings(packet.findings);
   const observations = [...packet.baseline.input.observations, ...(packet.after?.input.observations ?? [])];
+  const collectedAny = collectedResponses(snapshots, requireRef);
   const findings = merged.map(finding => {
     if (!observations.some(obs => obs.check_id === finding.check_id && obs.unit_key === finding.unit_key &&
         (obs.state === 'fail' || obs.state === 'unknown')))
@@ -334,8 +409,10 @@ export function buildReport(packet) {
       throw new ContractError('blocker requires confirmed failed check observation');
     for (const source of finding.sources) {
       const evidence = requireRef(source.evidence_ref, source.source_ref);
+      // The same HTML plus response-header replay as the observation, bound to the finding's own unit.
       if (finding.check_id === 'index-policy' && finding.blocker &&
-          !/\b(?:noindex|none)\b/i.test(evidence.text)) throw new ContractError('finding noindex evidence does not contain directive');
+          !evidenceBlocksIndexing(evidence, packet.run_context.protocol.engines, collectedAny, unitUrl(finding.unit_key)))
+        throw new ContractError('finding noindex evidence does not contain directive');
     }
     const options = selectRemediations(finding, { context: packet.run_context,
       capabilities: packet.capabilities ?? { selected: [], missing: [], limitations: [] }, catalog });

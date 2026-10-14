@@ -7,7 +7,7 @@
       "upstream_path": "scripts/audit.mjs",
       "expected_base_sha256": "b6d29d55e94b3e152f65c5590290dd2f0e8711466c00f93579bf545582db55d2",
       "replacement_path": "patches/naver-robots.patch",
-      "replacement_sha256": "870fd4d74483ad8a9ae5a0fdef996294ec3bb8a59775447680bfbe6b07fdbf17",
+      "replacement_sha256": "85a65f1ecc1771aab0b51bd92195a4266782f289ce29bc5183b4dd2ece4b5e19",
       "reason": "Use pure RFC 9309 robots parser; disable direct remote fetch and inspect bounded collector evidence"
     },
     {
@@ -34,7 +34,7 @@
       "upstream_path": "seo/SKILL.md",
       "expected_base_sha256": "b04c8adc4554281f92a40529b22df4207996b0f4a29a62f051d749cab6636037",
       "replacement_path": "patches/magnus-guide.patch",
-      "replacement_sha256": "881b30f5b9cd42922384b38dea89367119e88d07423cf19fa70fcae376e89c30",
+      "replacement_sha256": "fb4d7cd6599ee7761f2a0a65e88775e8e2bc05f616059b81522898493d4dc7ef",
       "reason": "Document offline Magnus HTML input and disabled direct URL fetch"
     }
   ],

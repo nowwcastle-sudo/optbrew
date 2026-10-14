@@ -395,7 +395,7 @@
       "package_path": "skills/optbrew/modules/naver-searchadvisor/scripts/audit.mjs",
       "original_git_blob_sha": "de8c4a3430633cb2445e339d7a943d944cbf45a9",
       "original_sha256": "3fd83141a00a9d45d4fbffa9d8ff515c7a49e7b1ea4637844e92375ea7797ff9",
-      "distributed_sha256": "870fd4d74483ad8a9ae5a0fdef996294ec3bb8a59775447680bfbe6b07fdbf17",
+      "distributed_sha256": "85a65f1ecc1771aab0b51bd92195a4266782f289ce29bc5183b4dd2ece4b5e19",
       "transformations": [
         "Audit output routes policy evidence to official URL index",
         "reviewed distribution patch naver-robots-rfc9309"
@@ -500,7 +500,7 @@
       "package_path": "skills/optbrew/modules/magnus-seo/GUIDE.md",
       "original_git_blob_sha": "dd9db8ef191b3c433750fd322e2edeb6336027d0",
       "original_sha256": "6abe5e0005c66e1fd98eee10fc84d75995ba5bcda8e64907d8376873ddffd149",
-      "distributed_sha256": "881b30f5b9cd42922384b38dea89367119e88d07423cf19fa70fcae376e89c30",
+      "distributed_sha256": "fb4d7cd6599ee7761f2a0a65e88775e8e2bc05f616059b81522898493d4dc7ef",
       "transformations": [
         "SKILL.md to GUIDE.md; YAML frontmatter removed",
         "reviewed distribution patch magnus-bounded-guide"

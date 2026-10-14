@@ -80,16 +80,17 @@ export async function runAudit({ context, modules, outputDir, transport, resolve
       const robotsIndex = collection.artifacts.findIndex(x => { try { const u = new URL(x.final_url); return declaredRobots.has(x.normalized_url) && u.origin === new URL(artifact.final_url).origin && u.pathname === '/robots.txt'; } catch { return false; } });
       const robots = robotsIndex < 0 ? null : collection.artifacts[robotsIndex];
       const robotsEvidenceRef = robots?.status === 200 ? artifacts[robotsIndex].evidence_ref : null;
-      const output = auditCollected({ artifact, html, robotsArtifact: robots ? { ...robots, body: robots.body.toString('utf8') } : null });
+      const output = auditCollected({ artifact, html, engines: context.protocol.engines,
+        robotsArtifact: robots ? { ...robots, body: robots.body.toString('utf8') } : null });
       output.robots_evidence_ref = robotsEvidenceRef;
       module_outputs['naver-searchadvisor'].push(output);
       if (planned.has('document-title') && selectedUrls.has(artifact.normalized_url))
-        observations.push(observation(saved, 'document-title', output.title ? 'pass' : 'fail',
-          output.title ? 'Raw HTML contains a title' : 'Raw HTML has no title'));
+        observations.push(observation(saved, 'document-title', output.title ? 'unknown' : 'fail',
+          output.title ? 'Raw HTML has a title; uniqueness and descriptiveness are not established' : 'Raw HTML has no title'));
       if (planned.has('index-policy') && publicUrls.has(artifact.normalized_url)) {
-        const blocked = /\b(?:noindex|none)\b/i.test(`${output.x_robots_tag ?? ''},${output.robots_meta ?? ''}`);
+        const blocked = output.index_blocked;
         observations.push(observation(saved, 'index-policy', blocked ? 'fail' : 'pass',
-          blocked ? 'Raw response explicitly blocks indexing' : 'Raw response has no noindex directive'));
+          blocked ? 'Raw response blocks indexing for the target engine' : 'Raw response has no applicable noindex directive'));
       }
       if (planned.has('search-crawl-policy') && publicUrls.has(artifact.normalized_url) &&
           context.protocol.engines.includes('naver') && output.robots?.yeti_allowed === false)

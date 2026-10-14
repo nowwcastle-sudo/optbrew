@@ -104,7 +104,7 @@
     },
     {
       "path": "modules/magnus-seo/GUIDE.md",
-      "sha256": "881b30f5b9cd42922384b38dea89367119e88d07423cf19fa70fcae376e89c30"
+      "sha256": "fb4d7cd6599ee7761f2a0a65e88775e8e2bc05f616059b81522898493d4dc7ef"
     },
     {
       "path": "modules/magnus-seo/README.md",
@@ -360,7 +360,7 @@
     },
     {
       "path": "modules/naver-searchadvisor/scripts/audit.mjs",
-      "sha256": "870fd4d74483ad8a9ae5a0fdef996294ec3bb8a59775447680bfbe6b07fdbf17"
+      "sha256": "85a65f1ecc1771aab0b51bd92195a4266782f289ce29bc5183b4dd2ece4b5e19"
     },
     {
       "path": "modules/naver-searchadvisor/scripts/robots.mjs",
@@ -568,7 +568,7 @@
     },
     {
       "path": "references/report.md",
-      "sha256": "019fcc59e7ace9157dba55f917e366f1d95b28e4af89ac3cd5f1843e7b116b4e"
+      "sha256": "6b1287be1d5d36a15d029304be9b6490f1fec59c3c930d5de9f2c976ae57d291"
     },
     {
       "path": "references/routing.md",
@@ -592,7 +592,7 @@
     },
     {
       "path": "scripts/audit.mjs",
-      "sha256": "9fb107cd227461d8cf0eb1a7e02fe7704539df0d428ec7a6aa03009c015d911b"
+      "sha256": "b5bea6af30683014a4c21d0b10c4185b4ba6f4fc3316eddd9d7b7a5f655c31fa"
     },
     {
       "path": "scripts/cli.mjs",
@@ -640,7 +640,7 @@
     },
     {
       "path": "scripts/core/report.mjs",
-      "sha256": "c28b59dc4ebb92c98a8a0cc9bbbb6cc57868e22813bd79d7775fbd51edbab20f"
+      "sha256": "2aefbbd3b8f1aaadf017d8d95b73ca185f4ac669b30a4a951cb0aa595d38703a"
     },
     {
       "path": "scripts/core/scope.mjs",
@@ -656,8 +656,8 @@
     },
     {
       "path": "source-lock.json",
-      "sha256": "e9041a0ff06c5395027c25646cf210958e38e969d34b329d7b165a865e77e313"
+      "sha256": "9660109e187ad168fce310cb7423605037abf807473cb8d8f6a220fdfea28690"
     }
   ],
-  "bundle_hash": "b6d9469d3240cce74903122d36884cbc88e050c22d54ea9c9e147c84b028bc28"
+  "bundle_hash": "76333b4cb72813f711c073cb194c5ab4818d491a6933429458fe31724eb551eb"
 }

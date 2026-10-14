@@ -57,10 +57,9 @@ Run from the skill directory:
 ```bash
 python3 scripts/aeo_audit.py <local-page.html> --json
 python3 scripts/build_prompt_matrix.py <topics.json> --output prompt-matrix.json
-python3 -m pytest scripts/test_aeo_scripts.py
 ```
 
-The scripts are read-only and use the Python standard library. The direct URL option is disabled in optbrew. Use `node skills/optbrew/scripts/audit.mjs --context <run-context.json> --modules magnus-seo --output-dir <run-dir>` to inspect collector-preserved HTML. The parser can also read that HTML from stdin with `--stdin --source-url <collected-url>`. It does not execute JavaScript, call an LLM, publish, submit URLs, or change crawler policy. Templates cover implementation plans, question clusters, citation observations, optional `llms.txt`, and crawler-policy decisions.
+The upstream script tests are source-maintenance material and are not part of this distributed bundle. The scripts are read-only and use the Python standard library. The direct URL option is disabled in optbrew. Use `node skills/optbrew/scripts/audit.mjs --context <run-context.json> --modules magnus-seo --output-dir <run-dir>` to inspect collector-preserved HTML. The parser can also read that HTML from stdin with `--stdin --source-url <collected-url>`. It does not execute JavaScript, call an LLM, publish, submit URLs, or change crawler policy. Templates cover implementation plans, question clusters, citation observations, optional `llms.txt`, and crawler-policy decisions.
 
 ## Audit output
 

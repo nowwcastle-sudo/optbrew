@@ -84,6 +84,46 @@ function textOf(html, tag) {
 const metaBy = (metas, key, val) =>
   metas.filter((t) => (t[key] || '').toLowerCase() === val).map((t) => t.content ?? '');
 
+/** Crawler tokens that select an engine-specific robots meta tag or X-Robots-Tag scope. */
+const ENGINE_AGENTS = { google: ['googlebot'], naver: ['yeti'] };
+const HEADER_VALUE_FIELDS = new Set(['unavailable_after', 'max-snippet', 'max-image-preview', 'max-video-preview']);
+
+/** Drop comments and script/style/textarea/title text, which are not markup; keep the title element on request. */
+function stripInert(html, keepTitle = false) {
+  return String(html ?? '').replace(/<!--[\s\S]*?(?:-->|$)|<(script|style|textarea|title)\b[^>]*>[\s\S]*?(?:<\/\1\s*>|$)/gi,
+    (match, tag) => (keepTitle && tag?.toLowerCase() === 'title' ? match : ''));
+}
+
+const blocksIndex = (text) => String(text ?? '').split(',').some((token) => {
+  const value = token.trim().toLowerCase();
+  return !value.includes(':') && value.split(/\s+/).some((word) => word === 'noindex' || word === 'none');
+});
+
+/**
+ * Select the meta and response-header indexing directives that apply to the target engines
+ * together with the generic robots directives. Optbrew audit and report replay share this extractor.
+ */
+export function indexingDirectives({ html = '', xRobotsTag = null, engines = [] }) {
+  const agents = new Set(['robots', ...engines.flatMap((engine) => ENGINE_AGENTS[engine] ?? [])]);
+  const markup = stripInert(html);
+  const head = /<head[^>]*>([\s\S]*?)<\/head>/i.exec(markup)?.[1] ?? markup;
+  const meta = tags(head, 'meta').filter((t) => agents.has((t.name || '').toLowerCase())).map((t) => t.content ?? '');
+  const header = [];
+  let scope = null;
+  for (const raw of String(xRobotsTag ?? '').split(',')) {
+    const token = raw.trim();
+    const prefixed = /^([a-z0-9_-]+)\s*:\s*(.*)$/i.exec(token);
+    let directive = token;
+    if (prefixed && !HEADER_VALUE_FIELDS.has(prefixed[1].toLowerCase())) {
+      scope = prefixed[1].toLowerCase();
+      directive = prefixed[2];
+    }
+    if (directive && (scope === null || agents.has(scope))) header.push(directive);
+  }
+  return { robots_meta: meta.join(', ') || null, x_robots_applicable: header.join(', ') || null,
+    blocked: blocksIndex(meta.join(', ')) || blocksIndex(header.join(', ')) };
+}
+
 /**
  * 이미지 앞부분만 Range로 받는다. 전체 바이트 수는 Content-Range/Content-Length에서 얻는다.
  * Range를 무시하는 서버면 전체 응답을 그대로 쓴다.
@@ -602,11 +642,11 @@ function report(result) {
 }
 
 /** Optbrew path: inspect only responses already collected and preserved by the bounded collector. */
-export function auditCollected({ artifact, html, robotsArtifact = null }) {
-  const head = /<head[^>]*>([\s\S]*?)<\/head>/i.exec(html)?.[1] ?? html;
+export function auditCollected({ artifact, html, robotsArtifact = null, engines = [] }) {
+  const titleSource = stripInert(html, true);
+  const head = /<head[^>]*>([\s\S]*?)<\/head>/i.exec(titleSource)?.[1] ?? titleSource;
   const title = textOf(head, 'title');
-  const metas = tags(head, 'meta');
-  const robotsMeta = metaBy(metas, 'name', 'robots').join(', ');
+  const directives = indexingDirectives({ html, xRobotsTag: artifact.headers['x-robots-tag'] ?? null, engines });
   const jsonld = [...html.matchAll(/<script[^>]+application\/ld\+json[^>]*>([\s\S]*?)<\/script>/gi)];
   let parsedRobots = null;
   let yetiVerdict = null;
@@ -630,8 +670,10 @@ export function auditCollected({ artifact, html, robotsArtifact = null }) {
     }
   }
   return {
-    url: artifact.final_url, status: artifact.status, title,
-    x_robots_tag: artifact.headers['x-robots-tag'] ?? null, robots_meta: robotsMeta || null,
+    url: artifact.final_url, requested_url: artifact.normalized_url ?? null,
+    redirect_chain: artifact.redirect_chain ?? [], status: artifact.status, title,
+    x_robots_tag: artifact.headers['x-robots-tag'] ?? null, robots_meta: directives.robots_meta,
+    index_blocked: directives.blocked,
     jsonld_blocks: jsonld.length, jsonld_parse_errors: jsonld.filter(([, body]) => { try { JSON.parse(body); return false; } catch { return true; } }).length,
     robots: parsedRobots ? { yeti_allowed: yetiVerdict.allowed, reason: yetiVerdict.reason, sitemaps: parsedRobots.sitemaps } : null,
     findings,
