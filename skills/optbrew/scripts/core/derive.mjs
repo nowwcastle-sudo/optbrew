@@ -145,7 +145,7 @@ export function deriveObservations({ context, artifacts, collection = {}, textOf
     for (const page of facts) {
       if (comparison.separate.has(page.url)) continue;
       const found = comparison.deviations.get(page.url) ?? [];
-      const comparable = Object.keys(comparison.references).some(type => page.facts.visible[type].size || page.facts.linked[type].size);
+      const comparable = Object.keys(comparison.references).some(type => page.facts.visible[type].size || page.facts.linked[type].size || (type === 'phone' && page.facts.tel.phone.size));
       if (found.length) add('fact-consistency', null, page.url, 'fail', `Cross-page fact comparison (no approved fact list): ${found.join('; ')}`, page.row.artifact.evidence_ref);
       else if (comparable) add('fact-consistency', null, page.url, 'pass', 'Facts on this page match the cross-page reference values (no approved fact list; consistency is not accuracy)', page.row.artifact.evidence_ref);
     }

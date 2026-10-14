@@ -13,17 +13,34 @@ const BRANCH = /\b(?:branch)\b|지점|지사/i;
 
 const ABBREVIATIONS = [[/\bstreet\b/g, 'st'], [/\broad\b/g, 'rd'], [/\bavenue\b/g, 'ave'], [/\bboulevard\b/g, 'blvd'],
   [/\bdrive\b/g, 'dr'], [/\blane\b/g, 'ln'], [/\bsuite\b/g, 'ste'], [/\bfloor\b/g, 'fl'], [/\bbuilding\b/g, 'bldg']];
-/** Address key: lower case, abbreviations unified, postal codes and trailing country dropped, Korean 시/도 forms unified. */
+/**
+ * Address key: normalized tokens joined by one space. Lower case, abbreviations unified, trailing country dropped, Korean
+ * 시/도 forms unified. A postal code is dropped only in its own position (in parentheses or brackets, after a label, or as
+ * the last token after the city); a five-digit street number such as "12345 Ocean Avenue" stays part of the address.
+ */
 export function addressKey(value) {
   let text = String(value).toLowerCase().replace(/[,;]+/g, ' ');
   text = text.replace(/\b(?:south korea|republic of korea|korea|kr|usa|us|united states|대한민국|한국)\b\s*$/u, '');
-  text = text.replace(/\b\d{5}(?:-\d{4})?\b|\b\d{3}-\d{3}\b|\b\d{6}\b/g, ' ');
+  text = text.replace(/[(\[]\s*\d{3}-?\d{2,3}(?:-\d{4})?\s*[)\]]/g, ' ');
+  text = text.replace(/(?:우편번호|postal code|post code|zip code|zip)\s*[:：]?\s*\d[\d-]*/giu, ' ');
+  text = text.replace(/(?<=\p{L}\s+(?:[a-z]{2}\s+)?)(?:\d{5}(?:-\d{4})?|\d{3}-\d{3}|\d{6})\s*$/u, ' ');
   for (const [pattern, replacement] of ABBREVIATIONS) text = text.replace(pattern, replacement);
   text = text.replace(/(특별자치시|특별자치도|특별시|광역시)/g, '').replace(/^\s*(\p{Script=Hangul}+?)(시|도)(?=\s|$)/u, '$1');
-  return text.replace(/[^\p{L}\p{N}]+/gu, '');
+  return (text.match(/\p{L}+|\p{N}+/gu) ?? []).join(' ');
 }
-/** Two address keys agree when one contains the other (a street address with or without city detail). */
-const sameAddress = (a, b) => a === b || (Math.min(a.length, b.length) >= 8 && (a.includes(b) || b.includes(a)));
+/**
+ * Two address keys agree when they are equal or one is a run of whole tokens of the other (a street address with or
+ * without city detail). Tokens are compared exactly, so "10 main st" never matches "110 main st".
+ */
+function sameAddress(a, b) {
+  if (a === b) return true;
+  const [short, long] = a.length <= b.length ? [a, b] : [b, a];
+  const shortTokens = short.split(' '), longTokens = long.split(' ');
+  if (shortTokens.length < 2 || !shortTokens.some(token => /^\p{L}/u.test(token))) return false;
+  for (let i = 0; i + shortTokens.length <= longTokens.length; i++)
+    if (shortTokens.every((token, k) => token === longTokens[i + k])) return true;
+  return false;
+}
 
 function nodesOf(value, out = []) {
   if (Array.isArray(value)) value.forEach(item => nodesOf(item, out));
@@ -35,7 +52,7 @@ function nodesOf(value, out = []) {
 }
 const typesOf = node => [].concat(node['@type'] ?? []).map(String);
 const addressText = address => typeof address === 'string' ? address : address && typeof address === 'object' ?
-  [address.streetAddress, address.addressLocality, address.addressRegion, address.postalCode, address.addressCountry]
+  [address.streetAddress, address.addressLocality, address.addressRegion]
     .filter(x => typeof x === 'string').join(', ') : '';
 
 function phoneKey(text) {
@@ -44,20 +61,23 @@ function phoneKey(text) {
   if (digits.length < 9 || digits.length > 15) return null;
   return /^\s*\+?\s*82/.test(clean) && clean.trim().startsWith('+') && digits.startsWith('82') ? `0${digits.slice(2)}` : digits;
 }
-const PHONE = String.raw`\+?\d[\d\s().-]{6,18}\d`;
+// A number never continues across a line break, so a figure in the next block is not read as part of it.
+const PHONE = String.raw`\+?\d[\d ().\t -]{6,18}\d`;
 
 /** Facts on one page: visible labelled values and JSON-LD / tel: values, keyed by fact type. */
 export function pageFacts(html) {
   const live = stripComments(html);
   const visible = Object.fromEntries(FACT_TYPES.map(type => [type, new Map()]));
   const linked = Object.fromEntries(FACT_TYPES.map(type => [type, new Map()]));
+  // tel: links are their own evidence class: supporting evidence that never contradicts a page's labelled or JSON-LD phone.
+  const tel = { phone: new Map() };
   const put = (bucket, type, raw, key) => { if (key) bucket[type].set(key, String(raw).trim()); };
   const text = visibleText(live);
   for (const match of text.matchAll(new RegExp(String.raw`\b(?:Phone|Tel(?:ephone)?|Mobile)\b\s*[:：]?\s*(${PHONE})|(?:전화(?:번호)?|연락처|대표번호)\s*[:：]?\s*(${PHONE})`, 'gi')))
     put(visible, 'phone', match[1] ?? match[2], phoneKey(match[1] ?? match[2]));
   for (const match of live.matchAll(/href\s*=\s*["']tel:([^"']+)["']/gi)) {
     const value = decodeURIComponent(match[1]);
-    put(linked, 'phone', value, phoneKey(value));
+    put(tel, 'phone', value, phoneKey(value));
   }
   for (const match of text.matchAll(/\b(?:Founded|Established)\b\s*[:：]\s*((?:19|20)\d{2})\b|(?:설립(?:연도)?|창립(?:연도)?)\s*[:：]?\s*((?:19|20)\d{2})/gi))
     put(visible, 'year', match[1] ?? match[2], match[1] ?? match[2]);
@@ -84,10 +104,19 @@ export function pageFacts(html) {
   // A page that presents itself as a branch has its own address and phone; it is a different entity, so it is not compared.
   const heading = /<(?:title|h1)\b[^>]*>([\s\S]*?)<\/(?:title|h1)>/gi;
   const headings = [...live.matchAll(heading)].map(match => match[1]).join(' ');
-  return { visible, linked, orgs, branch: BRANCH.test(headings) || orgs.some(org => org.branch) };
+  return { visible, linked, tel, orgs, branch: BRANCH.test(headings) || orgs.some(org => org.branch) };
 }
 
-const keysOf = (page, type) => new Set([...page.facts.visible[type].keys(), ...page.facts.linked[type].keys()]);
+/**
+ * Values compared across pages for one fact type: the labelled and JSON-LD values. A tel: link joins only when the page has
+ * no labelled or JSON-LD phone, so a mobile inquiry link beside the page's landline never counts against it.
+ */
+function evidenceOf(page, type) {
+  const found = new Map([...page.facts.visible[type], ...page.facts.linked[type]]);
+  if (type === 'phone' && !found.size) for (const [key, raw] of page.facts.tel.phone) found.set(key, raw);
+  return found;
+}
+const keysOf = (page, type) => new Set(evidenceOf(page, type).keys());
 
 /**
  * Compare facts across the selected pages. A reference value needs at least two pages and a unique top count;
@@ -117,11 +146,11 @@ export function compareFacts(allPages) {
     if (top.length && top[0][1] >= 2 && (top.length === 1 || top[0][1] > top[1][1])) {
       const [modal, count] = top[0];
       const agrees = key => type === 'address' ? sameAddress(key, modal) || [...counts.keys()].some(k => sameAddress(k, modal) && sameAddress(k, key)) : key === modal;
-      const label = pages.flatMap(page => [...page.facts.visible[type].entries(), ...page.facts.linked[type].entries()]).find(([key]) => agrees(key))?.[1] ?? modal;
+      const label = pages.flatMap(page => [...evidenceOf(page, type).entries()]).find(([key]) => agrees(key))?.[1] ?? modal;
       references[type] = { key: modal, label, pages: count };
       for (const page of carrying) {
         if (![...keysOf(page, type)].some(agrees)) {
-          const found = [...page.facts.visible[type].values(), ...page.facts.linked[type].values()].join(' / ');
+          const found = [...evidenceOf(page, type).values()].join(' / ');
           deviations.get(page.url).push(`${type} "${found}" differs from "${label}" on ${count} pages`);
         }
       }
