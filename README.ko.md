@@ -68,7 +68,59 @@ node bin/optbrew.mjs update --scope project --project ./site --json
 node bin/optbrew.mjs rollback --scope project --project ./site --release-version 0.1.0 --json
 ```
 
-`check-updates --package optbrew`는 npm 레지스트리에서 최신 버전을 읽습니다. `--package`를 빼면 `local_only`를 반환합니다. `update`는 현재 CLI 번들을 검증한 뒤 관리 기록의 모든 대상에 적용합니다. 로컬 편집은 자동으로 덮어쓰지 않습니다. `rollback`은 관리 기록에 해당 이전 버전이 남아 있어야 합니다. 새 0.1.2 설치에서는 위 복원 예시가 실패하며, 로컬 0.1.0을 보존한 관리 설치에 적용됩니다. 출시 후 `npm update -g optbrew`는 npm 패키지를 갱신하지만 이전에 agent 스킬 폴더로 복사한 파일까지 바꾸지는 않습니다. CLI를 갱신한 다음 관리 `update`를 다시 실행합니다. 호스트 고유 갱신은 [플랫폼 안내](docs/platforms.md)를 보십시오.
+`check-updates --package optbrew`는 npm 레지스트리에서 최신 버전을 읽습니다. `--package`를 빼면 `local_only`를 반환합니다. `update`는 현재 CLI 번들을 검증한 뒤 관리 기록의 모든 대상에 적용합니다. 로컬 편집은 자동으로 덮어쓰지 않습니다. `rollback`은 관리 기록에 해당 이전 버전이 남아 있어야 합니다. 새 0.1.2 설치에서는 위 복원 예시가 실패하며, 로컬 0.1.0을 보존한 관리 설치에 적용됩니다. 출시 후 `npm update -g optbrew`는 npm 패키지를 갱신하지만 이전에 agent 스킬 폴더로 복사한 파일까지 바꾸지는 않습니다. CLI를 갱신한 다음 관리 `update`를 다시 실행합니다. 관리 중인 0.1.1 설치는 0.1.2로 갱신할 수 없고 `update`가 `migration_required`로 멈춥니다(아래 재설치 절차). 호스트 고유 갱신은 [플랫폼 안내](docs/platforms.md)를 보십시오.
+
+### migration_required 뒤 재설치
+
+0.1.2는 평가 버전 0.2.0을 사용합니다(0.1.1은 0.1.0). 그래서 0.1.1로 만든 점수와 기준선은 0.1.2와 비교할 수 없고 `compare`는 `not_comparable`을 반환합니다. 기준선 감사는 0.1.2로 다시 실행하십시오. 같은 이유로 관리 중인 0.1.1 설치에서 `optbrew update`를 실행하면 `migration_required`로 멈추고 아무것도 바꾸지 않으며, 메시지에 아래 경로와 명령이 나옵니다. `uninstall` 명령은 없습니다. 관리 루트와 `install-record.json`에 적힌 대상을 지운 뒤 0.1.2 저장소 루트에서 `install`을 다시 실행하는 방식으로 교체합니다. 이 명령은 `.optbrew/runs`(감사 증거)를 건드리지 않습니다. `.optbrew` 폴더 전체를 지우지 마십시오. 자세한 설명은 [플랫폼 안내](docs/platforms.md)를 보십시오.
+
+사용자 범위:
+
+```powershell user
+$ErrorActionPreference = 'Stop'
+$root = Join-Path $HOME '.optbrew/installs/user'
+$record = Get-Content -Raw -Encoding UTF8 (Join-Path $root 'install-record.json') | ConvertFrom-Json
+Remove-Item -Recurse -Force -LiteralPath $root
+foreach ($t in $record.targets) { Remove-Item -Recurse -Force -LiteralPath $t.path }
+foreach ($t in $record.targets) { node bin/optbrew.mjs install --agents $t.agent --scope user --strategy $t.strategy; if ($LASTEXITCODE) { exit $LASTEXITCODE } }
+node bin/optbrew.mjs doctor --agents (($record.targets | ForEach-Object agent) -join ',') --scope user
+exit $LASTEXITCODE
+```
+
+```bash user
+set -e
+root="$HOME/.optbrew/installs/user"
+rows=$(node -p 'JSON.parse(require("fs").readFileSync(process.argv[1],"utf8")).targets.map(t=>[t.agent,t.strategy,t.path].join("|")).join("\n")' "$root/install-record.json")
+rm -r -- "$root"
+while IFS='|' read -r agent strategy target; do rm -r -- "$target"; done <<< "$rows"
+while IFS='|' read -r agent strategy target; do node bin/optbrew.mjs install --agents "$agent" --scope user --strategy "$strategy"; done <<< "$rows"
+node bin/optbrew.mjs doctor --agents "$(cut -d'|' -f1 <<< "$rows" | paste -sd, -)" --scope user
+```
+
+프로젝트 범위(`./site`를 프로젝트 폴더로 바꾸십시오. 한 곳에만 나옵니다):
+
+```powershell project
+$ErrorActionPreference = 'Stop'
+$project = (Resolve-Path './site').Path
+$root = Join-Path $project '.optbrew/install'
+$record = Get-Content -Raw -Encoding UTF8 (Join-Path $root 'install-record.json') | ConvertFrom-Json
+Remove-Item -Recurse -Force -LiteralPath $root
+foreach ($t in $record.targets) { Remove-Item -Recurse -Force -LiteralPath $t.path }
+foreach ($t in $record.targets) { node bin/optbrew.mjs install --agents $t.agent --scope project --project $project --strategy $t.strategy; if ($LASTEXITCODE) { exit $LASTEXITCODE } }
+node bin/optbrew.mjs doctor --agents (($record.targets | ForEach-Object agent) -join ',') --scope project --project $project
+exit $LASTEXITCODE
+```
+
+```bash project
+set -e
+project="$(cd "./site" && pwd)"
+root="$project/.optbrew/install"
+rows=$(node -p 'JSON.parse(require("fs").readFileSync(process.argv[1],"utf8")).targets.map(t=>[t.agent,t.strategy,t.path].join("|")).join("\n")' "$root/install-record.json")
+rm -r -- "$root"
+while IFS='|' read -r agent strategy target; do rm -r -- "$target"; done <<< "$rows"
+while IFS='|' read -r agent strategy target; do node bin/optbrew.mjs install --agents "$agent" --scope project --project "$project" --strategy "$strategy"; done <<< "$rows"
+node bin/optbrew.mjs doctor --agents "$(cut -d'|' -f1 <<< "$rows" | paste -sd, -)" --scope project --project "$project"
+```
 
 ## 지원 범위와 라이선스
 

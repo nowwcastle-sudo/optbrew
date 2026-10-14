@@ -68,7 +68,59 @@ node bin/optbrew.mjs update --scope project --project ./site --json
 node bin/optbrew.mjs rollback --scope project --project ./site --release-version 0.1.0 --json
 ```
 
-`check-updates --package optbrew` reads the latest version from the npm registry; without `--package` it reports `local_only`. `update` uses the current CLI bundle, verifies it, and updates all targets in that install record; it does not silently replace local edits. `rollback` needs that version in the record's retained prior releases. The shown rollback will therefore fail on a fresh 0.1.2 install and applies to a managed installation that retains local 0.1.0. `npm update -g optbrew` updates npm's package files after release; it does not rewrite a copy already placed in an agent skills directory. Run the managed `update` command again after updating the CLI. Native plugin and Pi package update paths are in [platform support](docs/platforms.md).
+`check-updates --package optbrew` reads the latest version from the npm registry; without `--package` it reports `local_only`. `update` uses the current CLI bundle, verifies it, and updates all targets in that install record; it does not silently replace local edits. `rollback` needs that version in the record's retained prior releases. The shown rollback will therefore fail on a fresh 0.1.2 install and applies to a managed installation that retains local 0.1.0. `npm update -g optbrew` updates npm's package files after release; it does not rewrite a copy already placed in an agent skills directory. Run the managed `update` command again after updating the CLI. A managed 0.1.1 install cannot be updated to 0.1.2: `update` stops with `migration_required` (see the reinstall steps below). Native plugin and Pi package update paths are in [platform support](docs/platforms.md).
+
+### Reinstall after a migration_required update
+
+Release 0.1.2 uses evaluation version 0.2.0 (0.1.1 used 0.1.0), so scores and baselines made with 0.1.1 are not comparable with 0.1.2: `compare` returns `not_comparable`, and you run the baseline audit again with 0.1.2. For the same reason `optbrew update` on a managed 0.1.1 install stops with `migration_required` and changes nothing; the message lists the paths and commands below. There is no `uninstall` command. Replace the install by deleting the managed root and the targets in its `install-record.json`, then run `install` again from the 0.1.2 checkout. The commands never touch `.optbrew/runs` (your audit evidence); do not delete the whole `.optbrew` folder. Full explanation: [platform support](docs/platforms.md).
+
+User scope:
+
+```powershell user
+$ErrorActionPreference = 'Stop'
+$root = Join-Path $HOME '.optbrew/installs/user'
+$record = Get-Content -Raw -Encoding UTF8 (Join-Path $root 'install-record.json') | ConvertFrom-Json
+Remove-Item -Recurse -Force -LiteralPath $root
+foreach ($t in $record.targets) { Remove-Item -Recurse -Force -LiteralPath $t.path }
+foreach ($t in $record.targets) { node bin/optbrew.mjs install --agents $t.agent --scope user --strategy $t.strategy; if ($LASTEXITCODE) { exit $LASTEXITCODE } }
+node bin/optbrew.mjs doctor --agents (($record.targets | ForEach-Object agent) -join ',') --scope user
+exit $LASTEXITCODE
+```
+
+```bash user
+set -e
+root="$HOME/.optbrew/installs/user"
+rows=$(node -p 'JSON.parse(require("fs").readFileSync(process.argv[1],"utf8")).targets.map(t=>[t.agent,t.strategy,t.path].join("|")).join("\n")' "$root/install-record.json")
+rm -r -- "$root"
+while IFS='|' read -r agent strategy target; do rm -r -- "$target"; done <<< "$rows"
+while IFS='|' read -r agent strategy target; do node bin/optbrew.mjs install --agents "$agent" --scope user --strategy "$strategy"; done <<< "$rows"
+node bin/optbrew.mjs doctor --agents "$(cut -d'|' -f1 <<< "$rows" | paste -sd, -)" --scope user
+```
+
+Project scope (replace `./site` with your project folder; it appears once):
+
+```powershell project
+$ErrorActionPreference = 'Stop'
+$project = (Resolve-Path './site').Path
+$root = Join-Path $project '.optbrew/install'
+$record = Get-Content -Raw -Encoding UTF8 (Join-Path $root 'install-record.json') | ConvertFrom-Json
+Remove-Item -Recurse -Force -LiteralPath $root
+foreach ($t in $record.targets) { Remove-Item -Recurse -Force -LiteralPath $t.path }
+foreach ($t in $record.targets) { node bin/optbrew.mjs install --agents $t.agent --scope project --project $project --strategy $t.strategy; if ($LASTEXITCODE) { exit $LASTEXITCODE } }
+node bin/optbrew.mjs doctor --agents (($record.targets | ForEach-Object agent) -join ',') --scope project --project $project
+exit $LASTEXITCODE
+```
+
+```bash project
+set -e
+project="$(cd "./site" && pwd)"
+root="$project/.optbrew/install"
+rows=$(node -p 'JSON.parse(require("fs").readFileSync(process.argv[1],"utf8")).targets.map(t=>[t.agent,t.strategy,t.path].join("|")).join("\n")' "$root/install-record.json")
+rm -r -- "$root"
+while IFS='|' read -r agent strategy target; do rm -r -- "$target"; done <<< "$rows"
+while IFS='|' read -r agent strategy target; do node bin/optbrew.mjs install --agents "$agent" --scope project --project "$project" --strategy "$strategy"; done <<< "$rows"
+node bin/optbrew.mjs doctor --agents "$(cut -d'|' -f1 <<< "$rows" | paste -sd, -)" --scope project --project "$project"
+```
 
 ## Support and license
 

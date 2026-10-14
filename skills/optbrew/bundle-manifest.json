@@ -1,7 +1,7 @@
 {
   "schema_version": "1.0.0",
   "release_version": "0.1.2",
-  "evaluation_version": "0.1.0",
+  "evaluation_version": "0.2.0",
   "protocol_version": "0.1.0",
   "evaluation_sources": [
     {
@@ -14,7 +14,7 @@
     },
     {
       "path": "references/scoring.md",
-      "sha256": "342f485653466be2e4e464801e144d89d99b97fa0eba15f282d4ea23de96f18c"
+      "sha256": "ecb037962e76b21b1623ad8666975510f93d8ed55221e5b97986db378d19df65"
     },
     {
       "path": "references/measurement.md",
@@ -45,7 +45,7 @@
       "sha256": "703d5c16878c526114afb540e4a6d54bd74831f35a824c03a839e2480097d279"
     }
   ],
-  "evaluation_hash": "573391e30f11c0a6c8d6c6a9bceaa69215343e4df750c3f715dcb96ca5d9a48a",
+  "evaluation_hash": "cfc25f7865dfccebdb20aeaf51344242b155e305abd5e5131413920df8e9e8f8",
   "protocol_sources": [
     {
       "path": "references/schemas/contract.schema.json",
@@ -588,7 +588,7 @@
     },
     {
       "path": "references/scoring.md",
-      "sha256": "342f485653466be2e4e464801e144d89d99b97fa0eba15f282d4ea23de96f18c"
+      "sha256": "ecb037962e76b21b1623ad8666975510f93d8ed55221e5b97986db378d19df65"
     },
     {
       "path": "scripts/adapters/anthropic.mjs",
@@ -612,7 +612,7 @@
     },
     {
       "path": "scripts/core/bundle.mjs",
-      "sha256": "827ba5b0d5aa31ec84312f5e5bf80fb6b57f86b9a8b0052deffd85bf949c18ba"
+      "sha256": "3d75284cd5b788817e6bfbd472ebafe79ac3cb555f57f46469f63d915d78f602"
     },
     {
       "path": "scripts/core/capabilities.mjs",
@@ -683,5 +683,5 @@
       "sha256": "a53223b7eefab2204c026a62b1da04cfdb8a07be8d3749613e8241a81b027d9b"
     }
   ],
-  "bundle_hash": "5107668d5ca0713b02bc98e7f24dcc10b96061a5dc6eed267f98ddbcb1ba2fe7"
+  "bundle_hash": "3551227ca3e74484fd837672b4c0453d2cdca910714e8892b3c49b5ea5fd6601"
 }

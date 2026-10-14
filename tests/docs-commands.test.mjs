@@ -34,7 +34,9 @@ test('documented local commands parse and operate in isolated project', async ()
     'report --input ./remote-only.json --output-dir ./report-output',
   ];
   for (const args of required) assert.ok(text.includes(`node bin/optbrew.mjs ${args}`), `missing documented command: ${args}`);
-  const documented = [...new Set([...text.matchAll(/^node bin\/optbrew\.mjs (.+)$/gm)].map(match => match[1]))].sort();
+  // The reinstall blocks (tagged powershell/bash + scope) run in update-from-published.test.mjs against a published 0.1.1 install.
+  const withoutReinstallBlocks = text.replace(/```(?:powershell|bash) (?:user|project)\n[\s\S]*?```/g, '');
+  const documented = [...new Set([...withoutReinstallBlocks.matchAll(/^node bin\/optbrew\.mjs (.+)$/gm)].map(match => match[1]))].sort();
   assert.deepEqual(documented, [...required].sort(), 'every checkout CLI example must have an isolated execution case');
   const temp = await mkdtemp(path.join(os.tmpdir(), 'optbrew-docs-'));
   await mkdir(path.join(temp, 'site'));
