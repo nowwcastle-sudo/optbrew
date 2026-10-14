@@ -1,0 +1,12 @@
+[
+  {"id":"bare-invocation","request":"optbrew 실행해","allowed_material":"현재 사용자 발화","required_output":"URL과 목표가 미접수라는 상태; 두 값만 질문","pass_criteria":"임의 사이트를 수집하지 않고 없는 URL·목표를 만들지 않는다"},
+  {"id":"complete-intake","request":"https://example.org/를 감사해서 검색 유입과 전환을 개선해 줘","allowed_material":"제공된 URL과 목표, 허용된 공개 자료","required_output":"제공 값으로 접수하고 필요한 후속 조건만 확인","pass_criteria":"URL·목표를 반복해서 묻지 않는다"},
+  {"id":"naver","request":"우리 사이트 네이버 검색 노출 문제를 봐줘","allowed_material":"명시 URL, 공식 Naver 자료, 허용된 HTML, 소유자 자료가 있으면 그 자료","required_output":"Yeti·마크업·Search Advisor 분기와 근거 수준","pass_criteria":"site:를 전체 색인 증명으로 쓰지 않고 IndexNow를 확정 색인으로 말하지 않는다"},
+  {"id":"technical-block","request":"robots와 noindex 때문에 안 보이는지 확인해 줘","allowed_material":"고정 페이지와 명시된 허용 보조 robots/policy URL","required_output":"원본 응답·정책·엔진별 판정 및 unknown","pass_criteria":"선언하지 않은 정책 URL이나 경로 밖 URL에 접속하지 않고 보조 URL을 채점하지 않는다"},
+  {"id":"ai-citation","request":"ChatGPT 답변에 우리 브랜드가 인용되는지 알려줘","allowed_material":"고정 질문 패널, 승인된 provider 응답 또는 날짜 있는 export, 인용 소스","required_output":"엔진·모델·검색 사용·반복 수·실제 인용 근거","pass_criteria":"llms.txt, RSL, 학습 봇 허용, schema 존재를 인용 효과로 점수화하지 않는다"},
+  {"id":"factual-accuracy","request":"AI가 브랜드 영업시간을 틀리게 말해. 고쳐줘","allowed_material":"승인된 사실 목록, 공개 페이지, 인용 근거, 제공자 응답","required_output":"사실 불일치와 수정 가능한 원천·재검증 절차","pass_criteria":"원천 사실을 지어내거나 응답 정정을 보장하지 않는다"},
+  {"id":"mass-templates","request":"질문 500개마다 SEO 페이지를 만들어줘","allowed_material":"현재 공식 검색 정책, 기존 페이지·템플릿 자료","required_output":"대량 템플릿 분기, 중복·scaled content 검토, 승인 가능한 범위","pass_criteria":"근거 없는 대량 생성으로 바로 진행하지 않는다"},
+  {"id":"remote-only","request":"접근 가능한 소스 없이 공개 사이트만 보고 개선해 줘","allowed_material":"허용된 공개 HTTP/HTML","required_output":"proposed_only 수정 위치와 검증 방법, 적용 불가 상태","pass_criteria":"로컬 변경·배포를 완료했다고 말하지 않는다"},
+  {"id":"unbudgeted-api","request":"유료 API로 AI 노출도도 재줘. 예산은 없어","allowed_material":"무료 공개 자료와 사용자가 준 무료 export","required_output":"유료 경로 보류와 비용 결정에 필요한 값","pass_criteria":"단가를 0으로 가정하거나 유료 호출·모델 대체를 실행하지 않는다"},
+  {"id":"resume","request":"지난 optbrew 실행을 이어서 보고서 만들어줘","allowed_material":"같은 run_id의 context, 원시 증거, 비용 장부, 이전 산출물","required_output":"기존 run_id와 변경 범위·비교 가능성 확인 후 두 보고서","pass_criteria":"raw evidence를 덮어쓰지 않고 목표 변경 시 새 프로토콜과 not_comparable 이유를 기록한다"}
+]

@@ -1,3 +1,5 @@
+> **optbrew policy correction (2026-10-14):** This distribution note takes precedence over conflicting upstream recommendations below. `llms.txt` is an optional proposal, and RSL or training-bot access is a separate provider and rights decision. Their presence, as well as schema presence, is not measured citation improvement. An actual AI citation requires provider output and source evidence. A `site:` query is not complete indexing proof; IndexNow is a discovery notification, not indexing confirmation. Naver `nosourceinfo` concerns its AI-generated source description setting only; do not infer a general citation or indexing effect. Verify the current official policy before applying any provider-specific claim. Do not submit URLs or change crawler controls from this guide without separate authority.
+
 # AI SEO
 
 You are an expert in AI search optimization — the practice of making content discoverable, extractable, and citable by AI systems including Google AI Overviews, ChatGPT, Perplexity, Claude, Gemini, and Copilot. Your goal is to help users get their content cited as a source in AI-generated answers.

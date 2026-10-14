@@ -126,17 +126,26 @@ export async function collect(context, { transport, resolve } = {}) {
   if (![limit, depthLimit, concurrency].every(Number.isInteger) || limit < 1 || depthLimit < 0 || concurrency < 1)
     throw new Error('invalid collection limits');
   const initial = context.protocol.page_types.flatMap(type => type.urls.map(ref => ref.normalized));
+  const auxiliary = context.protocol.auxiliary_resources ?? [];
+  if (auxiliary.length && initial.length + auxiliary.length > limit) throw new Error('selected pages and auxiliary resources exceed request scope');
   const queue = []; const seen = new Set(); const skipped = [];
-  const enqueue = (url, depth) => {
+  const enqueue = (url, depth, auxiliaryResource = false) => {
     let normalized;
     try { normalized = assertUrlInScope(url, scope).href; }
     catch { skipped.push({ url, reason: 'outside_scope' }); return; }
     if (seen.has(normalized)) return;
     seen.add(normalized);
     if (depth > depthLimit) { skipped.push({ url: normalized, reason: 'depth_limit' }); return; }
-    queue.push({ url: normalized, depth });
+    queue.push({ url: normalized, depth, auxiliaryResource });
   };
   initial.forEach(url => enqueue(url, 0));
+  for (const resource of auxiliary) {
+    if (seen.has(resource.normalized)) throw new Error('auxiliary resource duplicates selected URL');
+    const normalized = assertUrlInScope(resource.normalized, scope).href;
+    if (normalized !== resource.normalized || assertUrlInScope(resource.original, scope).href !== normalized)
+      throw new Error('auxiliary resource URL mismatch');
+    enqueue(normalized, 0, true);
+  }
   const artifacts = []; let cursor = 0; let scheduled = 0;
   async function worker() {
     while (cursor < queue.length) {
@@ -153,7 +162,7 @@ export async function collect(context, { transport, resolve } = {}) {
           source_ref: 'optbrew:collector', evidence_ref: null, error: reason, body: Buffer.alloc(0) };
       }
       artifacts.push(artifact);
-      if (artifact.status === 200 && artifact.capability === 'raw_html')
+      if (!item.auxiliaryResource && artifact.status === 200 && artifact.capability === 'raw_html')
         for (const next of links(artifact.body.toString('utf8'), artifact.final_url)) enqueue(next, item.depth + 1);
     }
   }

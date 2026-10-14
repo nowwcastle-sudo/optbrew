@@ -1,0 +1,4 @@
+interface:
+  display_name: "optbrew"
+  short_description: "검색·네이버·AI 답변 최적화를 감사하고 로컬 개선을 안내합니다"
+  default_prompt: "Use $optbrew to audit my website and make evidence-backed local improvements."

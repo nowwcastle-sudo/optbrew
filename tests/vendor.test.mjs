@@ -64,6 +64,15 @@ test('vendored bundle has pinned files, notices and closed local links', async (
       }
     }
     const index = await readFile(path.join(bundle, 'naver-searchadvisor/references/INDEX.md'), 'utf8');
+    const naverGuide = await readFile(path.join(bundle, 'naver-searchadvisor/GUIDE.md'), 'utf8');
+    const aiGuide = await readFile(path.join(bundle, 'marketing-search/skills/ai-seo/GUIDE.md'), 'utf8');
+    assert.match(naverGuide, /^> \*\*optbrew policy correction/);
+    assert.match(aiGuide, /^> \*\*optbrew policy correction/);
+    for (const name of ['naver-searchadvisor/GUIDE.md', 'marketing-search/skills/ai-seo/GUIDE.md']) {
+      const record = lock.files.find(x => x.package_path === `skills/optbrew/modules/${name}`);
+      assert.ok(record.overlay_id);
+      assert.equal(record.overlay_base_sha256.length, 64);
+    }
     assert.match(index, /https:\/\/searchadvisor\.naver\.com\/guide\//);
     assert.doesNotMatch(index, /\]\(guide\//);
     assert.equal([...index.matchAll(/\]\(https:\/\/searchadvisor\.naver\.com\/guide\//g)].length, 55);
@@ -115,6 +124,7 @@ test('reviewed parser replacement survives configured CLI regeneration and rejec
       replacement_sha256: createHash('sha256').update(replacement).digest('hex'),
       reason: 'Reviewed parser correction fixture'
     }];
+    config.reviewed_overlays = [];
     const patchedConfig = path.join(temp, 'vendor.config.json');
     await writeFile(patchedConfig, JSON.stringify(config));
     execFileSync(process.execPath, ['scripts/vendor.mjs', '--sources-root', sourcesRoot, '--output-root', outputRoot, '--config-path', patchedConfig], { cwd: root });

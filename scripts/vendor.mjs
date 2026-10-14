@@ -188,6 +188,7 @@ export async function vendor({ sourcesRoot = defaultSources, outputRoot = repoRo
   const config = JSON.parse(await readFile(configPath, 'utf8'));
   const patchEntries = [...(config.reviewed_patches ?? []), ...(patchSet.patches ?? [])];
   const patches = new Map();
+  const overlays = new Map();
   const patchIds = new Set();
   for (const patch of patchEntries) {
     const key = `${patch.module_id}/${patch.upstream_path}`;
@@ -195,7 +196,14 @@ export async function vendor({ sourcesRoot = defaultSources, outputRoot = repoRo
     patches.set(key, patch);
     patchIds.add(patch.id);
   }
+  for (const overlay of config.reviewed_overlays ?? []) {
+    const key = `${overlay.module_id}/${overlay.upstream_path}`;
+    if (overlays.has(key) || patchIds.has(overlay.id)) throw new Error(`duplicate reviewed overlay: ${overlay.id}`);
+    overlays.set(key, overlay);
+    patchIds.add(overlay.id);
+  }
   const applied = new Set();
+  const appliedOverlays = new Set();
   const lock = { schema_version: config.schema_version, modules: [], files: [] };
   const outputs = [];
   for (const module of config.modules) {
@@ -236,11 +244,20 @@ export async function vendor({ sourcesRoot = defaultSources, outputRoot = repoRo
         transformations.push(`reviewed distribution patch ${patch.id}`);
         applied.add(patchKey);
       }
+      const overlay = overlays.get(patchKey);
+      if (overlay) {
+        if (upstream === module.license_path || !destination.endsWith('GUIDE.md')) throw new Error(`reviewed overlay target invalid: ${overlay.id}`);
+        const notice = await reviewedReplacement(configPath, overlay, distributed);
+        distributed = Buffer.concat([notice, Buffer.from('\n'), distributed]);
+        transformations.push(`reviewed distribution overlay ${overlay.id}`);
+        appliedOverlays.add(patchKey);
+      }
       outputs.push([destination, distributed]);
-      lock.files.push({ module_id: module.module_id, repo: module.repo, commit: module.commit, license: module.license, license_blob_sha: module.license_blob_sha, upstream_path: upstream, package_path: destination, original_git_blob_sha: gitBlob, original_sha256: sha(bytes, 'sha256'), distributed_sha256: sha(distributed, 'sha256'), transformations: [...new Set(transformations)], patch_id: patch?.id ?? null, patch_base_sha256: patch?.expected_base_sha256 ?? null, patch_reason: patch?.reason ?? (transformations.length ? 'Portable optbrew GUIDE and capability routing' : null), excluded_files: module.excluded_files });
+      lock.files.push({ module_id: module.module_id, repo: module.repo, commit: module.commit, license: module.license, license_blob_sha: module.license_blob_sha, upstream_path: upstream, package_path: destination, original_git_blob_sha: gitBlob, original_sha256: sha(bytes, 'sha256'), distributed_sha256: sha(distributed, 'sha256'), transformations: [...new Set(transformations)], patch_id: patch?.id ?? null, patch_base_sha256: patch?.expected_base_sha256 ?? null, patch_reason: patch?.reason ?? (transformations.length ? 'Portable optbrew GUIDE and capability routing' : null), ...(overlay ? { overlay_id: overlay.id, overlay_base_sha256: overlay.expected_base_sha256, overlay_reason: overlay.reason } : {}), excluded_files: module.excluded_files });
     }
   }
   for (const key of patches.keys()) if (!applied.has(key)) throw new Error(`reviewed patch target not selected: ${key}`);
+  for (const key of overlays.keys()) if (!appliedOverlays.has(key)) throw new Error(`reviewed overlay target not selected: ${key}`);
   for (const artifact of config.first_party_files ?? []) {
     const source = normalizeRelative(artifact.source_path ?? '');
     const destination = normalizeRelative(artifact.package_path ?? '');

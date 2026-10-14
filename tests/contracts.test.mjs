@@ -23,6 +23,22 @@ test('RunContext and frozen protocol are deterministic across run identifiers', 
   assert.equal(validateEntity('RunContext', context()).run_id, 'run-a');
 });
 
+test('auxiliary resources are fixed comparison inputs and cannot duplicate or escape scope', () => {
+  const first = context();
+  first.scope = { allowed: [{ origin: 'https://example.com', path_prefix: '/' }] };
+  first.protocol.auxiliary_resources = [{ kind: 'robots', original: 'https://example.com/robots.txt', normalized: 'https://example.com/robots.txt' }];
+  const second = structuredClone(first);
+  assert.equal(freezeProtocol(first).protocol_hash, freezeProtocol(second).protocol_hash);
+  second.protocol.auxiliary_resources[0].original = 'https://example.com/sitemap.xml';
+  second.protocol.auxiliary_resources[0].normalized = 'https://example.com/sitemap.xml';
+  assert.notEqual(freezeProtocol(first).protocol_hash, freezeProtocol(second).protocol_hash);
+  second.protocol.auxiliary_resources[0].normalized = 'https://example.com/';
+  assert.throws(() => freezeProtocol(second), /duplicate|selected/i);
+  second.protocol.auxiliary_resources[0].normalized = 'https://example.com/off-path';
+  second.scope.allowed[0].path_prefix = '/owned/';
+  assert.throws(() => freezeProtocol(second), /scope|outside/i);
+});
+
 test('invalid q, ratio, duplicate URL and nonfinite JSON values are rejected', () => {
   const observation = { schema_version: '1.0.0', observation_id: 'o1', check_id: 'fetch-response',
     family_id: 'fetch-response', unit_key: 'fetch-response|google|https://example.com/',

@@ -71,7 +71,7 @@ export async function runAudit({ context, modules, outputDir, transport, resolve
     if (planned.has('fetch-response') && selectedUrls.has(artifact.normalized_url)) observations.push(observation(saved, 'fetch-response',
       artifact.error || artifact.status < 200 || artifact.status >= 300 && artifact.status < 400 ? 'unknown' : artifact.status >= 400 ? 'fail' : 'pass',
       artifact.error ? 'Request did not finish' : `HTTP ${artifact.status}`));
-    if (artifact.capability !== 'raw_html' || artifact.status !== 200) continue;
+    if (!selectedUrls.has(artifact.normalized_url) || artifact.capability !== 'raw_html' || artifact.status !== 200) continue;
     const html = artifact.body.toString('utf8');
     if (modules.includes('naver-searchadvisor')) {
       const robotsIndex = collection.artifacts.findIndex(x => { try { const u = new URL(x.final_url); return u.origin === new URL(artifact.final_url).origin && u.pathname === '/robots.txt'; } catch { return false; } });

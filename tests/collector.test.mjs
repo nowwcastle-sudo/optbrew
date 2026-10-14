@@ -3,8 +3,12 @@ import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
 import https from 'node:https';
 import { EventEmitter } from 'node:events';
+import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
 import { assertInScope } from '../skills/optbrew/scripts/core/scope.mjs';
 import { collect, fetchScoped } from '../skills/optbrew/scripts/core/collector.mjs';
+import { runAudit } from '../skills/optbrew/scripts/audit.mjs';
 
 const scope = { allowed: [{ origin: 'https://example.test', path_prefix: '/owned/' }] };
 const context = (urls, extra = {}) => ({ scope: { ...scope, ...extra }, protocol: { page_types: [{ id: 'main', urls: urls.map(url => ({ original: url, normalized: url })) }] } });
@@ -64,6 +68,62 @@ test('HTTP errors remain artifacts and do not stop free collection', async () =>
     resolve, transport: async () => response('', [403, 429, 200][n++])
   });
   assert.deepEqual(result.artifacts.map(x => x.status), [403, 429, 200]);
+});
+
+test('declared auxiliary policy is fetched without links and shares the 50-request cap', async () => {
+  const page = 'https://example.test/owned/page';
+  const robots = 'https://example.test/owned/robots.txt';
+  const policy = 'https://example.test/owned/policy.txt';
+  const requested = [];
+  const input = context([page], { max_urls: 3 });
+  input.protocol.auxiliary_resources = [
+    { kind: 'robots', original: robots, normalized: robots },
+    { kind: 'policy', original: policy, normalized: policy },
+  ];
+  const result = await collect(input, { resolve, transport: async ({ url }) => {
+    requested.push(url.href);
+    return response(url.href === page ? '<title>Page</title><a href="/policy.txt">off path</a>' : 'noindex\n<a href="/owned/secret">ignore</a>');
+  } });
+  assert.deepEqual(new Set(requested), new Set([page, robots, policy]));
+  assert.equal(result.evaluated_count, 3);
+  assert.ok(!requested.includes('https://example.test/owned/secret'));
+  assert.ok(!requested.includes('https://example.test/policy.txt'));
+  assert.equal(result.artifacts.length, 3);
+  let calls = 0;
+  const over = context([page], { max_urls: 2 });
+  over.protocol.auxiliary_resources = input.protocol.auxiliary_resources;
+  await assert.rejects(collect(over, { resolve, transport: async () => { calls++; return response(); } }), /exceed request scope/);
+  assert.equal(calls, 0);
+});
+
+test('declared robots with no page link reaches Naver audit without a scored resource unit', async () => {
+  const page = 'https://example.test/owned/page';
+  const robots = 'https://example.test/robots.txt';
+  const run = {
+    schema_version: '1.0.0', run_id: 'aux-audit', target: 'example.test', environment: 'local', goals: ['naver'],
+    allowed_changes: [], scope: { allowed: [...scope.allowed, { origin: 'https://example.test', path_prefix: '/robots.txt' }] }, evaluation_version: '0.1.0', protocol_version: '0.1.0',
+    data_sources: [], cost_decision: {}, evidence_ref: 'evidence/context.json',
+    protocol: { page_types: [{ id: 'main', urls: [{ original: page, normalized: page }] }],
+      auxiliary_resources: [{ kind: 'robots', original: robots, normalized: robots }],
+      engines: ['naver'], families: [{ family_id: 'fetch-response', applicable: true }, { family_id: 'search-crawl-policy', applicable: true }],
+      locale: 'ko-KR', region: 'KR', browser: 'Chrome', device: 'desktop',
+      question_panel: [], surfaces: [], models: [], search_enabled: null }
+  };
+  const dir = await mkdtemp(path.join(os.tmpdir(), 'optbrew-aux-audit-'));
+  const requested = [];
+  try {
+    const result = await runAudit({ context: run, modules: ['naver-searchadvisor'], outputDir: dir, resolve,
+      transport: async ({ url }) => {
+        requested.push(url.href);
+        return url.href === robots ? { status: 200, headers: { 'content-type': 'text/plain' }, body: Buffer.from('User-agent: Yeti\nDisallow: /owned/page') } : response('<title>Page</title>');
+      } });
+    assert.deepEqual(new Set(requested), new Set([page, robots]));
+    assert.equal(result.artifacts.length, 2);
+    assert.deepEqual(result.observations.map(x => x.unit_key), [`fetch-response|${page}`, `search-crawl-policy|naver|${page}`]);
+    assert.ok(result.module_outputs['naver-searchadvisor'][0].robots_evidence_ref);
+    const index = JSON.parse(await readFile(result.evidence_ref, 'utf8'));
+    assert.equal(index.raw.length, 2);
+  } finally { await rm(dir, { recursive: true, force: true }); }
 });
 
 test('blocked redirect is recorded without contacting the destination', async () => {

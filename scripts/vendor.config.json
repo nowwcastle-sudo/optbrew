@@ -38,6 +38,10 @@
       "reason": "Document offline Magnus HTML input and disabled direct URL fetch"
     }
   ],
+  "reviewed_overlays": [
+    { "id": "naver-policy-boundaries", "module_id": "naver-searchadvisor", "upstream_path": "SKILL.md", "expected_base_sha256": "d7cdc695bd18aeb19060acaaa5d7db70ca3ebef322664d360c5df2eff097c610", "replacement_path": "patches/policies.patch", "replacement_sha256": "2eb101f38b6b9ddc654e917e15322dd35fb579a205fc4978252a39c1692a24be", "reason": "Clarify nosourceinfo, site query and IndexNow evidence boundaries" },
+    { "id": "ai-seo-policy-boundaries", "module_id": "marketing-search", "upstream_path": "skills/ai-seo/SKILL.md", "expected_base_sha256": "a94828753a68b58d72a8364efc4b915b77e7ec7ccfb696d88dd4e033cfe78fe3", "replacement_path": "patches/policies.patch", "replacement_sha256": "2eb101f38b6b9ddc654e917e15322dd35fb579a205fc4978252a39c1692a24be", "reason": "Correct optional AI files and separate measured citations from readiness" }
+  ],
   "first_party_files": [
     {
       "id": "naver-robots-parser",

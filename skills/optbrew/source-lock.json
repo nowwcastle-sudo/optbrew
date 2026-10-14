@@ -341,15 +341,19 @@
       "package_path": "skills/optbrew/modules/naver-searchadvisor/GUIDE.md",
       "original_git_blob_sha": "7536957694e77333f54d1870aff49d1fffd25621",
       "original_sha256": "baab29832210c4fe0a92dbb5ca2b9603931fd1ad167d8502a043e89030e21dc1",
-      "distributed_sha256": "d7cdc695bd18aeb19060acaaa5d7db70ca3ebef322664d360c5df2eff097c610",
+      "distributed_sha256": "a25b30472dcb61036995ba5f4c986e6f6dfb4033a9f83f4d95791ee23a8a64a1",
       "transformations": [
         "SKILL.md to GUIDE.md; YAML frontmatter removed",
         "Replaced offline copyrighted-guide workflow with official-index routing",
-        "reviewed distribution patch naver-bounded-guide"
+        "reviewed distribution patch naver-bounded-guide",
+        "reviewed distribution overlay naver-policy-boundaries"
       ],
       "patch_id": "naver-bounded-guide",
       "patch_base_sha256": "962baa5b9dee48c301ef53d201268e21a210aefd8ca995e687b705d0fbf2c174",
       "patch_reason": "Route Naver audit through bounded optbrew collector and clarify bot-response evidence",
+      "overlay_id": "naver-policy-boundaries",
+      "overlay_base_sha256": "d7cdc695bd18aeb19060acaaa5d7db70ca3ebef322664d360c5df2eff097c610",
+      "overlay_reason": "Clarify nosourceinfo, site query and IndexNow evidence boundaries",
       "excluded_files": [
         "references/guide/*.md: 55 Naver copyrighted article bodies outside MIT scope; official URLs retained in INDEX",
         "README.md: documents upstream offline corpus and is not a runtime guide",
@@ -1982,14 +1986,18 @@
       "package_path": "skills/optbrew/modules/marketing-search/skills/ai-seo/GUIDE.md",
       "original_git_blob_sha": "39d0384e8d93a7a069fed6d6d3c88389877c1c68",
       "original_sha256": "b1ecd93ebc65af886f81bc0a90645c8fd4ffdf68c5b3d4495a9e61481d954d00",
-      "distributed_sha256": "a94828753a68b58d72a8364efc4b915b77e7ec7ccfb696d88dd4e033cfe78fe3",
+      "distributed_sha256": "7968cc1a6990369e606ed95e257f62e9273b3378960f14cf474584ce31c6196f",
       "transformations": [
         "SKILL.md to GUIDE.md; YAML frontmatter removed",
-        "Unbundled relative link ../../tools/REGISTRY.md changed to upstream-only text"
+        "Unbundled relative link ../../tools/REGISTRY.md changed to upstream-only text",
+        "reviewed distribution overlay ai-seo-policy-boundaries"
       ],
       "patch_id": null,
       "patch_base_sha256": null,
       "patch_reason": "Portable optbrew GUIDE and capability routing",
+      "overlay_id": "ai-seo-policy-boundaries",
+      "overlay_base_sha256": "a94828753a68b58d72a8364efc4b915b77e7ec7ccfb696d88dd4e033cfe78fe3",
+      "overlay_reason": "Correct optional AI files and separate measured citations from readiness",
       "excluded_files": [
         "Unselected marketing skills, installers and authoring utilities"
       ]

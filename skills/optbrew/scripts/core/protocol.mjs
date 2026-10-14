@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { ContractError, validateEntity, validateApplicabilityDecision } from './contracts.mjs';
+import { assertUrlInScope } from './scope.mjs';
 
 const registry = JSON.parse(readFileSync(new URL('../../references/check-registry.json', import.meta.url)));
 const knownFamilies = new Map(registry.families.map(x => [x.family_id, x]));
@@ -34,6 +35,19 @@ export function freezeProtocol(context) {
   const urls = p.page_types.flatMap(x => x.urls.map(u => u.normalized));
   unique(urls, 'normalized URLs');
   if (!urls.length) throw new ContractError('protocol requires selected public audit URLs');
+  const resources = p.auxiliary_resources ?? [];
+  unique(resources.map(x => x.normalized), 'auxiliary resources');
+  if (resources.some(x => urls.includes(x.normalized))) throw new ContractError('auxiliary resource duplicates a selected URL');
+  const requestLimit = Math.min(context.scope.max_urls ?? 50, 50);
+  if (urls.length + resources.length > requestLimit) throw new ContractError('selected pages and auxiliary resources exceed request scope');
+  for (const resource of resources) {
+    for (const url of [resource.original, resource.normalized]) {
+      try { assertUrlInScope(url, context.scope); }
+      catch { throw new ContractError(`auxiliary resource outside scope: ${url}`); }
+    }
+    if (assertUrlInScope(resource.original, context.scope).href !== resource.normalized)
+      throw new ContractError(`auxiliary resource normalized URL mismatch: ${resource.original}`);
+  }
   for (const pageType of p.page_types) {
     if (!pageType.urls.length) throw new ContractError(`empty page type: ${pageType.id}`);
     for (const url of pageType.urls) {
@@ -86,6 +100,7 @@ export function freezeProtocol(context) {
       throw new ContractError(`${family.family_id}: fixed question panel required`);
   }
   const sorted = { ...p,
+    ...(p.auxiliary_resources ? { auxiliary_resources: [...resources].sort((a, b) => compare(a.normalized, b.normalized)) } : {}),
     engines: [...p.engines].sort(),
     families: [...p.families].sort((a, b) => compare(a.family_id, b.family_id)).map(f => ({ ...f,
       ...(f.urls ? { urls: [...f.urls].sort() } : {}),
