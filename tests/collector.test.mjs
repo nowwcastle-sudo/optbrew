@@ -126,6 +126,80 @@ test('declared robots with no page link reaches Naver audit without a scored res
   } finally { await rm(dir, { recursive: true, force: true }); }
 });
 
+test('a declared policy-kind robots file is retained but cannot drive crawl-policy evidence', async () => {
+  const origin = 'https://example.test';
+  const page = `${origin}/owned/page`;
+  const robots = `${origin}/robots.txt`;
+  const run = {
+    schema_version: '1.0.0', run_id: 'policy-not-robots', target: 'example.test', environment: 'local', goals: ['naver'],
+    allowed_changes: [], scope: { allowed: [{ origin, path_prefix: '/' }] },
+    evaluation_version: '0.1.0', protocol_version: '0.1.0', data_sources: [], cost_decision: {}, evidence_ref: 'evidence/context.json',
+    protocol: { page_types: [{ id: 'main', urls: [{ original: page, normalized: page }] }],
+      auxiliary_resources: [{ kind: 'policy', original: robots, normalized: robots }],
+      engines: ['naver'], families: [{ family_id: 'search-crawl-policy', applicable: true }],
+      locale: 'ko-KR', region: 'KR', browser: 'Chrome', device: 'desktop',
+      question_panel: [], surfaces: [], models: [], search_enabled: null }
+  };
+  const dir = await mkdtemp(path.join(os.tmpdir(), 'optbrew-policy-kind-'));
+  try {
+    const result = await runAudit({ context: run, modules: ['naver-searchadvisor'], outputDir: dir, resolve,
+      transport: async ({ url }) => url.href === robots
+        ? { status: 200, headers: { 'content-type': 'text/plain' }, body: Buffer.from('User-agent: Yeti\nDisallow: /owned/page') }
+        : response('<title>Page</title>') });
+    assert.equal(result.artifacts.length, 2);
+    assert.equal(result.module_outputs['naver-searchadvisor'][0].robots_evidence_ref, null);
+    assert.equal(result.observations.some(x => x.family_id === 'search-crawl-policy'), false);
+  } finally { await rm(dir, { recursive: true, force: true }); }
+});
+
+test('undeclared in-scope robots link is not contacted or used while ordinary pages are explored', async () => {
+  const origin = 'https://example.test';
+  const page = `${origin}/owned/page`;
+  const child = `${origin}/owned/child`;
+  const robots = `${origin}/robots.txt`;
+  const run = {
+    schema_version: '1.0.0', run_id: 'no-aux-policy', target: 'example.test', environment: 'local', goals: ['naver'],
+    allowed_changes: [], scope: { allowed: [{ origin, path_prefix: '/' }] },
+    evaluation_version: '0.1.0', protocol_version: '0.1.0', data_sources: [], cost_decision: {}, evidence_ref: 'evidence/context.json',
+    protocol: { page_types: [{ id: 'main', urls: [{ original: page, normalized: page }] }], auxiliary_resources: [],
+      engines: ['naver'], families: [{ family_id: 'fetch-response', applicable: true }, { family_id: 'search-crawl-policy', applicable: true }],
+      locale: 'ko-KR', region: 'KR', browser: 'Chrome', device: 'desktop',
+      question_panel: [], surfaces: [], models: [], search_enabled: null }
+  };
+  const dir = await mkdtemp(path.join(os.tmpdir(), 'optbrew-undeclared-'));
+  const requested = [];
+  try {
+    const result = await runAudit({ context: run, modules: ['naver-searchadvisor'], outputDir: dir, resolve,
+      transport: async ({ url }) => {
+        requested.push(url.href);
+        if (url.href === robots) return { status: 200, headers: { 'content-type': 'text/plain' }, body: Buffer.from('User-agent: Yeti\nDisallow: /owned/page') };
+        return response(url.href === page ? '<title>Page</title><a href="/robots.txt">robots</a><a href="/robo%74s.txt">encoded</a><a href="/owned/policy.txt">policy</a><a href="/owned/child">child</a>' : '<title>Child</title>');
+      } });
+    assert.deepEqual(new Set(requested), new Set([page, child]));
+    assert.equal(result.artifacts.length, 2);
+    assert.deepEqual(result.observations.map(x => x.unit_key), [`fetch-response|${page}`]);
+    assert.equal(result.module_outputs['naver-searchadvisor'][0].robots_evidence_ref, null);
+  } finally { await rm(dir, { recursive: true, force: true }); }
+});
+
+test('ordinary page redirect cannot contact an undeclared auxiliary policy URL', async () => {
+  const origin = 'https://example.test';
+  const page = `${origin}/owned/page`;
+  const redirect = `${origin}/owned/redirect`;
+  const robots = `${origin}/robots.txt`;
+  const requested = [];
+  const result = await collect(context([page], { allowed: [{ origin, path_prefix: '/' }] }), { resolve,
+    transport: async ({ url }) => {
+      requested.push(url.href);
+      if (url.href === page) return response('<a href="/owned/redirect">next</a>');
+      if (url.href === redirect) return response('', 302, { location: '/robots.txt' });
+      return response('User-agent: Yeti\nDisallow: /');
+    } });
+  assert.deepEqual(requested, [page, redirect]);
+  assert.ok(result.skipped.some(x => x.url === redirect));
+  assert.ok(!requested.includes(robots));
+});
+
 test('blocked redirect is recorded without contacting the destination', async () => {
   let calls = 0;
   const result = await collect(context(['https://example.test/owned/a']), { resolve,

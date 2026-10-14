@@ -39,6 +39,14 @@ test('auxiliary resources are fixed comparison inputs and cannot duplicate or es
   assert.throws(() => freezeProtocol(second), /scope|outside/i);
 });
 
+test('robots and sitemap documents cannot be scored page URLs', () => {
+  for (const pathname of ['/robots.txt', '/sitemap.xml']) {
+    const changed = context();
+    changed.protocol.page_types[0].urls[0] = { original: `https://example.com${pathname}`, normalized: `https://example.com${pathname}` };
+    assert.throws(() => freezeProtocol(changed), /auxiliary|policy|resource/i);
+  }
+});
+
 test('invalid q, ratio, duplicate URL and nonfinite JSON values are rejected', () => {
   const observation = { schema_version: '1.0.0', observation_id: 'o1', check_id: 'fetch-response',
     family_id: 'fetch-response', unit_key: 'fetch-response|google|https://example.com/',

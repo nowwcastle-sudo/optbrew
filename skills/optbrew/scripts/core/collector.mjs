@@ -10,6 +10,19 @@ const HEADER_NAMES = ['content-type', 'content-length', 'content-range', 'conten
 const REDIRECTS = new Set([301, 302, 303, 307, 308]);
 const text = value => Buffer.isBuffer(value) ? value : Buffer.from(value ?? '');
 
+function auxiliaryDocument(url) {
+  const pathname = decodeURIComponent(new URL(url).pathname).toLowerCase();
+  return /\.(?:txt|xml)(?:\.gz)?$/.test(pathname) ||
+    /(?:^|\/)(?:sitemap|(?:[^/]*[-_])?polic(?:y|ies))(?:[-_.\/]|$)/.test(pathname);
+}
+
+function undeclaredAuxiliary(url, allowed) {
+  if (!auxiliaryDocument(url.href) || allowed.has(url.href)) return;
+  const error = new Error('auxiliary document was not declared');
+  error.code = 'auxiliary_undeclared';
+  throw error;
+}
+
 function safeHeaders(headers) {
   const source = headers instanceof Headers ? Object.fromEntries(headers) : headers ?? {};
   return Object.fromEntries(Object.entries(source).filter(([name]) => HEADER_NAMES.includes(name.toLowerCase()))
@@ -57,10 +70,11 @@ async function addressesFor(url, resolve) {
 }
 
 /** Fetch one URL with fresh DNS validation at every redirect and a pinned connection. */
-export async function fetchScoped(input, { context, transport = nodeTransport, resolve = host => lookup(host, { all: true, verbatim: true }), timeoutMs = 20000, maxBytes = 5242880, maxRedirects = 10, headers = {} }) {
+export async function fetchScoped(input, { context, transport = nodeTransport, resolve = host => lookup(host, { all: true, verbatim: true }), timeoutMs = 20000, maxBytes = 5242880, maxRedirects = 10, headers = {}, allowedAuxiliary = null }) {
   if (![timeoutMs, maxBytes, maxRedirects].every(Number.isInteger) || timeoutMs < 1 || timeoutMs > 20000 || maxBytes < 1 || maxBytes > 5242880 || maxRedirects < 0 || maxRedirects > 10)
     throw new Error('fetch limits exceed context ceiling');
   let url = assertUrlInScope(input, context.scope);
+  if (allowedAuxiliary) undeclaredAuxiliary(url, allowedAuxiliary);
   const requested_url = String(input);
   const redirect_chain = [];
   const controller = new AbortController();
@@ -91,6 +105,10 @@ export async function fetchScoped(input, { context, transport = nodeTransport, r
           error.code = 'redirect_outside_scope';
           error.redirect_chain = [...redirect_chain, { url: url.href, status: response.status, location: '[blocked]' }];
           throw error;
+        }
+        if (allowedAuxiliary) {
+          try { undeclaredAuxiliary(next, allowedAuxiliary); }
+          catch (error) { error.redirect_chain = [...redirect_chain, { url: url.href, status: response.status, location: '[blocked]' }]; throw error; }
         }
         redirect_chain.push({ url: url.href, status: response.status, location: next.href });
         url = next;
@@ -127,12 +145,19 @@ export async function collect(context, { transport, resolve } = {}) {
     throw new Error('invalid collection limits');
   const initial = context.protocol.page_types.flatMap(type => type.urls.map(ref => ref.normalized));
   const auxiliary = context.protocol.auxiliary_resources ?? [];
+  const declaredAuxiliary = new Set(auxiliary.map(resource => resource.normalized));
+  const allowedDocuments = new Set([...initial, ...declaredAuxiliary]);
+  if (initial.some(url => /\/(?:robots\.txt|sitemap[^/]*\.xml)$/i.test(decodeURIComponent(new URL(url).pathname))))
+    throw new Error('robots and sitemap must be auxiliary resources');
   if (auxiliary.length && initial.length + auxiliary.length > limit) throw new Error('selected pages and auxiliary resources exceed request scope');
   const queue = []; const seen = new Set(); const skipped = [];
   const enqueue = (url, depth, auxiliaryResource = false) => {
     let normalized;
     try { normalized = assertUrlInScope(url, scope).href; }
     catch { skipped.push({ url, reason: 'outside_scope' }); return; }
+    if (depth > 0 && auxiliaryDocument(normalized) && !allowedDocuments.has(normalized)) {
+      skipped.push({ url: normalized, reason: 'auxiliary_undeclared' }); return;
+    }
     if (seen.has(normalized)) return;
     seen.add(normalized);
     if (depth > depthLimit) { skipped.push({ url: normalized, reason: 'depth_limit' }); return; }
@@ -153,9 +178,9 @@ export async function collect(context, { transport, resolve } = {}) {
       if (scheduled >= limit) { skipped.push({ url: item.url, reason: 'url_limit' }); continue; }
       scheduled++;
       let artifact;
-      try { artifact = await fetchScoped(item.url, { context, transport, resolve }); }
+      try { artifact = await fetchScoped(item.url, { context, transport, resolve, allowedAuxiliary: allowedDocuments }); }
       catch (error) {
-        const reason = ['scope_rejected', 'redirect_outside_scope'].includes(error.code) ? error.code : 'fetch_failed';
+        const reason = ['scope_rejected', 'redirect_outside_scope', 'auxiliary_undeclared'].includes(error.code) ? error.code : 'fetch_failed';
         if (reason !== 'fetch_failed') skipped.push({ url: item.url, reason });
         artifact = { requested_url: item.url, normalized_url: item.url, final_url: null, status: null,
           headers: {}, redirect_chain: error.redirect_chain ?? [], raw_html_ref: null, content_hash: null, capability: 'none',

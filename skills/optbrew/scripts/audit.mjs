@@ -65,6 +65,8 @@ export async function runAudit({ context, modules, outputDir, transport, resolve
   const observations = [];
   const planned = new Set(context.protocol.families.filter(x => x.applicable).map(x => x.family_id));
   const selectedUrls = new Set(context.protocol.page_types.flatMap(type => type.urls.map(x => x.normalized)));
+  const declaredRobots = new Set((context.protocol.auxiliary_resources ?? [])
+    .filter(resource => resource.kind === 'robots').map(resource => resource.normalized));
   const publicUrls = new Set(context.protocol.page_types.flatMap(type => type.urls.filter(x => x.public_indexing !== false).map(x => x.normalized)));
   for (const artifact of collection.artifacts) {
     const saved = artifacts.find(x => x.normalized_url === artifact.normalized_url);
@@ -74,7 +76,7 @@ export async function runAudit({ context, modules, outputDir, transport, resolve
     if (!selectedUrls.has(artifact.normalized_url) || artifact.capability !== 'raw_html' || artifact.status !== 200) continue;
     const html = artifact.body.toString('utf8');
     if (modules.includes('naver-searchadvisor')) {
-      const robotsIndex = collection.artifacts.findIndex(x => { try { const u = new URL(x.final_url); return u.origin === new URL(artifact.final_url).origin && u.pathname === '/robots.txt'; } catch { return false; } });
+      const robotsIndex = collection.artifacts.findIndex(x => { try { const u = new URL(x.final_url); return declaredRobots.has(x.normalized_url) && u.origin === new URL(artifact.final_url).origin && u.pathname === '/robots.txt'; } catch { return false; } });
       const robots = robotsIndex < 0 ? null : collection.artifacts[robotsIndex];
       const robotsEvidenceRef = robots?.status === 200 ? artifacts[robotsIndex].evidence_ref : null;
       const output = auditCollected({ artifact, html, robotsArtifact: robots ? { ...robots, body: robots.body.toString('utf8') } : null });

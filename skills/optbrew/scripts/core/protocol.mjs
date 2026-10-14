@@ -55,6 +55,8 @@ export function freezeProtocol(context) {
         try { if (!['http:', 'https:'].includes(new URL(value).protocol)) throw new Error(); }
         catch { throw new ContractError(`invalid HTTP URL: ${value}`); }
       }
+      if (/\/(?:robots\.txt|sitemap[^/]*\.xml)$/i.test(decodeURIComponent(new URL(url.normalized).pathname)))
+        throw new ContractError(`${url.normalized}: robots and sitemap must be auxiliary resources`);
       if (url.public_indexing === false) validateApplicabilityDecision(url.indexing_decision,
         ['not_public_index_target'], `${url.normalized}.indexing_decision`);
       else if (url.indexing_decision) throw new ContractError(`${url.normalized}: indexing decision requires public_indexing=false`);
