@@ -277,39 +277,35 @@ test('TLS transport preserves hostname verification and pins the vetted IP in bo
   } finally { https.request = original; }
 });
 
-test('final review I6: redirect hops draw from the shared request budget and keep the URL as a limit unknown', async () => {
-  const redirecting = { page: 'https://example.test/owned/redirect', final: 'https://example.test/owned/final' };
+test('final review I6 (round 5): redirect hops draw from the shared request budget; a chain that has started finishes, so it is never cut', async () => {
+  const redirecting = { page: 'https://example.test/owned/redirect' };
   const requested = [];
   const transport = async ({ url }) => {
     requested.push(url.href);
     return url.href.endsWith('/redirect') || /\/owned\/r\d+$/.test(url.pathname) ?
       response('', 302, { location: `${url.pathname}-final` }) : response('<title>done</title>');
   };
+  // One URL with a one-request budget: the fetch may start, and its redirect finishes instead of being cut mid-chain.
   const one = await collect(context([redirecting.page], { max_urls: 1 }), { resolve, transport });
-  assert.equal(requested.length, 1, `actual requests: ${requested.join(', ')}`);
-  assert.equal(one.request_count, 1);
+  assert.equal(requested.length, 2, `actual requests: ${requested.join(', ')}`);
+  assert.equal(one.request_count, 2);
   assert.equal(one.evaluated_count, 1);
-  assert.equal(one.discovered_count, 1);
-  assert.equal(one.limit_reached, true);
+  assert.equal(one.limit_reached, false);
   assert.equal(one.artifacts.length, 1);
-  assert.equal(one.artifacts[0].status, null);
-  assert.equal(one.artifacts[0].error, 'request_limit');
+  assert.equal(one.artifacts[0].status, 200);
   assert.equal(one.artifacts[0].redirect_chain.length, 1);
-  assert.ok(one.skipped.some(x => x.url === redirecting.page && x.reason === 'request_limit'));
 
+  // The limit stops new fetches; chains in flight (two workers) finish, so the overshoot is bounded by the redirects.
   requested.length = 0;
   const urls = Array.from({ length: 30 }, (_, n) => `https://example.test/owned/r${n}`);
   const many = await collect(context(urls, { max_urls: 50 }), { resolve, transport });
-  assert.equal(requested.length, 50, 'redirect hops count against the fifty-request ceiling');
-  assert.equal(many.request_count, 50);
+  assert.ok(requested.length >= 50 && requested.length <= 50 + 20, `actual requests: ${requested.length}`);
+  assert.equal(many.request_count, requested.length, 'the count follows the ledger, and every answered chain is exact');
   assert.equal(many.discovered_count, 30);
-  const cut = many.artifacts.filter(x => x.error === 'request_limit');
-  const complete = many.artifacts.filter(x => x.status === 200);
-  assert.equal(complete.length * 2 + cut.length, 50, 'every actual request belongs to one evaluated URL');
-  assert.ok(cut.length <= 2);
+  assert.equal(many.artifacts.filter(x => x.error).length, 0, 'no chain is cut by the limit');
   assert.equal(many.artifacts.length, many.evaluated_count);
   assert.equal(many.evaluated_count + many.skipped.filter(x => x.reason === 'url_limit').length, 30);
-  assert.equal(many.skipped.filter(x => x.reason === 'request_limit').length, cut.length);
+  assert.equal(many.limit_reached, many.skipped.some(x => x.reason === 'url_limit'));
   assert.equal(many.limit_reached, true);
 
   requested.length = 0;

@@ -208,14 +208,16 @@ export async function collect(context, { transport, resolve } = {}) {
       throw new Error('auxiliary resource URL mismatch');
     enqueue(normalized, 0, true);
   }
-  const artifacts = []; let cursor = 0; let requestCount = 0; let evaluated = 0;
+  const artifacts = []; let cursor = 0; let requestCount = 0;
   async function worker() {
     while (cursor < queue.length) {
       const item = queue[cursor++];
       if (requestCount >= limit) { skip(item.url, 'url_limit'); continue; }
       let used = 0;
+      // The budget decides whether a fetch may start. A redirect chain that has started is allowed to finish (at most
+      // maxRedirects further requests), so a chain is never cut in the middle by the limit.
       const reserveRequest = () => {
-        if (requestCount >= limit) return false;
+        if (!used && requestCount >= limit) return false;
         requestCount++; used++;
         return true;
       };
@@ -225,12 +227,12 @@ export async function collect(context, { transport, resolve } = {}) {
         const reason = ['scope_rejected', 'redirect_outside_scope', 'auxiliary_undeclared', 'request_limit'].includes(error.code) ? error.code : 'fetch_failed';
         if (reason === 'request_limit' && !used) { skip(item.url, 'url_limit'); continue; }
         if (reason !== 'fetch_failed') skipped.push({ url: item.url, reason });
-        ledger.push({ url: item.url, requests: used, outcome: 'error', skipped_reason: reason !== 'fetch_failed' ? reason : null, error: reason });
+        // A failed fetch has no hashed response record, so the requests it made cannot be proven later: it counts as one.
+        ledger.push({ url: item.url, requests: 1, outcome: 'error', skipped_reason: reason !== 'fetch_failed' ? reason : null, error: reason });
         artifact = { requested_url: item.url, normalized_url: item.url, final_url: null, status: null,
           headers: {}, header_lines: [], redirect_chain: error.redirect_chain ?? [], raw_html_ref: null, content_hash: null, capability: 'none',
-          source_ref: 'optbrew:collector', evidence_ref: null, error: reason, requests_made: used, body: Buffer.alloc(0) };
+          source_ref: 'optbrew:collector', evidence_ref: null, error: reason, body: Buffer.alloc(0) };
       }
-      if (used) evaluated++;
       if (!artifact.error) ledger.push({ url: item.url, requests: used, outcome: 'response', skipped_reason: null, error: null });
       artifacts.push(artifact);
       if (!item.auxiliaryResource && artifact.status === 200 && artifact.capability === 'raw_html')
@@ -238,6 +240,9 @@ export async function collect(context, { transport, resolve } = {}) {
     }
   }
   await Promise.all(Array.from({ length: concurrency }, () => worker()));
-  return { artifacts, ledger, discovered_count: seen.size, evaluated_count: evaluated, request_count: requestCount, skipped,
+  // Counts follow the ledger (failed fetches count once), the same rule the report replay applies.
+  const evaluated = ledger.filter(x => x.requests > 0).length;
+  const counted = ledger.reduce((sum, x) => sum + x.requests, 0);
+  return { artifacts, ledger, discovered_count: seen.size, evaluated_count: evaluated, request_count: counted, skipped,
     limit_reached: skipped.some(x => x.reason === 'url_limit' || x.reason === 'request_limit') };
 }

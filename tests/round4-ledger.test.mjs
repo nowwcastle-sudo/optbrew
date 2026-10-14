@@ -71,41 +71,78 @@ test('P6d: a failing selected page moved to a url_limit skip with the remaining 
   assert.throws(() => buildReport(s.packet), /request ledger: a skipped entry carries requests/);
 });
 
-test('an error entry must count exactly the requests its failure artifact shows (no padding to reach a limit)', async t => {
-  const outside = 'http://203.0.113.9/elsewhere';
-  const s = await build(t, { ...routes, '/b': () => ({ status: 302, headers: { location: outside } }) }, paths);
-  const entry = (await readJson(s.evidence('ledger.json'))).entries.find(x => x.outcome === 'error');
-  assert.ok(entry, 'the redirect to another origin is an error entry');
-  assert.equal(entry.requests, 1);
-  const artifact = (await readJson(s.evidence('collection.json'))).artifacts.find(x => x.error);
-  assert.equal(artifact.requests_made, entry.requests);
-  assert.doesNotThrow(() => buildReport(s.packet));
-  // Pad the error entry and the totals so the ledger looks self-consistent and exhausted.
+// A failed fetch has no hashed response record, so its claimed requests cannot be proven: it always counts as one request.
+const brokenRoutes = { ...routes, '/broken': req => { req.socket.destroy(); return { status: 200, body: '' }; } };
+const brokenPaths = [...paths, '/broken'];
+const brokenUrl = s => `${s.site.origin}/broken`;
+
+/** Pad the run to the limit by inflating the failed fetch's redirect chain and request counts consistently (reviewer P5f/P6f). */
+async function padThroughFailedChain(s) {
   const ledger = await readJson(s.evidence('ledger.json'));
   const total = ledger.entries.reduce((a, e) => a + e.requests, 0);
-  const pad = ledger.limit - total;
-  await s.rewrite(s.evidence('ledger.json'), v => { v.entries.find(x => x.outcome === 'error').requests += pad; v.entries.push({ url: `${s.site.origin}/never-linked`, requests: 0, outcome: 'skipped', skipped_reason: 'url_limit', error: null }); });
+  const entry = ledger.entries.find(x => x.url === brokenUrl(s));
+  const made = entry.requests + (ledger.limit - total);
+  await s.rewrite(s.evidence('ledger.json'), v => { v.entries.find(x => x.url === brokenUrl(s)).requests = made; });
   await s.rewrite(s.evidence('collection.json'), v => {
-    v.skipped = [...(v.skipped ?? []), { url: `${s.site.origin}/never-linked`, reason: 'url_limit' }];
-    v.limit_reached = true; v.request_count = ledger.limit;
+    const artifact = v.artifacts.find(x => x.normalized_url === brokenUrl(s));
+    artifact.redirect_chain = Array.from({ length: made - 1 }, (_, i) => ({ url: `${s.site.origin}/hop${i}`, status: 302, location: `${s.site.origin}/hop${i + 1}` }));
+    v.request_count = ledger.limit;
   });
-  await s.forgeObservations(dropDiscoveryFails);
-  assert.throws(() => buildReport(s.packet), /request ledger: failed fetch of .* does not match its request count/);
+}
+
+test('a failed fetch is booked as exactly one request and the honest report builds', async t => {
+  const s = await build(t, brokenRoutes, brokenPaths);
+  const ledger = await readJson(s.evidence('ledger.json'));
+  const entry = ledger.entries.find(x => x.url === brokenUrl(s));
+  assert.equal(entry.outcome, 'error');
+  assert.equal(entry.requests, 1);
+  assert.equal((await readJson(s.evidence('collection.json'))).request_count, ledger.entries.reduce((a, e) => a + e.requests, 0));
+  assert.doesNotThrow(() => buildReport(s.packet));
 });
 
-test('an error artifact whose own request count is raised together with the ledger is still bound to its redirect chain', async t => {
-  const outside = 'http://203.0.113.9/elsewhere';
-  const s = await build(t, { ...routes, '/b': () => ({ status: 302, headers: { location: outside } }) }, paths);
-  const ledger = await readJson(s.evidence('ledger.json'));
-  const pad = ledger.limit - ledger.entries.reduce((a, e) => a + e.requests, 0);
-  await s.rewrite(s.evidence('ledger.json'), v => { v.entries.find(x => x.outcome === 'error').requests += pad; v.entries.push({ url: `${s.site.origin}/never-linked`, requests: 0, outcome: 'skipped', skipped_reason: 'url_limit', error: null }); });
-  await s.rewrite(s.evidence('collection.json'), v => {
-    v.artifacts.find(x => x.error).requests_made += pad;
-    v.skipped = [...(v.skipped ?? []), { url: `${s.site.origin}/never-linked`, reason: 'url_limit' }];
-    v.limit_reached = true; v.request_count = ledger.limit;
-  });
+test('P5f: padding the request total through a failed fetch and faking a url_limit skip is rejected', async t => {
+  const s = await build(t, brokenRoutes, brokenPaths);
+  await padThroughFailedChain(s);
+  const fake = `${s.site.origin}/never-linked`;
+  await s.rewrite(s.evidence('ledger.json'), v => { v.entries.push({ url: fake, requests: 0, outcome: 'skipped', skipped_reason: 'url_limit', error: null }); });
+  await s.rewrite(s.evidence('collection.json'), v => { v.skipped = [...(v.skipped ?? []), { url: fake, reason: 'url_limit' }]; v.limit_reached = true; });
   await s.forgeObservations(dropDiscoveryFails);
-  assert.throws(() => buildReport(s.packet), /request ledger: failed fetch of .* does not match its request count/);
+  assert.throws(() => buildReport(s.packet), /request ledger/);
+});
+
+test('P6f: padding through a failed fetch and moving a failing selected page to a url_limit skip is rejected', async t => {
+  const s = await build(t, brokenRoutes, brokenPaths);
+  const url = `${s.site.origin}/b`;
+  await s.rewrite(s.evidence('ledger.json'), v => { const e = v.entries.find(x => x.url === url && x.outcome === 'response'); e.outcome = 'skipped'; e.skipped_reason = 'url_limit'; e.requests = 0; });
+  await s.rewrite(s.evidence('collection.json'), v => { v.artifacts = v.artifacts.filter(x => x.normalized_url !== url); v.skipped = [...(v.skipped ?? []), { url, reason: 'url_limit' }]; v.limit_reached = true; v.evaluated_count -= 1; });
+  await s.rewrite(s.evidence('evidence-index.json'), v => { v.responses = v.responses.filter(x => x.normalized_url !== url); v.raw = v.raw.filter(x => x.normalized_url !== url); });
+  await padThroughFailedChain(s);
+  await s.forgeObservations(list => { for (let i = list.length - 1; i >= 0; i--) if (list[i].unit_key.endsWith(url) || (list[i].family_id === 'discovery' && list[i].state === 'fail')) list.splice(i, 1); });
+  assert.throws(() => buildReport(s.packet), /request ledger/);
+});
+
+test('a redirect that ends in a transport failure is one request in the ledger and still reports cleanly', async t => {
+  const chain = { '/hop1': req => ({ status: 302, headers: { location: `${base(req)}/hop2` } }), '/hop2': req => ({ status: 302, headers: { location: `${base(req)}/hop3` } }),
+    '/hop3': req => { req.socket.destroy(); return { status: 200, body: '' }; } };
+  const s = await build(t, { ...routes, ...chain }, [...paths, '/hop1']);
+  const ledger = await readJson(s.evidence('ledger.json'));
+  const entry = ledger.entries.find(x => x.url === `${s.site.origin}/hop1`);
+  assert.equal(entry.outcome, 'error');
+  assert.equal(entry.requests, 1);
+  assert.doesNotThrow(() => buildReport(s.packet));
+});
+
+test('a redirect chain that has started is allowed to finish after the request limit, and the limited run still reports cleanly', async t => {
+  const site = { '/': req => doc(req, '/', `${facts('+82-2-555-0142')}<a href="/r1">r</a><a href="/x">x</a><a href="/y">y</a>`),
+    '/r1': req => ({ status: 302, headers: { location: `${base(req)}/r2` } }), '/r2': req => doc(req, '/r2', facts('+82-2-555-0142')),
+    '/x': req => doc(req, '/x', facts('+82-2-555-0142')), '/y': req => doc(req, '/y', facts('+82-2-555-0142')) };
+  const s = await build(t, site, ['/'], { maxUrls: 3 });
+  const ledger = await readJson(s.evidence('ledger.json'));
+  const collection = await readJson(s.evidence('collection.json'));
+  assert.equal(collection.limit_reached, true);
+  assert.ok(ledger.entries.some(x => x.outcome === 'skipped' && x.skipped_reason === 'url_limit'));
+  assert.equal(collection.request_count, ledger.entries.reduce((a, e) => a + e.requests, 0));
+  assert.doesNotThrow(() => buildReport(s.packet));
 });
 
 test('a selected page may not be skipped for the request limit while a discovered page was fetched', async t => {
