@@ -620,7 +620,7 @@
     },
     {
       "path": "scripts/core/collector.mjs",
-      "sha256": "f65f6476b8acc023de6078bb75b86948fd92c6d4c3df7a0e0c8f8ff0752f9706"
+      "sha256": "c85b1782346dbe02923e2e0c58bcde4f37a9ad200602b93fef490a6d7e6ddc3d"
     },
     {
       "path": "scripts/core/compare.mjs",
@@ -664,7 +664,7 @@
     },
     {
       "path": "scripts/core/report.mjs",
-      "sha256": "d8d11432756ba5c2de68ccf6a9d64a8dba8ef5966aa7575d4149a6d897bb9764"
+      "sha256": "c5448948addb00f568d7e9cb6e86ebd660b38cf05d5c324415760f5db75ba007"
     },
     {
       "path": "scripts/core/scope.mjs",
@@ -683,5 +683,5 @@
       "sha256": "a53223b7eefab2204c026a62b1da04cfdb8a07be8d3749613e8241a81b027d9b"
     }
   ],
-  "bundle_hash": "3551227ca3e74484fd837672b4c0453d2cdca910714e8892b3c49b5ea5fd6601"
+  "bundle_hash": "4ee82dc7738ae7d12b67eb4e2a001c58bd3bde92b9a60719c27d14cb076f39e2"
 }

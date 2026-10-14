@@ -86,7 +86,7 @@ function handAudit(run, { prefix, collectionRef, ref = null, homeError = 'fetch_
     }
     const error = index === 0 ? homeError : 'fetch_failed';
     artifacts.push({ requested_url: url, normalized_url: url, final_url: null, status: null, error, content_hash: null,
-      evidence_ref: collectionRef, headers: {}, header_lines: [], redirect_chain: [], capability: 'none', raw_html_ref: null });
+      evidence_ref: collectionRef, headers: {}, header_lines: [], redirect_chain: [], capability: 'none', raw_html_ref: null, requests_made: 1 });
     entries.push({ url, requests: 1, outcome: 'error', skipped_reason: null, error });
     raw.push({ normalized_url: url, evidence_ref: collectionRef, content_hash: null });
     observations.push({ schema_version: '1.0.0', observation_id: `failed-${index}`, check_id: 'fetch-response', family_id: 'fetch-response',

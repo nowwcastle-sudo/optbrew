@@ -149,7 +149,8 @@ export async function fetchScoped(input, { context, transport = nodeTransport, r
       };
     }
     throw new Error('redirect limit exceeded');
-  } finally { clearTimeout(timer); }
+  } catch (error) { error.redirect_chain ??= [...redirect_chain]; throw error; }
+  finally { clearTimeout(timer); }
 }
 
 /** Index of the declared robots.txt artifact on the same origin as the page, as the audit and the report both select it. */
@@ -227,7 +228,7 @@ export async function collect(context, { transport, resolve } = {}) {
         ledger.push({ url: item.url, requests: used, outcome: 'error', skipped_reason: reason !== 'fetch_failed' ? reason : null, error: reason });
         artifact = { requested_url: item.url, normalized_url: item.url, final_url: null, status: null,
           headers: {}, header_lines: [], redirect_chain: error.redirect_chain ?? [], raw_html_ref: null, content_hash: null, capability: 'none',
-          source_ref: 'optbrew:collector', evidence_ref: null, error: reason, body: Buffer.alloc(0) };
+          source_ref: 'optbrew:collector', evidence_ref: null, error: reason, requests_made: used, body: Buffer.alloc(0) };
       }
       if (used) evaluated++;
       if (!artifact.error) ledger.push({ url: item.url, requests: used, outcome: 'response', skipped_reason: null, error: null });

@@ -373,8 +373,17 @@ function checkLedger(input, audit, collection, artifacts, requireRef) {
     const entry = responses.get(artifact.normalized_url);
     if (!entry || entry.requests !== artifact.redirect_chain.length + 1) fail(`response for ${artifact.normalized_url} is not recorded`);
   }
-  for (const artifact of failed) if (!errors.has(artifact.normalized_url) || errors.get(artifact.normalized_url).requests < artifact.redirect_chain.length)
-    fail(`failed fetch of ${artifact.normalized_url} is not recorded`);
+  // A skipped entry never reached the network. Requests booked on it would only pad the total toward a claimed limit.
+  if (entries.some(x => x.outcome === 'skipped' && x.requests !== 0)) fail('a skipped entry carries requests');
+  for (const artifact of failed) {
+    const entry = errors.get(artifact.normalized_url);
+    if (!entry) fail(`failed fetch of ${artifact.normalized_url} is not recorded`);
+    // Every hop that answered pushed one chain entry. A transport failure after the next reservation adds one more request.
+    const hops = artifact.redirect_chain.length, extra = ['scope_rejected', 'redirect_outside_scope', 'auxiliary_undeclared', 'request_limit'].includes(artifact.error) ? 0 : 1;
+    if (!Number.isInteger(artifact.requests_made) || entry.requests !== artifact.requests_made ||
+        artifact.requests_made < hops || artifact.requests_made > hops + extra)
+      fail(`failed fetch of ${artifact.normalized_url} does not match its request count`);
+  }
   const key = x => `${x.url}|${x.reason ?? x.skipped_reason}`;
   const ledgerSkips = entries.filter(x => x.skipped_reason).map(key).sort();
   if (JSON.stringify((collection.skipped ?? []).map(key).sort()) !== JSON.stringify(ledgerSkips)) fail('skipped list differs from the ledger');
@@ -384,6 +393,12 @@ function checkLedger(input, audit, collection, artifacts, requireRef) {
   if (collection.request_count !== total || collection.evaluated_count !== entries.filter(x => x.requests > 0).length) fail('request or evaluated count differs from the ledger');
   const selected = new Set(input.run_context.protocol.page_types.flatMap(type => type.urls.map(x => x.normalized)));
   if (entries.some(x => selected.has(x.url) && x.skipped_reason && x.skipped_reason !== 'url_limit' && x.outcome === 'skipped')) fail('a selected page is skipped for a reason other than the request limit');
+  // The protocol caps selected pages plus auxiliary resources at the limit, and the collector queues them before any
+  // discovered page. A selected page can only hit the request limit after redirects used the budget, so no page that was
+  // merely discovered may have been fetched in the same run.
+  const planned = new Set([...selected, ...(input.run_context.protocol.auxiliary_resources ?? []).map(x => x.normalized)]);
+  if (entries.some(x => selected.has(x.url) && x.outcome === 'skipped' && x.skipped_reason === 'url_limit') &&
+      entries.some(x => x.requests > 0 && !planned.has(x.url))) fail('a selected page is skipped for the request limit although a discovered page was fetched');
 }
 
 function checkAuditPhase(input, phase, snapshot, requireRef) {
