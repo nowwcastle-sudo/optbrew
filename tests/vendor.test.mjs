@@ -4,6 +4,7 @@ import { execFileSync } from 'node:child_process';
 import { mkdtemp, readFile, readdir, rm, cp, writeFile, mkdir } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import { existsSync } from 'node:fs';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 import { vendor } from '../scripts/vendor.mjs';
@@ -11,6 +12,10 @@ import { vendor } from '../scripts/vendor.mjs';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const sourcesRoot = process.env.OPTBREW_SOURCES_ROOT ?? path.resolve(root, '../../../work/seo-alternatives/sources');
 const configPath = path.join(root, 'scripts/vendor.config.json');
+// These tests regenerate the vendored bundle from the maintainers' local mirror of the pinned upstream repositories.
+// A public clone has no such mirror, so they skip instead of failing; set OPTBREW_SOURCES_ROOT to run them.
+const maintainerOnly = existsSync(sourcesRoot) ? {} :
+  { skip: 'maintainer-only: upstream source mirror not found; set OPTBREW_SOURCES_ROOT to the mirror directory' };
 const ids = ['mblode-seo', 'naver-searchadvisor', 'firecrawl-seo-audit', 'magnus-seo', 'seranking-seo', 'marketing-search'];
 
 async function walk(dir) {
@@ -23,7 +28,7 @@ async function walk(dir) {
   return out;
 }
 
-test('vendored bundle has pinned files, notices and closed local links', async () => {
+test('vendored bundle has pinned files, notices and closed local links', maintainerOnly, async () => {
   const temp = await mkdtemp(path.join(os.tmpdir(), 'optbrew-vendor-'));
   try {
     const lock = await vendor({ sourcesRoot, outputRoot: temp, configPath });
@@ -88,7 +93,7 @@ test('vendored bundle has pinned files, notices and closed local links', async (
   } finally { await rm(temp, { recursive: true, force: true }); }
 });
 
-test('license drift and forbidden Naver guide copy fail closed', async () => {
+test('license drift and forbidden Naver guide copy fail closed', maintainerOnly, async () => {
   const temp = await mkdtemp(path.join(os.tmpdir(), 'optbrew-vendor-bad-'));
   try {
     const original = path.join(sourcesRoot, 'JaceProgramming__naver-seo-expert');
@@ -104,7 +109,7 @@ test('license drift and forbidden Naver guide copy fail closed', async () => {
   } finally { await rm(temp, { recursive: true, force: true }); }
 });
 
-test('reviewed parser replacement survives configured CLI regeneration and rejects local edits', async () => {
+test('reviewed parser replacement survives configured CLI regeneration and rejects local edits', maintainerOnly, async () => {
   const temp = await mkdtemp(path.join(os.tmpdir(), 'optbrew-patch-'));
   try {
     const outputRoot = path.join(temp, 'out');
@@ -153,7 +158,7 @@ test('reviewed parser replacement survives configured CLI regeneration and rejec
   } finally { await rm(temp, { recursive: true, force: true }); }
 });
 
-test('Google submission commands are disabled, never labelled read-only', async () => {
+test('Google submission commands are disabled, never labelled read-only', maintainerOnly, async () => {
   const temp = await mkdtemp(path.join(os.tmpdir(), 'optbrew-submit-'));
   try {
     await vendor({ sourcesRoot, outputRoot: temp, configPath });
