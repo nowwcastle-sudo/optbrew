@@ -20,8 +20,9 @@ export async function startSite(routes) {
   const server = createServer((req, res) => {
     requests.push(req.url);
     const route = routes[req.url] ?? { status: 404, headers: { 'content-type': 'text/plain' }, body: 'missing' };
-    const { status = 200, headers = {}, body = '' } = typeof route === 'function' ? route(req) : route;
-    res.writeHead(status, { 'content-type': 'text/html', ...headers });
+    const { status = 200, headers = {}, headerList = null, body = '' } = typeof route === 'function' ? route(req) : route;
+    // headerList sends repeated header lines (for example two X-Robots-Tag lines) exactly as given.
+    res.writeHead(status, headerList ?? { 'content-type': 'text/html', ...headers });
     res.end(body);
   });
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
@@ -67,7 +68,10 @@ export async function buildScenario(site, paths, { engines = ['google'], robots 
   await record('costs.json', costs);
   for (const file of ['collection.json', 'modules.json', 'observations.json', 'evidence-index.json'])
     await add(path.join(dir, 'evidence', file), 'record', file === 'collection.json' ? 'optbrew:collector' : undefined);
-  for (const artifact of audit.artifacts) await add(artifact.evidence_ref, artifact.capability === 'raw_html' ? 'raw_html' : 'raw_response', 'optbrew:collector');
+  for (const artifact of audit.artifacts) {
+    await add(artifact.evidence_ref, artifact.capability === 'raw_html' ? 'raw_html' : 'raw_response', 'optbrew:collector');
+    if (artifact.response_ref) await add(artifact.response_ref, 'response_record', 'optbrew:collector');
+  }
   const input = { schema_version: '1.0.0', run_context: context, observations: audit.observations };
   const packet = { schema_version: '1.0.0', run_context: context, baseline: { input, scores: score(input) }, after: null,
     comparison: compare(input, null), metrics: [], findings: [], changes: [], costs, remaining: [],

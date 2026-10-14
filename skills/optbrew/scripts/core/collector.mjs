@@ -29,6 +29,23 @@ function safeHeaders(headers) {
     .map(([name, value]) => [name.toLowerCase(), String(value)]));
 }
 
+/** Response header lines in wire order; repeated lines (for example two X-Robots-Tag lines) stay separate. */
+export function headerLines(response) {
+  const lines = [];
+  if (Array.isArray(response.rawHeaders)) {
+    for (let i = 0; i + 1 < response.rawHeaders.length; i += 2) {
+      const name = String(response.rawHeaders[i]).toLowerCase();
+      if (HEADER_NAMES.includes(name)) lines.push({ name, value: String(response.rawHeaders[i + 1]) });
+    }
+    return lines;
+  }
+  const source = response.headers instanceof Headers ? Object.fromEntries(response.headers) : response.headers ?? {};
+  for (const [name, value] of Object.entries(source))
+    if (HEADER_NAMES.includes(name.toLowerCase())) for (const item of Array.isArray(value) ? value : [value])
+      lines.push({ name: name.toLowerCase(), value: String(item) });
+  return lines;
+}
+
 /** Node's lookup callback pins the already-vetted address while TLS still verifies the URL hostname. */
 async function nodeTransport({ url, address, timeoutMs, maxBytes, headers = {}, signal }) {
   const client = url.protocol === 'https:' ? https : http;
@@ -50,7 +67,7 @@ async function nodeTransport({ url, address, timeoutMs, maxBytes, headers = {}, 
         if (size > maxBytes) { req.destroy(new Error('response byte limit exceeded')); return; }
         chunks.push(chunk);
       });
-      res.on('end', () => resolve({ status: res.statusCode, headers: res.headers, body: Buffer.concat(chunks) }));
+      res.on('end', () => resolve({ status: res.statusCode, headers: res.headers, rawHeaders: res.rawHeaders, body: Buffer.concat(chunks) }));
       res.on('error', reject);
     });
     req.setTimeout(timeoutMs, () => req.destroy(new Error('request timeout')));
@@ -123,7 +140,7 @@ export async function fetchScoped(input, { context, transport = nodeTransport, r
       }
       return {
         requested_url, normalized_url: assertUrlInScope(requested_url, context.scope).href, final_url: url.href,
-        status: response.status, headers: savedHeaders, redirect_chain, raw_html_ref: null,
+        status: response.status, headers: savedHeaders, header_lines: headerLines(response), redirect_chain, raw_html_ref: null,
         content_hash: createHash('sha256').update(body).digest('hex'),
         capability: savedHeaders['content-type']?.toLowerCase().includes('html') &&
           (!savedHeaders['content-encoding'] || savedHeaders['content-encoding'].toLowerCase() === 'identity') ? 'raw_html' : 'raw_response',
@@ -132,6 +149,14 @@ export async function fetchScoped(input, { context, transport = nodeTransport, r
     }
     throw new Error('redirect limit exceeded');
   } finally { clearTimeout(timer); }
+}
+
+/** Index of the declared robots.txt artifact on the same origin as the page, as the audit and the report both select it. */
+export function declaredRobotsIndex(artifacts, declaredRobots, pageFinalUrl) {
+  return artifacts.findIndex(x => {
+    try { const u = new URL(x.final_url); return declaredRobots.has(x.normalized_url) && u.origin === new URL(pageFinalUrl).origin && u.pathname === '/robots.txt'; }
+    catch { return false; }
+  });
 }
 
 function links(html, base) {
@@ -196,7 +221,7 @@ export async function collect(context, { transport, resolve } = {}) {
         if (reason === 'request_limit' && !used) { skipped.push({ url: item.url, reason: 'url_limit' }); continue; }
         if (reason !== 'fetch_failed') skipped.push({ url: item.url, reason });
         artifact = { requested_url: item.url, normalized_url: item.url, final_url: null, status: null,
-          headers: {}, redirect_chain: error.redirect_chain ?? [], raw_html_ref: null, content_hash: null, capability: 'none',
+          headers: {}, header_lines: [], redirect_chain: error.redirect_chain ?? [], raw_html_ref: null, content_hash: null, capability: 'none',
           source_ref: 'optbrew:collector', evidence_ref: null, error: reason, body: Buffer.alloc(0) };
       }
       if (used) evaluated++;

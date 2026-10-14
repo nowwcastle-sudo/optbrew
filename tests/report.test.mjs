@@ -49,6 +49,25 @@ function addChange(run, id, { environment = 'local', status = 'passed', deployed
     backup_ref: `${id}-before.txt`, evidence_ref: `${id}-after.txt`,
     verification: { status, deployed, evidence_ref: `${id}-verify.json` } });
 }
+/** Hash a response record for a hand-built collection artifact, as the audit does next to the raw body. */
+function collectedArtifact(run, prefix, ref, extra = {}) {
+  const base = { normalized_url: 'https://example.com/', final_url: 'https://example.com/', evidence_ref: ref, raw_html_ref: ref,
+    content_hash: run.packet.evidence_index.find(x => x.ref === ref).sha256, capability: 'raw_html', status: 200,
+    headers: {}, header_lines: [], redirect_chain: [], requested_url: 'https://example.com/', ...extra };
+  const record = { record_version: '1', requested_url: base.requested_url, normalized_url: base.normalized_url, final_url: base.final_url,
+    status: base.status, redirect_chain: base.redirect_chain, header_lines: base.header_lines, content_hash: base.content_hash, capability: base.capability };
+  const text = JSON.stringify(record, null, 2) + '\n';
+  addEvidence(run, prefix + 'response.json', text, 'response_record', 'optbrew:collector');
+  return { artifact: { ...base, response_ref: prefix + 'response.json' },
+    response: { normalized_url: base.normalized_url, evidence_ref: prefix + 'response.json', content_hash: sha(text) } };
+}
+/** The collector also plans a document-title unit for a selected HTML page; a present title replays as unknown. */
+function titleObservation(ref) {
+  return { schema_version: '1.0.0', observation_id: 'collector-title', check_id: 'document-title', family_id: 'document-title',
+    unit_key: 'document-title|https://example.com/', state: 'unknown', q: null, partial_basis: null,
+    reason: 'Raw HTML has a title; uniqueness and descriptiveness are not established', evaluator_type: 'code',
+    source_ref: 'optbrew:collector', evidence_ref: ref };
+}
 function productionRun() {
   const run = copyRun();
   addChange(run, 'c1', { environment: 'production', deployed: true });
@@ -320,18 +339,18 @@ test('collector observations bind to the owning audit index and raw content hash
   const run = copyRun();
   try {
     for (const obs of run.packet.baseline.input.observations) obs.source_ref = 'optbrew:collector';
+    run.packet.baseline.input.observations.push(titleObservation('raw.html'));
     run.packet.evidence_index.find(x => x.ref === 'raw.html').source_ref = 'optbrew:collector';
     run.packet.baseline.scores = score(run.packet.baseline.input);
     const observations = `${JSON.stringify(run.packet.baseline.input.observations)}\n`;
-    const collection = `${JSON.stringify({ artifacts: [{ normalized_url: 'https://example.com/', final_url: 'https://example.com/',
-      evidence_ref: 'raw.html', raw_html_ref: 'raw.html', content_hash: sha(readFileSync(path.join(run.dir, 'raw.html'))),
-      capability: 'raw_html', status: 200, headers: {} }] })}\n`;
+    const bound = collectedArtifact(run, 'bind-', 'raw.html');
+    const collection = `${JSON.stringify({ artifacts: [bound.artifact] })}\n`;
     const modules = `${JSON.stringify({ 'naver-searchadvisor': [{ url: 'https://example.com/', title: 'Example',
       robots_meta: 'noindex', x_robots_tag: null }] })}\n`;
     const audit = { run_id: 'synthetic-report', context_ref: 'context.json',
       collection_ref: 'collection.json', module_output_ref: 'modules.json', observations_ref: 'observations.json',
       raw: [{ normalized_url: 'https://example.com/', evidence_ref: 'raw.html',
-        content_hash: run.packet.evidence_index.find(x => x.ref === 'raw.html').sha256 }] };
+        content_hash: run.packet.evidence_index.find(x => x.ref === 'raw.html').sha256 }], responses: [bound.response] };
     for (const [ref, text] of Object.entries({ 'collection.json': collection, 'modules.json': modules,
       'observations.json': observations, 'audit.json': `${JSON.stringify(audit)}\n` })) {
       run.rewrite(ref, text);
@@ -363,7 +382,7 @@ function localRun({ evidenceHtml = '<html><head><meta name="robots" content="ind
   return run;
 }
 
-test('final review I2: a byte-hash receipt alone cannot mark a finding verified_local', () => {
+test('final review I2/N5: neither a byte-hash receipt nor an agent-sourced pass can mark a finding verified_local', () => {
   const hashOnly = copyRun();
   try {
     addChange(hashOnly, 'c1');
@@ -372,31 +391,24 @@ test('final review I2: a byte-hash receipt alone cannot mark a finding verified_
     assert.equal(report.remaining.filter(x => x.reason === 'production_deployment_pending').length, 0);
     assert.ok(report.remaining.some(x => x.reason === 'modified_unverified'));
   } finally { rmSync(hashOnly.dir, { recursive: true, force: true }); }
-  const resolved = localRun();
+  // A passing after observation with every label and binding is still only a statement unless the collector produced it.
+  const statement = localRun();
   try {
-    const report = buildReport(resolved.packet).json;
-    assert.equal(report.findings[0].status, 'verified_local');
-    assert.ok(report.remaining.some(x => x.reason === 'production_deployment_pending'));
-  } finally { rmSync(resolved.dir, { recursive: true, force: true }); }
-  const unresolved = localRun({ evidenceHtml: '<html><head><meta name="robots" content="noindex"></head></html>\n', state: 'fail' });
-  try { assert.equal(buildReport(unresolved.packet).json.findings[0].status, 'modified_unverified'); }
-  finally { rmSync(unresolved.dir, { recursive: true, force: true }); }
-  const otherTarget = localRun();
-  try {
-    retargetAfter(otherTarget, { target: 'other.example' });
-    assert.equal(buildReport(otherTarget.packet).json.findings[0].status, 'modified_unverified');
-  } finally { rmSync(otherTarget.dir, { recursive: true, force: true }); }
-  const baselineSource = localRun();
-  try {
-    baselineSource.packet.evidence_index.find(x => x.ref === 'after-response.html').phase = 'baseline';
-    assert.equal(buildReport(baselineSource.packet).json.findings[0].status, 'modified_unverified');
-  } finally { rmSync(baselineSource.dir, { recursive: true, force: true }); }
+    const observation = statement.packet.after.input.observations.find(x => x.check_id === 'index-policy');
+    statement.packet.changes[0].verification.observation_id = observation.observation_id;
+    statement.packet.changes[0].verification.observation_evidence_ref = observation.evidence_ref;
+    const receipt = JSON.parse(readFileSync(path.join(statement.dir, 'c1-verify.json'), 'utf8'));
+    receipt.observation_id = observation.observation_id; receipt.observation_evidence_ref = observation.evidence_ref;
+    statement.rewrite('c1-verify.json', `${JSON.stringify(receipt)}\n`);
+    assert.equal(observation.source_ref, 'synthetic');
+    assert.equal(buildReport(statement.packet).json.findings[0].status, 'modified_unverified');
+  } finally { rmSync(statement.dir, { recursive: true, force: true }); }
 });
 
 test('a local passing receipt stays local and a deployment claim needs its own receipt', () => {
   const run = localRun();
   try {
-    assert.equal(buildReport(run.packet).json.findings[0].status, 'verified_local');
+    assert.equal(buildReport(run.packet).json.findings[0].status, 'modified_unverified');
     run.packet.changes[0].environment = 'production';
     run.packet.changes[0].verification.deployed = true;
     assert.throws(() => buildReport(run.packet), /verification receipt/);
@@ -640,27 +652,27 @@ test('review P2-8: before and after collector snapshots use their own evidence r
   try {
     const before = run.packet.baseline.input.observations[0];
     for (const obs of run.packet.baseline.input.observations) obs.source_ref = 'optbrew:collector';
+    run.packet.baseline.input.observations.push(titleObservation('raw.html'));
     run.packet.evidence_index.find(x => x.ref === 'raw.html').source_ref = 'optbrew:collector';
     run.packet.baseline.scores = score(run.packet.baseline.input);
     const afterInput = structuredClone(run.packet.baseline.input);
     afterInput.observations[0].evidence_ref = 'after.html';
     afterInput.observations[1].evidence_ref = 'after.html';
+    afterInput.observations[2].evidence_ref = 'after.html';
     addEvidence(run, 'after.html', '<html><head><meta name="robots" content="noindex"><title>After</title></head></html>\n', 'raw_html', 'optbrew:collector');
     run.packet.after = { input: afterInput, scores: score(afterInput) };
     run.packet.comparison = compare(run.packet.baseline.input, afterInput);
     for (const [phase, ref] of [['baseline', 'raw.html'], ['after', 'after.html']]) {
       const prefix = phase === 'baseline' ? 'b' : 'a';
-      addEvidence(run, `${prefix}-collection.json`, { artifacts: [{ normalized_url: 'https://example.com/',
-        final_url: 'https://example.com/', evidence_ref: ref, raw_html_ref: ref,
-        content_hash: run.packet.evidence_index.find(x => x.ref === ref).sha256,
-        capability: 'raw_html', status: 200, headers: {} }] }, 'collection');
+      const bound = collectedArtifact(run, `${prefix}-`, ref);
+      addEvidence(run, `${prefix}-collection.json`, { artifacts: [bound.artifact] }, 'collection');
       addEvidence(run, `${prefix}-modules.json`, { 'naver-searchadvisor': [{ url: 'https://example.com/',
         title: phase === 'baseline' ? 'Example' : 'After', robots_meta: 'noindex', x_robots_tag: null }] }, 'modules');
       addEvidence(run, `${prefix}-observations.json`, phase === 'baseline' ? run.packet.baseline.input.observations : afterInput.observations, 'observations');
       addEvidence(run, `${prefix}-audit.json`, { run_id: 'synthetic-report', context_ref: 'context.json',
         collection_ref: `${prefix}-collection.json`, module_output_ref: `${prefix}-modules.json`,
         observations_ref: `${prefix}-observations.json`, raw: [{ normalized_url: 'https://example.com/',
-          evidence_ref: ref, content_hash: run.packet.evidence_index.find(x => x.ref === ref).sha256 }] }, 'audit');
+          evidence_ref: ref, content_hash: run.packet.evidence_index.find(x => x.ref === ref).sha256 }], responses: [bound.response] }, 'audit');
     }
     run.packet.audit_ref = 'b-audit.json';
     run.packet.audit_snapshots = [{ phase: 'baseline', audit_ref: 'b-audit.json', context_ref: 'context.json' },
@@ -670,7 +682,7 @@ test('review P2-8: before and after collector snapshots use their own evidence r
 });
 
 test('final review I7: native path mapping matches whole path segments only', () => {
-  const build = (filterPath, prefix = '/owned') => {
+  const build = (filterPath, prefix = '/owned', hostname = 'example.com') => {
     const run = copyRun();
     const mapping = { provider: 'gsc', property: 'example.com', target: 'example.com', hostname: 'example.com',
       path_prefix: prefix, evidence_ref: 'target-map.json' };
@@ -679,7 +691,7 @@ test('final review I7: native path mapping matches whole path segments only', ()
       property: 'example.com', hostname: 'example.com', path_prefix: prefix, approved_by: 'synthetic-fixture' }, 'target_mapping');
     refreshContext(run);
     const source = { kind: 'native_export', run_id: 'synthetic-report', provider: 'gsc',
-      rows: [{ metric_id: 'clicks', value: 7, filters: { hostname: 'example.com', path: filterPath }, provider_definition: 'GSC clicks' }],
+      rows: [{ metric_id: 'clicks', value: 7, filters: { hostname, path: filterPath }, provider_definition: 'GSC clicks' }],
       metadata: { timezone: 'Asia/Seoul', collected_at: '2026-10-14T10:00:00+09:00', last_complete_date: '2026-10-13',
         source_ref: 'owner:gsc', evidence_ref: 'scoped-export.json', window: { start: '2026-09-01', end: '2026-09-28', timezone: 'Asia/Seoul' },
         sample_selection: { kind: 'all' }, property: 'example.com', aggregation: 'page' } };
@@ -687,12 +699,16 @@ test('final review I7: native path mapping matches whole path segments only', ()
     addEvidence(run, 'scoped-export.json', source, 'native_export', 'owner:gsc');
     return run;
   };
-  for (const [filterPath, prefix, accepted] of [
+  for (const [filterPath, prefix, accepted, hostname] of [
     ['/owned/page', '/owned', true], ['/owned', '/owned', true], ['/owned/', '/owned', true],
     ['/owned/page?x=1', '/owned', true], ['/owned-other/page', '/owned', false], ['/ownedness', '/owned', false],
     ['/owned/../other/page', '/owned', false], ['/owned/page', '/owned/', true], ['/owned', '/owned/', false],
-    ['/anything', '/', true]]) {
-    const run = build(filterPath, prefix);
+    ['/anything', '/', true],
+    ['https://example.com/owned/page', '/owned', true], ['https://other.example/owned/page', '/owned', false],
+    ['//other.example/owned/page', '/owned', false], ['//example.com/owned/page', '/owned', false],
+    ['/\\other.example/owned/page', '/owned', false], ['https://other.example/owned/page', '/owned', false, 'unknown'],
+    ['//other.example/owned/page', '/owned', false, 'unknown'], ['owned/page', '/owned', false]]) {
+    const run = build(filterPath, prefix, hostname);
     try {
       if (accepted) assert.doesNotThrow(() => buildReport(run.packet), `${filterPath} within ${prefix}`);
       else assert.throws(() => buildReport(run.packet), /hostname or URL scope/, `${filterPath} within ${prefix}`);

@@ -183,17 +183,22 @@ test('real local HTTP baseline, authorized edit and same-condition rescan clear 
     decisions: context.protocol.families.filter(x => x.applicability_decision).map(x => ({ scope: 'family',
       family_id: x.family_id, condition: x.applicability_decision.condition,
       reason: x.applicability_decision.reason })) }, 'intake');
-  for (const run of [baseline, followup]) {
+  for (const [phase, run] of [['baseline', baseline], ['after', followup]]) {
     for (const name of ['collection.json', 'modules.json', 'observations.json', 'evidence-index.json'])
       await evidence(path.join(path.dirname(run.evidence_ref), name), 'record');
-    for (const artifact of run.artifacts) await evidence(artifact.evidence_ref, 'raw_html', 'optbrew:collector');
+    for (const artifact of run.artifacts) {
+      await evidence(artifact.evidence_ref, 'raw_html', 'optbrew:collector', { phase, environment: 'local', target: context.target });
+      if (artifact.response_ref) await evidence(artifact.response_ref, 'response_record', 'optbrew:collector');
+    }
   }
   const beforeRaw = baseline.artifacts[0].evidence_ref, afterRaw = followup.artifacts[0].evidence_ref;
   const costs = { schema_version: '1.0.0', run_id: context.run_id, budgets: [], reservations: [], settlements: [],
     approval_ref: null, source_ref: 'local-fixture', evidence_ref: 'costs.json' };
   await record('costs.json', costs, 'record');
+  const resolved = afterInput.observations.find(x => x.check_id === 'index-policy');
   const verification = { run_id: context.run_id, change_id: 'local-html-edit', status: 'passed', deployed: false,
     path: 'site.html', environment: 'local', target: context.target, after_hash: followup.artifacts[0].content_hash,
+    observation_id: resolved.observation_id, observation_evidence_ref: resolved.evidence_ref,
     checks: [{ id: 'raw-response', status: 'passed', observed: 'Same URL served changed local HTML',
       evidence_ref: afterRaw, after_hash: followup.artifacts[0].content_hash }] };
   await record('verification.json', verification, 'verification');
@@ -207,7 +212,8 @@ test('real local HTTP baseline, authorized edit and same-condition rescan clear 
     changes: [{ schema_version: '1.0.0', change_id: 'local-html-edit', finding_ids: ['index-policy', 'document-title'],
       environment: 'local', path: 'site.html', before_hash: baseline.artifacts[0].content_hash,
       after_hash: followup.artifacts[0].content_hash, backup_ref: beforeRaw,
-      evidence_ref: afterRaw, verification: { status: 'passed', deployed: false, evidence_ref: 'verification.json' } }],
+      evidence_ref: afterRaw, verification: { status: 'passed', deployed: false, evidence_ref: 'verification.json',
+        observation_id: resolved.observation_id, observation_evidence_ref: resolved.evidence_ref } }],
     costs, remaining: [{ problem: 'Search and AI results unmeasured', reason: 'local fixture only',
       required_input_or_authority: 'owner property export or observed provider responses',
       next_action: 'Measure after authorized deployment', reobserve_when: 'after production collection' }],
@@ -220,6 +226,18 @@ test('real local HTTP baseline, authorized edit and same-condition rescan clear 
   const markdown = await readFile(paths.markdownPath, 'utf8');
   assert.equal(report.comparison.status, 'comparable');
   assert.equal(report.findings.find(x => x.check_id === 'index-policy').status, 'verified_local');
+  const indexStatus = mutate => {
+    const copy = structuredClone(packet);
+    mutate(copy);
+    return buildReport(copy).json.findings.find(x => x.check_id === 'index-policy').status;
+  };
+  const afterEntry = copy => copy.evidence_index.find(x => x.ref === afterRaw);
+  assert.equal(indexStatus(copy => { delete copy.changes[0].verification.observation_id; }), 'modified_unverified', 'no observation_id binding');
+  assert.equal(indexStatus(copy => { delete afterEntry(copy).environment; }), 'modified_unverified', 'environment label missing');
+  assert.equal(indexStatus(copy => { afterEntry(copy).environment = 'production'; }), 'modified_unverified', 'wrong environment label');
+  assert.equal(indexStatus(copy => { delete afterEntry(copy).phase; }), 'modified_unverified', 'phase label missing');
+  assert.equal(indexStatus(copy => { afterEntry(copy).phase = 'baseline'; }), 'modified_unverified', 'baseline phase label');
+  assert.equal(indexStatus(copy => { afterEntry(copy).target = 'http://other.example/'; }), 'modified_unverified', 'other target');
   assert.equal(report.after.scores.find(x => x.profile === 'SEO').blockers.length, 0);
   assert.equal(report.metrics.length, 0);
   assert.equal(report.remaining.filter(x => x.reason === 'verified_local').length, 0);
@@ -270,7 +288,9 @@ test('real local HTTP baseline, authorized edit and same-condition rescan clear 
   const afterCollectionRef = path.join(path.dirname(followup.evidence_ref), 'collection.json');
   const afterObsRef = path.join(path.dirname(followup.evidence_ref), 'observations.json');
   const afterCollection = JSON.parse(await readFile(afterCollectionRef, 'utf8'));
+  // A header injected into collection.json alone is not backed by the hashed response record.
   afterCollection.artifacts[0].headers['x-robots-tag'] = 'noindex';
+  afterCollection.artifacts[0].header_lines.push({ name: 'x-robots-tag', value: 'noindex' });
   modules['naver-searchadvisor'][0].x_robots_tag = 'noindex';
   const indexObservation = afterInput.observations.find(x => x.check_id === 'index-policy');
   indexObservation.state = 'fail'; indexObservation.q = 0; indexObservation.reason = 'Header blocks indexing';
@@ -284,16 +304,16 @@ test('real local HTTP baseline, authorized edit and same-condition rescan clear 
     packet.comparison = compare(beforeInput, afterInput);
   };
   await saveAfter();
-  assert.doesNotThrow(() => buildReport(packet));
-  modules['naver-searchadvisor'][0].x_robots_tag = '';
-  indexObservation.state = 'pass'; indexObservation.q = 1; indexObservation.reason = 'Forged positive header verdict';
+  assert.throws(() => buildReport(packet), /response record differs from collection record/);
+  delete afterCollection.artifacts[0].headers['x-robots-tag'];
+  afterCollection.artifacts[0].header_lines.pop();
   await saveAfter();
-  assert.throws(() => buildReport(packet), /module differs from raw response and headers/);
-  modules['naver-searchadvisor'][0].x_robots_tag = 'noindex';
-  indexObservation.state = 'fail'; indexObservation.q = 0; indexObservation.reason = 'Header blocks indexing';
+  assert.throws(() => buildReport(packet), /noindex verdict is absent from raw response evidence|module differs from raw response and headers/);
+  modules['naver-searchadvisor'][0].x_robots_tag = null;
+  indexObservation.state = 'pass'; indexObservation.q = 1; indexObservation.reason = 'Header blocks indexing';
   const titleObservation = afterInput.observations.find(x => x.check_id === 'document-title');
   modules['naver-searchadvisor'][0].title = null;
   titleObservation.state = 'fail'; titleObservation.q = 0; titleObservation.reason = 'Forged missing title';
   await saveAfter();
-  assert.throws(() => buildReport(packet), /document-title failure conflicts with raw HTML evidence|module differs from raw response and headers/);
+  assert.throws(() => buildReport(packet), /module differs from raw response and headers/);
 });

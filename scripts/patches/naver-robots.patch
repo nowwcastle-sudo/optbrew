@@ -94,7 +94,7 @@ function stripInert(html, keepTitle = false) {
     (match, tag) => (keepTitle && tag?.toLowerCase() === 'title' ? match : ''));
 }
 
-const blocksIndex = (text) => String(text ?? '').split(',').some((token) => {
+const blocksIndex = (text) => String(text ?? '').split(/[,;]/).some((token) => {
   const value = token.trim().toLowerCase();
   return !value.includes(':') && value.split(/\s+/).some((word) => word === 'noindex' || word === 'none');
 });
@@ -104,21 +104,25 @@ const blocksIndex = (text) => String(text ?? '').split(',').some((token) => {
  * together with the generic robots directives. Optbrew audit and report replay share this extractor.
  */
 export function indexingDirectives({ html = '', xRobotsTag = null, engines = [] }) {
+  // xRobotsTag is one string or the separate header lines; a crawler prefix scopes only the line that carries it.
+  const lines = Array.isArray(xRobotsTag) ? xRobotsTag : xRobotsTag == null ? [] : [xRobotsTag];
   const agents = new Set(['robots', ...engines.flatMap((engine) => ENGINE_AGENTS[engine] ?? [])]);
   const markup = stripInert(html);
   const head = /<head[^>]*>([\s\S]*?)<\/head>/i.exec(markup)?.[1] ?? markup;
   const meta = tags(head, 'meta').filter((t) => agents.has((t.name || '').toLowerCase())).map((t) => t.content ?? '');
   const header = [];
-  let scope = null;
-  for (const raw of String(xRobotsTag ?? '').split(',')) {
-    const token = raw.trim();
-    const prefixed = /^([a-z0-9_-]+)\s*:\s*(.*)$/i.exec(token);
-    let directive = token;
-    if (prefixed && !HEADER_VALUE_FIELDS.has(prefixed[1].toLowerCase())) {
-      scope = prefixed[1].toLowerCase();
-      directive = prefixed[2];
+  for (const line of lines) {
+    let scope = null;
+    for (const raw of String(line).split(',')) {
+      const token = raw.trim();
+      const prefixed = /^([a-z0-9_-]+)\s*:\s*(.*)$/i.exec(token);
+      let directive = token;
+      if (prefixed && !HEADER_VALUE_FIELDS.has(prefixed[1].toLowerCase())) {
+        scope = prefixed[1].toLowerCase();
+        directive = prefixed[2];
+      }
+      if (directive && (scope === null || agents.has(scope))) header.push(directive);
     }
-    if (directive && (scope === null || agents.has(scope))) header.push(directive);
   }
   return { robots_meta: meta.join(', ') || null, x_robots_applicable: header.join(', ') || null,
     blocked: blocksIndex(meta.join(', ')) || blocksIndex(header.join(', ')) };
@@ -646,7 +650,10 @@ export function auditCollected({ artifact, html, robotsArtifact = null, engines 
   const titleSource = stripInert(html, true);
   const head = /<head[^>]*>([\s\S]*?)<\/head>/i.exec(titleSource)?.[1] ?? titleSource;
   const title = textOf(head, 'title');
-  const directives = indexingDirectives({ html, xRobotsTag: artifact.headers['x-robots-tag'] ?? null, engines });
+  const xRobotsLines = Array.isArray(artifact.header_lines) ?
+    artifact.header_lines.filter((line) => line.name === 'x-robots-tag').map((line) => line.value) :
+    artifact.headers['x-robots-tag'] != null ? [artifact.headers['x-robots-tag']] : [];
+  const directives = indexingDirectives({ html, xRobotsTag: xRobotsLines, engines });
   const jsonld = [...html.matchAll(/<script[^>]+application\/ld\+json[^>]*>([\s\S]*?)<\/script>/gi)];
   let parsedRobots = null;
   let yetiVerdict = null;
@@ -672,7 +679,7 @@ export function auditCollected({ artifact, html, robotsArtifact = null, engines 
   return {
     url: artifact.final_url, requested_url: artifact.normalized_url ?? null,
     redirect_chain: artifact.redirect_chain ?? [], status: artifact.status, title,
-    x_robots_tag: artifact.headers['x-robots-tag'] ?? null, robots_meta: directives.robots_meta,
+    x_robots_tag: xRobotsLines.length ? xRobotsLines.join(', ') : null, robots_meta: directives.robots_meta,
     index_blocked: directives.blocked,
     jsonld_blocks: jsonld.length, jsonld_parse_errors: jsonld.filter(([, body]) => { try { JSON.parse(body); return false; } catch { return true; } }).length,
     robots: parsedRobots ? { yeti_allowed: yetiVerdict.allowed, reason: yetiVerdict.reason, sitemaps: parsedRobots.sitemaps } : null,

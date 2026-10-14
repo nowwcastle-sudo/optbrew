@@ -10,6 +10,7 @@ import { measurePanel } from './metrics.mjs';
 import { normalizeImport } from '../adapters/imports.mjs';
 import { mergeFindings, selectRemediations } from './findings.mjs';
 import { auditCollected, indexingDirectives } from '../../modules/naver-searchadvisor/scripts/audit.mjs';
+import { declaredRobotsIndex } from './collector.mjs';
 import { parseRobots, robotsVerdict } from '../../modules/naver-searchadvisor/scripts/robots.mjs';
 
 const catalog = JSON.parse(readFileSync(new URL('../../references/remediations.json', import.meta.url))).items;
@@ -55,11 +56,9 @@ function metricRows(metrics) {
         m.sample_selection.valid_responses / m.sample_selection.planned_responses : null);
     // One measured window keeps its raw value and state; the difference stays unknown without a matched pair.
     const single = !paired && group.length === 1 && before.value_state === 'measured' ? before.value ?? 'unknown' : 'unknown';
-    const singleIsAfter = before.filters.phase === 'after';
     return [Object.entries(before.filters).filter(([k]) => ['provider', 'engine', 'property', 'surface'].includes(k)).map(([k, v]) => `${k}:${v}`).join('; ') || 'unknown',
       before.metric_id, group.map(m => `${m.window.start}–${m.window.end} (${m.sample_selection.kind})`).join(' → '),
-      paired ? before.value ?? 'unknown' : singleIsAfter ? 'unknown' : single,
-      paired ? after.value ?? 'unknown' : singleIsAfter ? single : 'unknown',
+      paired ? before.value ?? 'unknown' : single, paired ? after.value ?? 'unknown' : 'unknown',
       measured ? after.value - before.value : 'unknown', completion.map(x => x ?? 'unknown').join(' → '),
       `${paired ? 'comparable_windows' : 'not_comparable_or_missing_window'}; ${group.map(m => m.value_state).join(' → ')}; ` +
         group.map(m => m.sample_selection.missing_reason ?? m.sample_selection.inference ?? '').filter(Boolean).join('; ')];
@@ -104,7 +103,11 @@ function collectedResponses(snapshots, requireRef) {
         try {
           const audit = JSON.parse(requireRef(snapshot.audit_ref).text);
           const collection = JSON.parse(requireRef(audit.collection_ref).text);
-          for (const artifact of collection.artifacts ?? []) byRef.set(artifact.evidence_ref, [...(byRef.get(artifact.evidence_ref) ?? []), artifact]);
+          for (const entry of collection.artifacts ?? []) {
+            let artifact = entry;
+            try { artifact = boundArtifact(entry, audit, requireRef); } catch { /* strict binding runs for collector observations */ }
+            byRef.set(artifact.evidence_ref, [...(byRef.get(artifact.evidence_ref) ?? []), artifact]);
+          }
         } catch { /* an unreadable snapshot supplies no response headers; collector observations are replayed separately */ }
       }
     }
@@ -122,7 +125,7 @@ function evidenceBlocksIndexing(evidence, engines, collectedFor, unit) {
   const scoped = unit ? responses.filter(x => x.normalized_url === unit || x.final_url === unit) : responses;
   if (responses.length && !scoped.length) return false;
   if (evidence.kind === 'raw_html') {
-    const headers = scoped.length ? scoped.map(x => x.headers?.['x-robots-tag'] ?? x.headers?.['X-Robots-Tag'] ?? null) : [null];
+    const headers = scoped.length ? scoped.map(xRobotsLines) : [[]];
     return headers.some(xRobotsTag => indexingDirectives({ html: evidence.text, xRobotsTag, engines }).blocked);
   }
   if (evidence.kind === 'http_response')
@@ -130,13 +133,51 @@ function evidenceBlocksIndexing(evidence, engines, collectedFor, unit) {
       indexingDirectives({ html: '', xRobotsTag: match[1], engines }).blocked);
   return false;
 }
-const pathWithin = (value, prefix) => {
+/** Normalized pathname of an export path; absolute URLs count only on the mapping host, "//" forms never. */
+function exportPath(value, host) {
+  const text = String(value);
+  if (/^[a-z][a-z0-9+.-]*:/i.test(text)) {
+    try {
+      const url = new URL(text);
+      return ['http:', 'https:'].includes(url.protocol) && host && url.hostname.toLowerCase() === String(host).toLowerCase() ? url.pathname : null;
+    } catch { return null; }
+  }
+  if (!text.startsWith('/') || /^\/[/\\]/.test(text)) return null;
   try {
-    const base = 'http://path.invalid';
-    const actual = new URL(value, base).pathname, wanted = new URL(prefix, base).pathname;
-    return wanted === '/' || actual === wanted || actual.startsWith(wanted.endsWith('/') ? wanted : `${wanted}/`);
-  } catch { return false; }
+    const url = new URL(text, 'http://path.invalid');
+    return url.host === 'path.invalid' ? url.pathname : null;
+  } catch { return null; }
+}
+const pathWithin = (value, prefix, host) => {
+  const actual = exportPath(value, host), wanted = exportPath(prefix, host);
+  if (actual === null || wanted === null) return false;
+  return wanted === '/' || actual === wanted || actual.startsWith(wanted.endsWith('/') ? wanted : `${wanted}/`);
 };
+
+/**
+ * Replay a collected response from its hashed record: final URL, redirect chain and header lines come from the
+ * record, and the collection entry must agree with it. Bodyless failures have no response to bind.
+ */
+function boundArtifact(artifact, audit, requireRef) {
+  if (!Number.isInteger(artifact.status)) return artifact;
+  const entry = (audit.responses ?? []).find(x => x.normalized_url === artifact.normalized_url);
+  if (!artifact.response_ref || !entry || entry.evidence_ref !== artifact.response_ref)
+    throw new ContractError('response record missing for collected artifact');
+  const raw = requireRef(artifact.response_ref, 'optbrew:collector');
+  if (raw.sha256 !== entry.content_hash) throw new ContractError('response record hash differs from the audit index');
+  const record = JSON.parse(raw.text);
+  const chain = Array.isArray(record.redirect_chain) ? record.redirect_chain : [];
+  if (record.final_url !== (chain.length ? chain.at(-1).location : record.normalized_url) ||
+      (chain.length && chain[0].url !== record.normalized_url) ||
+      chain.some((hop, index) => index + 1 < chain.length && hop.location !== chain[index + 1].url))
+    throw new ContractError('final URL differs from the redirect chain');
+  for (const key of ['requested_url', 'normalized_url', 'final_url', 'status', 'redirect_chain', 'header_lines', 'content_hash', 'capability'])
+    if (!same(record[key], artifact[key])) throw new ContractError(`response record differs from collection record: ${key}`);
+  return { ...artifact, ...record };
+}
+const xRobotsLines = response => Array.isArray(response.header_lines) ?
+  response.header_lines.filter(line => line.name === 'x-robots-tag').map(line => line.value) :
+  [response.headers?.['x-robots-tag'] ?? response.headers?.['X-Robots-Tag']].filter(value => value != null);
 
 function checkDecisions(input, requireRef, collectedFor) {
   const protocolHash = freezeProtocol(input.run_context).protocol_hash;
@@ -184,7 +225,7 @@ function checkMetricEvidence(metric, packet, requireRef) {
     if (!mapping || !same(mapping.target, packet.run_context.target) || !mapping.evidence_ref || !property || property === 'unknown')
       throw new ContractError('native property target mapping missing');
     if (metric.filters.hostname !== 'unknown' && metric.filters.hostname !== mapping.hostname ||
-        metric.filters.path !== 'unknown' && (!mapping.path_prefix || !pathWithin(metric.filters.path, mapping.path_prefix)))
+        metric.filters.path !== 'unknown' && (!mapping.path_prefix || !pathWithin(metric.filters.path, mapping.path_prefix, mapping.hostname)))
       throw new ContractError('native hostname or URL scope differs from approved target mapping');
     const decision = JSON.parse(requireRef(mapping.evidence_ref).text);
     if (decision.run_id !== packet.run_context.run_id || !same(decision.target, packet.run_context.target) ||
@@ -271,20 +312,25 @@ function statusFor(finding, changes, afterInput, target, requireRef) {
     }));
   if (linked.every(change => change.environment === 'production' && change.verification.deployed === true))
     return afterResolved ? 'verified_production' : 'modified_unverified';
-  // A byte-hash receipt proves which file changed, not that the finding is resolved. Local verification
-  // needs a same-target local after observation of the same check and unit.
+  // A byte-hash receipt proves which file changed, not that the finding is resolved. Local verification uses the
+  // production binding: the receipt names an after observation of this check and unit that the collector produced
+  // (so the audit replay covers it), and its raw evidence is labelled after, local and for this target.
   const localResolved = same(afterInput?.run_context.target, target) && afterInput?.run_context.environment === 'local' &&
-    linked.every(change => afterInput.observations.some(obs => {
-      if (obs.check_id !== finding.check_id || obs.unit_key !== finding.unit_key || !['pass', 'partial'].includes(obs.state)) return false;
-      const source = requireRef(obs.evidence_ref, obs.source_ref);
-      return source.phase !== 'baseline' && (source.environment === undefined || source.environment === 'local');
-    }));
+    linked.every(change => change.environment === 'local' && change.verification.observation_id &&
+      change.verification.observation_evidence_ref && afterInput.observations.some(obs => {
+        if (obs.check_id !== finding.check_id || obs.unit_key !== finding.unit_key || !['pass', 'partial'].includes(obs.state) ||
+            obs.source_ref !== 'optbrew:collector' || obs.observation_id !== change.verification.observation_id ||
+            obs.evidence_ref !== change.verification.observation_evidence_ref) return false;
+        const source = requireRef(obs.evidence_ref, obs.source_ref);
+        return source.phase === 'after' && source.environment === 'local' && same(source.target, target);
+      }));
   return linked.every(change => change.environment === 'local') && localResolved ? 'verified_local' : 'modified_unverified';
 }
 
 function checkAuditPhase(input, phase, snapshot, requireRef) {
-  const observations = input?.observations.filter(x => x.source_ref === 'optbrew:collector') ?? [];
-  if (!observations.length) return;
+  if (!input) return;
+  const observations = input.observations.filter(x => x.source_ref === 'optbrew:collector');
+  if (!snapshot && !observations.length) return;
   if (!snapshot || snapshot.phase !== phase || snapshot.context_ref !== input.run_context.evidence_ref)
     throw new ContractError(`${phase} collector observations require their own audit snapshot`);
   const audit = JSON.parse(requireRef(snapshot.audit_ref).text);
@@ -307,13 +353,15 @@ function checkAuditPhase(input, phase, snapshot, requireRef) {
       throw new ContractError('audit raw content hash mismatch');
     rawRefs.add(raw.evidence_ref);
   }
+  // Final URL, redirect chain and header lines come from the hashed response records, not from collection.json alone.
+  const artifacts = collection.artifacts.map(x => boundArtifact(x, audit, requireRef));
   for (const obs of observations) {
     if (!savedObservations.some(x => same(x, obs)) || !rawRefs.has(obs.evidence_ref))
       throw new ContractError('collector observation is not bound to audit index and raw evidence');
     const url = unitUrl(obs.unit_key);
-    const artifact = collection.artifacts.find(x => x.normalized_url === url && x.evidence_ref === obs.evidence_ref);
+    const artifact = artifacts.find(x => x.normalized_url === url && x.evidence_ref === obs.evidence_ref);
     // Bind the requested unit to its collected artifact first; the module must describe that artifact's final URL.
-    const pageArtifact = artifact ?? collection.artifacts.find(x => x.normalized_url === url && x.status === 200 && x.capability === 'raw_html');
+    const pageArtifact = artifact ?? artifacts.find(x => x.normalized_url === url && x.status === 200 && x.capability === 'raw_html');
     const modules = pageArtifact?.final_url ? (moduleOutputs['naver-searchadvisor'] ?? []).filter(x =>
       x.url === pageArtifact.final_url && (x.requested_url ?? url) === url) : [];
     const module = modules.length === 1 ? modules[0] : null;
@@ -342,7 +390,7 @@ function checkAuditPhase(input, phase, snapshot, requireRef) {
     }
     if (obs.check_id === 'search-crawl-policy' && ['pass', 'fail'].includes(obs.state)) {
       const [, engine] = obs.unit_key.split('|');
-      const robotsArtifact = collection.artifacts.find(x => x.evidence_ref === obs.evidence_ref && x.status === 200);
+      const robotsArtifact = artifacts.find(x => x.evidence_ref === obs.evidence_ref && x.status === 200);
       const declared = robotsArtifact && (input.run_context.protocol.auxiliary_resources ?? []).some(resource =>
         resource.kind === 'robots' && resource.normalized === robotsArtifact.normalized_url);
       const robotsRaw = robotsArtifact && requireRef(obs.evidence_ref);
@@ -359,6 +407,35 @@ function checkAuditPhase(input, phase, snapshot, requireRef) {
       if (module.robots.yeti_allowed !== verdict.allowed || module.robots.reason !== verdict.reason ||
           obs.state !== (verdict.allowed ? 'pass' : 'fail'))
         throw new ContractError('crawl verdict differs from bound robots evidence and module output');
+    }
+  }
+  // Every observation the collector plans for this phase must be in the packet and in the saved observation file;
+  // deleting a failed unit from both would otherwise silently remove its blocker.
+  if (!Array.isArray(moduleOutputs['naver-searchadvisor'])) return;
+  const planned = new Set(input.run_context.protocol.families.filter(x => x.applicable).map(x => x.family_id));
+  const pages = input.run_context.protocol.page_types.flatMap(type => type.urls);
+  const declaredRobots = new Set((input.run_context.protocol.auxiliary_resources ?? [])
+    .filter(resource => resource.kind === 'robots').map(resource => resource.normalized));
+  const expect = (family, engine, url) => {
+    const unitKey = `${family}|${engine ? `${engine}|` : ''}${url}`;
+    if (!observations.some(x => x.unit_key === unitKey) || !savedObservations.some(x => x.unit_key === unitKey))
+      throw new ContractError(`planned collector observation missing: ${unitKey}`);
+  };
+  for (const { normalized: url, public_indexing: publicIndexing } of pages) {
+    const artifact = artifacts.find(x => x.normalized_url === url);
+    if (!artifact) continue;
+    if (planned.has('fetch-response')) expect('fetch-response', null, url);
+    if (artifact.status !== 200 || artifact.capability !== 'raw_html') continue;
+    if (planned.has('document-title')) expect('document-title', null, url);
+    if (publicIndexing === false) continue;
+    if (planned.has('index-policy')) expect('index-policy', null, url);
+    if (planned.has('search-crawl-policy') && input.run_context.protocol.engines.includes('naver')) {
+      const robots = artifacts[declaredRobotsIndex(artifacts, declaredRobots, artifact.final_url)];
+      if (robots?.status === 200) {
+        const target = new URL(artifact.final_url);
+        if (!robotsVerdict(parseRobots(requireRef(robots.evidence_ref).text), 'yeti', target.pathname + target.search).allowed)
+          expect('search-crawl-policy', 'naver', url);
+      }
     }
   }
 }
@@ -445,6 +522,10 @@ export function buildReport(packet) {
             !check.evidence_ref || !check.after_hash || check.after_hash !== change.after_hash ||
             requireRef(check.evidence_ref).sha256 !== change.after_hash)))
         throw new ContractError('verification check lacks actual changed bytes and passing observation');
+      if (change.environment === 'local' && change.verification.observation_id &&
+          (receipt.observation_id !== change.verification.observation_id ||
+           receipt.observation_evidence_ref !== change.verification.observation_evidence_ref))
+        throw new ContractError('local verification receipt is not bound to its after observation');
       if (change.environment === 'production' && change.verification.deployed === true) {
         const deployment = receipt.deployment;
         const evidence = deployment?.evidence_ref ? JSON.parse(requireRef(deployment.evidence_ref).text) : null;
