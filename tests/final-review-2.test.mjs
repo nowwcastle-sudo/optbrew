@@ -127,3 +127,29 @@ test('N4: a planned collector observation cannot be deleted from packet and save
   const allowed = await run(t, ['/ok'], { engines: ['naver'], robots: true });
   assert.doesNotThrow(() => buildReport(allowed.packet));
 });
+
+test('R1: a selected page missing from artifacts and skipped, or a dropped audit snapshot, is rejected', async t => {
+  const crawl = await run(t, ['/crawl'], { engines: ['naver'], robots: true });
+  assert.doesNotThrow(() => buildReport(crawl.packet));
+  const pageUrl = `${site.origin}/crawl`;
+  await crawl.rewrite(crawl.evidence('collection.json'), value => {
+    value.artifacts = value.artifacts.filter(x => x.normalized_url !== pageUrl);
+  });
+  await crawl.rewrite(crawl.evidence('evidence-index.json'), value => {
+    value.raw = value.raw.filter(x => x.normalized_url !== pageUrl);
+    value.responses = value.responses.filter(x => x.normalized_url !== pageUrl);
+  });
+  await crawl.forgeObservations(list => {
+    for (let i = list.length - 1; i >= 0; i--) if (list[i].unit_key.endsWith(pageUrl)) list.splice(i, 1);
+  });
+  assert.throws(() => buildReport(crawl.packet), /selected page missing from the collection and its skipped list/);
+
+  const dropped = await run(t, ['/meta'], { engines: ['google'] });
+  assert.equal(blockers(buildReport(dropped.packet)), 1);
+  delete dropped.packet.audit_ref;
+  await dropped.forgeObservations(list => { list.length = 0; });
+  assert.throws(() => buildReport(dropped.packet), /collector evidence is indexed but the baseline audit snapshot is missing/);
+
+  const limited = await run(t, ['/redirect'], { maxUrls: 1 });
+  assert.doesNotThrow(() => buildReport(limited.packet), 'an artifact cut by the request budget stays a reportable unknown');
+});

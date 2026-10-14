@@ -423,7 +423,12 @@ function checkAuditPhase(input, phase, snapshot, requireRef) {
   };
   for (const { normalized: url, public_indexing: publicIndexing } of pages) {
     const artifact = artifacts.find(x => x.normalized_url === url);
-    if (!artifact) continue;
+    if (!artifact) {
+      // A selected page is either collected or recorded as skipped; vanishing from both hides its observations.
+      if (!(collection.skipped ?? []).some(x => x.url === url))
+        throw new ContractError(`selected page missing from the collection and its skipped list: ${url}`);
+      continue;
+    }
     if (planned.has('fetch-response')) expect('fetch-response', null, url);
     if (artifact.status !== 200 || artifact.capability !== 'raw_html') continue;
     if (planned.has('document-title')) expect('document-title', null, url);
@@ -454,6 +459,9 @@ export function buildReport(packet) {
       snapshots.some(x => !['baseline', 'after'].includes(x.phase) || !x.audit_ref || !x.context_ref))
     throw new ContractError('audit snapshot phase or reference invalid');
   const snapshotFor = phase => snapshots.find(x => x.phase === phase);
+  // Dropping the audit reference must not downgrade collector evidence to an unaudited packet.
+  if (!snapshotFor('baseline') && packet.evidence_index.some(x => x.source_ref === 'optbrew:collector'))
+    throw new ContractError('collector evidence is indexed but the baseline audit snapshot is missing');
   const baselineScores = score(packet.baseline.input);
   if (!same(packet.baseline.scores, baselineScores)) throw new ContractError('baseline score differs from raw observations');
   const collectedIn = phase => collectedResponses(snapshotFor(phase) ? [snapshotFor(phase)] : [], requireRef);
@@ -497,7 +505,15 @@ export function buildReport(packet) {
     if (finding.remediation_ids.length && !finding.remediation_ids.every(id => id === selected?.remediation_id))
       throw new ContractError(`finding remediation link invalid: ${finding.finding_id}`);
     const status = statusFor(finding, packet.changes, packet.after?.input, packet.run_context.target, requireRef);
-    return { ...finding, remediation: selected ?? null, status };
+    // Show who attested a production resolution, so model-written fixes stay distinct from collector-verified ones.
+    const resolving = status === 'verified_production' ? packet.changes
+      .filter(change => change.finding_ids.some(id => finding.finding_ids.includes(id)))
+      .map(change => packet.after.input.observations.find(obs => obs.observation_id === change.verification.observation_id &&
+        obs.evidence_ref === change.verification.observation_evidence_ref)).filter(Boolean) : [];
+    const resolution = resolving.length ? { observation_id: resolving[0].observation_id,
+      evaluator_type: [...new Set(resolving.map(obs => obs.evaluator_type))].join(', '),
+      source_ref: [...new Set(resolving.map(obs => obs.source_ref))].join(', ') } : null;
+    return { ...finding, remediation: selected ?? null, status, resolution };
   });
   for (const change of packet.changes) {
     validateEntity('ChangeRecord', change);
@@ -591,7 +607,8 @@ export function buildReport(packet) {
   const remediationRows = findings.map(f => [f.priority, `${f.message} ${f.unit_key}`, f.sources.map(x => `${x.source_ref} ${x.evidence_ref}`).join('; '),
     f.remediation ? `${f.remediation.mechanism} (${f.remediation.source_url}, checked ${f.remediation.checked_date})` : 'unknown',
     packet.changes.filter(x => x.finding_ids.some(id => f.finding_ids.includes(id))).map(x => x.path).join('; ') || f.remediation?.location_hint || 'owner implementation location required',
-    f.remediation ? `${f.remediation.cost}; ${f.remediation.effort}` : 'unknown', f.remediation?.validation ?? 'unknown', f.status]);
+    f.remediation ? `${f.remediation.cost}; ${f.remediation.effort}` : 'unknown', f.remediation?.validation ?? 'unknown',
+    f.resolution ? `${f.status} (resolved by ${f.resolution.evaluator_type} observation from ${f.resolution.source_ref})` : f.status]);
   const outcomeRows = metricRows(packet.metrics);
   const remainingRows = remaining.map(x => [x.problem, x.reason, x.required_input_or_authority, x.next_action, x.reobserve_when]);
   const markdown = `# optbrew report\n\n${packet.data_class === 'synthetic' ? '**Synthetic example — no real site or provider outcome.**\n\n' : ''}` +

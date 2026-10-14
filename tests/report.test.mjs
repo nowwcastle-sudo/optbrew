@@ -68,6 +68,11 @@ function titleObservation(ref) {
     reason: 'Raw HTML has a title; uniqueness and descriptiveness are not established', evaluator_type: 'code',
     source_ref: 'optbrew:collector', evidence_ref: ref };
 }
+/** Selected pages the hand-built collection did not fetch are recorded as skipped, as the collector does at its limit. */
+function skippedOthers(run, collected = 'https://example.com/') {
+  return run.packet.run_context.protocol.page_types.flatMap(type => type.urls).map(x => x.normalized)
+    .filter(url => url !== collected).map(url => ({ url, reason: 'url_limit' }));
+}
 function productionRun() {
   const run = copyRun();
   addChange(run, 'c1', { environment: 'production', deployed: true });
@@ -344,7 +349,7 @@ test('collector observations bind to the owning audit index and raw content hash
     run.packet.baseline.scores = score(run.packet.baseline.input);
     const observations = `${JSON.stringify(run.packet.baseline.input.observations)}\n`;
     const bound = collectedArtifact(run, 'bind-', 'raw.html');
-    const collection = `${JSON.stringify({ artifacts: [bound.artifact] })}\n`;
+    const collection = `${JSON.stringify({ artifacts: [bound.artifact], skipped: skippedOthers(run) })}\n`;
     const modules = `${JSON.stringify({ 'naver-searchadvisor': [{ url: 'https://example.com/', title: 'Example',
       robots_meta: 'noindex', x_robots_tag: null }] })}\n`;
     const audit = { run_id: 'synthetic-report', context_ref: 'context.json',
@@ -635,7 +640,7 @@ test('review P2-7: bodyless timeout remains a reportable unknown', () => {
     Object.assign(fetch, { state: 'unknown', q: null, reason: 'timeout', source_ref: 'optbrew:collector', evidence_ref: 'collection.json' });
     run.packet.baseline.scores = score(run.packet.baseline.input);
     const collection = { artifacts: [{ normalized_url: 'https://example.com/', final_url: 'https://example.com/',
-      status: null, error: 'timeout', content_hash: null, evidence_ref: 'collection.json' }] };
+      status: null, error: 'timeout', content_hash: null, evidence_ref: 'collection.json' }], skipped: skippedOthers(run) };
     addEvidence(run, 'collection.json', collection, 'collection', 'optbrew:collector');
     addEvidence(run, 'modules.json', {}, 'modules');
     addEvidence(run, 'observations.json', [fetch], 'observations');
@@ -665,7 +670,7 @@ test('review P2-8: before and after collector snapshots use their own evidence r
     for (const [phase, ref] of [['baseline', 'raw.html'], ['after', 'after.html']]) {
       const prefix = phase === 'baseline' ? 'b' : 'a';
       const bound = collectedArtifact(run, `${prefix}-`, ref);
-      addEvidence(run, `${prefix}-collection.json`, { artifacts: [bound.artifact] }, 'collection');
+      addEvidence(run, `${prefix}-collection.json`, { artifacts: [bound.artifact], skipped: skippedOthers(run) }, 'collection');
       addEvidence(run, `${prefix}-modules.json`, { 'naver-searchadvisor': [{ url: 'https://example.com/',
         title: phase === 'baseline' ? 'Example' : 'After', robots_meta: 'noindex', x_robots_tag: null }] }, 'modules');
       addEvidence(run, `${prefix}-observations.json`, phase === 'baseline' ? run.packet.baseline.input.observations : afterInput.observations, 'observations');
@@ -760,4 +765,26 @@ test('final review M2: the CLI refuses an invalid packet before creating any out
     assert.equal(existsSync(path.join(out, 'report.md')), false);
     assert.deepEqual(existsSync(out) ? readdirSync(out) : [], []);
   } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('final review round 3: a production resolution shows the evaluator type of its resolving observation', () => {
+  for (const evaluator of ['code', 'host_model']) {
+    const run = productionRun();
+    try {
+      const observation = run.packet.after.input.observations.find(x => x.check_id === 'index-policy');
+      observation.evaluator_type = evaluator;
+      run.packet.after.scores = score(run.packet.after.input);
+      const report = buildReport(run.packet);
+      assert.equal(report.json.findings[0].status, 'verified_production');
+      assert.deepEqual(report.json.findings[0].resolution, { observation_id: observation.observation_id,
+        evaluator_type: evaluator, source_ref: observation.source_ref });
+      assert.ok(report.json.tables.remediation[0].at(-1).startsWith(`verified_production (resolved by ${evaluator} observation`));
+      assert.ok(report.markdown.includes(`resolved by ${evaluator} observation`));
+    } finally { rmSync(run.dir, { recursive: true, force: true }); }
+  }
+  const pending = copyRun();
+  try {
+    addChange(pending, 'c1');
+    assert.equal(buildReport(pending.packet).json.findings[0].resolution, null);
+  } finally { rmSync(pending.dir, { recursive: true, force: true }); }
 });
