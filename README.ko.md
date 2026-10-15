@@ -21,7 +21,7 @@ optbrew는 다섯 기준 모두에 같은 작업 순서와 같은 채점 규칙�
 
 ## 동작 방식
 
-1. **감사.** URL, 목표, 범위를 알려 주면 수집기가 URL을 최대 50개(깊이 3, 동시에 2개)까지 가져옵니다. 응답마다 해시와 함께 저장합니다.
+1. **감사.** URL, 목표, 범위를 알려 주면 수집기가 최대 50번 요청합니다. 페이지, 리다이렉트, robots·사이트맵 파일을 모두 합친 수이며, 깊이 3, 동시에 2개까지입니다. 응답마다 해시와 함께 저장합니다.
 2. **수정.** 에이전트가 로컬 파일 수정안을 냅니다. 승인 없이 고치거나 배포하거나 검색엔진에 제출하지 않습니다.
 3. **재확인.** 같은 조건으로 다시 수집합니다. 그래서 수정 전후를 비교할 수 있습니다.
 4. **보고.** 기준별 점수와 측정 범위, 막는 문제, 미확인 핵심 항목을 적습니다. 준비도·수정·실제 성과·남은 일은 표를 나눠 씁니다.
@@ -33,13 +33,15 @@ optbrew는 다섯 기준 모두에 같은 작업 순서와 같은 채점 규칙�
 | SEO | 구글과 웹 검색 | 응답 상태, meta와 `X-Robots-Tag`의 `noindex`, 제목, Googlebot용 robots.txt, canonical, 리다이렉트 단계, 링크·사이트맵으로 찾을 수 있는지, JSON-LD 문법 | 콘텐츠 품질, 검색 의도와 맞는지 |
 | NEO | 네이버 | Yeti용 robots.txt, Open Graph, description, canonical, viewport, 제목 반복, 막힌 CSS·JS | 네이버 콘텐츠 가이드 |
 | AEO, GEO | 답변 엔진과 AI 검색 | [ai-crawlers.md](skills/optbrew/references/ai-crawlers.md)에 적은 AI 검색 봇용 robots.txt(학습용 봇은 채점하지 않음) | 답변 구조, 주장, 작성자, 최신성 |
-| LLMO | AI가 우리를 설명하는 방식 | 상호·주소·전화·설립 연도가 페이지끼리 일치하는지 | 그 사실이 맞는지 |
+| LLMO | AI가 우리를 설명하는 방식 | 상호·주소·전화·설립 연도가 페이지끼리 일치하는지, 페이지들이 한 업체를 설명하는지 | 그 사실이 맞는지 |
 
-채점 규칙은 [scoring.md](skills/optbrew/references/scoring.md)에 있습니다. 측정 범위 80% 기준은 optbrew가 정한 규칙이며, 검색엔진 표준이 아닙니다.
+엔진별 검사는 대상으로 밝힌 엔진에만 적용됩니다. 네이버가 중요하다고 말하거나, ChatGPT·Claude·Perplexity처럼 신경 쓰는 AI 답변 엔진을 알려 주십시오. 채점 규칙은 [scoring.md](skills/optbrew/references/scoring.md)에 있습니다. 측정 범위 80% 기준은 optbrew가 정한 규칙이며, 검색엔진 표준이 아닙니다.
 
 ## 설치
 
 [Node.js](https://nodejs.org) 22 이상이 필요합니다. Python 3.10 이상은 선택입니다. 없으면 내부 Python 감사 도구만 실행하지 않습니다. 아래 다섯 방법 중 하나를 고르십시오. 예시는 Codex와 Claude Code에 사용자 범위로 설치합니다. 에이전트 ID는 `codex`, `claude-code`, `cursor`, `opencode`, `pi`입니다.
+
+Windows PowerShell에서 `npx`나 `optbrew`가 「스크립트를 실행할 수 없습니다」라고 하면 `npx.cmd`, `optbrew.cmd`로 바꿔 입력하십시오.
 
 ### 1. npm
 
@@ -60,8 +62,6 @@ optbrew doctor --agents codex,claude-code --scope user
 npx optbrew@0.1.3 install --agents codex,claude-code --scope user
 npx optbrew@0.1.3 doctor --agents codex,claude-code --scope user
 ```
-
-Windows PowerShell에서 `npx`나 `optbrew`가 「스크립트를 실행할 수 없습니다」라고 하면 `npx.cmd`, `optbrew.cmd`로 바꿔 실행하십시오.
 
 ### 3. PowerShell (Windows)
 
@@ -125,7 +125,7 @@ npm install -g optbrew@latest
 optbrew update --scope user
 ```
 
-npx를 쓴다면 `npx optbrew@latest update --scope user`를 실행합니다. `optbrew check-updates --package optbrew`는 아무것도 바꾸지 않고 설치본과 npm 최신판을 비교합니다. `npm update`만으로는 에이전트 폴더에 이미 놓인 사본이 바뀌지 않습니다. 사본은 `update` 명령이 바꿉니다.
+npx를 쓴다면 `npx optbrew@latest update --scope user`를 실행합니다. `optbrew check-updates --package optbrew`는 아무것도 바꾸지 않고, 지금 실행한 CLI보다 새 버전이 npm에 있는지 알려 줍니다. 에이전트 폴더에 설치된 버전은 `optbrew doctor --json`의 `release_version`에 나옵니다. `npm update`만으로는 에이전트 폴더에 이미 놓인 사본이 바뀌지 않습니다. 사본은 `update` 명령이 바꿉니다.
 
 0.1.2 이하 설치본은 `migration_required`로 멈춥니다. 0.1.3은 새 평가 버전으로 채점하기 때문입니다. 평가 버전이 다른 점수끼리는 비교할 수 없습니다. [migration_required 뒤 재설치](docs/platforms.md#reinstall-after-a-migration_required-update) 절차를 따르십시오. 이 절차는 읽기 전용 검사가 출력한 경로만 지우며, 감사 근거는 건드리지 않습니다.
 

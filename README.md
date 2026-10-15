@@ -21,7 +21,7 @@ optbrew gives the agent one workflow and one scoring rule for all five profiles.
 
 ## How it works
 
-1. **Audit.** You give the URL, the goal and the scope. A collector fetches up to 50 URLs (depth 3, two at a time) and stores every response with its hash.
+1. **Audit.** You give the URL, the goal and the scope. A collector makes at most 50 requests (pages, redirects and robots or sitemap files together; depth 3, two at a time) and stores every response with its hash.
 2. **Fix.** The agent proposes changes to local files. Nothing is edited, deployed or submitted without your approval.
 3. **Re-check.** The same collection runs again under the same conditions, so the before and after are comparable.
 4. **Report.** A score per profile with its coverage, blockers, open core checks, and separate tables for readiness, fixes, real outcomes and remaining work.
@@ -33,13 +33,15 @@ What the script measures by itself, and what still needs the guides and the agen
 | SEO | Google and web search | Fetch status, `noindex` in meta and `X-Robots-Tag`, titles, robots.txt for Googlebot, canonical, redirect chains, discovery through links and sitemap, JSON-LD syntax | Content quality and intent fit |
 | NEO | Naver | robots.txt for Yeti, Open Graph, description, canonical, viewport, title repetition, blocked CSS or JS | Naver-specific content guidance |
 | AEO, GEO | Answer engines and AI search | robots.txt for the AI search bots in [ai-crawlers.md](skills/optbrew/references/ai-crawlers.md) (training bots are never scored) | Answer structure, claims, authorship, freshness |
-| LLMO | How models describe you | Whether name, address, phone and founding year agree across pages | Whether those facts are true |
+| LLMO | How models describe you | Whether name, address, phone and founding year agree across pages, and whether the pages describe one business | Whether those facts are true |
 
-The scoring rule is in [scoring.md](skills/optbrew/references/scoring.md). The 80% coverage threshold is optbrew's own rule, not a search engine standard.
+Engine-specific checks run for the engines you name as targets. Say that Naver matters, or name the AI answer engines you care about, such as ChatGPT, Claude or Perplexity. The scoring rule is in [scoring.md](skills/optbrew/references/scoring.md). The 80% coverage threshold is optbrew's own rule, not a search engine standard.
 
 ## Install
 
 Requires [Node.js](https://nodejs.org) 22 or later. Python 3.10 or later is optional; without it, the internal Python audit utilities stay unrun. Pick one of the five methods. The examples install for Codex and Claude Code at user level; the agent IDs are `codex`, `claude-code`, `cursor`, `opencode` and `pi`.
+
+In Windows PowerShell, if `npx` or `optbrew` reports that running scripts is disabled, type `npx.cmd` or `optbrew.cmd` instead.
 
 ### 1. npm
 
@@ -60,8 +62,6 @@ Runs the same CLI without a global install:
 npx optbrew@0.1.3 install --agents codex,claude-code --scope user
 npx optbrew@0.1.3 doctor --agents codex,claude-code --scope user
 ```
-
-In Windows PowerShell, if `npx` or `optbrew` reports that running scripts is disabled, call `npx.cmd` or `optbrew.cmd` instead.
 
 ### 3. PowerShell (Windows)
 
@@ -125,7 +125,7 @@ npm install -g optbrew@latest
 optbrew update --scope user
 ```
 
-With npx, run `npx optbrew@latest update --scope user`. `optbrew check-updates --package optbrew` compares your install with npm without changing anything. `npm update` alone does not touch copies already placed in agent folders; the `update` command does.
+With npx, run `npx optbrew@latest update --scope user`. `optbrew check-updates --package optbrew` tells you, without changing anything, whether npm has a newer release than the CLI you are running; `optbrew doctor --json` shows the `release_version` installed in your agent folders. `npm update` alone does not touch copies already placed in agent folders; the `update` command does.
 
 An install from 0.1.2 or earlier stops with `migration_required`, because 0.1.3 scores with a new evaluation version. Scores from different evaluation versions are not comparable. Follow [Reinstall after a migration_required update](docs/platforms.md#reinstall-after-a-migration_required-update); the steps delete only paths that a read-only check printed and never touch your audit evidence.
 
