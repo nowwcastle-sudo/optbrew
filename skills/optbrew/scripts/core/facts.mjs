@@ -10,6 +10,12 @@ const FACT_TYPES = ['name', 'phone', 'year', 'address'];
 const ORG_TYPES = /^(?:Organization|Corporation|LocalBusiness|Store|Restaurant|CafeOrCoffeeShop|OnlineStore|NGO|[A-Za-z]*Business)$/;
 const squash = value => String(value).toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '');
 const BRANCH = /\b(?:branch)\b|지점|지사/i;
+// URL path segments that list branches: /branch/, /branches/, /locations/, /stores/, /지점/.
+const BRANCH_PATH = /^(?:branch|branches|locations|stores|지점)$/i;
+const branchPath = url => {
+  try { return new URL(url, 'http://page.invalid').pathname.split('/').some(part => BRANCH_PATH.test(decodeURIComponent(part))); }
+  catch { return false; }
+};
 
 const ABBREVIATIONS = [[/\bstreet\b/g, 'st'], [/\broad\b/g, 'rd'], [/\bavenue\b/g, 'ave'], [/\bboulevard\b/g, 'blvd'],
   [/\bdrive\b/g, 'dr'], [/\blane\b/g, 'ln'], [/\bsuite\b/g, 'ste'], [/\bfloor\b/g, 'fl'], [/\bbuilding\b/g, 'bldg']];
@@ -60,6 +66,8 @@ const addressText = address => typeof address === 'string' ? address : address &
 function phoneKey(text) {
   const clean = String(text).replace(/\(0\)/g, '');
   const digits = clean.replace(/\D/g, '');
+  // Korean nationwide representative numbers (15xx, 16xx, 18xx plus four digits) have eight digits.
+  if (/^1[568]\d{6}$/.test(digits)) return digits;
   if (digits.length < 9 || digits.length > 15) return null;
   return /^\s*\+?\s*82/.test(clean) && clean.trim().startsWith('+') && digits.startsWith('82') ? `0${digits.slice(2)}` : digits;
 }
@@ -72,6 +80,10 @@ const hardText = html => decodeEntities(stripInert(html).replace(/<[^>]+>/g, '\n
 // An international or parenthesised number may use spaces between its groups; a plain national number only dashes and dots.
 const LOOSE_PHONE = /^[+(]\s?[\d()]{1,6}(?:[-. ]?\(?\d{1,6}\)?){1,5}/;
 const STRICT_PHONE = /^\+?\d{1,4}(?:[-.]\d{1,6}){1,4}/;
+// In a label, a national number may use spaces only (02 555 0142, 010 1234 5678), and a nationwide representative number
+// is 15xx, 16xx or 18xx plus four digits. Neither is read in prose.
+const SPACED_NATIONAL_PHONE = /^0\d{1,2}(?: \d{3,4}){2}(?!\d)/;
+const REPRESENTATIVE_PHONE = /^1[568]\d{2}[- ]\d{4}(?!\d)/;
 /**
  * The number at the start of `rest`, ending at its own last digit group. A spaced number that is followed by more
  * digits or a bracketed digit is ambiguous, so only its dashed or dotted part is read, and a number longer than twelve
@@ -81,7 +93,14 @@ function readPhone(rest) {
   const usable = text => text && (phoneKey(text)?.length ?? 99) <= 13 ? text.trim() : null;
   const loose = LOOSE_PHONE.exec(rest)?.[0].trimEnd();
   if (loose && !/^[ \t]*[(\[]?\d/.test(rest.slice(loose.length)) && usable(loose)) return loose.trim();
-  return usable(STRICT_PHONE.exec(rest)?.[0]);
+  const strict = usable(STRICT_PHONE.exec(rest)?.[0]);
+  if (strict) return strict;
+  // Digits straight after a spaced number are ambiguous (02 555 0142 42 seats); a bracket after it is not (hours).
+  for (const pattern of [SPACED_NATIONAL_PHONE, REPRESENTATIVE_PHONE]) {
+    const match = pattern.exec(rest)?.[0];
+    if (match && !/^[ \t]*\d/.test(rest.slice(match.length)) && usable(match)) return match.trim();
+  }
+  return null;
 }
 
 /** Facts on one page: visible labelled values and JSON-LD / tel: values, keyed by fact type. */
@@ -124,10 +143,11 @@ export function pageFacts(html) {
       orgs.push(org);
     }
   }
-  // A page that presents itself as a branch has its own address and phone; it is a different entity, so it is not compared.
+  // A branch word in the title or first heading is only a hint (titleBranch). A page is a separate entity when its
+  // JSON-LD says so (branch), when its URL is a branch list, or when the hint comes with an address of its own.
   const heading = /<(?:title|h1)\b[^>]*>([\s\S]*?)<\/(?:title|h1)>/gi;
   const headings = [...live.matchAll(heading)].map(match => match[1]).join(' ');
-  return { visible, linked, tel, orgs, branch: BRANCH.test(headings) || orgs.some(org => org.branch) };
+  return { visible, linked, tel, orgs, branch: orgs.some(org => org.branch), titleBranch: BRANCH.test(headings) };
 }
 
 /**
@@ -150,7 +170,13 @@ export function compareFacts(allPages) {
   for (const page of allPages) for (const id of new Set(page.facts.orgs.map(org => org.id).filter(Boolean))) ids.set(id, (ids.get(id) ?? 0) + 1);
   const ranked = [...ids.entries()].sort((a, b) => b[1] - a[1]);
   const mainId = ranked.length && ranked[0][1] >= 2 && (ranked.length === 1 || ranked[0][1] > ranked[1][1]) ? ranked[0][0] : null;
-  const separate = page => page.facts.branch || (mainId && page.facts.orgs.some(org => org.id) && !page.facts.orgs.some(org => org.id === mainId));
+  const structural = page => page.facts.branch || branchPath(page.url) ||
+    (mainId && page.facts.orgs.some(org => org.id) && !page.facts.orgs.some(org => org.id === mainId));
+  // The main entity's addresses come from the pages with neither structure nor a branch word in the title.
+  const mainAddresses = [...new Set(allPages.filter(page => !structural(page) && !page.facts.titleBranch).flatMap(page => [...keysOf(page, 'address')]))];
+  // A branch word in the title counts only with a labelled address that is not the main entity's.
+  const ownAddress = page => { const own = keysOf(page, 'address'); return own.size > 0 && mainAddresses.length > 0 && ![...own].some(key => mainAddresses.some(main => sameAddress(key, main))); };
+  const separate = page => structural(page) || (page.facts.titleBranch && ownAddress(page));
   const pages = allPages.filter(page => !separate(page));
   const references = {};
   const deviations = new Map(allPages.map(page => [page.url, []]));
