@@ -33,6 +33,7 @@
     "lib/",
     "skills/optbrew/",
     "skills/.claude-plugin/",
+    "skills/README.md",
     "plugin.json",
     ".codex-plugin/",
     ".claude-plugin/",
