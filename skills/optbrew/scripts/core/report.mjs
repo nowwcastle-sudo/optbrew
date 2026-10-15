@@ -179,11 +179,31 @@ const pathWithin = (value, prefix, host) => {
 };
 
 /**
+ * A failed fetch has no response, but its answered redirect hops are real requests. They are replayed from the hashed
+ * failure record, which also says whether one more attempt got no response.
+ */
+function boundFailure(artifact, audit, requireRef) {
+  const entry = (audit.failures ?? []).find(x => x.normalized_url === artifact.normalized_url);
+  if (!artifact.failure_ref || !entry || entry.evidence_ref !== artifact.failure_ref) throw new ContractError('failure record missing for failed fetch');
+  const raw = requireRef(artifact.failure_ref, 'optbrew:collector');
+  if (raw.sha256 !== entry.content_hash) throw new ContractError('failure record hash differs from the audit index');
+  const record = JSON.parse(raw.text);
+  // At most ten redirects are followed, and the eleventh answer (a refused redirect) is the last hop that can be recorded.
+  if (record.kind !== 'failure' || ![0, 1].includes(record.unanswered) || !Array.isArray(record.redirect_chain) || record.redirect_chain.length > 11 ||
+      record.redirect_chain.some((hop, index) => typeof hop?.url !== 'string' || !(hop.status >= 300 && hop.status <= 399) ||
+        hop.url !== (index ? record.redirect_chain[index - 1].location : record.normalized_url)))
+    throw new ContractError('failure record is malformed');
+  for (const key of ['requested_url', 'normalized_url', 'redirect_chain', 'unanswered', 'error'])
+    if (!same(record[key], artifact[key])) throw new ContractError(`failure record differs from collection record: ${key}`);
+  return { ...artifact, ...record };
+}
+
+/**
  * Replay a collected response from its hashed record: final URL, redirect chain and header lines come from the
  * record, and the collection entry must agree with it. Bodyless failures have no response to bind.
  */
 function boundArtifact(artifact, audit, requireRef) {
-  if (!Number.isInteger(artifact.status)) return artifact;
+  if (!Number.isInteger(artifact.status)) return boundFailure(artifact, audit, requireRef);
   const entry = (audit.responses ?? []).find(x => x.normalized_url === artifact.normalized_url);
   if (!artifact.response_ref || !entry || entry.evidence_ref !== artifact.response_ref)
     throw new ContractError('response record missing for collected artifact');
@@ -364,15 +384,16 @@ function checkLedger(input, audit, collection, artifacts, requireRef) {
   const limit = Math.min(input.run_context.scope?.max_urls ?? 50, 50);
   if (ledger.limit !== limit) fail('request limit differs from the run scope');
   const total = entries.reduce((sum, entry) => sum + entry.requests, 0);
-  // The limit decides whether a fetch may start; a redirect chain that has started finishes. A chain is at most
-  // min(10, limit) redirects long and at most `concurrency` chains are in flight, so the overshoot is bounded by both.
-  const concurrency = Math.min(input.run_context.scope?.concurrency ?? 2, 2);
-  if (total > limit + concurrency * Math.min(10, limit)) fail('more requests than the limit');
+  // The limit is a hard ceiling: every request, redirect hops included, takes one slot before it is sent.
+  if (total > limit) fail('more requests than the limit');
+  // One URL, one entry. Skips for out-of-scope and undeclared auxiliary links are recorded per link and may repeat.
+  const identities = entries.filter(x => !(x.outcome === 'skipped' && ['outside_scope', 'auxiliary_undeclared'].includes(x.skipped_reason))).map(x => x.url);
+  if (new Set(identities).size !== identities.length) fail('duplicate ledger url: a URL appears in more than one entry');
   const responded = artifacts.filter(x => Number.isInteger(x.status));
   const failed = artifacts.filter(x => !Number.isInteger(x.status));
   const byUrl = outcome => new Map(entries.filter(x => x.outcome === outcome).map(x => [x.url, x]));
   const responses = byUrl('response'), errors = byUrl('error');
-  if (responses.size !== responded.length || audit.responses.length !== responded.length || errors.size !== failed.length)
+  if (responses.size !== responded.length || audit.responses.length !== responded.length || errors.size !== failed.length || audit.failures.length !== failed.length)
     fail('collected artifacts differ from the ledger or the response records');
   for (const artifact of responded) {
     const entry = responses.get(artifact.normalized_url);
@@ -383,16 +404,16 @@ function checkLedger(input, audit, collection, artifacts, requireRef) {
   for (const artifact of failed) {
     const entry = errors.get(artifact.normalized_url);
     if (!entry) fail(`failed fetch of ${artifact.normalized_url} is not recorded`);
-    // A failed fetch has no hashed response record, so nothing proves how many requests it made: it is always one.
-    // Neither the redirect chain nor any count inside collection.json can raise it, so a forger cannot pad the total.
-    if (entry.requests !== 1) fail(`failed fetch of ${artifact.normalized_url} is not booked as exactly one request`);
+    // The requests of a failed fetch are the answered hops of its hashed failure record plus at most one attempt that got
+    // no response; nothing in collection.json can raise them.
+    if (entry.requests !== artifact.redirect_chain.length + artifact.unanswered) fail(`failed fetch of ${artifact.normalized_url} does not match its hashed failure record`);
   }
   const key = x => `${x.url}|${x.reason ?? x.skipped_reason}`;
   const ledgerSkips = entries.filter(x => x.skipped_reason).map(key).sort();
   if (JSON.stringify((collection.skipped ?? []).map(key).sort()) !== JSON.stringify(ledgerSkips)) fail('skipped list differs from the ledger');
   const limited = entries.some(x => ['url_limit', 'request_limit'].includes(x.skipped_reason));
   if (collection.limit_reached !== limited) fail('limit_reached differs from the ledger');
-  if (limited && total < limit) fail('a request limit is claimed but fewer requests than the limit were made');
+  if (limited && total !== limit) fail('a request limit is claimed but the recorded requests do not use the whole limit');
   if (collection.request_count !== total || collection.evaluated_count !== entries.filter(x => x.requests > 0).length) fail('request or evaluated count differs from the ledger');
   const selected = new Set(input.run_context.protocol.page_types.flatMap(type => type.urls.map(x => x.normalized)));
   if (entries.some(x => selected.has(x.url) && x.skipped_reason && x.skipped_reason !== 'url_limit' && x.outcome === 'skipped')) fail('a selected page is skipped for a reason other than the request limit');
@@ -433,7 +454,7 @@ function checkAuditPhase(input, phase, snapshot, requireRef) {
   const savedObservations = JSON.parse(requireRef(audit.observations_ref).text);
   if (!Array.isArray(collection.artifacts) || !Array.isArray(audit.raw) || !Array.isArray(savedObservations))
     throw new ContractError('audit snapshot files incomplete');
-  if (!Array.isArray(audit.modules) || !audit.ledger_ref || !Array.isArray(audit.responses))
+  if (!Array.isArray(audit.modules) || !audit.ledger_ref || !Array.isArray(audit.responses) || !Array.isArray(audit.failures))
     throw new ContractError('audit evidence was produced by an older optbrew release (it has no request ledger or module list); re-run the audit with optbrew 0.1.2 and build a new packet');
   for (const name of audit.modules) if (!Array.isArray(moduleOutputs[name])) throw new ContractError(`planned module output missing: ${name}`);
   const naverPlanned = audit.modules.includes('naver-searchadvisor');

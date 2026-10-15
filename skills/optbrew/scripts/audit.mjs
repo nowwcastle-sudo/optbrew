@@ -41,6 +41,7 @@ export async function runAudit({ context, modules, outputDir, transport, resolve
   const collection = await collect(context, { transport, resolve });
   const artifacts = [];
   const responses = [];
+  const failures = [];
   for (const artifact of collection.artifacts) {
     const { body, ...saved } = artifact;
     if (artifact.content_hash) {
@@ -67,6 +68,21 @@ export async function runAudit({ context, modules, outputDir, transport, resolve
       }
       saved.response_ref = ref;
       responses.push({ normalized_url: artifact.normalized_url, evidence_ref: ref, content_hash });
+    }
+    else {
+      // A failed fetch has no response, but its answered redirect hops were real requests: hash them in a failure record
+      // so the ledger can prove the count (answered hops plus at most one unanswered attempt).
+      const bytes = Buffer.from(`${JSON.stringify({ record_version: '1', kind: 'failure', requested_url: artifact.requested_url,
+        normalized_url: artifact.normalized_url, redirect_chain: artifact.redirect_chain, unanswered: artifact.unanswered ?? 0,
+        error: artifact.error }, null, 2)}\n`);
+      const content_hash = createHash('sha256').update(bytes).digest('hex');
+      const ref = path.join(evidenceDir, `${content_hash}.failure.json`);
+      try { await writeFile(ref, bytes, { flag: 'wx' }); }
+      catch (error) {
+        if (error.code !== 'EEXIST' || !Buffer.from(await readFile(ref)).equals(bytes)) throw error;
+      }
+      saved.failure_ref = ref;
+      failures.push({ normalized_url: artifact.normalized_url, evidence_ref: ref, content_hash });
     }
     artifacts.push(saved);
   }
@@ -104,7 +120,7 @@ export async function runAudit({ context, modules, outputDir, transport, resolve
     collection_ref: path.join(evidenceDir, 'collection.json'), module_output_ref: path.join(evidenceDir, 'modules.json'),
     observations_ref: path.join(evidenceDir, 'observations.json'), ledger_ref: path.join(evidenceDir, 'ledger.json'), modules,
     raw: artifacts.map(x => ({ normalized_url: x.normalized_url, evidence_ref: x.evidence_ref, content_hash: x.content_hash })),
-    responses }, null, 2)}\n`, { flag: 'wx' });
+    responses, failures }, null, 2)}\n`, { flag: 'wx' });
   return result;
 }
 

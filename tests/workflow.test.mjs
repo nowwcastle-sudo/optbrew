@@ -190,6 +190,7 @@ test('real local HTTP baseline, authorized edit and same-condition rescan clear 
     for (const artifact of run.artifacts) {
       await evidence(artifact.evidence_ref, 'raw_html', 'optbrew:collector', { phase, environment: 'local', target: context.target });
       if (artifact.response_ref) await evidence(artifact.response_ref, 'response_record', 'optbrew:collector');
+      if (artifact.failure_ref) await evidence(artifact.failure_ref, 'failure_record', 'optbrew:collector');
     }
   }
   const beforeRaw = baseline.artifacts[0].evidence_ref, afterRaw = followup.artifacts[0].evidence_ref;
