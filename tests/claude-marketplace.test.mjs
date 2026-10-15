@@ -48,7 +48,9 @@ test('the served plugin folder meets the directory listing rules', async () => {
   for (const field of ['description', 'author', 'homepage', 'repository']) assert.ok(manifest[field], `plugin.json sets ${field}`);
 
   // Icon: square PNG, 512 to 2048 px, under 2 MB, read from the PNG header.
-  const icon = await readFile(path.join(pluginRoot, manifest.icon));
+  // The icon sits at the default path; naming it in plugin.json makes the directory hold it as an unread asset.
+  assert.ok(!('icon' in manifest), 'plugin.json does not name the icon');
+  const icon = await readFile(path.join(pluginRoot, '.claude-plugin/icon.png'));
   assert.deepEqual([...icon.subarray(1, 4)], [0x50, 0x4e, 0x47], 'icon is a PNG');
   const [width, height] = [icon.readUInt32BE(16), icon.readUInt32BE(20)];
   assert.equal(width, height, 'icon is square');
