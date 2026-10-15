@@ -22,7 +22,7 @@ npm test
 python -m unittest discover -s tests/python -p "test_*.py"
 ```
 
-The tests run against local fixtures in temporary folders. They make no paid calls and do not touch your real home folder. Some update tests download the published package from npm and are skipped when npm is unreachable.
+The tests run against local fixtures in temporary folders. They make no paid calls and do not touch your real home folder. Some tests are skipped in a plain clone, and that is fine: the update and reinstall tests need the previous release tag (`git fetch --tags`), and four vendoring tests need the upstream source mirrors that only the maintainer keeps.
 
 To try your change in an agent without touching your own setup, install into a scratch project:
 

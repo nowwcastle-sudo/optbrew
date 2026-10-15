@@ -7,9 +7,10 @@ Package: `optbrew@0.1.3` on npm. Source: https://github.com/nowwcastle-sudo/optb
 ## Rules
 
 - Install only what the user asked for. Do not change other skills, settings or accounts.
-- Never delete a folder named `.optbrew` or anything under `.optbrew/runs` (the user's audit evidence).
+- Never delete `.optbrew/runs` (the user's audit evidence) or a whole `.optbrew` folder. The only deletions in this guide are the paths that the reinstall check in [Update](#update) prints.
 - Do not call paid APIs, submit sites to search engines or publish anything. optbrew itself does none of these without the user's approval.
 - Show the user the planned changes (step 3) before you install.
+- On Windows in PowerShell, write `npx.cmd` wherever this guide says `npx`. Plain `npx` runs `npx.ps1`, which the default execution policy blocks with "running scripts is disabled".
 
 ## 1. Ask the user two questions
 
@@ -42,7 +43,7 @@ npx --yes optbrew@0.1.3 install --agents AGENTS --scope project --project PROJEC
 
 Check: exit code 0 and `"status": "dry_run"`. Show the user `decision.targets[].path` from the output and ask for approval before step 4.
 
-If the output says `existing release differs; use optbrew update`, go to [Update](#update) instead. If it says a target exists that optbrew does not own, stop: tell the user the path and ask them what to do with that folder. Do not delete it yourself.
+If the output says `existing release differs; use optbrew update`, optbrew is already installed: go to [Update](#update) instead. If it says `unmanaged optbrew target exists`, stop: tell the user the path and ask them what to do with that folder. Do not delete it yourself.
 
 ## 4. Install
 
@@ -68,20 +69,24 @@ Tell the user:
 
 ## Update
 
-```text
-npx --yes optbrew@latest check-updates --package optbrew --json
-npx --yes optbrew@latest update --scope SCOPE --json
-```
+1. Find the installed release: run `npx --yes optbrew@0.1.3 doctor --agents AGENTS --scope SCOPE --json` (add `--project PROJECT` for project scope) and read `release_version`.
+2. Find the latest release: `npm view optbrew version`.
+3. If they are equal, stop: nothing to update.
+4. Otherwise run `npx --yes optbrew@latest update --scope SCOPE --json` (add `--project PROJECT` for project scope). Check: `"status": "updated"`. Then repeat step 5 with `optbrew@latest`.
 
-Add `--project PROJECT` to `update` for project scope. Check: `"status": "updated"` or `"unchanged"`.
+If `update` stops with `migration_required`, the installed release scores with an older evaluation version and cannot be updated in place. Its scores are not comparable with the new release. Reinstall it:
 
-If `update` stops with `migration_required`, the installed release uses an older evaluation version. Follow https://github.com/nowwcastle-sudo/optbrew/blob/main/docs/platforms.md#reinstall-after-a-migration_required-update from a checkout of the new release. Those blocks first run a read-only check and delete only the paths it prints. Show the user that output before you run them.
+1. `git clone --depth 1 --branch v0.1.3 https://github.com/nowwcastle-sudo/optbrew optbrew-src` (needs git; use the tag of the release you install).
+2. In `optbrew-src`, run the read-only check from https://github.com/nowwcastle-sudo/optbrew/blob/v0.1.3/docs/platforms.md#reinstall-after-a-migration_required-update: `node bin/optbrew.mjs reinstall-plan --scope SCOPE` (add `--project PROJECT` for project scope).
+3. Show the user the printed `delete-link` and `delete-dir` paths and ask for approval. If the check refuses the install record, stop and show the user the message.
+4. After approval, run the block from that section that matches the user's shell (PowerShell or Bash) and scope, from `optbrew-src`. It deletes only the printed paths, installs again and runs doctor.
 
 ## Troubleshooting
 
 | Message | What to do |
 |---|---|
+| `running scripts is disabled` (PowerShell) | Use `npx.cmd` instead of `npx`. |
 | `npx` cannot find `optbrew` | Check network access to the npm registry, then retry once. |
 | `unmanaged optbrew target exists` | Stop. Show the path to the user and ask. |
 | `bundle integrity failed` | Stop. Report the full message to the user. |
-| `doctor` shows `hash_ok: false` | Someone edited the installed files. Ask the user before you run `update --local-changes backup-and-replace`. |
+| `doctor` shows `hash_ok: false` | Read the doctor `warnings`. If one says `migration_required`, the install is an older release: follow [Update](#update). Otherwise someone edited the installed files: ask the user before you run `npx --yes optbrew@0.1.3 update --scope SCOPE --local-changes backup-and-replace --json`, which keeps a backup of the edited files. |
