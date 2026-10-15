@@ -455,7 +455,7 @@ function checkAuditPhase(input, phase, snapshot, requireRef) {
   if (!Array.isArray(collection.artifacts) || !Array.isArray(audit.raw) || !Array.isArray(savedObservations))
     throw new ContractError('audit snapshot files incomplete');
   if (!Array.isArray(audit.modules) || !audit.ledger_ref || !Array.isArray(audit.responses) || !Array.isArray(audit.failures))
-    throw new ContractError('audit evidence was produced by an older optbrew release (it has no request ledger or module list); re-run the audit with optbrew 0.1.2 and build a new packet');
+    throw new ContractError('audit evidence was produced by an older optbrew release (it lacks the request ledger, module list or failure records); re-run the audit with optbrew 0.1.3 and build a new packet');
   for (const name of audit.modules) if (!Array.isArray(moduleOutputs[name])) throw new ContractError(`planned module output missing: ${name}`);
   const naverPlanned = audit.modules.includes('naver-searchadvisor');
   const rawRefs = new Set();

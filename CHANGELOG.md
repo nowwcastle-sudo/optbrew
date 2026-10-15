@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.1.3
+
+Resolves the seven known limitations listed under 0.1.2.
+
+- Evaluation version 0.3.0 (was 0.2.0; protocol stays 0.1.0 because its source files are unchanged). The discovery and fact observations change, so 0.1.2 and 0.1.3 scores are not comparable: `compare()` returns `not_comparable` for a 0.1.2 baseline against 0.1.3 inputs. Run the baseline audit again with 0.1.3.
+- A managed install of 0.1.2 cannot be updated to 0.1.3. The updater guard is unchanged, so `optbrew update` stops with `migration_required` and changes nothing. Replace the install with the copy-paste blocks in the README and `docs/platforms.md` ("Reinstall after a migration_required update"); they run the read-only `optbrew reinstall-plan` first. Audit evidence from 0.1.2 has no hashed failure records and is refused by 0.1.3 report replay with an "older optbrew release" error.
+- The request limit is a hard ceiling again. Every request, each redirect hop included, takes one budget slot immediately before it is sent, so the total never exceeds `max_urls` (the 0.1.2 overshoot of up to concurrency x min(10, `max_urls`) requests is gone). A redirect chain the limit stops leaves its URL as a `request_limit` unknown and keeps the hops it already received. A failed fetch now writes a hashed `<sha256>.failure.json` record (answered redirect hops plus whether one more attempt got no response; listed in `failures` in the audit index), and report replay checks the ledger entry against it. An honest run that reaches the limit inside a redirect chain therefore replays, and a limit claim is accepted only when the recorded requests use the whole limit.
+- Report replay rejects a URL that appears in more than one ledger entry, so duplicate failed-fetch entries for already fetched linked URLs can no longer prove a false request limit.
+- Orphan pages are decided in steps. An unlinked page is an orphan unless another collected page's own bytes (inline scripts included) name its path as a whole path, or a script-only page loads a same-origin script file that was not collected; a fetched sitemap that lists other pages and leaves the page out still proves the orphan. A script-only widget page that never mentions the orphan no longer hides it.
+- Phone extraction reads a national number written with spaces only (`02 555 0142`) and Korean nationwide representative numbers (15xx, 16xx and 18xx plus four digits) in labelled fields, `tel:` links and JSON-LD `telephone`. Prose, dates, fax numbers and a spaced number followed by more digits stay unread.
+- A page is a separate entity only on structural evidence: JSON-LD `branchOf`, `parentOrganization` or another `@id`, a branch-list URL path (`/branch/`, `/branches/`, `/locations/`, `/stores/`, `/지점/`), or the word branch, 지점 or 지사 in the title or first heading together with an address of its own. A title word alone no longer hides a wrong phone or address.
+- The Naver crawler token `Yeti` is confirmed against Naver's robots.txt guide, read again on 2026-10-15 (page text sha256 `ff8ddc85c5dd42e0d1133abae6928fb9b42f67f35d1b2c89b40378009571ed49`); `ai-crawlers.json` and `ai-crawlers.md` carry the source, the date and the hash.
+- Seeded-defect detection on the frozen answer key: 29 of 61 detected (0.1.2: 28), 2 module-only, no new failure on a clean control page; the orphan page (SEO-12) is detected again. See `docs/validation/detection-0.1.3.md` (repository only).
+
+### Known limitations
+
+- An inline script that builds a URL from pieces can hide the link from the orphan check, so such a page is reported as an orphan although the script links it.
+- Report replay checks that evidence files agree with each other and with their hashes. Someone who rewrites the collection, the ledger, the hashed records and the audit index together can still make a coherent false run; the failure-record chain length is bounded (at most eleven answered hops per failed fetch), a URL can appear once, and every failed fetch or skipped URL needs provenance, which limits how far such an edit can pad the request total.
+- Phone extraction does not read numbers shorter than nine digits other than the 15xx, 16xx and 18xx representative numbers, nor national numbers separated by spaces outside a label.
+
 ## 0.1.2
 
 - The report headline no longer lets a measured score read as a complete one. Each headline score carries its coverage; below the 80% coverage rule the single number is withheld and the report shows `insufficient coverage` with the measured-subset value and the missing-data bounds (`report.json` `headline[]`).
@@ -20,7 +40,7 @@
 - `build-release` writes `bundle-manifest.json` through the same temporary file and rename as `build-bundle`, and the release tests build on a private copy of the tree.
 - Not scripted yet: the `robots.txt` Sitemap line, og:image size, hreflang, JavaScript-only navigation, answer structure, claim support, authorship and freshness.
 
-### Known limitations
+### Known limitations (all resolved in 0.1.3)
 
 - Report replay does not reject a URL that appears in more than one ledger entry, so adding failed-fetch duplicates of already fetched linked URLs to `collection.json`, `ledger.json` and the audit index can prove a false request limit and turn a discovery failure into `unknown`; this needs deliberate edits to local evidence files.
 - A run that reaches the request limit while a failed fetch was following redirects can record fewer requests than the limit, and report replay then refuses it as unprovable; run the audit again.
