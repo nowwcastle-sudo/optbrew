@@ -5,7 +5,7 @@
   "engines": {
     "google": { "agent": "Googlebot", "role": "search", "source": "https://developers.google.com/search/docs/crawling-indexing/google-common-crawlers" },
     "google_ai": { "agent": "Googlebot", "role": "search", "source": "https://developers.google.com/search/docs/appearance/ai-features" },
-    "naver": { "agent": "Yeti", "role": "search", "source": "https://searchadvisor.naver.com/guide/seo-basic-robots" },
+    "naver": { "agent": "Yeti", "role": "search", "source": "https://searchadvisor.naver.com/guide/seo-basic-robots", "verified": "2026-10-15", "evidence": "The page (HTTP 200) uses `User-agent: Yeti` in its robots.txt examples; page text sha256 ff8ddc85c5dd42e0d1133abae6928fb9b42f67f35d1b2c89b40378009571ed49" },
     "chatgpt": { "agent": "OAI-SearchBot", "role": "search", "aliases": ["openai"], "source": "https://developers.openai.com/api/docs/bots" },
     "claude": { "agent": "Claude-SearchBot", "role": "search", "aliases": ["anthropic"], "source": "https://support.claude.com/en/articles/8896518-does-anthropic-crawl-data-from-the-web-and-how-can-site-owners-block-the-crawler" },
     "perplexity": { "agent": "PerplexityBot", "role": "search", "source": "https://docs.perplexity.ai/guides/bots" }
