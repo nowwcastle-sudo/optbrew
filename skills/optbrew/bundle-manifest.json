@@ -536,11 +536,11 @@
     },
     {
       "path": "references/ai-crawlers.json",
-      "sha256": "d1b8c2ee81a5cd32cc0e5ace229eb8c62266173c3a5585940ef2c253a3e3a3d4"
+      "sha256": "fbaf1a4215f43cb5e7f181606cf183d0359f2d323064e005a3d43808ac03ade4"
     },
     {
       "path": "references/ai-crawlers.md",
-      "sha256": "77b3f5e80c81256c9d8fb7318a96976cf8374ee0594e2021658657a100ae6afa"
+      "sha256": "8e48173cf80622f0bd2ad79fc32987447aeea63bee7351a068c6af3a9d7c573d"
     },
     {
       "path": "references/api.md",
@@ -683,5 +683,5 @@
       "sha256": "a53223b7eefab2204c026a62b1da04cfdb8a07be8d3749613e8241a81b027d9b"
     }
   ],
-  "bundle_hash": "cc3fcdf10ac979adef826d7fad92f422df0ed0f6370ec22ce17c740cc478aece"
+  "bundle_hash": "b88891574ae7757a53ab6de5fdc0edc4f0d1fb9dfbdffafb102c93798b7b9675"
 }
