@@ -1,4 +1,4 @@
-# optbrew readiness scoring contract (evaluation 0.2.0)
+# optbrew readiness scoring contract (evaluation 0.3.0)
 
 This is a readiness audit. It does not predict indexing, rank, AI citations, accuracy, or revenue. `check-registry.json` holds the 22 unique families. `profiles.json` holds the five optbrew axis weight sets. Those weights, the middle-band CWV `q=0.5`, the score bands and the 80% coverage threshold are **optbrew rules**, not search engine weights or official sufficiency tests. `source_refs` names match the official references in `docs/superpowers/specs/2026-10-13-optbrew-sources.md` in the source repository.
 

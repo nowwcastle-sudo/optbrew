@@ -31,7 +31,7 @@ test('npm tarball includes matching skill bytes and excludes authoring files', a
   const copy = await copyReleaseTree();
   let passed = false;
   try {
-    const artifacts = await buildRelease({ root: copy, version: '0.1.2', outputDir });
+    const artifacts = await buildRelease({ root: copy, version: '0.1.3', outputDir });
     const packed = npmPack(outputDir, copy);
     assert.equal(packed.status, 0, packed.stderr);
     const info = JSON.parse(packed.stdout);
@@ -61,7 +61,7 @@ test('npm verifier rejects tampered entrypoint, missing libs, and false package 
   const copy = await copyReleaseTree();
   let passed = false;
   try {
-    const artifacts = await buildRelease({ root: copy, version: '0.1.2', outputDir });
+    const artifacts = await buildRelease({ root: copy, version: '0.1.3', outputDir });
     const packed = npmPack(outputDir, copy);
     assert.equal(packed.status, 0, packed.stderr);
     const info = JSON.parse(packed.stdout);

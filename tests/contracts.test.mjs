@@ -5,7 +5,7 @@ import { freezeProtocol } from '../skills/optbrew/scripts/core/protocol.mjs';
 
 const context = () => ({
   schema_version: '1.0.0', run_id: 'run-a', target: 'example.com', environment: 'local',
-  goals: ['SEO'], allowed_changes: [], scope: {}, evaluation_version: '0.2.0',
+  goals: ['SEO'], allowed_changes: [], scope: {}, evaluation_version: '0.3.0',
   protocol_version: '0.1.0', data_sources: [], cost_decision: {}, evidence_ref: 'evidence/context.json',
   protocol: {
     page_types: [{ id: 'primary', urls: [{ original: 'https://example.com/', normalized: 'https://example.com/' }] }],
