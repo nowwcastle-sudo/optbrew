@@ -32,6 +32,7 @@
     "bin/",
     "lib/",
     "skills/optbrew/",
+    "skills/.claude-plugin/",
     "plugin.json",
     ".codex-plugin/",
     ".claude-plugin/",

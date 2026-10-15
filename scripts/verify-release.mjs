@@ -12,10 +12,10 @@ const prohibited = /(?:^|\/)(?:private|tests|evals|runs|dist|_백업_원본_[^/]
 /** Source metadata must describe one release and one contained skill. */
 export async function releaseMetadataErrors(root, version) {
   const read = async name => JSON.parse(await readFile(path.join(root, name), 'utf8'));
-  const [pkg, lock, portable, codex, claude, marketplace] = await Promise.all([
+  const [pkg, lock, portable, codex, claude, marketplace, served] = await Promise.all([
     read('package.json'), read('package-lock.json'), read('plugin.json'),
     read('.codex-plugin/plugin.json'), read('.claude-plugin/plugin.json'),
-    read('.claude-plugin/marketplace.json'),
+    read('.claude-plugin/marketplace.json'), read('skills/.claude-plugin/plugin.json'),
   ]);
   const errors = [];
   const expect = (condition, file, code) => { if (!condition) errors.push({ path: file, code }); };
@@ -34,9 +34,14 @@ export async function releaseMetadataErrors(root, version) {
   expect(claude.name === 'optbrew' && claude.version === version &&
     JSON.stringify(claude.skills) === JSON.stringify(['./skills/optbrew']),
     '.claude-plugin/plugin.json', 'claude_release_mismatch');
+  // The marketplace serves skills/ (no top-level bin/, which claude.ai refuses) without a version,
+  // so every commit is a new plugin version and marketplace sync picks it up.
   expect(marketplace.plugins?.length === 1 && marketplace.plugins[0]?.name === 'optbrew' &&
-    marketplace.plugins[0]?.source === './' && marketplace.plugins[0]?.version === version,
+    marketplace.plugins[0]?.source === './skills' && !('version' in marketplace.plugins[0]),
   '.claude-plugin/marketplace.json', 'marketplace_release_mismatch');
+  expect(served.name === 'optbrew' && !('version' in served) &&
+    JSON.stringify(served.skills) === JSON.stringify(['./optbrew']),
+  'skills/.claude-plugin/plugin.json', 'marketplace_plugin_mismatch');
   return errors;
 }
 

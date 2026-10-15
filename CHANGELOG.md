@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- The Claude marketplace now serves the `skills/` folder (new `skills/.claude-plugin/plugin.json`) instead of the repository root, because claude.ai, Claude Desktop and Cowork refuse a plugin with a top-level `bin/` folder and the marketplace sync failed. The marketplace entry and the served manifest pin no version, so every commit is picked up by marketplace sync. Claude Code installs keep the name `optbrew@optbrew` and the skill `/optbrew:optbrew`.
+
 ## 0.1.3
 
 Resolves the seven known limitations listed under 0.1.2.
