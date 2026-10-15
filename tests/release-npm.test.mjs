@@ -1,4 +1,4 @@
-import test from 'node:test';
+import test, { after } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtemp, readFile, writeFile, rm, cp, mkdir } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
@@ -10,32 +10,36 @@ import { buildRelease } from '../scripts/build-release.mjs';
 import { verifyRelease } from '../scripts/verify-release.mjs';
 import { createBundleManifest } from '../skills/optbrew/scripts/core/bundle.mjs';
 import { verifiedBundle } from '../lib/transaction.mjs';
+import { copyReleaseTree, removeReleaseCopies } from './support/release-copy.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+// Every build and verification runs on a private copy of the release tree, never on the repository itself.
+after(removeReleaseCopies);
 
 /** Run npm with a fixed argv and no shell, as the release verifier does. */
-function npmPack(destination) {
+function npmPack(destination, cwd) {
   const args = ['pack', '--ignore-scripts', '--json', '--pack-destination', destination];
   const npmCli = process.env.npm_execpath || path.join(path.dirname(process.execPath), 'node_modules/npm/bin/npm-cli.js');
   return process.platform === 'win32' ?
-    spawnSync(process.execPath, [npmCli, ...args], { cwd: root, encoding: 'utf8', shell: false }) :
-    spawnSync('npm', args, { cwd: root, encoding: 'utf8', shell: false });
+    spawnSync(process.execPath, [npmCli, ...args], { cwd, encoding: 'utf8', shell: false }) :
+    spawnSync('npm', args, { cwd, encoding: 'utf8', shell: false });
 }
 
 // Split from release.test.mjs so each file stays well inside the per-file timeout (the npm pack tests are the slow ones).
 test('npm tarball includes matching skill bytes and excludes authoring files', async () => {
   const outputDir = await mkdtemp(path.join(tmpdir(), 'optbrew-npm-'));
+  const copy = await copyReleaseTree();
   let passed = false;
   try {
-    const artifacts = await buildRelease({ root, version: '0.1.2', outputDir });
-    const packed = npmPack(outputDir);
+    const artifacts = await buildRelease({ root: copy, version: '0.1.2', outputDir });
+    const packed = npmPack(outputDir, copy);
     assert.equal(packed.status, 0, packed.stderr);
     const info = JSON.parse(packed.stdout);
     const { filename, files } = Array.isArray(info) ? info[0] : info.optbrew;
     assert.equal(files.filter(file => file.path.endsWith('/SKILL.md')).length, 1);
     assert.ok(!files.some(file => /(?:^|\/)(?:tests|evals|dist|private|runs|_백업_원본_)|(?:^|\/)test_[^/]*\.py$/.test(file.path)));
     artifacts.npm_tarball = path.join(outputDir, filename);
-    const receipt = await verifyRelease({ root, artifacts });
+    const receipt = await verifyRelease({ root: copy, artifacts });
     assert.equal(receipt.status, 'valid', JSON.stringify(receipt.errors));
     assert.ok(files.some(file => file.path === 'skills/optbrew/LICENSE'));
     const extracted = path.join(outputDir, 'npm-extract');
@@ -54,10 +58,11 @@ test('npm tarball includes matching skill bytes and excludes authoring files', a
 
 test('npm verifier rejects tampered entrypoint, missing libs, and false package or overlay versions', async () => {
   const outputDir = await mkdtemp(path.join(tmpdir(), 'optbrew-npm-tamper-'));
+  const copy = await copyReleaseTree();
   let passed = false;
   try {
-    const artifacts = await buildRelease({ root, version: '0.1.2', outputDir });
-    const packed = npmPack(outputDir);
+    const artifacts = await buildRelease({ root: copy, version: '0.1.2', outputDir });
+    const packed = npmPack(outputDir, copy);
     assert.equal(packed.status, 0, packed.stderr);
     const info = JSON.parse(packed.stdout);
     artifacts.npm_tarball = path.join(outputDir, (Array.isArray(info) ? info[0] : info.optbrew).filename);
@@ -68,7 +73,7 @@ test('npm verifier rejects tampered entrypoint, missing libs, and false package 
       const script = `import io,json,sys,tarfile\nsrc,dst,kind=sys.argv[1:]\nwith tarfile.open(src,'r:gz') as source,tarfile.open(dst,'w:gz') as target:\n if kind=='dir-file-conflict':\n  item=tarfile.TarInfo('package/bin/optbrew.mjs'); item.type=tarfile.DIRTYPE; target.addfile(item)\n if kind=='duplicate-directory':\n  for _ in range(2):\n   item=tarfile.TarInfo('package/duplicate/'); item.type=tarfile.DIRTYPE; target.addfile(item)\n for item in source:\n  if kind=='trailing-file-name' and item.name=='package/bin/optbrew.mjs': item.name += '/'\n  if kind=='missing-lib' and item.name.startswith('package/lib/'): continue\n  if item.isfile():\n   data=source.extractfile(item).read()\n   if kind=='cli-tamper' and item.name=='package/bin/optbrew.mjs': data=b'throw new Error("broken")\\n'\n   if kind=='wrong-version' and item.name=='package/package.json':\n    obj=json.loads(data); obj['version']='99.0.0'; data=json.dumps(obj).encode()\n   if kind=='overlay-version' and item.name=='package/.claude-plugin/plugin.json':\n    obj=json.loads(data); obj['version']='99.0.0'; data=json.dumps(obj).encode()\n   item.size=len(data); target.addfile(item,io.BytesIO(data))\n  else: target.addfile(item)\n if kind=='extra-file':\n  data=b'unexpected'; item=tarfile.TarInfo('package/extra.txt'); item.size=len(data); target.addfile(item,io.BytesIO(data))\n`;
       const mutation = spawnSync('python', ['-c', script, artifacts.npm_tarball, mutated, kind], { encoding: 'utf8' });
       assert.equal(mutation.status, 0, mutation.stderr);
-      results[kind] = await verifyRelease({ root, artifacts: { ...artifacts, npm_tarball: mutated } });
+      results[kind] = await verifyRelease({ root: copy, artifacts: { ...artifacts, npm_tarball: mutated } });
     }
     const target = { 'cli-tamper': ['package/bin/optbrew.mjs', 'npm_hash_mismatch'],
       'missing-lib': ['package/lib/cli.mjs', 'npm_missing_file'],

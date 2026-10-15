@@ -5,6 +5,7 @@ import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { createBundleManifest, evaluationSourcePaths, protocolSourcePaths } from '../skills/optbrew/scripts/core/bundle.mjs';
 import { releaseMetadataErrors } from './verify-release.mjs';
+import { writeManifestAtomic } from './write-manifest.mjs';
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
@@ -25,7 +26,7 @@ export async function buildRelease({ root = projectRoot, version, outputDir = pa
   if (manifest.evaluation_sources.length !== evaluationSourcePaths.length ||
       manifest.protocol_sources.length !== protocolSourcePaths.length)
     throw new Error('release lacks canonical evaluation or protocol sources');
-  await writeFile(path.join(bundleRoot, 'bundle-manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`);
+  await writeManifestAtomic(bundleRoot, manifest);
   await mkdir(outputDir, { recursive: true });
   const skill_zip = path.join(outputDir, `optbrew-${version}.zip`);
   const names = [...manifest.files.map(file => file.path), 'bundle-manifest.json'];
