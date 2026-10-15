@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { readFile, readdir, stat } from 'node:fs/promises';
 import path from 'node:path';
+import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { test } from 'node:test';
 import { releaseMetadataErrors } from '../scripts/verify-release.mjs';
@@ -31,6 +32,39 @@ test('the served plugin has no pinned version, so every commit reaches marketpla
   const manifest = await readJson(path.join(entry.source, '.claude-plugin/plugin.json'));
   assert.ok(!('version' in entry));
   assert.ok(!('version' in manifest));
+});
+
+// The directory submission reads only the plugin folder (Plugin path = the marketplace source).
+// Limits from https://claude.com/docs/plugins/pre-submission-checklist, checked 2026-10-15.
+test('the served plugin folder meets the directory listing rules', async () => {
+  const [entry] = (await readJson('.claude-plugin/marketplace.json')).plugins;
+  const pluginRoot = path.join(root, entry.source);
+  const manifest = await readJson(path.join(entry.source, '.claude-plugin/plugin.json'));
+
+  const readme = await readFile(path.join(pluginRoot, 'README.md'), 'utf8');
+  const words = readme.replace(/```[\s\S]*?```/g, ' ').split(/\s+/).filter(Boolean);
+  assert.ok(words.length >= 40, `README.md has ${words.length} words outside code blocks; the directory needs 40`);
+  assert.equal(manifest.license, 'MIT');
+  for (const field of ['description', 'author', 'homepage', 'repository']) assert.ok(manifest[field], `plugin.json sets ${field}`);
+
+  // Icon: square PNG, 512 to 2048 px, under 2 MB, read from the PNG header.
+  const icon = await readFile(path.join(pluginRoot, manifest.icon));
+  assert.deepEqual([...icon.subarray(1, 4)], [0x50, 0x4e, 0x47], 'icon is a PNG');
+  const [width, height] = [icon.readUInt32BE(16), icon.readUInt32BE(20)];
+  assert.equal(width, height, 'icon is square');
+  assert.ok(width >= 512 && width <= 2048, `icon is ${width} px`);
+  assert.ok(icon.length < 2 * 1024 * 1024, 'icon is under 2 MB');
+
+  // Files: at most 512, non-images under 256 KiB, no system files. Tracked files only, as the directory reads the commit.
+  const listed = spawnSync('git', ['ls-files', '-z', '--', entry.source], { cwd: root, encoding: 'utf8' });
+  const files = listed.status === 0 ? listed.stdout.split('\0').filter(Boolean) : [];
+  if (!files.length) return; // not a git checkout: the size rules are checked in the repository
+  assert.ok(files.length <= 512, `${files.length} files in the plugin folder`);
+  for (const file of files) {
+    assert.doesNotMatch(file, /(^|\/)(\.DS_Store|Thumbs\.db|desktop\.ini|__MACOSX)(\/|$)/i, `${file} is a system file`);
+    if (/\.(png|jpe?g|gif|webp|svg|woff2?|ttf|otf)$/i.test(file)) continue;
+    assert.ok((await stat(path.join(root, file))).size < 256 * 1024, `${file} is 256 KiB or larger`);
+  }
 });
 
 test('release metadata accepts the current marketplace layout', async () => {
