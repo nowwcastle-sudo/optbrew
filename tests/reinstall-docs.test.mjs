@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test, after, describe, it } from 'node:test';
 import { main } from '../lib/cli.mjs';
 import { documented, documentedBlocks, sandbox, tamperRecord, assertNothingDeleted } from './support/reinstall-shells.mjs';
-import { releasePublished, root, skipUnreachable } from './support/published-011.mjs';
+import { releasePublished, root, skipUnreachable } from './support/published.mjs';
 
 after(releasePublished);
 

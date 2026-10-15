@@ -42,7 +42,7 @@ export async function createBundleManifest({ bundleRoot, releaseVersion }) {
   const evaluation_sources = selected(evaluationSourcePaths);
   const protocol_sources = selected(protocolSourcePaths);
   const identity = evaluation_sources.length && protocol_sources.length ? {
-    evaluation_version: '0.2.0', protocol_version: '0.1.0',
+    evaluation_version: '0.3.0', protocol_version: '0.1.0',
     evaluation_sources, evaluation_hash: digest(JSON.stringify(evaluation_sources)),
     protocol_sources, protocol_hash: digest(JSON.stringify(protocol_sources)) } : {};
   return { schema_version: '1.0.0', release_version: releaseVersion,

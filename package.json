@@ -1,16 +1,33 @@
 {
   "name": "optbrew",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "type": "module",
   "description": "Pinned search audit and improvement skill bundle",
   "license": "MIT",
-  "repository": { "type": "git", "url": "git+https://github.com/nowwcastle-sudo/optbrew.git" },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/nowwcastle-sudo/optbrew.git"
+  },
   "homepage": "https://github.com/nowwcastle-sudo/optbrew#readme",
-  "bugs": { "url": "https://github.com/nowwcastle-sudo/optbrew/issues" },
-  "keywords": ["pi-package", "seo", "agent-skill"],
-  "pi": { "skills": ["./skills/optbrew"] },
-  "engines": { "node": ">=22" },
-  "bin": { "optbrew": "bin/optbrew.mjs" },
+  "bugs": {
+    "url": "https://github.com/nowwcastle-sudo/optbrew/issues"
+  },
+  "keywords": [
+    "pi-package",
+    "seo",
+    "agent-skill"
+  ],
+  "pi": {
+    "skills": [
+      "./skills/optbrew"
+    ]
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "bin": {
+    "optbrew": "bin/optbrew.mjs"
+  },
   "files": [
     "bin/",
     "lib/",
@@ -34,7 +51,7 @@
   ],
   "scripts": {
     "test": "node --test",
-    "build-bundle": "node scripts/build-bundle.mjs --bundle skills/optbrew --version 0.1.2",
+    "build-bundle": "node scripts/build-bundle.mjs --bundle skills/optbrew --version 0.1.3",
     "vendor": "node scripts/vendor.mjs",
     "scan-secrets": "node scripts/scan-secrets.mjs --tracked-and-staged"
   }

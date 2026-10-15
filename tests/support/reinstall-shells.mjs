@@ -4,7 +4,7 @@ import { existsSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
-import { extractPublished, root } from './published-011.mjs';
+import { extractPublished, root } from './published.mjs';
 
 export const agents = ['codex', 'claude-code'];
 export const currentManifest = async () => JSON.parse(await readFile(path.join(root, 'skills/optbrew/bundle-manifest.json'), 'utf8'));
@@ -30,7 +30,7 @@ for (const [shell, commands] of [['powershell', process.platform === 'win32' ? [
 }
 export const shellNamed = (shell, command) => shells.filter(x => x.shell === shell && (!command || x.command === command));
 
-/** A published 0.1.1 install in a sandbox, installed by the 0.1.1 CLI itself. */
+/** A published 0.1.2 install in a sandbox, installed by the 0.1.2 CLI itself. */
 export async function sandbox(t, { scope = 'project', strategies = { codex: 'copy', 'claude-code': 'copy' } } = {}) {
   const temp = await mkdtemp(path.join(os.tmpdir(), 'optbrew reinstall 한글 '));
   t.after(() => rm(temp, { recursive: true, force: true }));

@@ -3,7 +3,7 @@
   "run_context": {
     "schema_version": "1.0.0", "run_id": "synthetic-partial", "target": "example.com",
     "environment": "local", "goals": ["SEO"], "allowed_changes": [], "scope": {},
-    "evaluation_version": "0.2.0", "protocol_version": "0.1.0",
+    "evaluation_version": "0.3.0", "protocol_version": "0.1.0",
     "data_sources": [], "cost_decision": {}, "evidence_ref": "synthetic/context",
     "protocol": {
       "page_types": [

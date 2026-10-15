@@ -131,7 +131,7 @@ test('provider-reported usage over the reservation is retained and stops the nex
 test('offline audit retains raw JSON-LD evidence without claiming missing structured data', async () => {
   const { dir } = await ledger();
   const url = 'https://example.test/owned/a';
-  const full = { schema_version: '1.0.0', run_id: 'audit', target: 'example.test', environment: 'local', goals: [], allowed_changes: [], scope: { allowed: [{ origin: 'https://example.test', path_prefix: '/owned/' }] }, protocol: { page_types: [{ id: 'main', urls: [{ original: url, normalized: url }] }], engines: ['naver'], families: [], locale: 'ko-KR', region: 'KR', browser: 'Chrome', device: 'desktop', question_panel: [], surfaces: [], models: [], search_enabled: null }, evaluation_version: '0.2.0', protocol_version: '0.1.0', data_sources: [], cost_decision: {}, evidence_ref: 'test/context' };
+  const full = { schema_version: '1.0.0', run_id: 'audit', target: 'example.test', environment: 'local', goals: [], allowed_changes: [], scope: { allowed: [{ origin: 'https://example.test', path_prefix: '/owned/' }] }, protocol: { page_types: [{ id: 'main', urls: [{ original: url, normalized: url }] }], engines: ['naver'], families: [], locale: 'ko-KR', region: 'KR', browser: 'Chrome', device: 'desktop', question_panel: [], surfaces: [], models: [], search_enabled: null }, evaluation_version: '0.3.0', protocol_version: '0.1.0', data_sources: [], cost_decision: {}, evidence_ref: 'test/context' };
   const html = '<html><head><title>Test</title><script type="application/ld+json">{"@type":"Organization","name":"Acme"}</script></head><body>Acme</body></html>';
   const result = await runAudit({ context: full, modules: ['naver-searchadvisor', 'magnus-seo'], outputDir: dir, transport: async () => ({ status: 200, headers: { 'content-type': 'text/html' }, body: Buffer.from(html) }), resolve: async () => ['93.184.215.14'] });
   assert.equal(result.artifacts[0].status, 200);
@@ -149,7 +149,7 @@ test('selected unit observations bind to stored response evidence and engine URL
       auxiliary_resources: [{ kind: 'robots', original: urls[0], normalized: urls[0] }],
       engines: ['naver'], families: ['fetch-response', 'document-title', 'index-policy', 'search-crawl-policy'].map(family_id => ({ family_id, applicable: true })),
       locale: 'ko-KR', region: 'KR', browser: 'Chrome', device: 'desktop', question_panel: [], surfaces: [], models: [], search_enabled: null },
-    evaluation_version: '0.2.0', protocol_version: '0.1.0', data_sources: [], cost_decision: {}, evidence_ref: 'test/context' };
+    evaluation_version: '0.3.0', protocol_version: '0.1.0', data_sources: [], cost_decision: {}, evidence_ref: 'test/context' };
   const result = await runAudit({ context: full, modules: ['naver-searchadvisor'], outputDir: dir, resolve: async () => ['93.184.215.14'],
     transport: async ({ url }) => url.pathname === '/robots.txt' ?
       { status: 200, headers: { 'content-type': 'text/plain' }, body: Buffer.from('User-agent: Yeti\nDisallow: /page\n') } :
@@ -176,7 +176,7 @@ test('malformed resource URL is isolated and the run evidence index is completed
     scope: { allowed: [{ origin, path_prefix: '/' }] }, protocol: { page_types: [{ id: 'main', urls: [{ original: urls[1], normalized: urls[1] }] }],
       auxiliary_resources: [{ kind: 'robots', original: urls[0], normalized: urls[0] }],
       engines: ['naver'], families: [{ family_id: 'fetch-response', applicable: true }], locale: 'ko-KR', region: 'KR', browser: 'Chrome', device: 'desktop', question_panel: [], surfaces: [], models: [], search_enabled: null },
-    evaluation_version: '0.2.0', protocol_version: '0.1.0', data_sources: [], cost_decision: {}, evidence_ref: 'test/context' };
+    evaluation_version: '0.3.0', protocol_version: '0.1.0', data_sources: [], cost_decision: {}, evidence_ref: 'test/context' };
   const result = await runAudit({ context: full, modules: ['naver-searchadvisor', 'magnus-seo'], outputDir: dir, resolve: async () => ['93.184.215.14'],
     transport: async ({ url }) => url.pathname === '/robots.txt' ?
       { status: 200, headers: { 'content-type': 'text/plain' }, body: Buffer.from('User-agent: Yeti\nAllow: /\n') } :
