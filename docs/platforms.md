@@ -14,7 +14,43 @@ The CLI maps only these default targets. Custom roots, host policies, remote age
 
 ## Managed checkout and npm paths
 
-The [README](../README.md) shows parser-checked checkout commands for install, doctor, update, and rollback. The CLI validates bundle hashes before an install or update. `update` replaces every target in one managed record as a unit. An edited target makes the default update stop; the explicit `--local-changes backup-and-replace` policy retains a readable backup. `rollback --release-version VERSION` works only when that version is in the record's retained prior releases. A fresh installation has no older release.
+The [README](../README.md) shows the npm, npx, PowerShell, plugin and agent install routes. This section holds the parser-checked commands for a source checkout. Clone `https://github.com/nowwcastle-sudo/optbrew`, create an empty `site` folder, and run them from the repository root. With the npm package installed, replace `node bin/optbrew.mjs` with `optbrew`.
+
+Install into an isolated project folder, after a dry run:
+
+Bash and PowerShell use the same commands:
+
+```text
+node bin/optbrew.mjs install --agents codex,claude-code,cursor,opencode,pi --scope project --project ./site --strategy copy --dry-run --json
+node bin/optbrew.mjs install --agents codex,claude-code,cursor,opencode,pi --scope project --project ./site --strategy copy --json
+node bin/optbrew.mjs doctor --agents codex,claude-code,cursor,opencode,pi --scope project --project ./site --json
+```
+
+`--strategy link` is the default; `copy` also works when links are unavailable. The managed record lives under that project's `.optbrew/install`. For one host, replace the comma-separated list with its exact ID. Use `--scope user` only when you intend to install into user-level host directories. The install command checks the bundle manifest and refuses to replace an unmanaged target.
+
+Replay the bundled synthetic fixtures without any provider call. Copy `tests/fixtures/scoring/before.json` and `after.json`, and `tests/fixtures/reports/remote-only.json` with its sibling evidence files, into the current directory first:
+
+Bash and PowerShell use the same commands:
+
+```text
+node bin/optbrew.mjs score --input ./before.json --output ./score.json
+node bin/optbrew.mjs compare --before ./before.json --after ./after.json --output ./comparison.json
+node bin/optbrew.mjs report --input ./remote-only.json --output-dir ./report-output
+```
+
+Check for updates, update, and roll back a managed project install:
+
+Bash and PowerShell use the same commands:
+
+```text
+node bin/optbrew.mjs check-updates --json
+node bin/optbrew.mjs update --scope project --project ./site --json
+node bin/optbrew.mjs rollback --scope project --project ./site --release-version 0.1.0 --json
+```
+
+The shown rollback fails on a fresh 0.1.3 install, because no earlier release is retained; it applies to a managed install that retains local 0.1.0.
+
+The CLI validates bundle hashes before an install or update. `update` replaces every target in one managed record as a unit. An edited target makes the default update stop; the explicit `--local-changes backup-and-replace` policy retains a readable backup. `rollback --release-version VERSION` works only when that version is in the record's retained prior releases. A fresh installation has no older release.
 
 After a public npm release, `npm install -g optbrew` and `npm update -g optbrew` manage the package in npm. Neither command rewrites an old copied skill target. Run the installed CLI's managed `update` after the package update, then `doctor` and a new-session invocation check. `check-updates --package optbrew --json` is read-only and compares the installed release with the npm registry; without `--package` it returns `local_only`.
 
@@ -99,7 +135,8 @@ Inside 0.1.3 and later releases that keep evaluation version 0.3.0, `update` and
 These are alternatives to the managed CLI. Do not mix their ownership records for the same target path.
 
 - **Agent Skills tool:** Current [Vercel Skills CLI](https://github.com/vercel-labs/skills) documents `npx skills add ./` for a local source and `npx skills update optbrew` for an installation it owns. Run from a checkout containing the skill. Confirm its host selection and destination before writing. The public repository is `https://github.com/nowwcastle-sudo/optbrew`.
-- **Claude Code plugin:** The local `.claude-plugin/marketplace.json` and `plugin.json` name `optbrew@optbrew-local` at version 0.1.3. The installed Claude CLI help accepts `claude plugin marketplace add --scope project .`, then `claude plugin install --scope project optbrew@optbrew-local` from this checkout. Later, `claude plugin update --scope project optbrew@optbrew-local` applies the marketplace's newer version and requires a restart. These commands change Claude settings, so documentation checks inspect `--help` without registering a marketplace. [Claude Code plugin instructions](https://code.claude.com/docs/en/plugins) also describe the interactive `/plugin` path. Marketplace auto-update is a user setting; the marketplace file does not enable it. Verify the selected release version and a fresh-session invocation after a native update.
+- **Claude Code plugin:** `.claude-plugin/marketplace.json` and `plugin.json` name the plugin `optbrew@optbrew` at version 0.1.3. Run `claude plugin marketplace add nowwcastle-sudo/optbrew`, then `claude plugin install optbrew@optbrew` (add `--scope project` to keep it in one project). Later, `claude plugin update optbrew@optbrew` applies the marketplace's newer version and requires a restart. `claude plugin validate .` checks both files from a checkout.
+- **Codex plugin:** `.agents/plugins/marketplace.json` lists the same `optbrew` plugin. Run `codex plugin marketplace add nowwcastle-sudo/optbrew`, then `codex plugin add optbrew@optbrew`, or choose it in `/plugins`. Start a new Codex task afterwards. [Claude Code plugin instructions](https://code.claude.com/docs/en/plugins) also describe the interactive `/plugin` path. Marketplace auto-update is a user setting; the marketplace file does not enable it. Verify the selected release version and a fresh-session invocation after a native update.
 - **Pi package:** Current [Pi package instructions](https://github.com/earendil-works/pi/blob/main/packages/coding-agent/docs/packages.md) document `pi install ./local-package`, `pi install npm:package-name@version`, `pi list`, and `pi update --extensions`. `pi install ./` installs from a local checkout when Pi is installed; `pi install npm:optbrew@0.1.3` installs the published npm package. The package's `pi.skills` entry points to `./skills/optbrew`. A project-local package declaration uses Pi's `--local` option and is subject to project trust. Check the installed Pi version's help and package list before updating.
 - **Claude web:** Upload the built skill ZIP manually in the supported web interface. Upload a new ZIP again for each update. There is no verified automatic update of that upload.
 - **Ordinary ChatGPT chat:** Attach the relevant skill files or ZIP and give the assistant the target and scope. This is attachment-guided use. It is not the Codex installation path and does not establish Work/desktop plugin discovery.

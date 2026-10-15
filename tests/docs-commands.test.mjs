@@ -70,12 +70,21 @@ test('documented local commands parse and operate in isolated project', async ()
   }
 });
 
-test('README command blocks label both compatible shells', async () => {
-  for (const name of ['README.md', 'README.ko.md']) {
+test('checkout command blocks label both compatible shells', async () => {
+  const body = await readFile(path.join(root, 'docs/platforms.md'), 'utf8');
+  const labels = [...body.matchAll(/Bash and PowerShell[^\n]*\n\n```text\nnode bin\/optbrew\.mjs/g)];
+  assert.equal(labels.length, 3, 'docs/platforms.md must label all three checkout CLI example blocks for both shells');
+});
+
+test('README install routes pin the release that carries them', async () => {
+  const pkg = JSON.parse(await readFile(path.join(root, 'package.json'), 'utf8'));
+  for (const name of ['README.md', 'README.ko.md', 'AGENT_INSTALL.md']) {
     const body = await readFile(path.join(root, name), 'utf8');
-    const labels = [...body.matchAll(/(?:Bash and PowerShell|Bash와 PowerShell)[^\n]*\n\n```text\nnode bin\/optbrew\.mjs/g)];
-    assert.equal(labels.length, 3, `${name} must label all three CLI example blocks for both shells`);
+    for (const match of body.matchAll(/optbrew@(\d+\.\d+\.\d+)/g)) assert.equal(match[1], pkg.version, `${name} pins optbrew@${match[1]}`);
+    for (const match of body.matchAll(/optbrew\/v(\d+\.\d+\.\d+)\/install\.ps1/g)) assert.equal(match[1], pkg.version, `${name} pins install.ps1 v${match[1]}`);
   }
+  const installer = await readFile(path.join(root, 'install.ps1'), 'utf8');
+  assert.match(installer, new RegExp(`\\$Package = 'optbrew@${pkg.version.replaceAll('.', '\\.')}'`), 'install.ps1 installs its own release');
 });
 
 test('documented user scope and backup policy parse in isolated locations', async () => {
@@ -118,9 +127,9 @@ test('README relative links resolve and package includes the linked documentatio
     for (const match of body.matchAll(/\[[^\]]+\]\(([^)]+)\)/g)) {
       const href = match[1];
       if (/^[a-z]+:\/\//i.test(href)) continue;
-      const target = path.join(root, href.split('#')[0]);
-      await access(target);
-      if (href.startsWith('docs/')) assert.ok(pkg.files.includes(href) || pkg.files.includes('docs/'), `${href} is linked from ${name} but absent from npm files`);
+      const file = href.split('#')[0];
+      await access(path.join(root, file));
+      if (file.startsWith('docs/')) assert.ok(pkg.files.includes(file) || pkg.files.includes('docs/'), `${file} is linked from ${name} but absent from npm files`);
     }
   }
 });

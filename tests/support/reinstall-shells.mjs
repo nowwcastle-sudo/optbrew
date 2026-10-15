@@ -9,7 +9,7 @@ import { extractPublished, root } from './published.mjs';
 export const agents = ['codex', 'claude-code'];
 export const currentManifest = async () => JSON.parse(await readFile(path.join(root, 'skills/optbrew/bundle-manifest.json'), 'utf8'));
 
-// Shell commands come from docs/platforms.md; README.md and README.ko.md must carry the identical blocks.
+// Shell commands come from docs/platforms.md; the READMEs link there instead of carrying copies.
 const blockPattern = /```(powershell|bash) (user|project)\n([\s\S]*?)```/g;
 export async function documentedBlocks(file) {
   const text = await readFile(path.join(root, file), 'utf8');

@@ -37,6 +37,7 @@
     ".claude-plugin/",
     "README.md",
     "README.ko.md",
+    "AGENT_INSTALL.md",
     "CHANGELOG.md",
     "docs/platforms.md",
     "docs/release.md",
