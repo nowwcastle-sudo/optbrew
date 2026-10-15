@@ -103,6 +103,18 @@ export function deriveObservations({ context, artifacts, collection = {}, textOf
       else if (canonicalState === 'pass') add('canonical-consistency', null, url, 'pass', 'Canonical target is this page or a reachable page and redirects stay within one hop', ref);
     }
   }
+  /** True when any other collected page's raw bytes name this page's path (whole path segment, not a longer path). */
+  const pathMentioned = ({ url, artifact }, bodies) => {
+    const own = canonicalUrl(url);
+    for (const target of new Set([url, artifact.final_url])) {
+      let path;
+      try { path = decodeURIComponent(new URL(target).pathname); } catch { continue; }
+      if (path === '/') continue;
+      const pattern = new RegExp(path.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '(?![A-Za-z0-9_-])');
+      for (const [page, body] of bodies) if (page !== own && pattern.test(body)) return true;
+    }
+    return false;
+  };
   if (planned.has('discovery')) {
     const sitemapUrls = new Set();
     const brokenSitemaps = [];
@@ -118,12 +130,24 @@ export function deriveObservations({ context, artifacts, collection = {}, textOf
     }
     const htmlPages = artifacts.filter(x => x.capability === 'raw_html' && x.status === 200);
     const linked = new Map();
-    // A page with scripts and no anchors may build its navigation in the browser: its links are unknowable.
-    const scriptOnly = new Set();
+    // A page with scripts and no anchors may build its navigation in the browser. That only hides an orphan when the
+    // script can be read: an inline script is searched for the path below, and a same-origin script file that was not
+    // collected cannot be read at all.
+    const collected = new Set(artifacts.flatMap(x => [x.normalized_url, x.final_url].filter(Boolean).map(canonicalUrl)));
+    let uncollectedScript = false;
+    const bodies = new Map();
     for (const page of htmlPages) {
       const body = textOf(page);
+      bodies.set(canonicalUrl(page.normalized_url), body);
       const hrefs = anchorLinks(body, page.final_url);
-      if (!hrefs.length && /<script\b/i.test(body)) scriptOnly.add(canonicalUrl(page.normalized_url));
+      if (!hrefs.length && /<script\b/i.test(body)) {
+        for (const match of body.matchAll(/<script\b[^>]*\bsrc\s*=\s*(?:"([^"]*)"|'([^']*)')/gi)) {
+          try {
+            const source = new URL(decodeEntities(match[1] ?? match[2]), page.final_url);
+            if (source.origin === new URL(page.final_url).origin && !collected.has(canonicalUrl(source.href))) uncollectedScript = true;
+          } catch { /* malformed script URL */ }
+        }
+      }
       for (const href of hrefs) {
         const target = canonicalUrl(href);
         if (target && target !== canonicalUrl(page.final_url) && target !== canonicalUrl(page.normalized_url)) linked.set(target, (linked.get(target) ?? 0) + 1);
@@ -137,9 +161,10 @@ export function deriveObservations({ context, artifacts, collection = {}, textOf
       const inSitemap = keys.some(key => sitemapUrls.has(key));
       if (inSitemap || keys.some(key => linked.has(key)))
         add('discovery', null, url, 'pass', inSitemap ? 'Listed in a declared sitemap' : 'Linked from another collected page', artifact.evidence_ref);
-      // A page with scripts and no anchors may link any page from the browser, so while one exists an unlinked page is only
-      // an orphan when a fetched sitemap that lists other pages leaves it out. Otherwise the verdict stays unknown.
-      else if (htmlPages.length >= 2 && complete && !sitemapIndex && (!scriptOnly.size || sitemapUrls.size))
+      // An unlinked page is unknown when a collected page's own bytes (inline scripts included) name its path, or when a
+      // script file that could build the link was not collected, unless a fetched sitemap that lists other pages leaves
+      // it out. Anything else is an orphan.
+      else if (htmlPages.length >= 2 && complete && !sitemapIndex && (sitemapUrls.size || !(uncollectedScript || pathMentioned(row, bodies))))
         add('discovery', null, url, 'fail', `Not linked from any collected page and not in a sitemap${brokenSitemaps.length ? `; declared sitemap unusable: ${brokenSitemaps.join(', ')}` : ''}`, artifact.evidence_ref);
     }
   }
