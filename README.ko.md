@@ -94,7 +94,9 @@ codex plugin marketplace add nowwcastle-sudo/optbrew
 codex plugin add optbrew@optbrew
 ```
 
-플러그인은 이 저장소의 `main` 브랜치를 따르며, 업데이트는 각 호스트의 플러그인 명령으로 합니다.
+claude.ai, Claude Desktop, Cowork: Customize > Plugins에서 Add > Add marketplace를 고르고 `nowwcastle-sudo/optbrew`를 입력한 뒤 `optbrew`를 추가합니다.
+
+플러그인은 이 저장소의 `main` 브랜치를 따르며, 업데이트는 각 호스트의 플러그인 명령이나 마켓플레이스 동기화로 합니다.
 
 ### 5. 에이전트에게 맡기기
 

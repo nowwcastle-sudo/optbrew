@@ -94,7 +94,9 @@ codex plugin marketplace add nowwcastle-sudo/optbrew
 codex plugin add optbrew@optbrew
 ```
 
-Plugins follow this repository's `main` branch and update through the host's plugin commands.
+claude.ai, Claude Desktop and Cowork: open Customize > Plugins, choose Add > Add marketplace, enter `nowwcastle-sudo/optbrew`, then add `optbrew`.
+
+Plugins follow this repository's `main` branch and update through the host's plugin commands or marketplace sync.
 
 ### 5. Ask your agent
 
