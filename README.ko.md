@@ -1,149 +1,148 @@
 # optbrew
 
+[![npm](https://img.shields.io/npm/v/optbrew.svg)](https://www.npmjs.com/package/optbrew)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+
 [English](README.md)
 
-Optbrew는 웹사이트의 검색 준비도를 확인하고, 승인된 로컬 파일을 고친 뒤, 전후 근거를 비교하는 스킬과 CLI입니다. 고정된 원본 묶음 5개(mblode SEO, Naver Search Advisor, Firecrawl SEO Audit, Magnus SEO, SE Ranking SEO)와 선택한 마케팅 가이드 7개를 포함합니다. 최상위 `SKILL.md` 한 파일이 내부 가이드를 안내합니다. 실행 중에 바뀌는 upstream 파일을 가져오지 않습니다.
+코딩 에이전트용 검색 준비도 감사 스킬입니다. optbrew는 구글·네이버·AI 답변 엔진 기준으로 사이트를 점검합니다. 승인한 로컬 파일만 고치고, 같은 조건으로 다시 확인한 뒤, 다시 계산할 수 있는 근거로 점수 보고서를 씁니다.
 
-저장된 JSON으로 점수를 계산하고 보고서를 만드는 데 API 계정은 필요하지 않습니다. 사이트 감사에는 대상과 허용 범위가 필요합니다. 공개 게시, 검색엔진 제출, 원격 사이트 수정, 유료 호출은 각각 별도 권한이 필요합니다. 설치 파일이 놓인 상태와 호스트가 실제로 스킬을 호출한 상태는 [플랫폼 안내](docs/platforms.md)에서 구분합니다.
+- 스킬 하나로 다섯 가지를 봅니다: **SEO**, **NEO**(네이버), **AEO**, **GEO**, **LLMO**.
+- 고정된 감사 가이드 묶음 5개를 점검 항목 22개로 합쳤습니다. 여러 가이드가 같은 문제를 짚어도 한 번만 셉니다.
+- 보고서의 판정은 모두 수집한 원본 응답(해시 기록)에서 다시 계산할 수 있습니다.
+- 근거가 모자라면 대표 점수를 내지 않습니다. 측정 범위가 80% 미만이면 잰 부분과 그 범위만 보여 줍니다.
+- Codex, Claude Code, Cursor, OpenCode, Pi에서 씁니다. 점수 계산과 보고서에는 API 계정이 필요 없습니다.
+
+## 왜 optbrew인가
+
+이제 「검색에 잡힌다」는 말은 세 가지를 뜻합니다. 구글 순위, 네이버 노출, AI 답변 속 인용입니다. 셋 다 가이드가 따로 있고, 가이드끼리 겹치거나 서로 다른 말을 합니다. 에이전트에게 「SEO 개선해 줘」라고 하면 보통 체크리스트 하나를 골라 파일을 고치고, 근거 없이 끝났다고 보고합니다.
+
+optbrew는 다섯 기준 모두에 같은 작업 순서와 같은 채점 규칙을 씁니다. 잰 것만 점수에 넣고, 재지 못한 것은 통과가 아니라 「알 수 없음」으로 남깁니다. 로컬에서 고친 것과 실제 운영 결과도 따로 적습니다. 준비도 점수가 높아도 방문자나 인용이 는다는 보장은 없으며, 보고서에도 그렇게 적힙니다.
+
+## 동작 방식
+
+1. **감사.** URL, 목표, 범위를 알려 주면 수집기가 URL을 최대 50개(깊이 3, 동시에 2개)까지 가져옵니다. 응답마다 해시와 함께 저장합니다.
+2. **수정.** 에이전트가 로컬 파일 수정안을 냅니다. 승인 없이 고치거나 배포하거나 검색엔진에 제출하지 않습니다.
+3. **재확인.** 같은 조건으로 다시 수집합니다. 그래서 수정 전후를 비교할 수 있습니다.
+4. **보고.** 기준별 점수와 측정 범위, 막는 문제, 미확인 핵심 항목을 적습니다. 준비도·수정·실제 성과·남은 일은 표를 나눠 씁니다.
+
+스크립트가 직접 재는 것과 가이드·에이전트 판단에 맡기는 것은 이렇게 나뉩니다.
+
+| 기준 | 대상 | 스크립트가 재는 것 | 판단에 맡기는 것 |
+|---|---|---|---|
+| SEO | 구글과 웹 검색 | 응답 상태, meta와 `X-Robots-Tag`의 `noindex`, 제목, Googlebot용 robots.txt, canonical, 리다이렉트 단계, 링크·사이트맵으로 찾을 수 있는지, JSON-LD 문법 | 콘텐츠 품질, 검색 의도와 맞는지 |
+| NEO | 네이버 | Yeti용 robots.txt, Open Graph, description, canonical, viewport, 제목 반복, 막힌 CSS·JS | 네이버 콘텐츠 가이드 |
+| AEO, GEO | 답변 엔진과 AI 검색 | [ai-crawlers.md](skills/optbrew/references/ai-crawlers.md)에 적은 AI 검색 봇용 robots.txt(학습용 봇은 채점하지 않음) | 답변 구조, 주장, 작성자, 최신성 |
+| LLMO | AI가 우리를 설명하는 방식 | 상호·주소·전화·설립 연도가 페이지끼리 일치하는지 | 그 사실이 맞는지 |
+
+채점 규칙은 [scoring.md](skills/optbrew/references/scoring.md)에 있습니다. 측정 범위 80% 기준은 optbrew가 정한 규칙이며, 검색엔진 표준이 아닙니다.
 
 ## 설치
 
-Node.js 22 이상이 필요합니다. 내부 Python 감사 도구는 Python 3.10 이상이 필요합니다. Python이 없으면 그 도구는 미실행으로 남깁니다. 이 checkout에서 `site`라는 별도 프로젝트 폴더를 만든 뒤 실행합니다.
+[Node.js](https://nodejs.org) 22 이상이 필요합니다. Python 3.10 이상은 선택입니다. 없으면 내부 Python 감사 도구만 실행하지 않습니다. 아래 다섯 방법 중 하나를 고르십시오. 예시는 Codex와 Claude Code에 사용자 범위로 설치합니다. 에이전트 ID는 `codex`, `claude-code`, `cursor`, `opencode`, `pi`입니다.
 
-Bash와 PowerShell에서 같은 명령을 사용합니다.
+### 1. npm
 
-```text
-node bin/optbrew.mjs install --agents codex,claude-code,cursor,opencode,pi --scope project --project ./site --strategy copy --dry-run --json
-node bin/optbrew.mjs install --agents codex,claude-code,cursor,opencode,pi --scope project --project ./site --strategy copy --json
-node bin/optbrew.mjs doctor --agents codex,claude-code,cursor,opencode,pi --scope project --project ./site --json
+```bash
+npm install -g optbrew@0.1.3
+optbrew install --agents codex,claude-code --scope user --dry-run
+optbrew install --agents codex,claude-code --scope user
+optbrew doctor --agents codex,claude-code --scope user
 ```
 
-저장소 루트에서 실행하십시오. 기본 전략은 `--strategy link`입니다. 링크를 쓸 수 없으면 `copy`를 선택할 수 있습니다. 관리 기록은 프로젝트의 `.optbrew/install`에 둡니다. 한 호스트만 설치하려면 목록 대신 `codex`, `claude-code`, `cursor`, `opencode`, `pi` 중 한 ID를 적습니다. 사용자 전체 범위에 설치할 때만 `--scope user`를 씁니다. 설치 명령은 번들 manifest를 확인하며 관리 대상이 아닌 기존 폴더를 덮어쓰지 않습니다.
+미리보기(`--dry-run`)는 쓸 폴더를 보여 줍니다. `doctor`는 파일과 해시를 확인합니다.
 
-checkout은 `https://github.com/nowwcastle-sudo/optbrew`를 clone해서 받고, 위 명령은 그 저장소 최상위에서 실행합니다. `npm install -g optbrew`로 설치하면 같은 CLI를 `optbrew` 명령으로 쓸 수 있습니다. 이때는 위 명령의 `node bin/optbrew.mjs`를 `optbrew`로 바꿉니다. 호스트 고유 설치와 ZIP은 [플랫폼 안내](docs/platforms.md)를 보십시오.
+### 2. npx
 
-## 첫 실행
+전역 설치 없이 같은 CLI를 실행합니다.
 
-호스트에 optbrew를 사용하라고 요청할 때 대상 URL, 목표, 사이트 소유 또는 접근 권한, 허용할 로컬 변경, 보유한 근거를 전달합니다. 로컬 감사 전에 URL 범위를 선언합니다. 기본 수집 상한은 URL 50개, 깊이 3, 동시성 2입니다. 요청 한도는 페이지와 보조 URL을 합친 상한입니다. 리다이렉트 이동도 요청 하나로 세며 총 요청은 한도를 넘지 않습니다. 체인 도중 한도에 닿은 URL은 unknown으로 남습니다. 사설 주소는 명시한 로컬 대상에서만 허용합니다. 작업은 원시 근거, 준비도 관찰, 로컬 변경, 후속 확인을 기록합니다. 로컬 검증 통과를 운영 성과로 해석하지 않습니다.
-
-다음 명령은 포함된 합성 fixture를 재생하며 제공자 호출을 하지 않습니다. 저장소 루트에서 새 출력 경로를 골라 실행합니다.
-
-Bash와 PowerShell에서 같은 명령을 사용합니다.
-
-```text
-node bin/optbrew.mjs score --input ./before.json --output ./score.json
-node bin/optbrew.mjs compare --before ./before.json --after ./after.json --output ./comparison.json
-node bin/optbrew.mjs report --input ./remote-only.json --output-dir ./report-output
+```bash
+npx optbrew@0.1.3 install --agents codex,claude-code --scope user
+npx optbrew@0.1.3 doctor --agents codex,claude-code --scope user
 ```
 
-명령을 그대로 실행하려면 `tests/fixtures/scoring/before.json`, `after.json`을 현재 폴더로 복사합니다. `tests/fixtures/reports/remote-only.json`과 같은 폴더의 근거 파일도 함께 복사합니다. 실제 작업에서는 자신의 검증된 `ScoreInput` 또는 `ReportPacket` 경로를 넘깁니다. 계약은 [채점](skills/optbrew/references/scoring.md), [측정](skills/optbrew/references/measurement.md), [보고 근거](skills/optbrew/references/report.md)에 있습니다.
+Windows PowerShell에서 `npx`나 `optbrew`가 「스크립트를 실행할 수 없습니다」라고 하면 `npx.cmd`, `optbrew.cmd`로 바꿔 실행하십시오.
 
-## 점수와 보고서
+### 3. PowerShell (Windows)
 
-자체 준비도 프로필은 SEO, 네이버가 대상일 때 NEO, AEO, GEO, LLMO입니다. 고유 검사군 22개는 여러 가이드가 같은 문제를 찾아도 한 번만 셉니다. 확인하지 못한 적용 검사는 분모에 남기고, 근거 있는 `not_applicable` 검사만 제외합니다. 결과에는 점수, 측정 범위, 미측정 구간의 상·하한, 차단 요소, 미확인 핵심 검사가 들어갑니다. 측정 범위 80% 기준은 optbrew 자체 규칙이며 검색엔진 기준이 아닙니다. 높은 준비도 점수는 색인, 유입, 인용, 사실 정확성, 전환, 매출을 증명하지 않습니다.
+```powershell
+irm https://raw.githubusercontent.com/nowwcastle-sudo/optbrew/v0.1.3/install.ps1 | iex
+```
 
-감사 스크립트가 수집한 응답에서 스스로 관찰하는 항목은 다음과 같습니다. 응답 상태, meta 태그와 `X-Robots-Tag`의 색인 지시자(대상 엔진별), 제목 없음·중복, 선언한 엔진별 robots.txt 접근(Googlebot, Yeti, [`ai-crawlers.md`](skills/optbrew/references/ai-crawlers.md)의 AI 검색 봇. 학습 봇은 점수에 넣지 않음), canonical 대상과 리다이렉트 체인 길이, 링크 또는 선언한 사이트맵을 통한 발견성, JSON-LD 문법, 네이버 마크업(Open Graph, 설명, canonical, viewport, 제목 키워드 반복, 막힌 CSS·JS), 이름·주소·전화·설립연도의 페이지 간 일치입니다. 따라서 SEO와 NEO는 접근·색인·마크업 검사를 스크립트로 합니다. AEO와 GEO는 준비도 감사로 남습니다. 답변 구조, 주장 근거, 저자, 최신성은 가이드와 에이전트 판단이 필요합니다. LLMO는 페이지 간 불일치를 보여 주는 검사를 얻지만 사실이 맞다는 것을 증명하지는 않습니다. 심은 결함 시험과 한계는 저장소의 `docs/validation/detection-0.1.3.md`에 있습니다.
+이 스크립트는 이번 버전에 고정돼 있습니다. Node.js를 확인하고, 설치할 폴더를 보여 주고, Codex와 Claude Code에 설치합니다. `doctor`가 문제를 찾으면 오류로 멈춥니다. 먼저 읽어 보거나 에이전트·프로젝트 폴더를 고르려면 이렇게 실행합니다.
 
-측정 범위가 80% 미만이면 보고서는 하나의 대표 점수를 내지 않고 측정된 부분의 값과 상·하한을 보여 줍니다. 모든 대표 점수는 측정 범위와 함께 표시됩니다.
+```powershell
+irm https://raw.githubusercontent.com/nowwcastle-sudo/optbrew/v0.1.3/install.ps1 -OutFile install.ps1
+powershell -ExecutionPolicy Bypass -File .\install.ps1 -Agents codex,claude-code,cursor
+```
 
-보고서는 준비도, 해결 방안, 실제 성과, 남은 일을 별도 표로 보여 줍니다. 실제 성과에는 소유자 내보내기 자료 또는 고정된 AI 질문 패널이 필요합니다. 일반 성과 비교에는 정의와 필터가 같은 인접한 완결 28일 기간 두 개를 사용합니다. 로컬 수정은 배포와 운영 관찰의 근거가 생기기 전까지 로컬 수정입니다.
+한 프로젝트에만 설치하려면 `-Scope project -Project C:\path\to\site`를 붙입니다.
+
+### 4. 플러그인
+
+Claude Code:
+
+```bash
+claude plugin marketplace add nowwcastle-sudo/optbrew
+claude plugin install optbrew@optbrew
+```
+
+Codex:
+
+```bash
+codex plugin marketplace add nowwcastle-sudo/optbrew
+codex plugin add optbrew@optbrew
+```
+
+플러그인은 이 저장소의 `main` 브랜치를 따르며, 업데이트는 각 호스트의 플러그인 명령으로 합니다.
+
+### 5. 에이전트에게 맡기기
+
+Codex, Claude Code 같은 코딩 에이전트에 아래 글을 붙여 넣으십시오.
+
+```text
+optbrew 스킬을 설치해 줘. https://raw.githubusercontent.com/nowwcastle-sudo/optbrew/v0.1.3/AGENT_INSTALL.md 를 읽고 단계대로 따라 해. 어느 에이전트에, 어느 범위로 설치할지 먼저 묻고, 설치 전에 바뀔 내용을 보여 줘.
+```
+
+[AGENT_INSTALL.md](AGENT_INSTALL.md)는 단계마다 실행할 명령과 통과 기준, 멈추고 사용자에게 물어야 할 경우를 적어 둔 에이전트용 안내서입니다.
+
+소스 checkout에서 설치하기, Agent Skills CLI, Pi 패키지, Claude 웹 업로드는 [플랫폼 안내](docs/platforms.md)에 있습니다.
+
+## 빠른 시작
+
+새 에이전트 세션을 열고 이렇게 요청합니다.
+
+```text
+https://example.com 에 optbrew 돌려 줘. 목표: 네이버 노출, AI 답변 인용.
+```
+
+빠진 정보가 있으면 optbrew가 먼저 묻습니다. 사이트 소유나 접근 권한, 허용할 로컬 수정, 이미 가진 근거 같은 것입니다. 원본 근거는 `.optbrew/runs`에 쌓입니다. 사설 네트워크 주소는 로컬 대상으로 명시했을 때만 가져옵니다.
+
+## 업데이트
+
+```bash
+npm install -g optbrew@latest
+optbrew update --scope user
+```
+
+npx를 쓴다면 `npx optbrew@latest update --scope user`를 실행합니다. `optbrew check-updates --package optbrew`는 아무것도 바꾸지 않고 설치본과 npm 최신판을 비교합니다. `npm update`만으로는 에이전트 폴더에 이미 놓인 사본이 바뀌지 않습니다. 사본은 `update` 명령이 바꿉니다.
+
+0.1.2 이하 설치본은 `migration_required`로 멈춥니다. 0.1.3은 새 평가 버전으로 채점하기 때문입니다. 평가 버전이 다른 점수끼리는 비교할 수 없습니다. [migration_required 뒤 재설치](docs/platforms.md#reinstall-after-a-migration_required-update) 절차를 따르십시오. 이 절차는 읽기 전용 검사가 출력한 경로만 지우며, 감사 근거는 건드리지 않습니다.
 
 ## API와 비용
 
-API 사용은 선택 사항입니다. Claude 또는 Claude Code 구독에 Anthropic API 과금이 포함되는 것은 아닙니다. 직접 API 키는 [공식 발급 안내](https://platform.claude.com/docs/en/get-api-key)의 Console → Settings → API keys에서 만듭니다. 키는 자신의 셸 또는 비밀 관리 도구에서 `ANTHROPIC_API_KEY`로 설정합니다. 보고서에 실값을 넣지 마십시오. v0.1.0에서 도입한 직접 어댑터는 여러 Anthropic workspace에 걸친 키에 필요할 수 있는 `anthropic-workspace-id` 헤더를 여전히 설정하지 않습니다. 호환 키나 별도로 승인된 호스트 기능을 사용합니다.
+유료 계정 없이 쓸 수 있습니다. Anthropic API나 [SE Ranking](https://seranking.com/api.html)을 직접 호출하려면 먼저 사용자 승인, 예산 기록, 중단 조건이 있어야 합니다. Claude 구독에는 API 요금이 포함되지 않습니다. 키는 환경 변수에만 두며 보고서에는 넣지 않습니다. 자세한 내용은 [API 경계](skills/optbrew/references/api.md)를 보십시오.
 
-직접 어댑터는 텍스트 `{model,max_tokens,messages}` 요청과 정확한 모델 ID `claude-fable-5-1`, `claude-opus-5-5`, `claude-sonnet-5-5`, `claude-haiku-5-5`만 받습니다. `max_tokens` 상한은 128,000입니다. 매 시도에는 `1,000,000 + max_tokens` 이상의 토큰 예약 한 개, 맞는 장부 예산, 승인 참조가 필요합니다. 이 예약은 최악 경우의 용량 상한이며 예상 청구액이 아닙니다. 첫 유료 호출 전에 현재 단가의 출처와 날짜, 예상 지출, 승인된 중단 조건을 기록합니다. 추가 필드, 도구, 검색, 비텍스트 입력, 다른 모델, 통화만으로 설정한 상한은 직접 호출 전에 거부됩니다. 자세한 경계는 [API 안내](skills/optbrew/references/api.md)에 있습니다.
+## 문서
 
-SE Ranking은 별도의 [API](https://seranking.com/api.html), [MCP 안내](https://seranking.com/api/integrations/mcp), 계정 상품, 크레딧을 사용합니다. [HTTP MCP 주소](https://api.seranking.com/mcp)는 문서에 따른 OAuth 또는 직접 토큰 경로를 씁니다. `ANTHROPIC_API_KEY`와는 별개입니다. 사용 가능한 도구는 구독에 따라 달라집니다. 오프라인 채점에는 어느 연결도 필요하지 않습니다. 유료 기능을 결정할 때 실제 계정의 단가와 크레딧을 확인합니다.
+- [플랫폼 안내](docs/platforms.md): 에이전트별 설치 경로, checkout 명령, 재설치 절차
+- [채점](skills/optbrew/references/scoring.md), [측정](skills/optbrew/references/measurement.md), [보고서 근거](skills/optbrew/references/report.md)
+- [변경 기록](CHANGELOG.md), [출시 절차](docs/release.md)
 
-## 업데이트와 복원
+## 기여
 
-관리 설치를 갱신하려면 먼저 검증된 새 optbrew 번들을 빌드하거나 받습니다. 저장소 루트에서 다음 명령을 실행합니다.
+기여를 환영합니다. 버그 제보, 실제 사이트에서 나온 오판, 가이드 갱신, 번역, 코드 모두 좋습니다. [CONTRIBUTING.md](CONTRIBUTING.md)를 보십시오.
 
-Bash와 PowerShell에서 같은 명령을 사용합니다.
+## 라이선스
 
-```text
-node bin/optbrew.mjs check-updates --json
-node bin/optbrew.mjs update --scope project --project ./site --json
-node bin/optbrew.mjs rollback --scope project --project ./site --release-version 0.1.0 --json
-```
-
-`check-updates --package optbrew`는 npm 레지스트리에서 최신 버전을 읽습니다. `--package`를 빼면 `local_only`를 반환합니다. `update`는 현재 CLI 번들을 검증한 뒤 관리 기록의 모든 대상에 적용합니다. 로컬 편집은 자동으로 덮어쓰지 않습니다. `rollback`은 관리 기록에 해당 이전 버전이 남아 있어야 합니다. 새 0.1.3 설치에서는 위 복원 예시가 실패하며, 로컬 0.1.0을 보존한 관리 설치에 적용됩니다. 출시 후 `npm update -g optbrew`는 npm 패키지를 갱신하지만 이전에 agent 스킬 폴더로 복사한 파일까지 바꾸지는 않습니다. CLI를 갱신한 다음 관리 `update`를 다시 실행합니다. 관리 중인 0.1.2(또는 이전) 설치는 0.1.3으로 갱신할 수 없고 `update`가 `migration_required`로 멈춥니다(아래 재설치 절차). 호스트 고유 갱신은 [플랫폼 안내](docs/platforms.md)를 보십시오.
-
-### migration_required 뒤 재설치
-
-0.1.3은 평가 버전 0.3.0을 사용합니다(0.1.2는 0.2.0). 그래서 0.1.2로 만든 점수와 기준선은 0.1.3과 비교할 수 없고 `compare`는 `not_comparable`을 반환합니다. 기준선 감사는 0.1.3으로 다시 실행하십시오. 같은 이유로 관리 중인 0.1.2 설치에서 `optbrew update`를 실행하면 `migration_required`로 멈추고 아무것도 바꾸지 않으며, 메시지에 경로와 명령이 나옵니다. `uninstall` 명령은 없습니다. 0.1.3 저장소 루트에서 아래 블록으로 교체합니다. 각 블록은 먼저 읽기 전용 `reinstall-plan`을 실행해 설치 기록을 검증하고(모든 대상이 정확히 해당 에이전트의 `skills/optbrew` 경로여야 합니다) 변조된 기록이면 아무것도 지우기 전에 거절합니다. 이후 셸은 그 명령이 출력한 경로만, 대상을 먼저 지우고 관리 루트를 마지막에 지우므로 실패한 뒤 같은 블록을 다시 실행할 수 있습니다. 이 명령은 `.optbrew/runs`(감사 증거)를 건드리지 않습니다. `.optbrew` 폴더 전체를 지우지 마십시오. 자세한 설명은 [플랫폼 안내](docs/platforms.md)를 보십시오.
-
-사용자 범위:
-
-```powershell user
-$ErrorActionPreference = 'Stop'
-[Console]::OutputEncoding = [Text.Encoding]::UTF8
-$plan = @(node bin/optbrew.mjs reinstall-plan --scope user)
-if ($LASTEXITCODE) { exit $LASTEXITCODE }
-foreach ($line in $plan) {
-  $f = $line -split "`t"
-  if ($f[0] -eq 'delete-link') { [IO.Directory]::Delete($f[1]) }
-  elseif ($f[0] -eq 'delete-dir') { Remove-Item -Recurse -Force -LiteralPath $f[1] }
-}
-foreach ($line in $plan) {
-  $f = $line -split "`t"
-  if ($f[0] -eq 'install') { node bin/optbrew.mjs install --agents $f[1] --scope user --strategy $f[2]; if ($LASTEXITCODE) { exit $LASTEXITCODE } }
-  elseif ($f[0] -eq 'agents') { node bin/optbrew.mjs doctor --agents $f[1] --scope user; exit $LASTEXITCODE }
-}
-```
-
-```bash user
-set -e
-plan=$(node bin/optbrew.mjs reinstall-plan --scope user)
-while IFS=$'\t' read -r kind a b; do
-  case "$kind" in delete-link | delete-dir) rm -r -- "$a" ;; esac
-done <<< "$plan"
-while IFS=$'\t' read -r kind a b; do
-  case "$kind" in
-    install) node bin/optbrew.mjs install --agents "$a" --scope user --strategy "$b" ;;
-    agents) node bin/optbrew.mjs doctor --agents "$a" --scope user ;;
-  esac
-done <<< "$plan"
-```
-
-프로젝트 범위(`./site`를 프로젝트 폴더로 바꾸십시오. 한 곳에만 나옵니다):
-
-```powershell project
-$ErrorActionPreference = 'Stop'
-[Console]::OutputEncoding = [Text.Encoding]::UTF8
-$project = './site'
-$plan = @(node bin/optbrew.mjs reinstall-plan --scope project --project $project)
-if ($LASTEXITCODE) { exit $LASTEXITCODE }
-foreach ($line in $plan) {
-  $f = $line -split "`t"
-  if ($f[0] -eq 'delete-link') { [IO.Directory]::Delete($f[1]) }
-  elseif ($f[0] -eq 'delete-dir') { Remove-Item -Recurse -Force -LiteralPath $f[1] }
-}
-foreach ($line in $plan) {
-  $f = $line -split "`t"
-  if ($f[0] -eq 'install') { node bin/optbrew.mjs install --agents $f[1] --scope project --project $project --strategy $f[2]; if ($LASTEXITCODE) { exit $LASTEXITCODE } }
-  elseif ($f[0] -eq 'agents') { node bin/optbrew.mjs doctor --agents $f[1] --scope project --project $project; exit $LASTEXITCODE }
-}
-```
-
-```bash project
-set -e
-project='./site'
-plan=$(node bin/optbrew.mjs reinstall-plan --scope project --project "$project")
-while IFS=$'\t' read -r kind a b; do
-  case "$kind" in delete-link | delete-dir) rm -r -- "$a" ;; esac
-done <<< "$plan"
-while IFS=$'\t' read -r kind a b; do
-  case "$kind" in
-    install) node bin/optbrew.mjs install --agents "$a" --scope project --project "$project" --strategy "$b" ;;
-    agents) node bin/optbrew.mjs doctor --agents "$a" --scope project --project "$project" ;;
-  esac
-done <<< "$plan"
-```
-
-## 지원 범위와 라이선스
-
-관리 설치·검사·갱신·복원은 문서화된 기본 경로의 Codex, Claude Code, Cursor, OpenCode, Pi를 대상으로 합니다. 호스트의 사용자 지정 경로, 프로젝트 신뢰 설정, 세션 재시작 조건은 탐색 결과를 바꿀 수 있습니다. 일반 ChatGPT 채팅에서는 파일을 첨부해 안내형으로 사용합니다. 이는 Codex나 Work/desktop 플러그인 설치와 다릅니다. Claude 웹에서는 ZIP을 직접 올리고 갱신 때 다시 올립니다. 호스트 탐색과 실제 호출 성공은 따로 확인해야 합니다.
-
-네이버 묶음은 [Search Advisor 공식 안내](https://searchadvisor.naver.com/guide)의 색인을 포함합니다. 네이버 원문 55개는 제외했으므로 전문을 오프라인에서 읽을 수 없습니다. 온라인에서 공식 링크를 여십시오. 포함한 원본의 라이선스와 변경 내역은 [제삼자 고지](skills/optbrew/THIRD_PARTY_NOTICES.md)에 있습니다. optbrew 자체 코드는 [MIT 라이선스](LICENSE)입니다. 서비스 접근권과 API 자료 이용권은 코드 라이선스와 별개입니다. 묶음 생성·검증 절차는 [릴리스 안내](docs/release.md)에 있습니다.
+optbrew 자체 코드는 [MIT 라이선스](LICENSE)입니다. 포함된 가이드는 각자의 라이선스를 따르며, [제3자 고지](skills/optbrew/THIRD_PARTY_NOTICES.md)에 정리돼 있습니다. 네이버 묶음에는 공식 [서치어드바이저 가이드](https://searchadvisor.naver.com/guide) 색인만 있고, 원문 55편은 없습니다. 온라인에서 공식 링크를 따라가십시오.

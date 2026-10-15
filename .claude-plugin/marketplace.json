@@ -1,6 +1,6 @@
 {
-  "name": "optbrew-local",
-  "description": "Local optbrew plugin source",
-  "owner": { "name": "optbrew" },
-  "plugins": [{ "name": "optbrew", "source": "./", "version": "0.1.3" }]
+  "name": "optbrew",
+  "description": "optbrew: search, Naver and AI-answer readiness audit skill",
+  "owner": { "name": "nowwcastle-sudo", "url": "https://github.com/nowwcastle-sudo" },
+  "plugins": [{ "name": "optbrew", "source": "./", "version": "0.1.3", "description": "Audit a site, fix approved local files, re-check under the same conditions and write a scored report" }]
 }

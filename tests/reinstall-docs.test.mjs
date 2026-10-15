@@ -1,4 +1,6 @@
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
+import path from 'node:path';
 import { test, after, describe, it } from 'node:test';
 import { main } from '../lib/cli.mjs';
 import { documented, documentedBlocks, sandbox, tamperRecord, assertNothingDeleted } from './support/reinstall-shells.mjs';
@@ -6,9 +8,12 @@ import { releasePublished, root, skipUnreachable } from './support/published.mjs
 
 after(releasePublished);
 
-test('the reinstall command blocks are identical in docs/platforms.md, README.md and README.ko.md', async () => {
+test('docs/platforms.md holds the four reinstall blocks and the READMEs link to them instead of copying them', async () => {
   assert.deepEqual(Object.keys(documented).sort(), ['bash project', 'bash user', 'powershell project', 'powershell user']);
-  for (const file of ['README.md', 'README.ko.md']) assert.deepEqual(await documentedBlocks(file), documented, file);
+  for (const file of ['README.md', 'README.ko.md', 'AGENT_INSTALL.md']) {
+    assert.deepEqual(await documentedBlocks(file), {}, `${file} carries no stale copy of a reinstall block`);
+    assert.match(await readFile(path.join(root, file), 'utf8'), /docs\/platforms\.md#reinstall-after-a-migration_required-update/, `${file} links to the reinstall section`);
+  }
 });
 
 test('the documented blocks delete only what the validated plan prints and never resolve the home or read the record themselves', () => {
