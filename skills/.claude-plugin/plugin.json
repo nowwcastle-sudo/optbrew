@@ -2,11 +2,22 @@
   "name": "optbrew",
   "displayName": "optbrew",
   "description": "Audit a site for Google, Naver and AI answer engines, fix the local files you approve, re-check under the same conditions and write a scored report",
-  "author": { "name": "nowwcastle-sudo", "url": "https://github.com/nowwcastle-sudo" },
+  "author": {
+    "name": "nowwcastle-sudo",
+    "url": "https://github.com/nowwcastle-sudo"
+  },
   "homepage": "https://github.com/nowwcastle-sudo/optbrew",
   "repository": "https://github.com/nowwcastle-sudo/optbrew",
   "license": "MIT",
-  "keywords": ["seo", "naver", "aeo", "geo", "llmo", "audit"],
-  "icon": "./.claude-plugin/icon.png",
-  "skills": ["./optbrew"]
+  "keywords": [
+    "seo",
+    "naver",
+    "aeo",
+    "geo",
+    "llmo",
+    "audit"
+  ],
+  "skills": [
+    "./optbrew"
+  ]
 }
