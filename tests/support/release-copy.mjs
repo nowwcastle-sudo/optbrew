@@ -15,7 +15,7 @@ export async function copyReleaseTree() {
   const dest = await mkdtemp(path.join(os.tmpdir(), 'optbrew release copy '));
   made.push(dest);
   for (const name of ['package.json', 'package-lock.json', 'plugin.json', 'LICENSE', 'THIRD_PARTY_NOTICES.md', 'source-lock.json', 'README.md', 'README.ko.md',
-    'CHANGELOG.md', 'bin', 'lib', 'scripts', '.codex-plugin', '.claude-plugin', 'docs/platforms.md', 'docs/release.md'])
+    'CHANGELOG.md', 'bin', 'lib', 'scripts', '.codex-plugin', '.claude-plugin', 'skills/.claude-plugin', 'docs/platforms.md', 'docs/release.md'])
     await cp(path.join(repo, name), path.join(dest, name), { recursive: true });
   const bundle = path.join(repo, 'skills/optbrew');
   await cp(bundle, path.join(dest, 'skills/optbrew'), { recursive: true, filter: file => isDistributedBundlePath(path.relative(bundle, file)) });

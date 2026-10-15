@@ -1,0 +1,6 @@
+{
+  "name": "optbrew",
+  "description": "Pinned search audit and improvement skill bundle",
+  "author": { "name": "nowwcastle-sudo", "url": "https://github.com/nowwcastle-sudo" },
+  "skills": ["./optbrew"]
+}
