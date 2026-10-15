@@ -33,8 +33,10 @@ param(
     function Invoke-Optbrew([string[]]$Arguments) {
       $out = & $npx --yes --package $Package optbrew @Arguments --json
       if ($LASTEXITCODE) {
+        $scopeArgs = if ($Scope -eq 'project') { "--scope project --project `"$Project`"" } else { '--scope user' }
         throw ("optbrew $($Arguments[0]) failed with exit code $LASTEXITCODE (message above). If optbrew is already installed, " +
-          'update it with "npx optbrew@latest update", or see https://github.com/nowwcastle-sudo/optbrew/blob/main/docs/platforms.md#reinstall-after-a-migration_required-update')
+          "update it with: $npx optbrew@latest update $scopeArgs`n" +
+          'If update stops with migration_required, see https://github.com/nowwcastle-sudo/optbrew/blob/v0.1.3/docs/platforms.md#reinstall-after-a-migration_required-update')
       }
       ($out -join "`n") | ConvertFrom-Json
     }
