@@ -75,7 +75,7 @@ function titleObservation(ref) {
  */
 function handAudit(run, { prefix, collectionRef, ref = null, homeError = 'fetch_failed' }) {
   const urls = run.packet.run_context.protocol.page_types.flatMap(type => type.urls).map(x => x.normalized);
-  const artifacts = [], entries = [], raw = [], responses = [], observations = [];
+  const artifacts = [], entries = [], raw = [], responses = [], failures = [], observations = [];
   for (const [index, url] of urls.entries()) {
     if (index === 0 && ref) {
       const bound = collectedArtifact(run, prefix + '-', ref);
@@ -85,8 +85,13 @@ function handAudit(run, { prefix, collectionRef, ref = null, homeError = 'fetch_
       continue;
     }
     const error = index === 0 ? homeError : 'fetch_failed';
+    // A hashed failure record, as the audit writes it: no answered hop, one attempt that got no response.
+    const failureText = JSON.stringify({ record_version: '1', kind: 'failure', requested_url: url, normalized_url: url, redirect_chain: [], unanswered: 1, error }, null, 2) + '\n';
+    const failureRef = `${prefix}-failure-${index}.json`;
+    addEvidence(run, failureRef, failureText, 'failure_record', 'optbrew:collector');
+    failures.push({ normalized_url: url, evidence_ref: failureRef, content_hash: sha(failureText) });
     artifacts.push({ requested_url: url, normalized_url: url, final_url: null, status: null, error, content_hash: null,
-      evidence_ref: collectionRef, headers: {}, header_lines: [], redirect_chain: [], capability: 'none', raw_html_ref: null });
+      evidence_ref: collectionRef, headers: {}, header_lines: [], redirect_chain: [], unanswered: 1, failure_ref: failureRef, capability: 'none', raw_html_ref: null });
     entries.push({ url, requests: 1, outcome: 'error', skipped_reason: null, error });
     raw.push({ normalized_url: url, evidence_ref: collectionRef, content_hash: null });
     observations.push({ schema_version: '1.0.0', observation_id: `failed-${index}`, check_id: 'fetch-response', family_id: 'fetch-response',
@@ -95,7 +100,7 @@ function handAudit(run, { prefix, collectionRef, ref = null, homeError = 'fetch_
   }
   addEvidence(run, prefix + '-ledger.json', { entries, limit: 50 }, 'record', 'optbrew:collector');
   const collection = { artifacts, skipped: [], request_count: entries.length, evaluated_count: entries.length, limit_reached: false };
-  return { collection, raw, responses, observations, auditFields: { ledger_ref: prefix + '-ledger.json', modules: ['naver-searchadvisor'], raw, responses } };
+  return { collection, raw, responses, failures, observations, auditFields: { ledger_ref: prefix + '-ledger.json', modules: ['naver-searchadvisor'], raw, responses, failures } };
 }
 function productionRun() {
   const run = copyRun();

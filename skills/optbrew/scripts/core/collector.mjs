@@ -95,6 +95,7 @@ export async function fetchScoped(input, { context, transport = nodeTransport, r
   if (allowedAuxiliary) undeclaredAuxiliary(url, allowedAuxiliary);
   const requested_url = String(input);
   const redirect_chain = [];
+  let made = 0; // requests actually sent; an answered hop is in redirect_chain, an unanswered attempt is made - chain length
   const controller = new AbortController();
   const deadline = performance.now() + timeoutMs;
   let rejectTimeout;
@@ -116,13 +117,17 @@ export async function fetchScoped(input, { context, transport = nodeTransport, r
         error.redirect_chain = redirect_chain;
         throw error;
       }
+      made++;
       const response = await withinDeadline(transport({ url, address: addresses[0], timeoutMs: remainingMs, maxBytes, headers, signal: controller.signal }));
       if (!Number.isInteger(response?.status) || response.status < 100 || response.status > 599) throw new Error('invalid transport status');
       const body = text(response.body);
       if (body.length > maxBytes) throw new Error('response byte limit exceeded');
       const savedHeaders = safeHeaders(response.headers);
       if (REDIRECTS.has(response.status) && savedHeaders.location) {
-        if (hop === maxRedirects) throw new Error('redirect limit exceeded');
+        if (hop === maxRedirects) {
+          redirect_chain.push({ url: url.href, status: response.status, location: '[limit]' });
+          throw new Error('redirect limit exceeded');
+        }
         let next;
         try { next = assertUrlInScope(new URL(savedHeaders.location, url).href, context.scope); }
         catch {
@@ -149,7 +154,11 @@ export async function fetchScoped(input, { context, transport = nodeTransport, r
       };
     }
     throw new Error('redirect limit exceeded');
-  } catch (error) { error.redirect_chain ??= [...redirect_chain]; throw error; }
+  } catch (error) {
+    error.redirect_chain ??= [...redirect_chain];
+    error.unanswered = Math.max(0, made - error.redirect_chain.length);
+    throw error;
+  }
   finally { clearTimeout(timer); }
 }
 
@@ -214,25 +223,26 @@ export async function collect(context, { transport, resolve } = {}) {
       const item = queue[cursor++];
       if (requestCount >= limit) { skip(item.url, 'url_limit'); continue; }
       let used = 0;
-      // The budget decides whether a fetch may start. A redirect chain that has started is allowed to finish (at most
-      // maxRedirects further requests), so a chain is never cut in the middle by the limit.
+      // The budget is a hard ceiling: every request, redirect hops included, takes one slot immediately before it is sent.
+      // A chain the budget stops is a request_limit unknown whose answered hops are recorded.
       const reserveRequest = () => {
-        if (!used && requestCount >= limit) return false;
+        if (requestCount >= limit) return false;
         requestCount++; used++;
         return true;
       };
       let artifact;
-      // A chain is at most min(10, limit) redirects long, so the requests a started chain adds beyond the limit scale with
-      // the limit: at most concurrency x min(10, limit) in all.
-      try { artifact = await fetchScoped(item.url, { context, transport, resolve, allowedAuxiliary: allowedDocuments, reserveRequest, maxRedirects: Math.min(10, limit) }); }
+      try { artifact = await fetchScoped(item.url, { context, transport, resolve, allowedAuxiliary: allowedDocuments, reserveRequest }); }
       catch (error) {
         const reason = ['scope_rejected', 'redirect_outside_scope', 'auxiliary_undeclared', 'request_limit'].includes(error.code) ? error.code : 'fetch_failed';
         if (reason === 'request_limit' && !used) { skip(item.url, 'url_limit'); continue; }
         if (reason !== 'fetch_failed') skipped.push({ url: item.url, reason });
-        // A failed fetch has no hashed response record, so the requests it made cannot be proven later: it counts as one.
-        ledger.push({ url: item.url, requests: 1, outcome: 'error', skipped_reason: reason !== 'fetch_failed' ? reason : null, error: reason });
+        // The requests a failed fetch made are its answered hops (kept in the hashed failure record) plus at most one
+        // attempt that got no response, so the ledger can prove them.
+        const chain = error.redirect_chain ?? [];
+        const unanswered = error.unanswered ?? 0;
+        ledger.push({ url: item.url, requests: chain.length + unanswered, outcome: 'error', skipped_reason: reason !== 'fetch_failed' ? reason : null, error: reason });
         artifact = { requested_url: item.url, normalized_url: item.url, final_url: null, status: null,
-          headers: {}, header_lines: [], redirect_chain: error.redirect_chain ?? [], raw_html_ref: null, content_hash: null, capability: 'none',
+          headers: {}, header_lines: [], redirect_chain: chain, unanswered, raw_html_ref: null, content_hash: null, capability: 'none',
           source_ref: 'optbrew:collector', evidence_ref: null, error: reason, body: Buffer.alloc(0) };
       }
       if (!artifact.error) ledger.push({ url: item.url, requests: used, outcome: 'response', skipped_reason: null, error: null });

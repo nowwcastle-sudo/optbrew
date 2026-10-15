@@ -80,6 +80,7 @@ export async function buildScenario(site, paths, { engines = ['google'], robots 
   for (const artifact of audit.artifacts) {
     await add(artifact.evidence_ref, artifact.capability === 'raw_html' ? 'raw_html' : 'raw_response', 'optbrew:collector');
     if (artifact.response_ref) await add(artifact.response_ref, 'response_record', 'optbrew:collector');
+    if (artifact.failure_ref) await add(artifact.failure_ref, 'failure_record', 'optbrew:collector');
   }
   const input = { schema_version: '1.0.0', run_context: context, observations: audit.observations };
   const packet = { schema_version: '1.0.0', run_context: context, baseline: { input, scores: score(input) }, after: null,

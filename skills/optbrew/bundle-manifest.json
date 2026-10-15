@@ -64,7 +64,7 @@
     },
     {
       "path": "SKILL.md",
-      "sha256": "f0bc0284d9f1a540e65f24976141fd2c303c08acf3a2af2e843f3d741f6d2f6a"
+      "sha256": "7b7b8446104967f24478949e59a9158acadef14db87e558dd613ba12f16aa619"
     },
     {
       "path": "THIRD_PARTY_NOTICES.md",
@@ -544,7 +544,7 @@
     },
     {
       "path": "references/api.md",
-      "sha256": "37d91bf63058b4b972b6f20e84a76740f82330b60d16ea7754d30c01baa8473f"
+      "sha256": "bf6b9ee1e337405712dbedf0c5fb0254fac99d25968e991ddf248805cb37b31a"
     },
     {
       "path": "references/check-registry.json",
@@ -576,7 +576,7 @@
     },
     {
       "path": "references/report.md",
-      "sha256": "c749eecaa8dc5a721400a263a8354e3c8f8157ba2fc762c87c325a764debaedc"
+      "sha256": "36871372f406bc16d2cf1b4c2ca697bcb368a79ca543f0ab04364b749f7e117b"
     },
     {
       "path": "references/routing.md",
@@ -600,7 +600,7 @@
     },
     {
       "path": "scripts/audit.mjs",
-      "sha256": "000c88a07f1c0f7a2fdcfacb0e5410be8ead59954f2aa28b5039e301fd31fd18"
+      "sha256": "a27207f4755abe29f987f5bc25dac56af4f9d325c30a3db21d7a759d7dc2cf12"
     },
     {
       "path": "scripts/cli.mjs",
@@ -620,7 +620,7 @@
     },
     {
       "path": "scripts/core/collector.mjs",
-      "sha256": "d9be675929cde529db11f31e336a47993ee01b9a17cd8e8b3deb976533c07d68"
+      "sha256": "ea0eced8784a7e5aea14c8957c1780475959591696f1ef4740f45f760def530c"
     },
     {
       "path": "scripts/core/compare.mjs",
@@ -664,7 +664,7 @@
     },
     {
       "path": "scripts/core/report.mjs",
-      "sha256": "bc5a77424398a06ba9140383b19ddbe47d601c8f054a4527676b79fddd14f2ea"
+      "sha256": "160cf86d2812b794dab2683082ae353c5a120de636bd453626324ee4cac1f5b6"
     },
     {
       "path": "scripts/core/scope.mjs",
@@ -683,5 +683,5 @@
       "sha256": "a53223b7eefab2204c026a62b1da04cfdb8a07be8d3749613e8241a81b027d9b"
     }
   ],
-  "bundle_hash": "780e3eb5b675e74cb5732aa9cc5e7adf4490074a340e777d7153071c05ece116"
+  "bundle_hash": "7c52aae7fda243cf8931d651a2a41f2fa6b098dbb75fc6a59b959808ead46916"
 }
