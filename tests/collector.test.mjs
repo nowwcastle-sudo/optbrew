@@ -314,3 +314,21 @@ test('final review I6 (round 5): redirect hops draw from the shared request budg
   assert.equal(roomy.evaluated_count, 5);
   assert.equal(roomy.limit_reached, false);
 });
+
+test('round 5: the overshoot for started redirect chains scales with max_urls, not with a fixed number', async () => {
+  const requested = [];
+  // /owned/cN redirects eight times before it answers, so a chain is longer than a five-URL budget.
+  const transport = async ({ url }) => {
+    requested.push(url.href);
+    const match = /^\/owned\/c(\d+)(?:-(\d+))?$/.exec(url.pathname);
+    const hop = Number(match?.[2] ?? 0);
+    return hop < 8 ? response('', 302, { location: `/owned/c${match[1]}-${hop + 1}` }) : response('<title>done</title>');
+  };
+  const urls = Array.from({ length: 8 }, (_, n) => `https://example.test/owned/c${n}`);
+  const small = await collect(context(urls, { max_urls: 5 }), { resolve, transport });
+  // limit 5 + two chains in flight, each at most five further requests.
+  assert.ok(requested.length <= 5 + 2 * 5, `actual requests: ${requested.length}`);
+  assert.ok(small.artifacts.every(x => x.error === 'fetch_failed'), 'a chain longer than the budget fails instead of running on');
+  assert.equal(small.request_count, small.ledger.reduce((sum, x) => sum + x.requests, 0));
+  assert.equal(small.limit_reached, small.skipped.some(x => x.reason === 'url_limit'));
+});

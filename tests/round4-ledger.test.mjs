@@ -121,6 +121,46 @@ test('P6f: padding through a failed fetch and moving a failing selected page to 
   assert.throws(() => buildReport(s.packet), /request ledger/);
 });
 
+/** Add fake failed fetches of URLs nothing links to: collection artifact, ledger error entry, bodyless raw entry. */
+async function fakeFailures(s, urls) {
+  const index = await readJson(s.evidence('evidence-index.json'));
+  await s.rewrite(s.evidence('collection.json'), v => {
+    for (const url of urls) v.artifacts.push({ requested_url: url, normalized_url: url, final_url: null, status: null, headers: {}, header_lines: [],
+      redirect_chain: [], raw_html_ref: null, content_hash: null, capability: 'none', source_ref: 'optbrew:collector', evidence_ref: index.collection_ref, error: 'fetch_failed' });
+    v.request_count += urls.length; v.evaluated_count += urls.length;
+  });
+  await s.rewrite(s.evidence('ledger.json'), v => { for (const url of urls) v.entries.push({ url, requests: 1, outcome: 'error', skipped_reason: null, error: 'fetch_failed' }); });
+  await s.rewrite(s.evidence('evidence-index.json'), v => { for (const url of urls) v.raw.push({ normalized_url: url, evidence_ref: index.collection_ref, content_hash: null }); });
+}
+
+test('P5g: fake failed fetches of never-linked URLs cannot pad the total to a false request-limit claim', async t => {
+  const s = await build(t, routes, paths);
+  const ledger = await readJson(s.evidence('ledger.json'));
+  const total = ledger.entries.reduce((a, e) => a + e.requests, 0);
+  await fakeFailures(s, Array.from({ length: ledger.limit - total }, (_, i) => `${s.site.origin}/ghost-${i}`));
+  const fake = `${s.site.origin}/never-linked`;
+  await s.rewrite(s.evidence('ledger.json'), v => { v.entries.push({ url: fake, requests: 0, outcome: 'skipped', skipped_reason: 'url_limit', error: null }); });
+  await s.rewrite(s.evidence('collection.json'), v => { v.skipped = [...(v.skipped ?? []), { url: fake, reason: 'url_limit' }]; v.limit_reached = true; });
+  await s.forgeObservations(dropDiscoveryFails);
+  assert.throws(() => buildReport(s.packet), /request ledger: .* has no provenance/);
+});
+
+test('P5g: a fake failed fetch of a never-linked URL is refused even without a limit claim', async t => {
+  const s = await build(t, routes, paths);
+  await fakeFailures(s, [`${s.site.origin}/ghost-0`]);
+  assert.throws(() => buildReport(s.packet), /request ledger: .* has no provenance/);
+});
+
+test('a real network failure of a selected page and of a discovered link still reports cleanly (provenance control)', async t => {
+  const site = { '/': req => doc(req, '/', `${facts('+82-2-555-0142')}<a href="/a">a</a><a href="/dead">dead</a>`),
+    '/a': req => doc(req, '/a', facts('+82-2-555-0142')), '/dead': req => { req.socket.destroy(); return { status: 200, body: '' }; },
+    '/broken': req => { req.socket.destroy(); return { status: 200, body: '' }; } };
+  const s = await build(t, site, ['/', '/a', '/broken']);
+  const ledger = await readJson(s.evidence('ledger.json'));
+  assert.deepEqual(ledger.entries.filter(x => x.outcome === 'error').map(x => x.url.replace(s.site.origin, '')).sort(), ['/broken', '/dead']);
+  assert.doesNotThrow(() => buildReport(s.packet));
+});
+
 test('a redirect that ends in a transport failure is one request in the ledger and still reports cleanly', async t => {
   const chain = { '/hop1': req => ({ status: 302, headers: { location: `${base(req)}/hop2` } }), '/hop2': req => ({ status: 302, headers: { location: `${base(req)}/hop3` } }),
     '/hop3': req => { req.socket.destroy(); return { status: 200, body: '' }; } };

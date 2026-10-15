@@ -11,6 +11,8 @@ import { normalizeImport } from '../adapters/imports.mjs';
 import { mergeFindings, selectRemediations } from './findings.mjs';
 import { auditCollected, indexingDirectives } from '../../modules/naver-searchadvisor/scripts/audit.mjs';
 import { deriveObservations } from './derive.mjs';
+import { links } from './collector.mjs';
+import { assertUrlInScope } from './scope.mjs';
 import { parseRobots, robotsVerdict } from '../../modules/naver-searchadvisor/scripts/robots.mjs';
 
 const catalog = JSON.parse(readFileSync(new URL('../../references/remediations.json', import.meta.url))).items;
@@ -362,8 +364,10 @@ function checkLedger(input, audit, collection, artifacts, requireRef) {
   const limit = Math.min(input.run_context.scope?.max_urls ?? 50, 50);
   if (ledger.limit !== limit) fail('request limit differs from the run scope');
   const total = entries.reduce((sum, entry) => sum + entry.requests, 0);
-  // The limit decides whether a fetch may start; a redirect chain that has started finishes (at most 10 more requests, two in flight).
-  if (total > limit + 20) fail('more requests than the limit');
+  // The limit decides whether a fetch may start; a redirect chain that has started finishes. A chain is at most
+  // min(10, limit) redirects long and at most `concurrency` chains are in flight, so the overshoot is bounded by both.
+  const concurrency = Math.min(input.run_context.scope?.concurrency ?? 2, 2);
+  if (total > limit + concurrency * Math.min(10, limit)) fail('more requests than the limit');
   const responded = artifacts.filter(x => Number.isInteger(x.status));
   const failed = artifacts.filter(x => !Number.isInteger(x.status));
   const byUrl = outcome => new Map(entries.filter(x => x.outcome === outcome).map(x => [x.url, x]));
@@ -395,7 +399,22 @@ function checkLedger(input, audit, collection, artifacts, requireRef) {
   // The protocol caps selected pages plus auxiliary resources at the limit, and the collector queues them before any
   // discovered page. A selected page can only hit the request limit after redirects used the budget, so no page that was
   // merely discovered may have been fetched in the same run.
-  const planned = new Set([...selected, ...(input.run_context.protocol.auxiliary_resources ?? []).map(x => x.normalized)]);
+  const auxiliary = new Set((input.run_context.protocol.auxiliary_resources ?? []).map(x => x.normalized));
+  const planned = new Set([...selected, ...auxiliary]);
+  // Provenance: a failed fetch or a request-limit skip belongs to a URL the run was given (selected or auxiliary) or one
+  // that a hashed page of this collection links to (anchors and canonical, as the collector follows them). A URL nothing
+  // links to cannot be a failed fetch or a skipped one, so fabricated entries cannot pad the total or claim a limit.
+  const known = new Set(planned);
+  for (const artifact of responded) {
+    if (artifact.status !== 200 || artifact.capability !== 'raw_html' || auxiliary.has(artifact.normalized_url)) continue;
+    for (const link of links(requireRef(artifact.evidence_ref).text, artifact.final_url)) {
+      try { known.add(assertUrlInScope(link, input.run_context.scope).href); } catch { /* out of scope: the collector skipped it */ }
+    }
+  }
+  for (const entry of entries) {
+    if ((entry.outcome === 'error' || (entry.outcome === 'skipped' && entry.skipped_reason === 'url_limit')) && !known.has(entry.url))
+      fail(`${entry.url} has no provenance: it is neither a selected or auxiliary URL nor linked from a collected page`);
+  }
   if (entries.some(x => selected.has(x.url) && x.outcome === 'skipped' && x.skipped_reason === 'url_limit') &&
       entries.some(x => x.requests > 0 && !planned.has(x.url))) fail('a selected page is skipped for the request limit although a discovered page was fetched');
 }

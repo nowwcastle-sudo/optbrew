@@ -24,7 +24,7 @@ To get the checkout, clone `https://github.com/nowwcastle-sudo/optbrew` and run 
 
 ## First use
 
-Ask the host to use optbrew with the target URL, goal, site ownership or access, allowed local changes, and available evidence. For a local audit, declare the URL scope before collection. The default collection ceilings are 50 URLs, depth 3, and concurrency 2; private addresses need an explicit local target. The workflow records raw evidence, readiness observations, local changes, and follow-up checks. It does not infer a site's production result from a passing local test.
+Ask the host to use optbrew with the target URL, goal, site ownership or access, allowed local changes, and available evidence. For a local audit, declare the URL scope before collection. The default collection ceilings are 50 URLs, depth 3, and concurrency 2. A new fetch starts only while fewer requests than the limit have been made, and a redirect chain that has started is completed; a chain follows at most min(10, `max_urls`) redirects, so the requests beyond the limit are at most concurrency x min(10, `max_urls`), which is 20 with the defaults; private addresses need an explicit local target. The workflow records raw evidence, readiness observations, local changes, and follow-up checks. It does not infer a site's production result from a passing local test.
 
 The examples below replay bundled synthetic fixtures. They make no provider call. Run them from the checkout root and choose fresh output paths:
 

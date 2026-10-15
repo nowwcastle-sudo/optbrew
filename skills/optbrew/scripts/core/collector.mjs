@@ -162,7 +162,7 @@ export function declaredRobotsIndex(artifacts, declaredRobots, pageFinalUrl) {
 }
 
 /** Anchors plus the canonical target, which the report needs in order to judge canonical consistency. */
-function links(html, base) {
+export function links(html, base) {
   const out = anchorLinks(html, base);
   const canonical = canonicalLink(html);
   if (canonical) { try { out.push(new URL(canonical, base).href); } catch { /* malformed canonical */ } }
@@ -222,7 +222,9 @@ export async function collect(context, { transport, resolve } = {}) {
         return true;
       };
       let artifact;
-      try { artifact = await fetchScoped(item.url, { context, transport, resolve, allowedAuxiliary: allowedDocuments, reserveRequest }); }
+      // A chain is at most min(10, limit) redirects long, so the requests a started chain adds beyond the limit scale with
+      // the limit: at most concurrency x min(10, limit) in all.
+      try { artifact = await fetchScoped(item.url, { context, transport, resolve, allowedAuxiliary: allowedDocuments, reserveRequest, maxRedirects: Math.min(10, limit) }); }
       catch (error) {
         const reason = ['scope_rejected', 'redirect_outside_scope', 'auxiliary_undeclared', 'request_limit'].includes(error.code) ? error.code : 'fetch_failed';
         if (reason === 'request_limit' && !used) { skip(item.url, 'url_limit'); continue; }
