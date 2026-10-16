@@ -140,6 +140,7 @@ test('real local HTTP baseline, authorized edit and same-condition rescan clear 
   context.scope = { allowed: [{ origin: `http://127.0.0.1:${port}`, path_prefix: '/' }],
     local_targets: [{ host: '127.0.0.1', port }] };
   context.evidence_ref = 'context.json';
+  context.audited = true;
   context.protocol.page_types = [{ id: 'primary', urls: [{ original: url, normalized: url }] }];
   context.protocol.engines = ['google'];
   for (const family of context.protocol.families)
@@ -211,7 +212,7 @@ test('real local HTTP baseline, authorized edit and same-condition rescan clear 
       check_id: family, unit_key: `${family}|${url}`, priority: family === 'index-policy' ? 'P0' : 'P1',
       blocker: family === 'index-policy', message: family === 'index-policy' ? 'Unexpected noindex' : 'Missing title',
       source_ref: 'optbrew:collector', evidence_ref: beforeRaw, remediation_ids: [], status: 'confirmed' })),
-    changes: [{ schema_version: '1.0.0', change_id: 'local-html-edit', finding_ids: ['index-policy', 'document-title'],
+    changes: [{ schema_version: '1.0.0', change_id: 'local-html-edit', finding_ids: ['index-policy', 'document-title'], analysis: { tools: [], queries: [], self_analysis: true },
       environment: 'local', path: 'site.html', before_hash: baseline.artifacts[0].content_hash,
       after_hash: followup.artifacts[0].content_hash, backup_ref: beforeRaw,
       evidence_ref: afterRaw, verification: { status: 'passed', deployed: false, evidence_ref: 'verification.json',
@@ -249,6 +250,17 @@ test('real local HTTP baseline, authorized edit and same-condition rescan clear 
   assert.match(markdown, /Baseline blockers: 1 .*After blockers: 0/);
   assert.match(markdown, /actual outcomes: not_connected \/ unknown/);
   assert.match(markdown, /verified_local/);
+  await t.test('stripping the after snapshot cannot upgrade a result', () => {
+    const stripped = structuredClone(packet);
+    stripped.audit_snapshots = stripped.audit_snapshots.filter(x => x.phase !== 'after');
+    assert.throws(() => buildReport(stripped), /after audit snapshot differs from the audit recorded in its run context/);
+    // Also claiming the phase was not audited contradicts the hashed context evidence.
+    stripped.after.input.run_context.audited = false;
+    assert.throws(() => buildReport(stripped), /context evidence differs/);
+    const unaudited = structuredClone(packet);
+    unaudited.audit_snapshots = unaudited.audit_snapshots.filter(x => x.phase !== 'baseline');
+    assert.throws(() => buildReport(unaudited), /baseline audit snapshot differs from the audit recorded in its run context/);
+  });
   const moduleRef = path.join(path.dirname(followup.evidence_ref), 'modules.json');
   const modules = JSON.parse(await readFile(moduleRef, 'utf8'));
   modules['naver-searchadvisor'][0].title = null;

@@ -148,7 +148,7 @@ test('R1: a selected page missing from artifacts and skipped, or a dropped audit
   assert.equal(blockers(buildReport(dropped.packet)), 1);
   delete dropped.packet.audit_ref;
   await dropped.forgeObservations(list => { list.length = 0; });
-  assert.throws(() => buildReport(dropped.packet), /collector evidence is indexed but the baseline audit snapshot is missing/);
+  assert.throws(() => buildReport(dropped.packet), /baseline audit snapshot differs from the audit recorded in its run context/);
 
   const limited = await run(t, ['/redirect'], { maxUrls: 1 });
   assert.doesNotThrow(() => buildReport(limited.packet), 'an artifact cut by the request budget stays a reportable unknown');

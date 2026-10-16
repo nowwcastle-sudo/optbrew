@@ -22,7 +22,7 @@
     },
     {
       "path": "scripts/core/score.mjs",
-      "sha256": "1a0f7d0c7436584700a3096b367328a909833f9148b477fc46bc706a4030e0a1"
+      "sha256": "32a4d5d4e727d910447a5b116a3caa99aa2f8bf0a92bf7c45ca31db43d398d5a"
     },
     {
       "path": "scripts/core/weights.mjs",
@@ -30,7 +30,7 @@
     },
     {
       "path": "scripts/core/contracts.mjs",
-      "sha256": "ef0e0ab50067f385e20451f025d133fa3100c1d56e8cf2874e18b83306d2e9c6"
+      "sha256": "ebbdf6ce9697144768aaa48916750c7881a9d26c5a9f313cc21b6f3c50f063a4"
     },
     {
       "path": "scripts/core/compare.mjs",
@@ -45,22 +45,22 @@
       "sha256": "703d5c16878c526114afb540e4a6d54bd74831f35a824c03a839e2480097d279"
     }
   ],
-  "evaluation_hash": "3d5974f6ddfea3eb5f6d3e1d72b9456a984a78558ea8afaaf825629ac734b6c1",
+  "evaluation_hash": "9ce3b355f348504564148f633c3d9f6b0237fd2bb648b98fa96e26788d196190",
   "protocol_sources": [
     {
       "path": "references/schemas/contract.schema.json",
-      "sha256": "1ad87124a59af47add1a7f2b2ff361c5af675d6277696d808b269d20f473b6d7"
+      "sha256": "3674b147dd17c1fb0bb24dc327b18f72942455745ca1fb13cf38c6ef62f5ce6d"
     },
     {
       "path": "references/limits.json",
-      "sha256": "c6315e2860b89f6fc0aec9780dbacd51e8da79e1c61374f16a652d6a173002b1"
+      "sha256": "0643c0f096b34e9b5fb5837746d9c8b02582b18d9298aeefe1d7e546206a372e"
     },
     {
       "path": "scripts/core/protocol.mjs",
       "sha256": "c7f85f963abd125155fed1a3a4e707885e8d63fa6d146c1a00c431440dda0336"
     }
   ],
-  "protocol_hash": "2cd3392933ccf381f775333e609035d3e34004c46fc7b27ed5822b8900c56c9a",
+  "protocol_hash": "89f6ea200b5b91285dbde1c2a9e5eb54c350e7ad0a603e33f5cda6b770be54c6",
   "files": [
     {
       "path": "LICENSE",
@@ -576,7 +576,7 @@
     },
     {
       "path": "references/limits.json",
-      "sha256": "c6315e2860b89f6fc0aec9780dbacd51e8da79e1c61374f16a652d6a173002b1"
+      "sha256": "0643c0f096b34e9b5fb5837746d9c8b02582b18d9298aeefe1d7e546206a372e"
     },
     {
       "path": "references/measurement.md",
@@ -596,7 +596,7 @@
     },
     {
       "path": "references/report.md",
-      "sha256": "cfe9194ecf174dde101efb2afd49225951ec28a8a0b22fdec7bbf1ca895f5ea9"
+      "sha256": "290aa13f00200e8ee17bd64734dbc8d85b9d61dc4e381945410e72245f31ce09"
     },
     {
       "path": "references/routing.md",
@@ -660,7 +660,7 @@
     },
     {
       "path": "references/schemas/contract.schema.json",
-      "sha256": "1ad87124a59af47add1a7f2b2ff361c5af675d6277696d808b269d20f473b6d7"
+      "sha256": "3674b147dd17c1fb0bb24dc327b18f72942455745ca1fb13cf38c6ef62f5ce6d"
     },
     {
       "path": "references/scoring.md",
@@ -788,7 +788,7 @@
     },
     {
       "path": "scripts/core/contracts.mjs",
-      "sha256": "ef0e0ab50067f385e20451f025d133fa3100c1d56e8cf2874e18b83306d2e9c6"
+      "sha256": "ebbdf6ce9697144768aaa48916750c7881a9d26c5a9f313cc21b6f3c50f063a4"
     },
     {
       "path": "scripts/core/cost-ledger.mjs",
@@ -823,6 +823,10 @@
       "sha256": "18ca332a009cb267fe3d0481a2d3628705d3948297b81e7a92e6e8bedb4e0e97"
     },
     {
+      "path": "scripts/core/judgments.mjs",
+      "sha256": "00b762d31fa734c2a3e4c516f21fc07d3491c3fb5829001f791eb25acca08ac5"
+    },
+    {
       "path": "scripts/core/keys.mjs",
       "sha256": "9faec6c3049aee0e96140e60448680aa4eba06446073283da5263655b7664183"
     },
@@ -848,7 +852,7 @@
     },
     {
       "path": "scripts/core/report.mjs",
-      "sha256": "af5c556903d72bfa55435c8fb7aa4f91019621b1505f477d9715cb5d459552bf"
+      "sha256": "4d2a881034dc63614e9bcd3b1a5ba603094f6fafc06eb634aa814de219986b14"
     },
     {
       "path": "scripts/core/runbooks.mjs",
@@ -860,7 +864,11 @@
     },
     {
       "path": "scripts/core/score.mjs",
-      "sha256": "1a0f7d0c7436584700a3096b367328a909833f9148b477fc46bc706a4030e0a1"
+      "sha256": "32a4d5d4e727d910447a5b116a3caa99aa2f8bf0a92bf7c45ca31db43d398d5a"
+    },
+    {
+      "path": "scripts/core/secrets.mjs",
+      "sha256": "02f514f1694e3fcb054eec2b1f5ae1adaa69ecf502fe0ff165ba537c8639e454"
     },
     {
       "path": "scripts/core/transport.mjs",
@@ -883,5 +891,5 @@
       "sha256": "a53223b7eefab2204c026a62b1da04cfdb8a07be8d3749613e8241a81b027d9b"
     }
   ],
-  "bundle_hash": "6338fa0a475d994aa9a95ab6246d5b59232f44afdea325cf81a95912c0536a60"
+  "bundle_hash": "c6ab33192e710688bbf338471c5892074da2962ea1d73bbc47f888952485eba8"
 }

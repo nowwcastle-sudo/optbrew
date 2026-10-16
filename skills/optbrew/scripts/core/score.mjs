@@ -65,8 +65,10 @@ export function score(input) {
   const selectedProfiles = Object.keys(profiles.profiles).filter(name => name !== 'NEO' || input.run_context.protocol.engines.includes('naver'));
   return selectedProfiles.map(profile => {
     const weighted = scoreWeighted(compileUnits(input, profile));
-    const readiness_status = weighted.A === 0 ? 'not_applicable' : blockers.length ? 'blocked' :
+    const readiness = weighted.A === 0 ? 'not_applicable' : blockers.length ? 'blocked' :
       unknown_core.length ? 'unverified' : 100 * weighted.M / weighted.A < 80 - 1e-9 ? 'provisional' : 'measured';
+    // Verdicts of a phase with no audit cannot be replayed from collected evidence, so such a phase is never 'measured'.
+    const readiness_status = readiness === 'measured' && input.run_context.audited !== true ? 'unverified' : readiness;
     const result = { schema_version: versions().contract_schema, evaluation_version: input.run_context.evaluation_version,
       profile, ...weighted, band: band(weighted.M === 0 ? null : 100 * weighted.N / weighted.M), readiness_status,
       blockers, unknown_core, source_ref: 'optbrew:scoring:0.1.0' };

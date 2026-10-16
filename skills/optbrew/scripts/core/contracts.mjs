@@ -28,9 +28,15 @@ function jsonSafe(value, path = '$', seen = new Set()) {
   }
 }
 
+/** Whether a value satisfies a rule; the `if` and `not` keywords test this instead of failing. */
+function matches(rule, value) {
+  try { checkRule(rule, value, '$'); return true; } catch (error) { if (error instanceof ContractError) return false; throw error; }
+}
+
 function checkRule(rule, value, path) {
   if (rule.$ref) return checkRule(schema.$defs[rule.$ref.split('/').at(-1)], value, path);
   if ('const' in rule && value !== rule.const) fail(path, `expected ${JSON.stringify(rule.const)}`);
+  if (rule.not && matches(rule.not, value)) fail(path, 'value not allowed here');
   if (rule.enum && !rule.enum.includes(value)) fail(path, 'unrecognized value');
   if (rule.type) {
     const types = Array.isArray(rule.type) ? rule.type : [rule.type];
@@ -46,7 +52,9 @@ function checkRule(rule, value, path) {
     if (rule.additionalProperties === false) for (const key of Object.keys(value))
       if (!Object.hasOwn(rule.properties ?? {}, key)) fail(`${path}.${key}`, 'unexpected field');
     for (const [key, child] of Object.entries(rule.properties ?? {})) if (Object.hasOwn(value, key)) checkRule(child, value[key], `${path}.${key}`);
+    if (rule.if && rule.then && matches(rule.if, value)) checkRule(rule.then, value, path);
   }
+  if (Array.isArray(value) && rule.minItems !== undefined && value.length < rule.minItems) fail(path, 'too few items');
   if (Array.isArray(value) && rule.items) value.forEach((item, i) => checkRule(rule.items, item, `${path}[${i}]`));
 }
 
