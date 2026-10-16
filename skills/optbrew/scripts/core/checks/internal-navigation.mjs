@@ -53,7 +53,7 @@ export const internalNavigation = {
       const problems = [];
       if (depth !== null && depth > max_click_depth) problems.push('The home page reaches this page in more clicks than the limit');
       if (descriptive.size && weak / descriptive.size > empty_anchor_ratio) problems.push('Linked pages have too many empty or generic anchors');
-      if (problems.length) observe('fail', problems.join('; '), { measurement });
+      if (problems.length) observe('fail', problems.join('; '), { measurement: { ...measurement, problems } });
       // A page with no click depth and no internal link has nothing to judge: it gets no observation on purpose (discovery covers it).
       else if (depth !== null || descriptive.size)
         observe('pass', depth === null ? 'Click depth not measured (left to discovery); anchors are within the limit' : 'Reached within the click limit; anchors are within the limit', { measurement });

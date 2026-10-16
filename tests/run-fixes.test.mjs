@@ -388,6 +388,39 @@ test('generic anchors in a shared menu are one internal-navigation finding on ev
   assert.equal(navigation[0].message, 'Linked pages have too many empty or generic anchors');
 });
 
+test('two problems of one check on one page are two fixes, each listing every page it hits', async () => {
+  const chain = ['/', '/p1', '/p2', '/p3', '/p4', '/p5', '/p6'];
+  const pages = { '/robots.txt': { type: 'text/plain', body: 'User-agent: *\nAllow: /\n' },
+    '/sitemap.xml': { type: 'application/xml', body: `<urlset>${chain.map(p => `<url><loc>${SITE}${p}</loc></url>`).join('')}</urlset>` } };
+  chain.forEach((p, i) => { pages[p] = brewPage(`Chain ${i}`, []); if (chain[i + 1]) pages[p].body = pages[p].body.replace('</body>', `<a href="${chain[i + 1]}">click here</a></body>`); });
+  const site = memorySite(pages);
+  const { report } = await twoCalls(site, answersFor(`${SITE}/`), { before: ws => preflightOf(site, `${SITE}/`, ws.out) });
+  const navigation = report.findings.filter(item => item.check_id === 'internal-navigation');
+  const paths = finding => (finding.unit_keys ?? [finding.unit_key]).map(unit => new URL(unit.split('|').at(-1)).pathname).sort();
+  assert.deepEqual(navigation.map(finding => [finding.message, paths(finding)]).sort(), [
+    ['Linked pages have too many empty or generic anchors', ['/', '/p1', '/p2', '/p3', '/p4', '/p5']],
+    ['The home page reaches this page in more clicks than the limit', ['/p4', '/p5', '/p6']]]);
+  assert.equal(new Set(navigation.map(finding => finding.finding_id)).size, 2);
+});
+
+test('an HTML page that shows sample sitemap XML is audited as a page; a real child sitemap with an XML prolog still counts', async () => {
+  const guide = { body: brewPage('Sitemap guide', ['/']).body.replace('</body>',
+    `<script>const sample = '<urlset><url><loc>${SITE}/</loc></url></urlset>';</script></body>`) };
+  const prolog = '﻿<?xml version="1.0" encoding="UTF-8"?>\n<?xml-stylesheet type="text/xsl" href="/main-sitemap.xsl"?>\n<!-- generated -->\n';
+  const pages = { '/': brewPage('Brew Home', ['/blog/sitemap-guide/', '/about']), '/robots.txt': { type: 'text/plain', body: 'User-agent: *\nAllow: /\n' },
+    '/sitemap.xml': { type: 'application/xml', body: `${prolog}<sitemapindex><sitemap><loc>${SITE}/page-sitemap.xml</loc></sitemap></sitemapindex>` },
+    '/page-sitemap.xml': { type: 'application/xml', body: `${prolog}<urlset><url><loc>${SITE}/about</loc></url><url><loc>${SITE}/blog/sitemap-guide/</loc></url></urlset>` },
+    '/about': brewPage('About', ['/']), '/blog/sitemap-guide/': guide };
+  const site = memorySite(pages);
+  const { report, context } = await twoCalls(site, answersFor(`${SITE}/`), { before: ws => preflightOf(site, `${SITE}/`, ws.out) });
+  const selected = context.protocol.page_types.flatMap(type => type.urls.map(url => url.normalized));
+  assert.ok(selected.includes(`${SITE}/blog/sitemap-guide/`), 'the guide is a page to audit');
+  assert.deepEqual(context.protocol.auxiliary_resources.filter(x => x.kind === 'sitemap').map(x => x.normalized).sort(),
+    [`${SITE}/page-sitemap.xml`, `${SITE}/sitemap.xml`]);
+  const discovery = report.baseline.input.observations.filter(x => x.family_id === 'discovery' && x.unit_key.endsWith('/blog/sitemap-guide/'));
+  assert.deepEqual(discovery.map(x => [x.state, x.reason]), [['pass', 'Listed in a declared sitemap']]);
+});
+
 test('the shipped flow (answers hold the landed address) still says the typed address was redirected, both ways', async () => {
   const from = `${SITE}/`, to = 'https://www.brew.test/';
   const site = memorySite(redirectPages(from, to));

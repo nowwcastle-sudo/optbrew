@@ -8,7 +8,7 @@ import { compare } from './compare.mjs';
 import { freezeProtocol } from './protocol.mjs';
 import { measurePanel } from './metrics.mjs';
 import { normalizeImport } from '../adapters/imports.mjs';
-import { mergeFindings, pageNeutral, selectRemediations } from './findings.mjs';
+import { mergeFindings, pageNeutral, problemsOf, selectRemediations } from './findings.mjs';
 import { auditCollected, indexingDirectives } from '../../modules/naver-searchadvisor/scripts/audit.mjs';
 import { deriveObservations } from './derive.mjs';
 import { readVerified } from './evidence-store.mjs';
@@ -701,9 +701,11 @@ export function buildReport(packet) {
     // A finding that carries the model's source must rest on a model verdict of its unit; its evidence is the page the collector stored.
     const modelFinding = finding.source_ref === OBSERVATION_SOURCES.host_model;
     // A finding that groups several pages names each of them, and each must itself be a failed verdict of the same problem (the same text
-    // once its own address is left out) by the same kind of judge: a listed page cannot be one that was not measured.
+    // once its own address is left out, among the problems the verdict states) by the same kind of judge: a listed page cannot be one
+    // that was not measured.
     for (const unit of finding.unit_keys ?? []) if (!observations.some(obs => obs.check_id === finding.check_id && obs.unit_key === unit && obs.state === 'fail' &&
-        pageNeutral(obs.reason, unit) === pageNeutral(finding.message, finding.unit_key) && (obs.evaluator_type === 'host_model') === modelFinding))
+        problemsOf(obs).some(problem => pageNeutral(problem, unit) === pageNeutral(finding.message, finding.unit_key)) &&
+        (obs.evaluator_type === 'host_model') === modelFinding))
       throw new ContractError(`finding names a page that is not a failed verdict of the same problem: ${unit}`);
     if (modelFinding && !observations.some(obs => obs.check_id === finding.check_id && obs.unit_key === finding.unit_key &&
         obs.evaluator_type === 'host_model' && obs.state === 'fail'))

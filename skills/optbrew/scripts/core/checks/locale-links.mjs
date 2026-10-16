@@ -40,7 +40,7 @@ export const localeLinks = {
       }
       for (const other of listedBy) if (!mine.some(alternate => points(alternate.href, other))) { problems.add('A page that lists this page as an alternate is not listed back'); listedWithoutReturn.push(other.urls[0]); }
       const measurement = { alternates_without_return_link: noReturn, pages_listing_this_page_without_return: listedWithoutReturn, unchecked_alternates: unchecked };
-      if (problems.size) observe('fail', [...problems].join('; '), { measurement });
+      if (problems.size) observe('fail', [...problems].join('; '), { measurement: { ...measurement, problems: [...problems] } });
       else if (unchecked) observe('unknown', 'Some alternate pages were not collected, so their return links are unchecked', { measurement });
       else observe('pass', 'An x-default alternate is declared and every alternate links back', { measurement });
     }

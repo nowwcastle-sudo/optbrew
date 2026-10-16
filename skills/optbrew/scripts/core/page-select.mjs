@@ -9,8 +9,10 @@ const START_FILE = path.join('preflight', 'start.json');
 const EVIDENCE_INDEX = path.join('preflight', 'evidence', 'evidence-index.json');
 /** Robots and sitemap files are auxiliary resources of the protocol, never audited pages. */
 const AUXILIARY_PATH = /\/(?:robots\.txt|sitemap[^/]*\.xml)$/i;
-const URLSET = /<urlset\b/i;
-const SITEMAPINDEX = /<sitemapindex\b/i;
+// A sitemap is an XML document whose root element is <urlset> or <sitemapindex>: before the root only a byte order mark, white
+// space, the XML declaration, other processing instructions (Yoast's stylesheet) and comments may stand. An HTML page that shows
+// sample sitemap XML in its text or a script is a page, never a sitemap.
+const SITEMAP_ROOT = /^﻿?(?:\s|<\?[\s\S]*?\?>|<!--[\s\S]*?-->)*<(urlset|sitemapindex)\b/i;
 // Files a sitemap or a link may name that are not pages to audit.
 const NOT_A_PAGE = /\.(?:pdf|jpe?g|png|gif|webp|svg|ico|zip|xml|txt|css|js|json|mp4|mp3)$/i;
 const KOREAN_PAGE = /<html\b[^>]*\blang\s*=\s*["']?ko/i;
@@ -27,8 +29,8 @@ export const sameSite = (a, b) => a.hostname.replace(/^www\./, '') === b.hostnam
 /**
  * What the unscored read before the start questions (`preflight/` in `out`) left behind, if anything: the address the first
  * request landed on (or the other site it was sent to), whether the start page declares Korean, the page addresses of every
- * sitemap file it fetched and the links of the start page. A sitemap is any fetched body that is a `<urlset>`, whatever its file
- * name (Yoast and WordPress name their children `page-sitemap.xml`, `wp-sitemap-posts-page-1.xml`). Bodies are used only when
+ * sitemap file it fetched and the links of the start page. A sitemap is any fetched body whose XML root is `<urlset>` or
+ * `<sitemapindex>`, whatever its file name (Yoast and WordPress name their children `page-sitemap.xml`, `wp-sitemap-posts-page-1.xml`). Bodies are used only when
  * they still match the hash the preflight index lists. `status` says what was there: `missing` (no preflight in this folder),
  * `read`, or `unreadable` (a preflight exists but none of its evidence could be used). A preflight made for another address is
  * not this run's and counts as missing.
@@ -52,9 +54,10 @@ export async function readPreflight(out, startHref) {
       text = bytes.toString('utf8');
     } catch { continue; }
     found.status = 'read';
-    if (SITEMAPINDEX.test(text)) found.sitemapFiles.push(entry.normalized_url);
-    if (URLSET.test(text)) { found.sitemapFiles.push(entry.normalized_url); for (const match of text.matchAll(LOC)) found.sitemapLocs.push(decodeEntities(match[1])); }
-    else if (entry.normalized_url === startHref || entry.normalized_url === found.finalUrl) {
+    const root = SITEMAP_ROOT.exec(text)?.[1].toLowerCase();
+    if (root) found.sitemapFiles.push(entry.normalized_url);
+    if (root === 'urlset') for (const match of text.matchAll(LOC)) found.sitemapLocs.push(decodeEntities(match[1]));
+    else if (!root && (entry.normalized_url === startHref || entry.normalized_url === found.finalUrl)) {
       found.korean = KOREAN_PAGE.test(text);
       found.pageLinks = links(text, found.finalUrl ?? startHref);
     }
@@ -65,11 +68,12 @@ export async function readPreflight(out, startHref) {
 /**
  * The pages one audit covers, fixed before the first request: the start page, the pages the owner confirmed facts on, then the
  * sitemap's pages in the order it lists them, then the start page's own links. Every address must be inside `scope`; a file that
- * is not a page, a duplicate, or anything past `budget` is left out. A fact page that is left out is reported back in `dropped`.
+ * is not a page, a duplicate, an `auxiliary` resource (robots, a sitemap file), or anything past `budget` is left out. A fact page
+ * that is left out is reported back in `dropped`.
  */
-export function selectPages({ home, factUrls, preflight, scope, budget }) {
+export function selectPages({ home, factUrls, preflight, scope, budget, auxiliary }) {
   const chosen = [];
-  const seen = new Set();
+  const seen = new Set(auxiliary);
   const dropped = [];
   const add = (href, owner) => {
     let normalized;

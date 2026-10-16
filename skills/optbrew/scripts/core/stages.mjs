@@ -17,7 +17,7 @@ import { openStore } from './evidence-store.mjs';
 import { OBSERVATION_SOURCES, buildJudgeQueue, mergeJudgments } from './judgments.mjs';
 import { keyHome, readGoogleKey } from './keys.mjs';
 import { groupPages, readPreflight, sameSite, selectPages } from './page-select.mjs';
-import { pageNeutral } from './findings.mjs';
+import { pageNeutral, problemsOf } from './findings.mjs';
 import { freezeProtocol } from './protocol.mjs';
 import { renderPages, selectRenderPages } from './render.mjs';
 import { writeReport } from './report.mjs';
@@ -129,7 +129,8 @@ async function contextFrom(answers, { out, localTargets = [] }) {
   // Facts the owner confirmed on the address the run started from before its redirect now live on the adopted origin.
   const factUrls = [...new Set(answers.facts.map(fact => adopted && new URL(fact.source_url).origin === asked.origin ?
     fact.source_url.replace(asked.origin, start.origin) : fact.source_url))];
-  const { pages, dropped, sources } = selectPages({ home: home.normalized, factUrls, preflight, scope, budget: requestLimit(scope) - auxiliary.length });
+  const { pages, dropped, sources } = selectPages({ home: home.normalized, factUrls, preflight, scope, budget: requestLimit(scope) - auxiliary.length,
+    auxiliary: known });
   const pageTypes = groupPages(pages, home.normalized).map(type => ({ id: type.id, urls: type.urls.map(ref) }));
   const wantsNaver = NAVER_GOAL.test(answers.goals.join(' ')) || (answers.owner_exports ?? []).some(x => x.kind === NAVER_ENGINE) ||
     preflight.korean || target.host.endsWith(KOREAN_DOMAIN);
@@ -487,7 +488,9 @@ async function evidenceList(state) {
 /**
  * The fix list: one finding for each distinct problem, not for each page it appears on. Failed verdicts with the same check and
  * the same message (the page's own address left out of it) are one finding that lists every page it affects in `unit_keys`; its
- * own unit is the first of them. A model's finding is marked with the model source and cites the page evidence the collector stored.
+ * own unit is the first of them. A verdict that states several problems (`problemsOf`) joins one group per problem; a finding
+ * that is not its first unit's first problem gets that problem's position in its id. A model's finding is marked with the model
+ * source and cites the page evidence the collector stored.
  */
 function findingsOf(observations, evidence) {
   const blocking = new Set(checkRegistry().families.filter(family => family.blocker_on_fail).map(family => family.family_id));
@@ -496,13 +499,15 @@ function findingsOf(observations, evidence) {
   for (const observation of [...observations].filter(x => x.state === 'fail').sort((a, b) => a.unit_key < b.unit_key ? -1 : a.unit_key > b.unit_key ? 1 : 0)) {
     const model = observation.evaluator_type === 'host_model';
     const blocker = observation.blocker === true || blocking.has(observation.family_id);
-    const key = JSON.stringify([observation.check_id, pageNeutral(observation.reason, observation.unit_key), model, blocker]);
-    if (!groups.has(key)) groups.set(key, { observation, model, blocker, unit_keys: [] });
-    groups.get(key).unit_keys.push(observation.unit_key);
+    for (const [position, problem] of problemsOf(observation).entries()) {
+      const key = JSON.stringify([observation.check_id, pageNeutral(problem, observation.unit_key), model, blocker]);
+      if (!groups.has(key)) groups.set(key, { observation, problem, position, model, blocker, unit_keys: [] });
+      groups.get(key).unit_keys.push(observation.unit_key);
+    }
   }
-  return [...groups.values()].map(({ observation, model, blocker, unit_keys }) => ({ schema_version: versions().contract_schema,
-    finding_id: `finding-${observation.observation_id}`, check_id: observation.check_id, unit_key: observation.unit_key, unit_keys,
-    priority: blocker ? 'P0' : core.has(observation.family_id) ? 'P1' : 'P2', blocker, message: observation.reason,
+  return [...groups.values()].map(({ observation, problem, position, model, blocker, unit_keys }) => ({ schema_version: versions().contract_schema,
+    finding_id: `finding-${observation.observation_id}${position ? `-${position}` : ''}`, check_id: observation.check_id, unit_key: observation.unit_key, unit_keys,
+    priority: blocker ? 'P0' : core.has(observation.family_id) ? 'P1' : 'P2', blocker, message: problem,
     source_ref: model ? OBSERVATION_SOURCES.host_model : evidence.find(x => x.ref === observation.evidence_ref)?.source_ref ?? observation.source_ref,
     evidence_ref: observation.evidence_ref, remediation_ids: [], status: 'confirmed' }));
 }

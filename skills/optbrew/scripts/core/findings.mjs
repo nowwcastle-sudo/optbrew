@@ -13,6 +13,12 @@ export const pageNeutral = (text, unitKey) => {
   return /^https?:\/\//.test(page) ? text.split(page).join('{page}') : text;
 };
 
+/**
+ * The distinct problems one failed verdict states. A check that finds several fixed-sentence problems on one page joins them in
+ * its reason and lists them in `measurement.problems`; each is its own fix. Any other verdict states one problem, its reason.
+ */
+export const problemsOf = observation => observation.measurement?.problems ?? [observation.reason];
+
 /** Merge the same check, unit and issue while preserving every module source. */
 export function mergeFindings(findings) {
   if (!Array.isArray(findings)) throw new ContractError('findings must be an array');

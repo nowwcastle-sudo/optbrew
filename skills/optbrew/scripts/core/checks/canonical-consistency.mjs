@@ -22,10 +22,10 @@ export const canonicalConsistency = {
         } catch { canonicalState = 'fail'; canonicalNote = 'canonical is not a valid URL'; }
       }
       // Fixed sentences; the hop count, the target and its status are page-specific and travel in the measurement.
-      const observe = (state, reason) => out.push(makeObservation({ family_id: FAMILY, unit_key: unitKey(FAMILY, url), state, reason,
-        evidence_ref: artifact.evidence_ref, extra: { measurement } }));
-      if (hops >= 2) observe('fail', `Redirect chain of two or more hops${canonicalNote ? `; ${canonicalNote}` : ''}`);
-      else if (canonicalState === 'fail') observe('fail', canonicalNote);
+      const observe = (state, reason, problems) => out.push(makeObservation({ family_id: FAMILY, unit_key: unitKey(FAMILY, url), state, reason,
+        evidence_ref: artifact.evidence_ref, extra: { measurement: problems ? { ...measurement, problems } : measurement } }));
+      const problems = [...(hops >= 2 ? ['Redirect chain of two or more hops'] : []), ...(canonicalState === 'fail' ? [canonicalNote] : [])];
+      if (problems.length) observe('fail', problems.join('; '), problems);
       else if (canonicalState === 'pass') observe('pass', 'Canonical target is this page or a reachable page and redirects stay within one hop');
     }
     return out;
