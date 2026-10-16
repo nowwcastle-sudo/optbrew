@@ -667,6 +667,9 @@ test('review P2-7: bodyless timeout remains a reportable unknown', () => {
   try {
     const fetch = run.packet.baseline.input.observations[0];
     Object.assign(fetch, { state: 'unknown', q: null, reason: 'Request did not finish', source_ref: 'optbrew:collector', evidence_ref: 'collection.json' });
+    // Next to an audit snapshot a code-judged family is the collector's alone, so the fixture's synthetic index-policy verdict and its finding go.
+    run.packet.baseline.input.observations = run.packet.baseline.input.observations.filter(x => x.source_ref === 'optbrew:collector');
+    run.packet.findings = [];
     const hand = handAudit(run, { prefix: 'p27', collectionRef: 'collection.json', homeError: 'timeout' });
     run.packet.baseline.input.observations.push(...hand.observations);
     run.packet.baseline.scores = score(run.packet.baseline.input);

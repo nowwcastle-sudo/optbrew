@@ -16,7 +16,7 @@ import { links } from './collector.mjs';
 import { checkRenderLedger } from './render.mjs';
 import { assertUrlInScope } from './scope.mjs';
 import { sensitive } from './secrets.mjs';
-import { MODEL_SOURCE, checkSpan, isCodeJudged, queuedSpan } from './judgments.mjs';
+import { OBSERVATION_SOURCES, QUEUE_KIND, candidateSpans, checkSpan, isCodeJudged, isModelJudged, queuedSpan } from './judgments.mjs';
 import { parseRobots, robotsVerdict } from '../../modules/naver-searchadvisor/scripts/robots.mjs';
 
 const catalog = JSON.parse(readFileSync(new URL('../../references/remediations.json', import.meta.url))).items;
@@ -590,26 +590,36 @@ const MODEL_JUDGMENT_LABEL = '근거 확인됨, 판정은 모델';
  * checked and the verdict is the model's.
  */
 function modelJudgmentRows(phase, input, snapshot, requireRef) {
-  const judgments = (input?.observations ?? []).filter(obs => obs.evaluator_type === 'host_model');
-  const fail = (obs, message) => { throw new ContractError(`model judgment ${obs.unit_key}: ${message}`); };
-  for (const obs of judgments) {
-    if (isCodeJudged(obs.family_id)) fail(obs, `${obs.family_id} is judged by code; a host_model observation cannot stand for it`);
-    if (obs.source_ref !== MODEL_SOURCE) fail(obs, `source_ref must be ${MODEL_SOURCE}`);
+  const fail = (obs, message) => { throw new ContractError(`verdict ${obs.unit_key}: ${message}`); };
+  for (const obs of input?.observations ?? []) {
+    const type = obs.evaluator_type;
+    // Next to an audit, a code-judged family is the collector's alone and is re-derived; without one, only a model is refused (an outside source stays unverified).
+    if (isCodeJudged(obs.family_id) && (type === 'host_model' || snapshot && (type !== 'code' || obs.source_ref !== OBSERVATION_SOURCES.code)))
+      fail(obs, `${obs.family_id} is judged by code; a ${type} observation with source_ref ${obs.source_ref} cannot stand for it`);
+    // A content family has exactly one allowed pair: the model's, bound to the judge queue.
+    if (isModelJudged(obs.family_id) && (type !== 'host_model' || obs.source_ref !== OBSERVATION_SOURCES.host_model))
+      fail(obs, `${obs.family_id} is judged by a model through the judge queue; evaluator_type ${type} with source_ref ${obs.source_ref} is not allowed`);
+    if (type === 'host_model' && obs.source_ref !== OBSERVATION_SOURCES.host_model) fail(obs, `source_ref must be ${OBSERVATION_SOURCES.host_model}`);
   }
+  const judgments = (input?.observations ?? []).filter(obs => obs.evaluator_type === 'host_model');
   if (!judgments.length) return [];
   if (!snapshot) throw new ContractError(`${phase} model judgments require their audit snapshot`);
   const audit = JSON.parse(requireRef(snapshot.audit_ref).text);
   const queues = (audit.judge_queue ?? []).map(entry => {
     const stored = requireRef(entry.evidence_ref);
     if (stored.sha256 !== entry.sha256) throw new ContractError('judge queue hash differs from the audit index');
+    if (stored.kind !== QUEUE_KIND) throw new ContractError(`judge queue evidence has kind ${stored.kind}, not ${QUEUE_KIND}`);
     return JSON.parse(stored.text);
   });
   return judgments.filter(obs => obs.state !== 'unknown').map(obs => {
     const raw = (audit.raw ?? []).find(x => x.evidence_ref === obs.evidence_ref && x.normalized_url === unitUrl(obs.unit_key));
     if (!raw) fail(obs, 'its evidence is not the audit raw entry of the unit page');
+    // Candidates are recomputed from the raw bytes, so a consistently forged queue cannot widen what a model may cite.
+    const candidates = candidateSpans(requireRef(obs.evidence_ref).bytes, raw.content_hash);
     for (const span of obs.evidence_span ?? []) {
       if (span.evidence_sha256 !== raw.content_hash) fail(obs, 'a span names evidence other than the unit page');
       try { checkSpan(requireRef(obs.evidence_ref).bytes, span); } catch (error) { fail(obs, error.message); }
+      if (!candidates.some(x => x.start === span.start && x.end === span.end)) fail(obs, `span ${span.start}-${span.end} is not a text run of the page`);
       if (!queues.some(queue => queuedSpan(queue, obs, span))) fail(obs, `span ${span.start}-${span.end} is not a candidate of the stored judge queue`);
     }
     return { phase, family_id: obs.family_id, unit_key: obs.unit_key, state: obs.state, evidence_ref: obs.evidence_ref, evidence_span: obs.evidence_span, label: MODEL_JUDGMENT_LABEL };

@@ -258,7 +258,7 @@ test('a tampered model-judgment span fails report replay', { timeout: 120000 }, 
       ['past the end of the evidence', span => { span.end += 100000; }, /inside the evidence/],
       ['inside a multi-byte character', span => { span.start += 1; }, /multi-byte/],
       ['another evidence hash', span => { span.evidence_sha256 = '0'.repeat(64); }, /names evidence other than the unit page/],
-      ['a range the queue never offered', span => { span.start = 0; span.end = 5; }, /not a candidate of the stored judge queue/],
+      ['a range that is no text run of the page', span => { span.start = 0; span.end = 5; }, /is not a text run of the page/],
     ];
     forge(run, list => list.push(made));
     for (const [name, tamper, expected] of cases) {
@@ -291,11 +291,92 @@ test('a host-model observation for a code-judged family, or without the model so
   try {
     const made = await run.judge(run.units[0]);
     forge(run, list => list.push({ ...made, source_ref: 'optbrew:collector' }));
-    assert.throws(() => buildReport(run.scenario.packet), /source_ref must be optbrew:model-judgment/);
+    assert.throws(() => buildReport(run.scenario.packet), /judged by a model through the judge queue/);
     forge(run, list => list.pop());
     const code = run.scenario.packet.baseline.input.observations.find(x => x.family_id === 'fetch-response');
     forge(run, () => Object.assign(code, { evaluator_type: 'host_model', source_ref: 'optbrew:model-judgment', evidence_span: made.evidence_span }));
     assert.throws(() => buildReport(run.scenario.packet), /fetch-response is judged by code/);
+  } finally { await run.site.close(); }
+});
+
+test('an external_model verdict for a code-judged family is refused', { timeout: 120000 }, async () => {
+  const run = await modelRun('judge-external');
+  try {
+    const code = run.scenario.packet.baseline.input.observations.find(x => x.family_id === 'index-policy');
+    forge(run, () => Object.assign(code, { evaluator_type: 'external_model' }));
+    assert.throws(() => buildReport(run.scenario.packet), /index-policy is judged by code; a external_model observation/);
+    forge(run, () => Object.assign(code, { evaluator_type: 'human' }));
+    assert.throws(() => buildReport(run.scenario.packet), /index-policy is judged by code; a human observation/);
+  } finally { await run.site.close(); }
+});
+
+test('a human verdict with an unknown source_ref is refused', { timeout: 120000 }, async () => {
+  const run = await modelRun('judge-human');
+  try {
+    const { evidence_span, ...rest } = await run.judge(run.units[0]);
+    assert.ok(evidence_span);
+    await run.scenario.record('reviewer-note.json', { note: '검토 의견' }, 'record', 'custom:reviewer');
+    forge(run, list => list.push({ ...rest, evaluator_type: 'human', source_ref: 'custom:reviewer', evidence_ref: 'reviewer-note.json' }));
+    assert.throws(() => buildReport(run.scenario.packet), /claim-support is judged by a model through the judge queue; evaluator_type human with source_ref custom:reviewer/);
+  } finally { await run.site.close(); }
+});
+
+test('a relabelled host_model judgment is refused', { timeout: 120000 }, async () => {
+  const run = await modelRun('judge-relabel');
+  try {
+    const made = await run.judge(run.units[0]);
+    // The relabelled verdict borrows the collector's source, the one pair that passes the evidence source pin.
+    for (const evaluator_type of ['external_model', 'human', 'code']) {
+      const relabel = { evaluator_type, source_ref: 'optbrew:collector' };
+      forge(run, list => list.splice(0, list.length, ...list.filter(x => x.family_id !== 'claim-support'), { ...made, ...relabel }));
+      assert.throws(() => buildReport(run.scenario.packet), /claim-support is judged by a model through the judge queue/, JSON.stringify(relabel));
+    }
+  } finally { await run.site.close(); }
+});
+
+/** Rewrite the stored queue and every hash that names it, as a forger who controls the whole evidence directory would. */
+async function forgeQueue(run, mutate) {
+  const forged = JSON.parse(readFileSync(run.queueRef, 'utf8'));
+  mutate(forged);
+  writeFileSync(run.queueRef, `${JSON.stringify(forged, null, 2)}\n`);
+  await run.scenario.rewrite(run.queueRef, () => forged);
+  const sha256 = run.scenario.packet.evidence_index.find(x => x.ref === run.queueRef).sha256;
+  await run.scenario.rewrite(run.scenario.evidence('evidence-index.json'), index => { index.judge_queue.at(-1).sha256 = sha256; });
+}
+
+test('a consistently forged queue cannot offer a range that is not a text run of the page', { timeout: 120000 }, async () => {
+  const run = await modelRun('judge-forged');
+  try {
+    const made = await run.judge(run.units[0]);
+    const [first, second] = made.evidence_span;
+    const odd = { ...first, start: first.start + 3, end: first.end - 4 };
+    await forgeQueue(run, queue => {
+      const item = queue.items.find(x => x.unit_key === made.unit_key);
+      item.spans = item.spans.filter(x => x.start !== first.start);
+      item.spans.push({ span_id: `${odd.start}-${odd.end}`, ...odd, text: 'forged' });
+    });
+    forge(run, list => list.push({ ...made, evidence_span: [odd, second] }));
+    assert.throws(() => buildReport(run.scenario.packet), /is not a text run of the page/);
+  } finally { await run.site.close(); }
+});
+
+test('a text run of the page that the stored queue never offered is refused', { timeout: 120000 }, async () => {
+  const run = await modelRun('judge-unoffered');
+  try {
+    const made = await run.judge(run.units[0]);
+    await forgeQueue(run, queue => { queue.items.find(x => x.unit_key === made.unit_key).spans.shift(); });
+    forge(run, list => list.push(made));
+    assert.throws(() => buildReport(run.scenario.packet), /is not a candidate of the stored judge queue/);
+  } finally { await run.site.close(); }
+});
+
+test('queue evidence indexed under another kind is refused', { timeout: 120000 }, async () => {
+  const run = await modelRun('judge-kind');
+  try {
+    const made = await run.judge(run.units[0]);
+    forge(run, list => list.push(made));
+    run.scenario.packet.evidence_index.find(x => x.ref === run.queueRef).kind = 'record';
+    assert.throws(() => buildReport(run.scenario.packet), /has kind record, not judge-queue/);
   } finally { await run.site.close(); }
 });
 

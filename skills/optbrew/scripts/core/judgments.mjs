@@ -6,9 +6,9 @@ import { sensitive } from './secrets.mjs';
 
 const FETCH_FAMILY = 'fetch-response';
 const MODEL_EVALUATOR = 'host_model';
-/** The `source_ref` of every model observation; report replay pins it. */
-export const MODEL_SOURCE = 'optbrew:model-judgment';
-const QUEUE_KIND = 'judge-queue';
+/** The only `source_ref` each evaluator type may carry in a replayed packet; report replay refuses any other pair. */
+export const OBSERVATION_SOURCES = Object.freeze({ code: 'optbrew:collector', [MODEL_EVALUATOR]: 'optbrew:model-judgment' });
+export const QUEUE_KIND = 'judge-queue';
 const QUEUE_SECTION = 'judge_queue';
 const registry = JSON.parse(readFileSync(new URL('../../references/check-registry.json', import.meta.url)));
 const verdictMode = new Map(registry.families.map(family => [family.family_id, family.verdict_mode]));
@@ -22,6 +22,9 @@ const INERT = /<!--[\s\S]*?(?:-->|$)|<(script|style|template|noscript)\b[\s\S]*?
 function modelFamilies() {
   return registry.families.filter(family => family.unit_scope === 'url' && !isCodeJudged(family.family_id)).map(family => family.family_id);
 }
+
+/** Whether a family is one the model judges through the judge queue (a per-page family with no code check block). */
+export const isModelJudged = family_id => modelFamilies().includes(family_id);
 
 /** Whether a family has a code check block, so only code may judge it. */
 export const isCodeJudged = family_id => blocks.some(block => block.family_id === family_id);
@@ -44,7 +47,7 @@ export function checkSpan(bytes, { start, end }) {
  * The body is scanned as bytes (latin1), so offsets are byte offsets and a run can only start or end next to an ASCII
  * character, never inside a multi-byte one. Runs with a secret are dropped; the longest runs are kept, in document order.
  */
-function candidateSpans(bytes, evidence_sha256) {
+export function candidateSpans(bytes, evidence_sha256) {
   const { judge_spans_per_unit: cap, judge_span_min_bytes: minimum } = limits();
   const masked = bytes.toString('latin1').replace(INERT, found => `<${' '.repeat(found.length - 2)}>`);
   const spans = [];
@@ -138,7 +141,7 @@ export async function mergeJudgments({ observations, judgments, store }) {
       throw new Error(`${unit_key} already has a verdict`);
     if (state === 'not_applicable') throw new Error('a model judgment cannot declare not_applicable');
     if (sensitive.test(judgment.reason ?? '')) throw new Error(`judgment reason for ${unit_key} contains a secret`);
-    const extra = { evaluator_type: MODEL_EVALUATOR, source_ref: MODEL_SOURCE };
+    const extra = { evaluator_type: MODEL_EVALUATOR, source_ref: OBSERVATION_SOURCES[MODEL_EVALUATOR] };
     if (state !== 'unknown') {
       if (!judgment.span_ids?.length) throw new Error(`a ${state} judgment for ${unit_key} needs span_ids`);
       const spans = judgment.span_ids.map(id => {

@@ -179,7 +179,7 @@ test('P3/P4: rewriting the reason or the evaluator of a collector observation is
   assert.throws(() => buildReport(reason.packet), /collector verdict differs from raw evidence|title\/index verdict differs/);
   const evaluator = await forge(t);
   await evaluator.forgeObservations(list => Object.assign(list.find(x => x.family_id === 'index-policy' && x.state === 'fail'), { evaluator_type: 'human' }));
-  assert.throws(() => buildReport(evaluator.packet), /collector verdict differs from raw evidence|title\/index verdict differs/);
+  assert.throws(() => buildReport(evaluator.packet), /index-policy is judged by code; a human observation/);
 });
 
 test('an audit index from an older release is refused with a message that says what to do', async t => {
