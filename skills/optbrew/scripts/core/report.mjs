@@ -15,12 +15,13 @@ import { readVerified } from './evidence-store.mjs';
 import { links } from './collector.mjs';
 import { checkRenderLedger } from './render.mjs';
 import { assertUrlInScope } from './scope.mjs';
+import { sensitive } from './secrets.mjs';
+import { checkSpan } from './judgments.mjs';
 import { parseRobots, robotsVerdict } from '../../modules/naver-searchadvisor/scripts/robots.mjs';
 
 const catalog = JSON.parse(readFileSync(new URL('../../references/remediations.json', import.meta.url))).items;
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 const named = value => typeof value === 'string' && value.trim().length > 0;
-const sensitive = /(?:sk-ant-api03-[A-Za-z0-9_-]{32,}|sk-proj-[A-Za-z0-9_-]{32,}|ghp_[A-Za-z0-9]{36,}|AKIA[A-Z0-9]{16}|\b\d{6}-[1-8]\d{6}\b)/;
 const html = value => String(value ?? 'unknown').replace(/\\/g, '\\\\').replace(/&/g, '&amp;').replace(/</g, '&lt;')
   .replace(/>/g, '&gt;').replace(/\|/g, '\\|').replace(/\r?\n/g, '<br>');
 const table = (columns, rows) => `| ${columns.join(' | ')} |\n| ${columns.map(() => '---').join(' | ')} |\n${rows.map(row => `| ${row.map(html).join(' | ')} |`).join('\n') || `| ${columns.map(() => '—').join(' | ')} |`}`;
@@ -103,7 +104,7 @@ function indexedEvidence(packet) {
     try { bytes = readVerified(root, entry.ref, entry.sha256); }
     catch (error) { throw new ContractError(error.message); }
     if (sensitive.test(bytes.toString('utf8'))) throw new ContractError('private identifier or secret in report evidence');
-    index.set(entry.ref, { ...entry, text: bytes.toString('utf8') });
+    index.set(entry.ref, { ...entry, text: bytes.toString('utf8'), bytes });
   }
   const requireRef = (ref, sourceRef) => {
     const entry = index.get(ref);
@@ -239,7 +240,8 @@ function checkDecisions(input, requireRef, collectedFor) {
   for (const family of input.run_context.protocol.families)
     if (family.applicability_decision) decisionRecord(family.applicability_decision, 'family', { key: 'family_id', value: family.family_id });
   for (const observation of input.observations) {
-    const evidence = requireRef(observation.evidence_ref, observation.source_ref);
+    // A model's verdict cites evidence the collector stored; modelJudgmentRows binds it to that evidence by hash and byte range.
+    const evidence = requireRef(observation.evidence_ref, observation.evaluator_type === 'host_model' ? undefined : observation.source_ref);
     if (observation.applicability_decision) decisionRecord(observation.applicability_decision, 'unit', { key: 'unit_key', value: observation.unit_key });
     if (observation.check_id === 'index-policy' && observation.state === 'fail') {
       if (evidence.kind !== 'raw_html' && evidence.kind !== 'http_response')
@@ -577,6 +579,24 @@ function checkAuditPhase(input, phase, snapshot, requireRef) {
     throw new ContractError(`collector observation is not derivable from raw evidence: ${have.unit_key}`);
 }
 
+const MODEL_JUDGMENT_LABEL = '근거 확인됨, 판정은 모델';
+
+/**
+ * The model judgments of one score input, each checked against the run's stored evidence: a verdict other than unknown
+ * needs an evidence span, the evidence must be in the run with the span's hash, and the byte range must sit inside it on
+ * character boundaries. The label says the evidence was checked and the verdict is the model's.
+ */
+function modelJudgmentRows(phase, input, index) {
+  return (input?.observations ?? []).filter(obs => obs.evaluator_type === 'host_model' && obs.state !== 'unknown').map(obs => {
+    const span = obs.evidence_span;
+    const entry = index.get(obs.evidence_ref);
+    if (!span || !entry || entry.sha256 !== span.evidence_sha256) throw new ContractError(`model judgment is not bound to stored evidence: ${obs.unit_key}`);
+    try { checkSpan(entry.bytes, span); }
+    catch (error) { throw new ContractError(`model judgment span is invalid for ${obs.unit_key}: ${error.message}`); }
+    return { phase, family_id: obs.family_id, unit_key: obs.unit_key, state: obs.state, evidence_ref: obs.evidence_ref, evidence_span: span, label: MODEL_JUDGMENT_LABEL };
+  });
+}
+
 /** Recompute scores and metrics from contained run evidence; render four design tables. */
 export function buildReport(packet) {
   validateEntity('ReportPacket', packet);
@@ -584,7 +604,7 @@ export function buildReport(packet) {
   if (packet.baseline.input.run_context.run_id !== packet.run_context.run_id ||
       !same(packet.baseline.input.run_context, packet.run_context) || packet.costs.run_id !== packet.run_context.run_id)
     throw new ContractError('report run context or cost ledger mismatch');
-  const { requireRef } = indexedEvidence(packet);
+  const { requireRef, index } = indexedEvidence(packet);
   const snapshots = packet.audit_snapshots ?? (packet.audit_ref ? [{ phase: 'baseline',
     audit_ref: packet.audit_ref, context_ref: packet.run_context.evidence_ref }] : []);
   if (new Set(snapshots.map(x => x.phase)).size !== snapshots.length ||
@@ -614,6 +634,7 @@ export function buildReport(packet) {
     throw new ContractError('cost ledger snapshot evidence differs from report');
   checkAuditPhase(packet.baseline.input, 'baseline', snapshotFor('baseline'), requireRef);
   checkAuditPhase(packet.after?.input, 'after', snapshotFor('after'), requireRef);
+  const modelRows = [['baseline', packet.baseline.input], ['after', packet.after?.input]].flatMap(([phase, input]) => modelJudgmentRows(phase, input, index));
   const merged = mergeFindings(packet.findings);
   const observations = [...packet.baseline.input.observations, ...(packet.after?.input.observations ?? [])];
   const collectedAny = collectedResponses(snapshots, requireRef);
@@ -726,7 +747,7 @@ export function buildReport(packet) {
     metrics: packet.metrics, findings, changes: packet.changes, costs: packet.costs,
     capabilities: packet.capabilities ?? null, cost_issues: costIssues, metric_origin_limitations: metricOriginLimitations, remaining,
     evidence_root: packet.evidence_root, evidence_index: packet.evidence_index,
-    audit_ref: packet.audit_ref ?? null, audit_snapshots: snapshots, source_ref: packet.source_ref };
+    audit_ref: packet.audit_ref ?? null, audit_snapshots: snapshots, model_judgments: modelRows, source_ref: packet.source_ref };
   const byProfile = new Map(afterScores?.map(x => [x.profile, x]) ?? []);
   const scoreRows = baselineScores.map(before => {
     const after = byProfile.get(before.profile);
@@ -750,6 +771,7 @@ export function buildReport(packet) {
     f.resolution ? `${f.status} (resolved by ${f.resolution.evaluator_type} observation from ${f.resolution.source_ref})` : f.status]);
   const outcomeRows = metricRows(packet.metrics);
   const remainingRows = remaining.map(x => [x.problem, x.reason, x.required_input_or_authority, x.next_action, x.reobserve_when]);
+  const modelTableRows = modelRows.map(x => [x.phase, `${x.family_id} ${x.unit_key}`, x.state, `${x.evidence_ref} bytes ${x.evidence_span.start}–${x.evidence_span.end}`, x.label]);
   const markdown = `# optbrew report\n\n${packet.data_class === 'synthetic' ? '**Synthetic example — no real site or provider outcome.**\n\n' : ''}` +
     `Target: ${html(packet.run_context.target)}  \nEnvironment: ${html(packet.run_context.environment)}  \nGoals: ${html(packet.run_context.goals.join(', '))}  \n` +
     `Comparison: ${html(comparison.status)} (${html(comparison.reasons.join(', ') || 'none')})  \n` +
@@ -763,8 +785,9 @@ export function buildReport(packet) {
     `## Remediation\n\n${table(['Priority', 'Problem / URL', 'Evidence', 'Selected remedy', 'Change path or owner location', 'Cost / effort', 'Verification', 'Status'], remediationRows)}\n\n` +
     `## Actual outcomes\n\n${table(['Engine / property', 'Metric', 'Window / sample', 'Before raw', 'After raw', 'Difference', 'Completion', 'Limitations'], outcomeRows)}\n\n` +
     `## Remaining work\n\n${table(['Problem', 'Reason', 'Needed input / authority', 'Next action', 'Reobserve when'], remainingRows)}\n\n` +
+    (modelRows.length ? `## Model judgments\n\n${table(['Phase', 'Check / unit', 'State', 'Evidence span (UTF-8 bytes, end excluded)', 'Basis'], modelTableRows)}\n\n` : '') +
     `Evidence root: ${html(packet.evidence_root)}; run ID: ${html(packet.run_context.run_id)}. Read report.json to replay raw score inputs.\n`;
-  result.tables = { score: scoreRows, remediation: remediationRows, actual_outcomes: outcomeRows, remaining_work: remainingRows };
+  result.tables = { score: scoreRows, remediation: remediationRows, actual_outcomes: outcomeRows, remaining_work: remainingRows, model_judgments: modelTableRows };
   return { json: result, markdown };
 }
 

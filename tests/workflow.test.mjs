@@ -211,7 +211,7 @@ test('real local HTTP baseline, authorized edit and same-condition rescan clear 
       check_id: family, unit_key: `${family}|${url}`, priority: family === 'index-policy' ? 'P0' : 'P1',
       blocker: family === 'index-policy', message: family === 'index-policy' ? 'Unexpected noindex' : 'Missing title',
       source_ref: 'optbrew:collector', evidence_ref: beforeRaw, remediation_ids: [], status: 'confirmed' })),
-    changes: [{ schema_version: '1.0.0', change_id: 'local-html-edit', finding_ids: ['index-policy', 'document-title'],
+    changes: [{ schema_version: '1.0.0', change_id: 'local-html-edit', finding_ids: ['index-policy', 'document-title'], analysis: { tools: [], queries: [], self_analysis: true },
       environment: 'local', path: 'site.html', before_hash: baseline.artifacts[0].content_hash,
       after_hash: followup.artifacts[0].content_hash, backup_ref: beforeRaw,
       evidence_ref: afterRaw, verification: { status: 'passed', deployed: false, evidence_ref: 'verification.json',

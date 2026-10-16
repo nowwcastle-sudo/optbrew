@@ -6,6 +6,7 @@
   "skills/optbrew/scripts/core/capabilities.mjs": "Task 13",
   "skills/optbrew/scripts/core/collector.mjs": "Task 13",
   "skills/optbrew/scripts/core/facts.mjs": "Task 22",
+  "skills/optbrew/scripts/core/judgments.mjs": "Task 13",
   "skills/optbrew/scripts/core/keys.mjs": "Task 11",
   "skills/optbrew/scripts/core/render.mjs": "Task 13",
   "skills/optbrew/scripts/core/report.mjs": "Task 13",

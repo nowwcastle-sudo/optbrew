@@ -44,7 +44,7 @@ function addChange(run, id, { environment = 'local', status = 'passed', deployed
     path: 'site/page.html', after_hash: receiptHash, environment, target: 'example.com',
     checks: [{ id: 'raw-response', status: 'passed', observed: 'file hash checked',
       evidence_ref: `${id}-after.txt`, after_hash: sha(after) }], ...(deployment ? { deployment } : {}) }, 'verification');
-  run.packet.changes.push({ schema_version: '1.0.0', change_id: id, finding_ids: ['module:a'],
+  run.packet.changes.push({ schema_version: '1.0.0', change_id: id, finding_ids: ['module:a'], analysis: { tools: [], queries: [], self_analysis: true },
     environment, path: 'site/page.html', before_hash: sha(before), after_hash: sha(after),
     backup_ref: `${id}-before.txt`, evidence_ref: `${id}-after.txt`,
     verification: { status, deployed, evidence_ref: `${id}-verify.json` } });
@@ -802,6 +802,7 @@ test('final review round 3: a production resolution shows the evaluator type of 
     try {
       const observation = run.packet.after.input.observations.find(x => x.check_id === 'index-policy');
       observation.evaluator_type = evaluator;
+      if (evaluator === 'host_model') observation.evidence_span = { evidence_sha256: run.packet.evidence_index.find(x => x.ref === observation.evidence_ref).sha256, start: 0, end: 6 };
       run.packet.after.scores = score(run.packet.after.input);
       const report = buildReport(run.packet);
       assert.equal(report.json.findings[0].status, 'verified_production');
