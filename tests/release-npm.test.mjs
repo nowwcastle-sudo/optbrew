@@ -11,6 +11,7 @@ import { verifyRelease } from '../scripts/verify-release.mjs';
 import { createBundleManifest } from '../skills/optbrew/scripts/core/bundle.mjs';
 import { verifiedBundle } from '../lib/transaction.mjs';
 import { copyReleaseTree, removeReleaseCopies } from './support/release-copy.mjs';
+import { skipCrlfCheckout } from './support/checkout-eol.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 // Every build and verification runs on a private copy of the release tree, never on the repository itself.
@@ -26,12 +27,12 @@ function npmPack(destination, cwd) {
 }
 
 // Split from release.test.mjs so each file stays well inside the per-file timeout (the npm pack tests are the slow ones).
-test('npm tarball includes matching skill bytes and excludes authoring files', async () => {
+test('npm tarball includes matching skill bytes and excludes authoring files', { skip: skipCrlfCheckout }, async () => {
   const outputDir = await mkdtemp(path.join(tmpdir(), 'optbrew-npm-'));
   const copy = await copyReleaseTree();
   let passed = false;
   try {
-    const artifacts = await buildRelease({ root: copy, version: '0.1.3', outputDir });
+    const artifacts = await buildRelease({ root: copy, version: '0.1.4', outputDir });
     const packed = npmPack(outputDir, copy);
     assert.equal(packed.status, 0, packed.stderr);
     const info = JSON.parse(packed.stdout);
@@ -56,12 +57,12 @@ test('npm tarball includes matching skill bytes and excludes authoring files', a
   }
 });
 
-test('npm verifier rejects tampered entrypoint, missing libs, and false package or overlay versions', async () => {
+test('npm verifier rejects tampered entrypoint, missing libs, and false package or overlay versions', { skip: skipCrlfCheckout }, async () => {
   const outputDir = await mkdtemp(path.join(tmpdir(), 'optbrew-npm-tamper-'));
   const copy = await copyReleaseTree();
   let passed = false;
   try {
-    const artifacts = await buildRelease({ root: copy, version: '0.1.3', outputDir });
+    const artifacts = await buildRelease({ root: copy, version: '0.1.4', outputDir });
     const packed = npmPack(outputDir, copy);
     assert.equal(packed.status, 0, packed.stderr);
     const info = JSON.parse(packed.stdout);

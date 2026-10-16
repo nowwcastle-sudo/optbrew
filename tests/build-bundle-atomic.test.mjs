@@ -18,7 +18,7 @@ test('build-bundle replaces bundle-manifest.json atomically: a concurrent reader
   await cp(source, bundle, { recursive: true, filter: p => isDistributedBundlePath(path.relative(source, p)) });
   const manifest = path.join(bundle, 'bundle-manifest.json');
   const build = async () => {
-    const run = spawn(process.execPath, [script, '--bundle', bundle, '--version', '0.1.3'], { stdio: 'inherit' });
+    const run = spawn(process.execPath, [script, '--bundle', bundle, '--version', '0.1.4'], { stdio: 'inherit' });
     assert.equal(await new Promise(resolve => run.on('close', resolve)), 0);
   };
   await build(); // the copy's manifest may be older than its files
@@ -53,7 +53,7 @@ test('build-release replaces bundle-manifest.json atomically and works on a priv
   t.after(() => rm(outputDir, { recursive: true, force: true }));
   const manifest = path.join(copy, 'skills/optbrew/bundle-manifest.json');
   const realBefore = await readFile(path.join(root, 'skills/optbrew/bundle-manifest.json'), 'utf8');
-  await buildRelease({ root: copy, version: '0.1.3', outputDir });
+  await buildRelease({ root: copy, version: '0.1.4', outputDir });
   const expected = await readFile(manifest, 'utf8');
   let running = true, reads = 0;
   const bad = [];
@@ -63,7 +63,7 @@ test('build-release replaces bundle-manifest.json atomically and works on a priv
       await new Promise(resolve => setImmediate(resolve));
     }
   })();
-  for (let i = 0; i < 4; i++) await buildRelease({ root: copy, version: '0.1.3', outputDir });
+  for (let i = 0; i < 4; i++) await buildRelease({ root: copy, version: '0.1.4', outputDir });
   running = false;
   await reader;
   assert.ok(reads > 20, `the reader ran ${reads} times`);

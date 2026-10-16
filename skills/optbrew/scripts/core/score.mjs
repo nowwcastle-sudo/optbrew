@@ -6,6 +6,9 @@ import { compileUnits, scoreWeighted } from './weights.mjs';
 const registry = JSON.parse(readFileSync(new URL('../../references/check-registry.json', import.meta.url)));
 const profiles = JSON.parse(readFileSync(new URL('../../references/profiles.json', import.meta.url)));
 const bundleRoot = new URL('../../', import.meta.url);
+// Same rule as fileDigest in bundle.mjs: CRLF from a core.autocrlf checkout hashes as the committed LF bytes.
+const sourceDigest = bytes => createHash('sha256')
+  .update(bytes.includes(0) ? bytes : Buffer.from(bytes.toString('latin1').replaceAll('\r\n', '\n'), 'latin1')).digest('hex');
 
 function assertEvaluationIdentity(context) {
   const manifest = JSON.parse(readFileSync(new URL('bundle-manifest.json', bundleRoot), 'utf8'));
@@ -17,7 +20,7 @@ function assertEvaluationIdentity(context) {
     const sources = manifest[field];
     if (!Array.isArray(sources) || !sources.length ||
         createHash('sha256').update(JSON.stringify(sources)).digest('hex') !== manifest[hashField] ||
-        sources.some(source => createHash('sha256').update(readFileSync(new URL(source.path, bundleRoot))).digest('hex') !== source.sha256))
+        sources.some(source => sourceDigest(readFileSync(new URL(source.path, bundleRoot))) !== source.sha256))
       throw new ContractError(`${field} identity differs from installed bundle`);
   }
 }

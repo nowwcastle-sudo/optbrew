@@ -3,6 +3,8 @@ import { readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
 
 const digest = bytes => createHash('sha256').update(bytes).digest('hex');
+/** Hash a file as committed: a checkout with core.autocrlf may turn LF into CRLF. A NUL byte marks a binary file, hashed as is. */
+export const fileDigest = bytes => digest(bytes.includes(0) ? bytes : Buffer.from(bytes.toString('latin1').replaceAll('\r\n', '\n'), 'latin1'));
 const manifestName = 'bundle-manifest.json';
 export const evaluationSourcePaths = ['references/check-registry.json', 'references/profiles.json',
   'references/scoring.md', 'references/measurement.md', 'scripts/core/score.mjs', 'scripts/core/weights.mjs',
@@ -34,7 +36,7 @@ export async function createBundleManifest({ bundleRoot, releaseVersion }) {
   if (!/^\d+\.\d+\.\d+(?:[-+][\w.-]+)?$/.test(releaseVersion)) throw new Error('invalid release version');
   const files = [];
   for (const name of await listFiles(bundleRoot)) {
-    files.push({ path: name, sha256: digest(await readFile(path.join(bundleRoot, name))) });
+    files.push({ path: name, sha256: fileDigest(await readFile(path.join(bundleRoot, name))) });
   }
   // Synthetic install fixtures contain only SKILL.md; production release checks completeness.
   const selected = paths => paths.every(name => files.some(file => file.path === name))

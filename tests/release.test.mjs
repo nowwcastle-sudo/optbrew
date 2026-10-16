@@ -11,6 +11,7 @@ import { verifyRelease } from '../scripts/verify-release.mjs';
 import { createBundleManifest } from '../skills/optbrew/scripts/core/bundle.mjs';
 import { verifiedBundle } from '../lib/transaction.mjs';
 import { copyReleaseTree, removeReleaseCopies } from './support/release-copy.mjs';
+import { skipCrlfCheckout } from './support/checkout-eol.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 // Every build and verification runs on a private copy of the release tree, never on the repository itself.
@@ -25,12 +26,12 @@ function npmPack(destination, cwd) {
     spawnSync('npm', args, { cwd, encoding: 'utf8', shell: false });
 }
 
-test('ZIP contains a self-contained skill with exact selected guides and refuses tampering', async () => {
+test('ZIP contains a self-contained skill with exact selected guides and refuses tampering', { skip: skipCrlfCheckout }, async () => {
   const outputDir = await mkdtemp(path.join(tmpdir(), 'optbrew-release-'));
   const copy = await copyReleaseTree();
   let passed = false;
   try {
-    const artifacts = await buildRelease({ root: copy, version: '0.1.3', outputDir });
+    const artifacts = await buildRelease({ root: copy, version: '0.1.4', outputDir });
     const first = await verifyRelease({ root: copy, artifacts });
     assert.equal(first.status, 'valid', JSON.stringify(first.errors));
     const listing = spawnSync('python', ['-c', 'import sys,zipfile,json; print(json.dumps(zipfile.ZipFile(sys.argv[1]).namelist()))', artifacts.skill_zip], { encoding: 'utf8' });
@@ -109,12 +110,12 @@ test('official schema validates portable plugin and rejects extra root fields', 
   assert.match(bad.stdout, /Additional properties/);
 });
 
-test('final review I8: ZIP verifier records every member and rejects unextractable layouts', async () => {
+test('final review I8: ZIP verifier records every member and rejects unextractable layouts', { skip: skipCrlfCheckout }, async () => {
   const outputDir = await mkdtemp(path.join(tmpdir(), 'optbrew-zip-layout-'));
   const copy = await copyReleaseTree();
   let passed = false;
   try {
-    const artifacts = await buildRelease({ root: copy, version: '0.1.3', outputDir });
+    const artifacts = await buildRelease({ root: copy, version: '0.1.4', outputDir });
     const script = `import sys,zipfile\nsrc,dst,kind=sys.argv[1:]\nwith zipfile.ZipFile(src) as source, zipfile.ZipFile(dst,'w',zipfile.ZIP_DEFLATED) as target:\n for item in source.infolist(): target.writestr(item, source.read(item))\n if kind=='file-dir-conflict': target.writestr(zipfile.ZipInfo('optbrew/SKILL.md/'), b'')\n if kind=='dir-then-file-conflict':\n  target.writestr(zipfile.ZipInfo('optbrew/conflict/'), b''); target.writestr('optbrew/conflict', b'x')\n if kind=='ancestor-file-conflict': target.writestr('optbrew/SKILL.md/child.txt', b'x')\n if kind=='duplicate-directory':\n  for _ in range(2): target.writestr(zipfile.ZipInfo('optbrew/duplicate/'), b'')\n if kind=='duplicate-file': target.writestr('optbrew/SKILL.md', b'duplicate')\n if kind=='harmless-directory': target.writestr(zipfile.ZipInfo('optbrew/scripts/'), b'')\n if kind=='case-dir-conflict': target.writestr(zipfile.ZipInfo('optbrew/skill.md/'), b'')\n if kind=='case-file-duplicate': target.writestr('optbrew/skill.md', b'x')\n if kind=='case-ancestor-file': target.writestr('OPTBREW/SKILL.md/x', b'x')\n if kind=='trailing-dot-dir': target.writestr(zipfile.ZipInfo('optbrew/SKILL.md./'), b'')\n if kind=='trailing-space-dir': target.writestr(zipfile.ZipInfo('optbrew/scripts /'), b'')\n if kind=='trailing-dot-file': target.writestr('optbrew/notes.', b'x')\n`;
     const expected = {
       'file-dir-conflict': /archive path conflict/, 'dir-then-file-conflict': /archive path conflict/,

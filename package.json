@@ -1,6 +1,6 @@
 {
   "name": "optbrew",
-  "version": "0.1.3",
+  "version": "0.1.4",
   "type": "module",
   "description": "Pinned search audit and improvement skill bundle",
   "license": "MIT",
@@ -54,7 +54,7 @@
   ],
   "scripts": {
     "test": "node --test",
-    "build-bundle": "node scripts/build-bundle.mjs --bundle skills/optbrew --version 0.1.3",
+    "build-bundle": "node scripts/build-bundle.mjs --bundle skills/optbrew --version 0.1.4",
     "vendor": "node scripts/vendor.mjs",
     "scan-secrets": "node scripts/scan-secrets.mjs --tracked-and-staged"
   }

@@ -46,7 +46,7 @@ Windows PowerShell에서 `npx`나 `optbrew`가 「스크립트를 실행할 수 
 ### 1. npm
 
 ```bash
-npm install -g optbrew@0.1.3
+npm install -g optbrew@0.1.4
 optbrew install --agents codex,claude-code --scope user --dry-run
 optbrew install --agents codex,claude-code --scope user
 optbrew doctor --agents codex,claude-code --scope user
@@ -59,20 +59,20 @@ optbrew doctor --agents codex,claude-code --scope user
 전역 설치 없이 같은 CLI를 실행합니다.
 
 ```bash
-npx optbrew@0.1.3 install --agents codex,claude-code --scope user
-npx optbrew@0.1.3 doctor --agents codex,claude-code --scope user
+npx optbrew@0.1.4 install --agents codex,claude-code --scope user
+npx optbrew@0.1.4 doctor --agents codex,claude-code --scope user
 ```
 
 ### 3. PowerShell (Windows)
 
 ```powershell
-irm https://raw.githubusercontent.com/nowwcastle-sudo/optbrew/v0.1.3/install.ps1 | iex
+irm https://raw.githubusercontent.com/nowwcastle-sudo/optbrew/v0.1.4/install.ps1 | iex
 ```
 
 이 스크립트는 이번 버전에 고정돼 있습니다. Node.js를 확인하고, 설치할 폴더를 보여 주고, Codex와 Claude Code에 설치합니다. `doctor`가 문제를 찾으면 오류로 멈춥니다. 먼저 읽어 보거나 에이전트·프로젝트 폴더를 고르려면 이렇게 실행합니다.
 
 ```powershell
-irm https://raw.githubusercontent.com/nowwcastle-sudo/optbrew/v0.1.3/install.ps1 -OutFile install.ps1
+irm https://raw.githubusercontent.com/nowwcastle-sudo/optbrew/v0.1.4/install.ps1 -OutFile install.ps1
 powershell -ExecutionPolicy Bypass -File .\install.ps1 -Agents codex,claude-code,cursor
 ```
 
@@ -103,7 +103,7 @@ claude.ai, Claude Desktop, Cowork: Customize > Plugins에서 Add > Add marketpla
 Codex, Claude Code 같은 코딩 에이전트에 아래 글을 붙여 넣으십시오.
 
 ```text
-optbrew 스킬을 설치해 줘. https://raw.githubusercontent.com/nowwcastle-sudo/optbrew/v0.1.3/AGENT_INSTALL.md 를 읽고 단계대로 따라 해. 어느 에이전트에, 어느 범위로 설치할지 먼저 묻고, 설치 전에 바뀔 내용을 보여 줘.
+optbrew 스킬을 설치해 줘. https://raw.githubusercontent.com/nowwcastle-sudo/optbrew/v0.1.4/AGENT_INSTALL.md 를 읽고 단계대로 따라 해. 어느 에이전트에, 어느 범위로 설치할지 먼저 묻고, 설치 전에 바뀔 내용을 보여 줘.
 ```
 
 [AGENT_INSTALL.md](AGENT_INSTALL.md)는 단계마다 실행할 명령과 통과 기준, 멈추고 사용자에게 물어야 할 경우를 적어 둔 에이전트용 안내서입니다.
@@ -129,7 +129,7 @@ optbrew update --scope user
 
 npx를 쓴다면 `npx optbrew@latest update --scope user`를 실행합니다. `optbrew check-updates --package optbrew`는 아무것도 바꾸지 않고, 지금 실행한 CLI보다 새 버전이 npm에 있는지 알려 줍니다. 에이전트 폴더에 설치된 버전은 `optbrew doctor --json`의 `release_version`에 나옵니다. `npm update`만으로는 에이전트 폴더에 이미 놓인 사본이 바뀌지 않습니다. 사본은 `update` 명령이 바꿉니다.
 
-0.1.2 이하 설치본은 `migration_required`로 멈춥니다. 0.1.3은 새 평가 버전으로 채점하기 때문입니다. 평가 버전이 다른 점수끼리는 비교할 수 없습니다. [migration_required 뒤 재설치](docs/platforms.md#reinstall-after-a-migration_required-update) 절차를 따르십시오. 이 절차는 읽기 전용 검사가 출력한 경로만 지우며, 감사 근거는 건드리지 않습니다.
+0.1.3 이하 설치본은 `migration_required`로 멈춥니다. 0.1.3은 새 평가 버전으로 채점했고, 0.1.4는 CRLF로 체크아웃된 스킬도 검증되도록 채점 계약 파일(`score.mjs`)을 바꿨기 때문입니다. 평가 버전이 다른 점수끼리는 비교할 수 없습니다. 0.1.3과 0.1.4는 같은 평가 버전 0.3.0을 씁니다. [migration_required 뒤 재설치](docs/platforms.md#reinstall-after-a-migration_required-update) 절차를 따르십시오. 이 절차는 읽기 전용 검사가 출력한 경로만 지우며, 감사 근거는 건드리지 않습니다.
 
 ## API와 비용
 

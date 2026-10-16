@@ -1,9 +1,12 @@
 # Changelog
 
-## Unreleased
+## 0.1.4
 
 - The Claude marketplace now serves the `skills/` folder (new `skills/.claude-plugin/plugin.json`) instead of the repository root, because claude.ai, Claude Desktop and Cowork refuse a plugin with a top-level `bin/` folder and the marketplace sync failed. The marketplace entry and the served manifest pin no version, so every commit is picked up by marketplace sync. Claude Code installs keep the name `optbrew@optbrew` and the skill `/optbrew:optbrew`.
-- `.gitattributes` no longer converts line endings at checkout (`* -text` replaces `text` and `eol=lf`). Marketplace validation rejected attributes that rewrite files at checkout. Every file is committed with LF, so a checkout gives the same bytes on every system, `core.autocrlf` included; a new test keeps both rules.
+- No `.gitattributes` at the repository root or inside `skills/`. The Claude plugin directory refuses one there whatever its lines say, `* -text` included, so the root file is gone. `tests/` and `docs/` keep their own `* -text`, because the test fixtures, evidence hashes and the documented shell blocks need exact bytes. A test rejects a `.gitattributes` at the root or inside `skills/`, and every file is still committed with LF.
+- Bundle hashes ignore the line endings a checkout adds. With `core.autocrlf=true` (the Git for Windows default) a Claude Code plugin install from the marketplace checks the skill out with CRLF. `bundle.mjs` and `score.mjs` now hash a file without a NUL byte as its LF form, so `doctor`, `install` and scoring accept that copy; LF files keep their old hashes and binary files hash as is. The ZIP and npm verifiers still compare exact bytes, so releases are built from a `core.autocrlf=false` clone (`docs/release.md`).
+- Evaluation version stays 0.3.0 and protocol 0.1.0: the audit's observations do not change, and 0.1.3 baselines stay comparable. `score.mjs` is a scoring contract file, so `optbrew update` on a managed 0.1.3 install stops with `migration_required` and changes nothing; replace it with the reinstall blocks in `docs/platforms.md`.
+- `docs/release.md` adds two steps: publish a GitHub Release for each tag and read it back, and confirm that the webhook got a push for `refs/heads/main` with the merge commit (a branch deletion is answered `ignored_delete` and does not sync).
 - The served `skills/` folder is a complete directory plugin: `skills/README.md` describes what the plugin runs, reads and sends, and `skills/.claude-plugin/plugin.json` adds `displayName`, `homepage`, `repository`, `license`, `keywords` and a 1024 px icon (`skills/.claude-plugin/icon.png`). Submit to the Claude directory with plugin path `skills`, so the scan reads only the plugin and not the repository's CLI, tests and npm files. A test checks the directory's README, license, icon, file-size and file-count rules.
 
 ## 0.1.3

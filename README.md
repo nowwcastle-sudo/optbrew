@@ -46,7 +46,7 @@ In Windows PowerShell, if `npx` or `optbrew` reports that running scripts is dis
 ### 1. npm
 
 ```bash
-npm install -g optbrew@0.1.3
+npm install -g optbrew@0.1.4
 optbrew install --agents codex,claude-code --scope user --dry-run
 optbrew install --agents codex,claude-code --scope user
 optbrew doctor --agents codex,claude-code --scope user
@@ -59,20 +59,20 @@ The dry run prints the folders it will write. `doctor` checks the files and thei
 Runs the same CLI without a global install:
 
 ```bash
-npx optbrew@0.1.3 install --agents codex,claude-code --scope user
-npx optbrew@0.1.3 doctor --agents codex,claude-code --scope user
+npx optbrew@0.1.4 install --agents codex,claude-code --scope user
+npx optbrew@0.1.4 doctor --agents codex,claude-code --scope user
 ```
 
 ### 3. PowerShell (Windows)
 
 ```powershell
-irm https://raw.githubusercontent.com/nowwcastle-sudo/optbrew/v0.1.3/install.ps1 | iex
+irm https://raw.githubusercontent.com/nowwcastle-sudo/optbrew/v0.1.4/install.ps1 | iex
 ```
 
 The script is pinned to this release. It checks Node.js, shows the target folders, installs for Codex and Claude Code, and stops with an error if `doctor` finds a problem. To read it first, or to choose agents or a project folder:
 
 ```powershell
-irm https://raw.githubusercontent.com/nowwcastle-sudo/optbrew/v0.1.3/install.ps1 -OutFile install.ps1
+irm https://raw.githubusercontent.com/nowwcastle-sudo/optbrew/v0.1.4/install.ps1 -OutFile install.ps1
 powershell -ExecutionPolicy Bypass -File .\install.ps1 -Agents codex,claude-code,cursor
 ```
 
@@ -103,7 +103,7 @@ Plugins follow this repository's `main` branch and update through the host's plu
 Paste this into Codex, Claude Code or another coding agent:
 
 ```text
-Install the optbrew skill for me. Read https://raw.githubusercontent.com/nowwcastle-sudo/optbrew/v0.1.3/AGENT_INSTALL.md and follow it step by step. Ask me which agents and which scope to use, and show me the planned changes before you install.
+Install the optbrew skill for me. Read https://raw.githubusercontent.com/nowwcastle-sudo/optbrew/v0.1.4/AGENT_INSTALL.md and follow it step by step. Ask me which agents and which scope to use, and show me the planned changes before you install.
 ```
 
 [AGENT_INSTALL.md](AGENT_INSTALL.md) gives the agent a command and a pass check for each step, and the cases where it must stop and ask you.
@@ -129,7 +129,7 @@ optbrew update --scope user
 
 With npx, run `npx optbrew@latest update --scope user`. `optbrew check-updates --package optbrew` tells you, without changing anything, whether npm has a newer release than the CLI you are running; `optbrew doctor --json` shows the `release_version` installed in your agent folders. `npm update` alone does not touch copies already placed in agent folders; the `update` command does.
 
-An install from 0.1.2 or earlier stops with `migration_required`, because 0.1.3 scores with a new evaluation version. Scores from different evaluation versions are not comparable. Follow [Reinstall after a migration_required update](docs/platforms.md#reinstall-after-a-migration_required-update); the steps delete only paths that a read-only check printed and never touch your audit evidence.
+An install from 0.1.3 or earlier stops with `migration_required`: 0.1.3 scored with a new evaluation version, and 0.1.4 changes a scoring contract file (`score.mjs`) so that a CRLF checkout of the skill verifies. Scores from different evaluation versions are not comparable; 0.1.3 and 0.1.4 share evaluation version 0.3.0. Follow [Reinstall after a migration_required update](docs/platforms.md#reinstall-after-a-migration_required-update); the steps delete only paths that a read-only check printed and never touch your audit evidence.
 
 ## APIs and cost
 

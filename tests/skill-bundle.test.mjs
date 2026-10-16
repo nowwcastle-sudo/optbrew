@@ -17,7 +17,8 @@ test('one discoverable skill and closed progressive references', async () => {
   const files = await walk(skill);
   assert.deepEqual(files.filter(file => path.basename(file) === 'SKILL.md'), [path.join(skill, 'SKILL.md')]);
   const entry = await readFile(path.join(skill, 'SKILL.md'), 'utf8');
-  assert.match(entry, /^---\nname: optbrew\ndescription:/);
+  // skills/ has no .gitattributes, so a core.autocrlf checkout reads CRLF here.
+  assert.match(entry, /^---\r?\nname: optbrew\r?\ndescription:/);
   assert.ok(entry.split('\n').length < 500);
   const metadata = await readFile(path.join(skill, 'agents/openai.yaml'), 'utf8');
   assert.match(metadata, /\$optbrew/);

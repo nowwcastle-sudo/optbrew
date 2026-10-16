@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0.0",
-  "release_version": "0.1.3",
+  "release_version": "0.1.4",
   "evaluation_version": "0.3.0",
   "protocol_version": "0.1.0",
   "evaluation_sources": [
@@ -22,7 +22,7 @@
     },
     {
       "path": "scripts/core/score.mjs",
-      "sha256": "62e26a06e262a0be76082ca94569cc3b409cc161b2096b15a676267067009eb1"
+      "sha256": "68abf295cddf92d16747f0d222c2b75a9ae4b6dcbce48ce2e0c3bdab23f5ffc2"
     },
     {
       "path": "scripts/core/weights.mjs",
@@ -45,7 +45,7 @@
       "sha256": "703d5c16878c526114afb540e4a6d54bd74831f35a824c03a839e2480097d279"
     }
   ],
-  "evaluation_hash": "75aca041f2054d1c06f992f4b8fd97ca2a3e29fb178fb769cc2bdaa9803710a6",
+  "evaluation_hash": "1bbf21639463327f7ccf6f60b3f40430eaa69ab584c329c0b82137a7a5da8546",
   "protocol_sources": [
     {
       "path": "references/schemas/contract.schema.json",
@@ -612,7 +612,7 @@
     },
     {
       "path": "scripts/core/bundle.mjs",
-      "sha256": "613c44ebe04aacc0599645527020e06108d762e1c5f9741ebebba6a93ff249be"
+      "sha256": "ab0a39a518cd784cdd3d3f447921b920b34e9887097a416f06341879b8371ff0"
     },
     {
       "path": "scripts/core/capabilities.mjs",
@@ -672,7 +672,7 @@
     },
     {
       "path": "scripts/core/score.mjs",
-      "sha256": "62e26a06e262a0be76082ca94569cc3b409cc161b2096b15a676267067009eb1"
+      "sha256": "68abf295cddf92d16747f0d222c2b75a9ae4b6dcbce48ce2e0c3bdab23f5ffc2"
     },
     {
       "path": "scripts/core/weights.mjs",
@@ -683,5 +683,5 @@
       "sha256": "a53223b7eefab2204c026a62b1da04cfdb8a07be8d3749613e8241a81b027d9b"
     }
   ],
-  "bundle_hash": "c0c5e24da9a35c736dba16bfb16a800e26c5201accd380512145f80f7fd5b378"
+  "bundle_hash": "3e011781af7c2b3bd26da9f77869b079d36b9e4a06d434c111bc813697d57567"
 }
