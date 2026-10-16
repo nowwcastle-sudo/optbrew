@@ -79,9 +79,12 @@ test('Fix 4: canonical target, redirect chain, orphan page and sitemap status be
   const scenario = await run(t, noSitemap, paths, { enable: ['canonical-consistency'], sitemap: true });
   assert.equal(stateOf(scenario, 'canonical-consistency', '/c-ok'), 'pass');
   assert.equal(stateOf(scenario, 'canonical-consistency', '/c-bad'), 'fail');
-  assert.match(reasonOf(scenario, 'canonical-consistency', '/c-bad'), /returns HTTP 404/);
+  assert.equal(reasonOf(scenario, 'canonical-consistency', '/c-bad'), 'canonical target does not return a successful status');
+  const bad = scenario.packet.baseline.input.observations.find(x => x.family_id === 'canonical-consistency' && x.unit_key.endsWith('/c-bad'));
+  assert.equal(bad.measurement.canonical_status, 404);
   assert.equal(stateOf(scenario, 'canonical-consistency', '/chain-a'), 'fail');
-  assert.match(reasonOf(scenario, 'canonical-consistency', '/chain-a'), /Redirect chain of 2 hops/);
+  assert.equal(reasonOf(scenario, 'canonical-consistency', '/chain-a'), 'Redirect chain of two or more hops');
+  assert.equal(scenario.packet.baseline.input.observations.find(x => x.family_id === 'canonical-consistency' && x.unit_key.endsWith('/chain-a')).measurement.redirect_hops, 2);
   assert.equal(stateOf(scenario, 'canonical-consistency', '/hub'), undefined, 'no canonical and no chain stays unknown');
   assert.equal(stateOf(scenario, 'discovery', '/orphan'), 'fail');
   assert.match(reasonOf(scenario, 'discovery', '/orphan'), /declared sitemap unusable: .*sitemap\.xml \(404\)/);

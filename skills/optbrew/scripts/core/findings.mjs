@@ -7,7 +7,11 @@ const evidenceRank = { official: 0, reproduced: 1, research: 2, case: 3, hypothe
 export const messageKey = message => message.trim().replace(/\s+/g, ' ').toLowerCase();
 
 /** A finding's text with its own unit's page address replaced, so the same problem on two pages reads the same. */
-export const pageNeutral = (text, unitKey) => text.split(unitKey.split('|').at(-1)).join('{page}');
+export const pageNeutral = (text, unitKey) => {
+  const page = unitKey.split('|').at(-1);
+  // Only a page address is replaced: the unit of a site-level check ends in a word such as "site", which is just text.
+  return /^https?:\/\//.test(page) ? text.split(page).join('{page}') : text;
+};
 
 /** Merge the same check, unit and issue while preserving every module source. */
 export function mergeFindings(findings) {

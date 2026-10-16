@@ -4,7 +4,6 @@ import { canonicalUrl, sameOriginLinks } from '../link-graph.mjs';
 import { makeObservation, unitKey } from './observation.mjs';
 
 const FAMILY = 'internal-navigation';
-const percent = ratio => `${Math.round(ratio * 100)}%`;
 
 /** Same-origin links of a page to other pages, each with its anchor label. */
 function internalAnchors({ artifact, html }) {
@@ -49,14 +48,15 @@ export const internalNavigation = {
       }
       const weak = [...descriptive.values()].filter(ok => !ok).length;
       const depth = linkGraph.depthOf(url);
+      // The sentences are fixed, so the same problem reads the same on every page; the numbers are page-specific and travel in the measurement.
+      const measurement = { click_depth: depth, max_click_depth, weak_anchor_pages: weak, linked_pages: descriptive.size, allowed_weak_ratio: empty_anchor_ratio };
       const problems = [];
-      if (depth !== null && depth > max_click_depth) problems.push(`The home page reaches this page in ${depth} clicks; the limit is ${max_click_depth}`);
-      if (descriptive.size && weak / descriptive.size > empty_anchor_ratio)
-        problems.push(`${weak} of ${descriptive.size} linked pages have only empty or generic anchors; at most ${percent(empty_anchor_ratio)} is allowed`);
-      if (problems.length) observe('fail', problems.join('; '));
+      if (depth !== null && depth > max_click_depth) problems.push('The home page reaches this page in more clicks than the limit');
+      if (descriptive.size && weak / descriptive.size > empty_anchor_ratio) problems.push('Linked pages have too many empty or generic anchors');
+      if (problems.length) observe('fail', problems.join('; '), { measurement });
       // A page with no click depth and no internal link has nothing to judge: it gets no observation on purpose (discovery covers it).
       else if (depth !== null || descriptive.size)
-        observe('pass', `${depth === null ? 'Click depth not measured (left to discovery)' : `Reached in ${depth} clicks (limit ${max_click_depth})`}; ${weak} of ${descriptive.size} linked pages have only empty or generic anchors`);
+        observe('pass', depth === null ? 'Click depth not measured (left to discovery); anchors are within the limit' : 'Reached within the click limit; anchors are within the limit', { measurement });
     }
     return out;
   },

@@ -89,11 +89,13 @@ const isLocalTarget = (scope, url) => { const target = urlTarget(new URL(url)); 
  * different site: the run stops with one plain sentence.
  */
 function startFrom(asked, preflight) {
+  // What the owner typed at the start read: when the answers already hold the address it landed on, the redirect is still worth saying.
+  const typed = preflight.requestedUrl ? new URL(preflight.requestedUrl) : asked;
   const away = text => `The address ${asked.href} leads to another site (${text}), which this audit does not cover. If you own that site, start again with its address.`;
   if (preflight.redirectedTo && !sameSite(asked, new URL(preflight.redirectedTo))) throw new Error(away(new URL(preflight.redirectedTo).origin));
   if (!preflight.finalUrl) return { start: asked, adopted: null };
   const landed = new URL(preflight.finalUrl);
-  if (landed.origin === asked.origin) return { start: asked, adopted: null };
+  if (landed.origin === asked.origin) return { start: asked, adopted: typed.origin === asked.origin ? null : { from: typed.href, to: asked.href } };
   if (!sameSite(asked, landed)) throw new Error(away(landed.origin));
   return { start: landed, adopted: { from: asked.href, to: landed.href } };
 }
@@ -116,6 +118,14 @@ async function contextFrom(answers, { out, localTargets = [] }) {
   const ref = href => ({ original: href, normalized: assertUrlInScope(href, scope).href });
   const auxiliary = [['robots', '/robots.txt'], ['sitemap', '/sitemap.xml']].map(([kind, pathname]) => ({ kind, ...ref(new URL(pathname, start.origin).href) }));
   const home = ref(start.href);
+  // The sitemap files the preflight read (an index, its children, the place /sitemap.xml redirected to) are declared too, so the run
+  // fetches them and a page they list counts as listed; a redirect from /sitemap.xml to its index is then followed, not refused.
+  const known = new Set(auxiliary.map(x => x.normalized));
+  for (const href of [...new Set(preflight.sitemapFiles)].slice(0, limits().preflight_pages)) {
+    let extra;
+    try { extra = ref(href); } catch { continue; }
+    if (!known.has(extra.normalized)) { known.add(extra.normalized); auxiliary.push({ kind: 'sitemap', ...extra }); }
+  }
   // Facts the owner confirmed on the address the run started from before its redirect now live on the adopted origin.
   const factUrls = [...new Set(answers.facts.map(fact => adopted && new URL(fact.source_url).origin === asked.origin ?
     fact.source_url.replace(asked.origin, start.origin) : fact.source_url))];
@@ -453,6 +463,7 @@ const EVIDENCE_KINDS = [[/\.html$/, 'raw_html', true], [/\.bin$/, 'raw_response'
   [/\.failure\.json$/, 'failure_record', true], [/\.render-dom$/, 'render_dom', false], [/\.render\.json$/, 'render', false],
   [/\.cwv\.json$/, 'cwv', true], [/\.judge-queue\.json$/, 'judge-queue', false], [/\.owner-export$/, 'owner_export', false], [/^(?:collection|ledger)\.json$/, 'record', true]];
 
+const RUN_FILE = /^(?:[0-9a-f]{64}\..+|(?:collection|ledger|modules|observations)\.json|.*\.tmp)$/;
 const OWNER_EXPORT_FILE = /^owner-export-[a-z]+\.json$/;
 const OWNER_MAPPING_FILE = /^owner-mapping-[a-z]+\.json$/;
 
@@ -586,12 +597,12 @@ async function wroteByRun(out, names) {
   const read = async file => { try { return JSON.parse(await readFile(path.join(out, file), 'utf8')); } catch { return null; } };
   const context = await read(CONTEXT_FILE);
   if (!context?.run_id) return false;
-  if (names.includes('evidence')) {
-    const index = await read(path.join('evidence', 'evidence-index.json'));
-    // A run that stopped before its first record has an empty evidence folder and no index yet.
-    return index ? index.run_id === context.run_id : (await readdir(path.join(out, 'evidence'))).length === 0;
-  }
-  return (await read(INTAKE_FILE))?.run_id === context.run_id;
+  const sameRun = (await read(INTAKE_FILE))?.run_id === context.run_id;
+  if (!names.includes('evidence')) return sameRun;
+  const index = await read(path.join('evidence', 'evidence-index.json'));
+  if (index) return index.run_id === context.run_id;
+  // A run that stopped before its first index save leaves only content-addressed blobs, its fixed documents and temp files.
+  return sameRun && (await readdir(path.join(out, 'evidence'))).every(name => RUN_FILE.test(name));
 }
 
 /**

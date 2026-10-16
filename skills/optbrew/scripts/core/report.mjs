@@ -15,7 +15,7 @@ import { readVerified } from './evidence-store.mjs';
 import { links } from './collector.mjs';
 import { checkRenderLedger } from './render.mjs';
 import { assertUrlInScope } from './scope.mjs';
-import { composeReport, renderReport } from './report-compose.mjs';
+import { composeReport, pagesLabel, renderReport } from './report-compose.mjs';
 import { runbookEntry } from './runbooks.mjs';
 import { sensitive } from './secrets.mjs';
 import { OBSERVATION_SOURCES, QUEUE_KIND, candidateSpans, checkSpan, isCodeJudged, isModelJudged, queuedSpan } from './judgments.mjs';
@@ -682,10 +682,10 @@ export function buildReport(packet) {
   checkAuditPhase(packet.after?.input, 'after', snapshotFor('after'), requireRef);
   // An adopted start address is said in the run conditions, so it must match the intake record and the run's target.
   const startRedirect = packet.start_redirect ?? null;
-  if (startRedirect) {
-    const intakeEntry = packet.evidence_index.find(x => x.kind === 'intake');
-    const intake = intakeEntry ? JSON.parse(requireRef(intakeEntry.ref).text) : null;
-    if (startRedirect.to !== packet.run_context.target || !same(intake?.selection?.start_redirect, startRedirect))
+  const intakeEntry = packet.evidence_index.find(x => x.kind === 'intake');
+  const intake = intakeEntry ? JSON.parse(requireRef(intakeEntry.ref).text) : null;
+  if (startRedirect || intake?.selection?.start_redirect) {
+    if (startRedirect?.to !== packet.run_context.target || !same(intake?.selection?.start_redirect ?? null, startRedirect))
       throw new ContractError('start redirect differs from the intake record or the run target');
   }
   const merged = mergeFindings(packet.findings);
@@ -787,7 +787,7 @@ export function buildReport(packet) {
         reason: 'production_deployment_pending', required_input_or_authority: 'site owner deployment authority and production target',
         next_action: 'Deploy the locally verified change, then fetch the production response',
         reobserve_when: 'after authorized production deployment and a new raw response' });
-    } else remaining.push({ finding_id: finding.finding_id, problem: `${finding.message} ${finding.unit_key}`,
+    } else remaining.push({ finding_id: finding.finding_id, problem: `${finding.message} ${pagesLabel(finding)}`,
       reason: finding.status, required_input_or_authority: finding.remediation?.required_authority ?? 'source evidence and owner review',
       next_action: finding.remediation?.mechanism ?? 'Confirm the issue from raw evidence',
       reobserve_when: finding.remediation?.validation ?? 'after new evidence is collected' });

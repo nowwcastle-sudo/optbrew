@@ -107,10 +107,13 @@ export async function preflight({ url, out, sourceTools = [], skillRoot = defaul
   const addPage = artifact => { if (artifact?.status === 200 && artifact.capability === 'raw_html') pages.push({ artifact, html: artifact.body.toString('utf8') }); };
   let sitemapPages = null;
   let sitemapBasis = null;
+  // Where /sitemap.xml ended up: WordPress and Yoast send it on to an index file under another name.
+  let sitemapFinal = null;
   if (first && !probe.block_reason) {
     addPage(first);
     const sitemapUrl = new URL(SITEMAP_PATH, new URL(first.final_url).origin).href;
     const sitemap = await tryGet(sitemapUrl);
+    sitemapFinal = sitemap?.status === 200 ? sitemap.final_url : null;
     if (sitemap?.status === 200) {
       const text = sitemap.body.toString('utf8');
       if (/<sitemapindex/i.test(text)) {
@@ -141,6 +144,7 @@ export async function preflight({ url, out, sourceTools = [], skillRoot = defaul
     requested_url: start.href,
     final_url: first?.final_url ?? null,
     redirected_to: leftTo,
+    sitemap_final_url: sitemapFinal,
     probe: { ...probe, sitemap_pages: sitemapPages },
     sitemap_pages: sitemapPages,
     sitemap_pages_basis: sitemapBasis,

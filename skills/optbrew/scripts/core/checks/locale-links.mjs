@@ -27,20 +27,22 @@ export const localeLinks = {
         observe('not_applicable', reason, { applicability_decision: { condition: 'single_locale', reason, evidence_ref: artifact.evidence_ref } });
         continue;
       }
-      const problems = [];
-      if (mine.length && !mine.some(alternate => alternate.hreflang === X_DEFAULT)) problems.push('No x-default alternate is declared');
+      // Fixed sentences; which pages are meant travels in the measurement.
+      const problems = new Set();
+      const noReturn = [], listedWithoutReturn = [];
+      if (mine.length && !mine.some(alternate => alternate.hreflang === X_DEFAULT)) problems.add('No x-default alternate is declared');
       let unchecked = 0;
       for (const alternate of mine) {
         if (points(alternate.href, self)) continue;
         const target = alternates.get(canonicalUrl(alternate.href));
         if (!target) unchecked += 1;
-        else if (!target.alternates.some(back => points(back.href, self))) problems.push(`${target.urls[0]} does not link back to this page`);
+        else if (!target.alternates.some(back => points(back.href, self))) { problems.add('An alternate page does not link back to this page'); noReturn.push(target.urls[0]); }
       }
-      for (const other of listedBy) if (!mine.some(alternate => points(alternate.href, other)))
-        problems.push(`${other.urls[0]} lists this page as an alternate but this page does not list it back`);
-      if (problems.length) observe('fail', problems.join('; '));
-      else if (unchecked) observe('unknown', `${unchecked} alternate page(s) were not collected, so their return links are unchecked`);
-      else observe('pass', 'An x-default alternate is declared and every alternate links back');
+      for (const other of listedBy) if (!mine.some(alternate => points(alternate.href, other))) { problems.add('A page that lists this page as an alternate is not listed back'); listedWithoutReturn.push(other.urls[0]); }
+      const measurement = { alternates_without_return_link: noReturn, pages_listing_this_page_without_return: listedWithoutReturn, unchecked_alternates: unchecked };
+      if (problems.size) observe('fail', [...problems].join('; '), { measurement });
+      else if (unchecked) observe('unknown', 'Some alternate pages were not collected, so their return links are unchecked', { measurement });
+      else observe('pass', 'An x-default alternate is declared and every alternate links back', { measurement });
     }
     return out;
   },

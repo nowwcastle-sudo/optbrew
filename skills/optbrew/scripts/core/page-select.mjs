@@ -10,6 +10,7 @@ const EVIDENCE_INDEX = path.join('preflight', 'evidence', 'evidence-index.json')
 /** Robots and sitemap files are auxiliary resources of the protocol, never audited pages. */
 const AUXILIARY_PATH = /\/(?:robots\.txt|sitemap[^/]*\.xml)$/i;
 const URLSET = /<urlset\b/i;
+const SITEMAPINDEX = /<sitemapindex\b/i;
 // Files a sitemap or a link may name that are not pages to audit.
 const NOT_A_PAGE = /\.(?:pdf|jpe?g|png|gif|webp|svg|ico|zip|xml|txt|css|js|json|mp4|mp3)$/i;
 const KOREAN_PAGE = /<html\b[^>]*\blang\s*=\s*["']?ko/i;
@@ -35,12 +36,14 @@ export const sameSite = (a, b) => a.hostname.replace(/^www\./, '') === b.hostnam
 export async function readPreflight(out, startHref) {
   const start = await readJson(path.join(out, START_FILE));
   const index = await readJson(path.join(out, EVIDENCE_INDEX));
-  const found = { status: 'missing', finalUrl: null, redirectedTo: null, korean: false, sitemapLocs: [], pageLinks: [] };
+  const found = { status: 'missing', requestedUrl: null, finalUrl: null, redirectedTo: null, korean: false, sitemapLocs: [], pageLinks: [], sitemapFiles: [] };
   if (!start && !index) return found;
   if (start?.requested_url && !sameSite(new URL(start.requested_url), new URL(startHref))) return found;
   found.status = 'unreadable';
+  found.requestedUrl = start?.requested_url ?? null;
   found.finalUrl = start?.final_url ?? null;
   found.redirectedTo = start?.redirected_to ?? null;
+  if (start?.sitemap_final_url) found.sitemapFiles.push(start.sitemap_final_url);
   for (const entry of index?.raw ?? []) {
     let text;
     try {
@@ -49,7 +52,8 @@ export async function readPreflight(out, startHref) {
       text = bytes.toString('utf8');
     } catch { continue; }
     found.status = 'read';
-    if (URLSET.test(text)) for (const match of text.matchAll(LOC)) found.sitemapLocs.push(decodeEntities(match[1]));
+    if (SITEMAPINDEX.test(text)) found.sitemapFiles.push(entry.normalized_url);
+    if (URLSET.test(text)) { found.sitemapFiles.push(entry.normalized_url); for (const match of text.matchAll(LOC)) found.sitemapLocs.push(decodeEntities(match[1])); }
     else if (entry.normalized_url === startHref || entry.normalized_url === found.finalUrl) {
       found.korean = KOREAN_PAGE.test(text);
       found.pageLinks = links(text, found.finalUrl ?? startHref);

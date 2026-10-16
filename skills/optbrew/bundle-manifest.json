@@ -68,7 +68,7 @@
     },
     {
       "path": "SKILL.md",
-      "sha256": "ba5e6500983557db43901db514f6196dbfb8b2f0563eac7299520a5ebe8ce837"
+      "sha256": "292ef58ad55b7b7ab981eeb6be608bdc7a9672f1db4c3696efe2f974e5c25f96"
     },
     {
       "path": "THIRD_PARTY_NOTICES.md",
@@ -712,7 +712,7 @@
     },
     {
       "path": "scripts/core/checks/canonical-consistency.mjs",
-      "sha256": "dbfc8d493fe80cd882fe3544b2ad0fcc9b05d947424d488d897daabbef4248ff"
+      "sha256": "3bf8b4231c24a4397d0f0e06e316781e357e18bdb75991ce63ae00f4b7ae1615"
     },
     {
       "path": "scripts/core/checks/cwv-field.mjs",
@@ -748,11 +748,11 @@
     },
     {
       "path": "scripts/core/checks/internal-navigation.mjs",
-      "sha256": "a857117d553504738f1f682c51cbda21e45bee4d973cc8619feee6062a9769d8"
+      "sha256": "ee826ae11c4c5b3845b2afc258efb0380be512df4acab5222dc83b6edac56b9d"
     },
     {
       "path": "scripts/core/checks/locale-links.mjs",
-      "sha256": "ebf2d4866a64dcc730f7f4493a8bc399390b90a6fb4a4e35ab98d327755def91"
+      "sha256": "c183fde2e75002eaa7fa2d8a776633e1586bb079f67d3e98b2d35e6b7e44d61c"
     },
     {
       "path": "scripts/core/checks/naver-markup.mjs",
@@ -824,7 +824,7 @@
     },
     {
       "path": "scripts/core/findings.mjs",
-      "sha256": "d02474bfa0648194bf6afe556d7d071f5979e01b492d6c4bab0a426c0ddf6c0a"
+      "sha256": "dbf62e69e260ee47b9b5cd035b4583280c0498d54373200712c58d3b449702b0"
     },
     {
       "path": "scripts/core/html.mjs",
@@ -848,7 +848,7 @@
     },
     {
       "path": "scripts/core/page-select.mjs",
-      "sha256": "8e1ffd882d960cbc8d9c12b21046c601f2f2ba86edd61c7507893caa676b1474"
+      "sha256": "13ce1bbdd26cfccb595e6f256f5fab7920f4848a84ce568c79744e8e1cafbf03"
     },
     {
       "path": "scripts/core/probe.mjs",
@@ -864,11 +864,11 @@
     },
     {
       "path": "scripts/core/report-compose.mjs",
-      "sha256": "7d47104addb7e66b2c1c14f9b942c73b4032c346355e29871c31212d92692ae0"
+      "sha256": "f791971b7c1ef3cdf8b238dfafa012b2e46571fb437ee0dbe56e9c71169750cb"
     },
     {
       "path": "scripts/core/report.mjs",
-      "sha256": "aa73bc31a0f074e0e0197dd2ab06efbab44b8b427becedae5581e429fb359d75"
+      "sha256": "4c79fa4040102c31e182738dc2011e0eced637b3b93d6f7c7d7a004edac9dd29"
     },
     {
       "path": "scripts/core/runbooks.mjs",
@@ -888,7 +888,7 @@
     },
     {
       "path": "scripts/core/stages.mjs",
-      "sha256": "7e8010c8acd9ef2183ac85483e38c61f7e57776570c2b7d391339f233bace81b"
+      "sha256": "417460dc066d888bea17bd95334b080ee01c9a4a4e2c0623ff1b0b2063e62cfd"
     },
     {
       "path": "scripts/core/transport.mjs",
@@ -904,7 +904,7 @@
     },
     {
       "path": "scripts/preflight.mjs",
-      "sha256": "176da926e14f7e73a0855fb1eab5362bbff964b4ac45986a6c4c5c74703b6e3a"
+      "sha256": "907033f683c138aeb1b251140fd235688e8ae00e30d8ada037b9a190c4eb8a36"
     },
     {
       "path": "scripts/run.mjs",
@@ -915,5 +915,5 @@
       "sha256": "a53223b7eefab2204c026a62b1da04cfdb8a07be8d3749613e8241a81b027d9b"
     }
   ],
-  "bundle_hash": "0fe964cc0b6540cce231212f935dfa7d3a6c3a3606376544a1d138577d3dbcfe"
+  "bundle_hash": "83ff0e8cb61b561e04b1bc370e24eb7ae72fe5dbc5ffcbc5b3c7e304245edf69"
 }

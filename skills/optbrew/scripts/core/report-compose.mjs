@@ -47,7 +47,7 @@ const affectedKey = finding => `${finding.check_id}\0${messageKey(finding.messag
 const pagesOf = finding => finding.unit_keys ?? [finding.unit_key];
 const PAGES_SHOWN = 5;
 /** How a fix row names its pages: the one unit, or the count and the first few addresses. */
-const pagesLabel = finding => {
+export const pagesLabel = finding => {
   const units = pagesOf(finding);
   if (units.length === 1) return units[0];
   const shown = units.slice(0, PAGES_SHOWN).map(unit => unit.split('|').at(-1)).join(', ');

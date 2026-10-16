@@ -47,15 +47,16 @@ test('internal-navigation: a page deeper than max_click_depth fails and the limi
   const chain = { '/': doc(link('/a', 'Page A')), '/a': doc(link('/b', 'Page B')), '/b': doc(link('/c', 'Page C')), '/c': doc(link('/d', 'Page D')), '/d': doc('<p>end</p>') };
   const result = judge(internalNavigation, chain);
   assert.deepEqual(states(result), { '/': 'pass', '/a': 'pass', '/b': 'pass', '/c': 'pass', '/d': 'fail' });
-  assert.match(result['/d'].reason, /4 clicks/);
-  assert.match(result['/d'].reason, /3/);
+  assert.equal(result['/d'].reason, 'The home page reaches this page in more clicks than the limit', 'the same sentence on every page');
+  assert.deepEqual([result['/d'].measurement.click_depth, result['/d'].measurement.max_click_depth], [4, 3], 'the numbers are in the measurement');
 });
 
 test('internal-navigation: empty and generic anchors above the ratio fail', () => {
   const links = [link('/a', '여기'), link('/b', 'Click HERE'), '<a href="/c"></a>', link('/d', 'Pricing')].join(' ');
   const result = judge(internalNavigation, { '/': doc(links), '/a': doc(''), '/b': doc(''), '/c': doc(''), '/d': doc('') });
   assert.equal(result['/'].state, 'fail');
-  assert.match(result['/'].reason, /3 of 4/);
+  assert.equal(result['/'].reason, 'Linked pages have too many empty or generic anchors');
+  assert.deepEqual([result['/'].measurement.weak_anchor_pages, result['/'].measurement.linked_pages], [3, 4]);
   const fine = judge(internalNavigation, { '/': doc([link('/a', 'Pricing'), link('/b', 'Contact us'), link('/c', 'Menu'), link('/d', 'More')].join(' ')),
     '/a': doc(''), '/b': doc(''), '/c': doc(''), '/d': doc('') });
   assert.equal(fine['/'].state, 'pass', 'one generic anchor in four is at the ratio, not above it');
@@ -66,7 +67,7 @@ test('internal-navigation: a link counts as weak only when no anchor to its targ
     link('/about', '회사소개'), link('/contact', '문의'), '<a href="/contact"></a>'].join('');
   const result = judge(internalNavigation, { '/': doc(nav), '/menu': doc(''), '/news': doc(''), '/about': doc(''), '/contact': doc('') });
   assert.equal(result['/'].state, 'pass');
-  assert.match(result['/'].reason, /0 of 4/);
+  assert.deepEqual([result['/'].measurement.weak_anchor_pages, result['/'].measurement.linked_pages], [0, 4]);
 });
 
 test('internal-navigation: an image-only link is labelled by its alt text and an aria-label', () => {
@@ -101,13 +102,15 @@ test('locale-links: a missing x-default and a missing return link fail', () => {
   assert.match(result['/en'].reason, /x-default/);
   const oneWay = judge(localeLinks, { '/en': doc('', alternate('ko', '/ko') + alternate('x-default', '/en')), '/ko': doc('', alternate('x-default', '/ko')) });
   assert.equal(oneWay['/en'].state, 'fail');
-  assert.match(oneWay['/en'].reason, /\/ko does not link back/);
+  assert.equal(oneWay['/en'].reason, 'An alternate page does not link back to this page');
+  assert.match(oneWay['/en'].measurement.alternates_without_return_link.join(' '), /\/ko/);
 });
 
 test('locale-links: a page that others list as an alternate but declares none fails', () => {
   const result = judge(localeLinks, { '/en': doc('', alternate('ko', '/ko') + alternate('x-default', '/en')), '/ko': doc('') });
   assert.equal(result['/ko'].state, 'fail');
-  assert.match(result['/ko'].reason, /\/en/);
+  assert.equal(result['/ko'].reason, 'A page that lists this page as an alternate is not listed back');
+  assert.match(result['/ko'].measurement.pages_listing_this_page_without_return.join(' '), /\/en/);
 });
 
 test('locale-links: no hreflang anywhere is a single-locale site', () => {

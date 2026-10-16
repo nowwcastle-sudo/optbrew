@@ -290,6 +290,11 @@
     "evaluator_type": "code",
     "source_ref": "optbrew:collector",
     "evidence_ref": "<out>/evidence/947ad3ecd2d39c1fb45e87fb89ecf4e871b1ff74aaa4d4af9a7acb14a216fc5e.html",
+    "measurement": {
+      "redirect_hops": 0,
+      "canonical_target": "http://127.0.0.1:PORT/",
+      "canonical_status": null
+    },
     "site": "clean"
   },
   {
@@ -303,6 +308,11 @@
     "evaluator_type": "code",
     "source_ref": "optbrew:collector",
     "evidence_ref": "<out>/evidence/561c1c9e1709de60fc8d21e75e0500f9b4e63ab9d7b30a0ea36ecf8f04ef5834.html",
+    "measurement": {
+      "redirect_hops": 0,
+      "canonical_target": "http://127.0.0.1:PORT/about",
+      "canonical_status": null
+    },
     "site": "clean"
   },
   {
@@ -316,6 +326,11 @@
     "evaluator_type": "code",
     "source_ref": "optbrew:collector",
     "evidence_ref": "<out>/evidence/36b1b6008d0e08d619c7ce921fc87f9b0ac6261ab05b914ae7468aa5738f2b4d.html",
+    "measurement": {
+      "redirect_hops": 0,
+      "canonical_target": "http://127.0.0.1:PORT/contact",
+      "canonical_status": null
+    },
     "site": "clean"
   },
   {
@@ -565,10 +580,17 @@
     "state": "pass",
     "q": 1,
     "partial_basis": null,
-    "reason": "Reached in 0 clicks (limit 3); 0 of 2 linked pages have only empty or generic anchors",
+    "reason": "Reached within the click limit; anchors are within the limit",
     "evaluator_type": "code",
     "source_ref": "optbrew:collector",
     "evidence_ref": "<out>/evidence/947ad3ecd2d39c1fb45e87fb89ecf4e871b1ff74aaa4d4af9a7acb14a216fc5e.html",
+    "measurement": {
+      "click_depth": 0,
+      "max_click_depth": 3,
+      "weak_anchor_pages": 0,
+      "linked_pages": 2,
+      "allowed_weak_ratio": 0.25
+    },
     "site": "clean"
   },
   {
@@ -578,10 +600,17 @@
     "state": "pass",
     "q": 1,
     "partial_basis": null,
-    "reason": "Reached in 1 clicks (limit 3); 0 of 1 linked pages have only empty or generic anchors",
+    "reason": "Reached within the click limit; anchors are within the limit",
     "evaluator_type": "code",
     "source_ref": "optbrew:collector",
     "evidence_ref": "<out>/evidence/561c1c9e1709de60fc8d21e75e0500f9b4e63ab9d7b30a0ea36ecf8f04ef5834.html",
+    "measurement": {
+      "click_depth": 1,
+      "max_click_depth": 3,
+      "weak_anchor_pages": 0,
+      "linked_pages": 1,
+      "allowed_weak_ratio": 0.25
+    },
     "site": "clean"
   },
   {
@@ -591,10 +620,17 @@
     "state": "pass",
     "q": 1,
     "partial_basis": null,
-    "reason": "Reached in 1 clicks (limit 3); 0 of 1 linked pages have only empty or generic anchors",
+    "reason": "Reached within the click limit; anchors are within the limit",
     "evaluator_type": "code",
     "source_ref": "optbrew:collector",
     "evidence_ref": "<out>/evidence/36b1b6008d0e08d619c7ce921fc87f9b0ac6261ab05b914ae7468aa5738f2b4d.html",
+    "measurement": {
+      "click_depth": 1,
+      "max_click_depth": 3,
+      "weak_anchor_pages": 0,
+      "linked_pages": 1,
+      "allowed_weak_ratio": 0.25
+    },
     "site": "clean"
   },
   {
@@ -805,6 +841,11 @@
     "evaluator_type": "code",
     "source_ref": "optbrew:collector",
     "evidence_ref": "<out>/evidence/260ba0e7e892c57fcef46111d4a877daff635a4cf6df79c757ffdc076ee0cedc.html",
+    "measurement": {
+      "redirect_hops": 0,
+      "canonical_target": "http://127.0.0.1:PORT/",
+      "canonical_status": null
+    },
     "site": "defect"
   },
   {
@@ -818,6 +859,11 @@
     "evaluator_type": "code",
     "source_ref": "optbrew:collector",
     "evidence_ref": "<out>/evidence/4d56853ee2b4dcb6174d7b9a7a37e253e9dffed80d43a8f0d0622e8607a0f435.html",
+    "measurement": {
+      "redirect_hops": 0,
+      "canonical_target": "http://127.0.0.1:PORT/about",
+      "canonical_status": null
+    },
     "site": "defect"
   },
   {
@@ -827,10 +873,15 @@
     "state": "fail",
     "q": 0,
     "partial_basis": null,
-    "reason": "canonical target http://127.0.0.1:PORT/gone returns HTTP 404",
+    "reason": "canonical target does not return a successful status",
     "evaluator_type": "code",
     "source_ref": "optbrew:collector",
     "evidence_ref": "<out>/evidence/bc4a85adb25e4de3462ba6326bb6bea59dcbeed2fbaf4a71087d473b965d4189.html",
+    "measurement": {
+      "redirect_hops": 0,
+      "canonical_target": "http://127.0.0.1:PORT/gone",
+      "canonical_status": 404
+    },
     "site": "defect"
   },
   {
@@ -844,6 +895,11 @@
     "evaluator_type": "code",
     "source_ref": "optbrew:collector",
     "evidence_ref": "<out>/evidence/ab38ae9a9d9d58dd8b77c6dc5c5da40d301b69d4f0cdf40d50fa20112a0bbbe6.html",
+    "measurement": {
+      "redirect_hops": 0,
+      "canonical_target": "http://127.0.0.1:PORT/badld",
+      "canonical_status": null
+    },
     "site": "defect"
   },
   {
@@ -857,6 +913,11 @@
     "evaluator_type": "code",
     "source_ref": "optbrew:collector",
     "evidence_ref": "<out>/evidence/ef4dac027a5e1aee55546f8c0b8147593896af72526a71b4e88c87654ba835e4.html",
+    "measurement": {
+      "redirect_hops": 0,
+      "canonical_target": "http://127.0.0.1:PORT/contact",
+      "canonical_status": null
+    },
     "site": "defect"
   },
   {
@@ -870,6 +931,11 @@
     "evaluator_type": "code",
     "source_ref": "optbrew:collector",
     "evidence_ref": "<out>/evidence/007526ad105b554a5386c19c25f62806b7564ac45657e352ea89a5c1bb5fc9b3.html",
+    "measurement": {
+      "redirect_hops": 0,
+      "canonical_target": "http://127.0.0.1:PORT/dup",
+      "canonical_status": null
+    },
     "site": "defect"
   },
   {
@@ -883,6 +949,11 @@
     "evaluator_type": "code",
     "source_ref": "optbrew:collector",
     "evidence_ref": "<out>/evidence/445743d8f42f88657af42c0a2d15eb71a92d473be906952a39a4396dc8755fb8.html",
+    "measurement": {
+      "redirect_hops": 0,
+      "canonical_target": "http://127.0.0.1:PORT/noindex",
+      "canonical_status": null
+    },
     "site": "defect"
   },
   {
@@ -896,6 +967,11 @@
     "evaluator_type": "code",
     "source_ref": "optbrew:collector",
     "evidence_ref": "<out>/evidence/82bcec8a591ef5b7f23889ddf176dae98dd988bbccd850fa0b5d3ef67f0b05fb.html",
+    "measurement": {
+      "redirect_hops": 0,
+      "canonical_target": "http://127.0.0.1:PORT/orphan",
+      "canonical_status": null
+    },
     "site": "defect"
   },
   {
@@ -909,6 +985,11 @@
     "evaluator_type": "code",
     "source_ref": "optbrew:collector",
     "evidence_ref": "<out>/evidence/2831a310a8db81bfd44e92641d41ce673a0ba8f7f7151a777a7bafb421a1c63b.html",
+    "measurement": {
+      "redirect_hops": 0,
+      "canonical_target": "http://127.0.0.1:PORT/private",
+      "canonical_status": null
+    },
     "site": "defect"
   },
   {
@@ -1638,10 +1719,17 @@
     "state": "pass",
     "q": 1,
     "partial_basis": null,
-    "reason": "Reached in 0 clicks (limit 3); 0 of 9 linked pages have only empty or generic anchors",
+    "reason": "Reached within the click limit; anchors are within the limit",
     "evaluator_type": "code",
     "source_ref": "optbrew:collector",
     "evidence_ref": "<out>/evidence/260ba0e7e892c57fcef46111d4a877daff635a4cf6df79c757ffdc076ee0cedc.html",
+    "measurement": {
+      "click_depth": 0,
+      "max_click_depth": 3,
+      "weak_anchor_pages": 0,
+      "linked_pages": 9,
+      "allowed_weak_ratio": 0.25
+    },
     "site": "defect"
   },
   {
@@ -1651,10 +1739,17 @@
     "state": "pass",
     "q": 1,
     "partial_basis": null,
-    "reason": "Reached in 1 clicks (limit 3); 0 of 0 linked pages have only empty or generic anchors",
+    "reason": "Reached within the click limit; anchors are within the limit",
     "evaluator_type": "code",
     "source_ref": "optbrew:collector",
     "evidence_ref": "<out>/evidence/4d56853ee2b4dcb6174d7b9a7a37e253e9dffed80d43a8f0d0622e8607a0f435.html",
+    "measurement": {
+      "click_depth": 1,
+      "max_click_depth": 3,
+      "weak_anchor_pages": 0,
+      "linked_pages": 0,
+      "allowed_weak_ratio": 0.25
+    },
     "site": "defect"
   },
   {
@@ -1664,10 +1759,17 @@
     "state": "pass",
     "q": 1,
     "partial_basis": null,
-    "reason": "Reached in 1 clicks (limit 3); 0 of 0 linked pages have only empty or generic anchors",
+    "reason": "Reached within the click limit; anchors are within the limit",
     "evaluator_type": "code",
     "source_ref": "optbrew:collector",
     "evidence_ref": "<out>/evidence/bc4a85adb25e4de3462ba6326bb6bea59dcbeed2fbaf4a71087d473b965d4189.html",
+    "measurement": {
+      "click_depth": 1,
+      "max_click_depth": 3,
+      "weak_anchor_pages": 0,
+      "linked_pages": 0,
+      "allowed_weak_ratio": 0.25
+    },
     "site": "defect"
   },
   {
@@ -1677,10 +1779,17 @@
     "state": "pass",
     "q": 1,
     "partial_basis": null,
-    "reason": "Reached in 1 clicks (limit 3); 0 of 0 linked pages have only empty or generic anchors",
+    "reason": "Reached within the click limit; anchors are within the limit",
     "evaluator_type": "code",
     "source_ref": "optbrew:collector",
     "evidence_ref": "<out>/evidence/ab38ae9a9d9d58dd8b77c6dc5c5da40d301b69d4f0cdf40d50fa20112a0bbbe6.html",
+    "measurement": {
+      "click_depth": 1,
+      "max_click_depth": 3,
+      "weak_anchor_pages": 0,
+      "linked_pages": 0,
+      "allowed_weak_ratio": 0.25
+    },
     "site": "defect"
   },
   {
@@ -1690,10 +1799,17 @@
     "state": "pass",
     "q": 1,
     "partial_basis": null,
-    "reason": "Reached in 1 clicks (limit 3); 0 of 0 linked pages have only empty or generic anchors",
+    "reason": "Reached within the click limit; anchors are within the limit",
     "evaluator_type": "code",
     "source_ref": "optbrew:collector",
     "evidence_ref": "<out>/evidence/02cb3482406e7d0256280bbdf6f300ca959146a425c1729a7615e3017e147e91.html",
+    "measurement": {
+      "click_depth": 1,
+      "max_click_depth": 3,
+      "weak_anchor_pages": 0,
+      "linked_pages": 0,
+      "allowed_weak_ratio": 0.25
+    },
     "site": "defect"
   },
   {
@@ -1703,10 +1819,17 @@
     "state": "pass",
     "q": 1,
     "partial_basis": null,
-    "reason": "Reached in 1 clicks (limit 3); 0 of 0 linked pages have only empty or generic anchors",
+    "reason": "Reached within the click limit; anchors are within the limit",
     "evaluator_type": "code",
     "source_ref": "optbrew:collector",
     "evidence_ref": "<out>/evidence/ef4dac027a5e1aee55546f8c0b8147593896af72526a71b4e88c87654ba835e4.html",
+    "measurement": {
+      "click_depth": 1,
+      "max_click_depth": 3,
+      "weak_anchor_pages": 0,
+      "linked_pages": 0,
+      "allowed_weak_ratio": 0.25
+    },
     "site": "defect"
   },
   {
@@ -1716,10 +1839,17 @@
     "state": "pass",
     "q": 1,
     "partial_basis": null,
-    "reason": "Reached in 1 clicks (limit 3); 0 of 0 linked pages have only empty or generic anchors",
+    "reason": "Reached within the click limit; anchors are within the limit",
     "evaluator_type": "code",
     "source_ref": "optbrew:collector",
     "evidence_ref": "<out>/evidence/007526ad105b554a5386c19c25f62806b7564ac45657e352ea89a5c1bb5fc9b3.html",
+    "measurement": {
+      "click_depth": 1,
+      "max_click_depth": 3,
+      "weak_anchor_pages": 0,
+      "linked_pages": 0,
+      "allowed_weak_ratio": 0.25
+    },
     "site": "defect"
   },
   {
@@ -1729,10 +1859,17 @@
     "state": "pass",
     "q": 1,
     "partial_basis": null,
-    "reason": "Reached in 1 clicks (limit 3); 0 of 0 linked pages have only empty or generic anchors",
+    "reason": "Reached within the click limit; anchors are within the limit",
     "evaluator_type": "code",
     "source_ref": "optbrew:collector",
     "evidence_ref": "<out>/evidence/445743d8f42f88657af42c0a2d15eb71a92d473be906952a39a4396dc8755fb8.html",
+    "measurement": {
+      "click_depth": 1,
+      "max_click_depth": 3,
+      "weak_anchor_pages": 0,
+      "linked_pages": 0,
+      "allowed_weak_ratio": 0.25
+    },
     "site": "defect"
   },
   {
@@ -1742,10 +1879,17 @@
     "state": "pass",
     "q": 1,
     "partial_basis": null,
-    "reason": "Reached in 1 clicks (limit 3); 0 of 0 linked pages have only empty or generic anchors",
+    "reason": "Reached within the click limit; anchors are within the limit",
     "evaluator_type": "code",
     "source_ref": "optbrew:collector",
     "evidence_ref": "<out>/evidence/2831a310a8db81bfd44e92641d41ce673a0ba8f7f7151a777a7bafb421a1c63b.html",
+    "measurement": {
+      "click_depth": 1,
+      "max_click_depth": 3,
+      "weak_anchor_pages": 0,
+      "linked_pages": 0,
+      "allowed_weak_ratio": 0.25
+    },
     "site": "defect"
   },
   {

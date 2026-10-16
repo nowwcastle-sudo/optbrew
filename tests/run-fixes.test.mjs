@@ -2,7 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
-import { appendFile, mkdir, readFile, readdir, writeFile } from 'node:fs/promises';
+import { appendFile, mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { run } from '../skills/optbrew/scripts/run.mjs';
@@ -351,5 +351,81 @@ test('the commands and result fields SKILL.md names are the ones run.mjs and pre
   for (const field of ['judge_queue', 'reports', 'score_input', 'queue_items', 'lab_cwv']) assert.ok(skill.includes(`\`${field}\``), `SKILL.md names ${field}`);
   for (const field of ['judge_queue', 'queue_items', 'reports', 'score_input']) assert.ok(field in printed, `${field} is printed`);
   assert.ok(done.reports.json && done.reports.md);
+  // Every field step 7.3 names is printed, whatever is added to that step later; html and lab_cwv exist only with the HTML report or a Chrome.
+  const named = [...skill.split('\n').find(line => line.startsWith('3. 종료 코드가 0이면')).matchAll(/`([a-z_]+)`/g)].map(match => match[1]);
+  const printable = new Set([...Object.keys(printed), ...Object.keys(done.reports), 'html', 'lab_cwv', 'awaiting_judgments', 'done']);
+  assert.deepEqual(named.filter(name => !printable.has(name)), [], 'SKILL.md names a field run.mjs does not print');
+  assert.ok(named.includes('status') && named.includes('queue_items'));
   assert.match(await readFile(new URL('../skills/optbrew/scripts/run.mjs', import.meta.url), 'utf8'), /lab_cwv/, 'lab_cwv is printed when Chrome measured it');
+});
+
+test('WordPress and Yoast: /sitemap.xml redirects to an index; pages that only the child sitemaps list pass discovery', async () => {
+  const xml = body => ({ type: 'application/xml', body });
+  const child = names => xml(`<urlset>${names.map(p => `<url><loc>${SITE}${p}</loc></url>`).join('')}</urlset>`);
+  const pages = { '/': brewPage('Brew Home', []), '/robots.txt': { type: 'text/plain', body: 'User-agent: *\nAllow: /\n' },
+    '/sitemap.xml': { redirect: '/sitemap_index.xml' },
+    '/sitemap_index.xml': xml(`<sitemapindex><sitemap><loc>${SITE}/page-sitemap.xml</loc></sitemap><sitemap><loc>${SITE}/post-sitemap.xml</loc></sitemap></sitemapindex>`),
+    '/page-sitemap.xml': child(['/menu', '/about']), '/post-sitemap.xml': child(['/news/first']),
+    '/menu': brewPage('Menu', []), '/about': brewPage('About', []), '/news/first': brewPage('First', []) };
+  const site = memorySite(pages);
+  const { report, context } = await twoCalls(site, answersFor(`${SITE}/`), { before: ws => preflightOf(site, `${SITE}/`, ws.out) });
+  const declared = context.protocol.auxiliary_resources.filter(x => x.kind === 'sitemap').map(x => x.normalized).sort();
+  assert.deepEqual(declared, ['/page-sitemap.xml', '/post-sitemap.xml', '/sitemap.xml', '/sitemap_index.xml'].map(p => `${SITE}${p}`));
+  const discovery = report.baseline.input.observations.filter(x => x.family_id === 'discovery');
+  assert.equal(discovery.length, 3, 'the three pages the child sitemaps list have a verdict (the home page is in no sitemap and has none)');
+  assert.ok(discovery.every(x => x.state === 'pass'), JSON.stringify(discovery.map(x => [x.unit_key, x.state, x.reason])));
+  assert.ok(discovery.some(x => x.unit_key.endsWith('/menu') && x.reason === 'Listed in a declared sitemap'));
+});
+
+test('generic anchors in a shared menu are one internal-navigation finding on every page they hit', async () => {
+  const pages = bigSite(3);
+  for (const route of Object.keys(pages)) if (pages[route].body?.includes('<a ')) pages[route] = { body: pages[route].body.replace(/(<a [^>]*>)[^<]*(<\/a>)/g, '$1click here$2') };
+  const site = memorySite(pages);
+  const { report } = await twoCalls(site, answersFor(`${SITE}/`), { before: ws => preflightOf(site, `${SITE}/`, ws.out) });
+  const navigation = report.findings.filter(item => item.check_id === 'internal-navigation');
+  assert.equal(navigation.length, 1, 'one fix, whatever each page\'s own counts are');
+  assert.equal(navigation[0].unit_keys.length, 4);
+  assert.equal(navigation[0].message, 'Linked pages have too many empty or generic anchors');
+});
+
+test('the shipped flow (answers hold the landed address) still says the typed address was redirected, both ways', async () => {
+  const from = `${SITE}/`, to = 'https://www.brew.test/';
+  const site = memorySite(redirectPages(from, to));
+  const { report, ws, second } = await twoCalls(site, answersFor(to), { before: ws => preflightOf(site, from, ws.out) });
+  assert.deepEqual(report.start_redirect, { from, to });
+  assert.match(await readFile(second.reports.md, 'utf8'), /Start address: https:\/\/brew\.test\/ leads to https:\/\/www\.brew\.test\//);
+  // A packet that leaves the redirect out while the intake record has it is refused too.
+  const again = await workspace(answersFor(to));
+  await preflightOf(site, from, again.out);
+  const overrides = overridesOf(site, again);
+  const first = await run({ answersPath: again.answersPath, out: again.out }, overrides);
+  const judgmentsPath = path.join(again.dir, 'judgments.json');
+  await writeFile(judgmentsPath, JSON.stringify(passJudgments(await readJson(first.judge_queue))));
+  const forget = { name: 'forget', run: async state => ({ state: { ...state, start_redirect: null } }) };
+  const list = stages();
+  list.splice(list.findIndex(stage => stage.name === 'report'), 0, forget);
+  await assert.rejects(run({ answersPath: again.answersPath, out: again.out, judgmentsPath }, { ...overrides, stages: list }), /start redirect differs from the intake record or the run target/);
+  assert.ok(ws);
+});
+
+test('remaining work names every page of a grouped finding', async () => {
+  const pages = bigSite(3);
+  for (const route of ['/section/page-1', '/section/page-2', '/section/page-3']) pages[route] = { body: pages[route].body.replace(/<title>[^<]*<\/title>/, '') };
+  const site = memorySite(pages);
+  const { report } = await twoCalls(site, answersFor(`${SITE}/`), { before: ws => preflightOf(site, `${SITE}/`, ws.out) });
+  const row = report.follow_ups.find(item => item.problem.startsWith('Raw HTML has no title'));
+  assert.match(row.problem, /\(3 pages: /);
+});
+
+test('a folder left by a first call that stopped before its first index save is rerun; one that only looks similar is refused', async () => {
+  const site = memorySite();
+  const ws = await workspace(answersFor(`${SITE}/`));
+  const [contextStage, collectStage] = stages();
+  await assert.rejects(run({ answersPath: ws.answersPath, out: ws.out }, overridesOf(site, ws, { stages: [contextStage, collectStage, { name: 'boom', run: async () => { throw new Error('stopped'); } }] })), /stopped/);
+  await rm(path.join(ws.out, 'evidence', 'evidence-index.json'));
+  assert.equal((await run({ answersPath: ws.answersPath, out: ws.out }, overridesOf(site, ws))).status, 'awaiting_judgments');
+  const other = await workspace(answersFor(`${SITE}/`));
+  await mkdir(path.join(other.out, 'evidence'), { recursive: true });
+  await writeFile(path.join(other.out, 'context.json'), '{"run_id":"somebody-else"}');
+  await assert.rejects(run({ answersPath: other.answersPath, out: other.out }, overridesOf(site, other)), { message: /^This folder holds files this audit did not make/ });
 });
