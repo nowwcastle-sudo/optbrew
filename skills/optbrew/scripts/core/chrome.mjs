@@ -517,5 +517,10 @@ export async function scopedPage({ chrome, context, budget, fetchStatic = null, 
       Object.assign(result, JSON.parse(evaluated.value), { status: lastDocument?.status ?? null });
       return result;
     },
+    /** The value of an expression run in the loaded page; a promise is awaited. */
+    async evaluate(expression) {
+      const { result } = await send('Runtime.evaluate', { expression, returnByValue: true, awaitPromise: true });
+      return result.value;
+    },
   };
 }

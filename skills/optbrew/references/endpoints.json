@@ -4,5 +4,7 @@
   "npm_registry": "https://registry.npmjs.org/",
   "naver_guide": "https://searchadvisor.naver.com/guide/",
   "plugin_schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "crux": "https://chromeuxreport.googleapis.com/v1/records:queryRecord",
+  "psi": "https://www.googleapis.com/pagespeedonline/v5/runPagespeed?strategy=mobile&category=performance",
   "relative_url_base": "http://path.invalid"
 }

@@ -98,6 +98,13 @@ function handAudit(run, { prefix, collectionRef, ref = null, homeError = 'fetch_
       unit_key: `fetch-response|${url}`, state: 'unknown', q: null, partial_basis: null, reason: 'Request did not finish',
       evaluator_type: 'code', source_ref: 'optbrew:collector', evidence_ref: collectionRef });
   }
+  // The field CWV families judged, as the audit does with no field data: unknown, pointing at a collected response of the origin.
+  const planned = run.packet.run_context.protocol.families.filter(x => x.applicable).map(x => x.family_id);
+  for (const origin of new Set(urls.map(url => new URL(url).origin)))
+    for (const family_id of ['lcp-field', 'inp-field', 'cls-field'].filter(id => planned.includes(id)))
+      observations.push({ schema_version: '1.0.0', observation_id: `cwv-${family_id}`, check_id: family_id, family_id, unit_key: `${family_id}|${origin}`,
+        state: 'unknown', q: null, partial_basis: null, reason: 'field_data_unavailable', evaluator_type: 'code', source_ref: 'optbrew:collector',
+        evidence_ref: artifacts.find(artifact => new URL(artifact.normalized_url).origin === origin).evidence_ref });
   addEvidence(run, prefix + '-ledger.json', { entries, limit: 50 }, 'record', 'optbrew:collector');
   const collection = { artifacts, skipped: [], request_count: entries.length, evaluated_count: entries.length, limit_reached: false };
   return { collection, raw, responses, failures, observations, auditFields: { ledger_ref: prefix + '-ledger.json', modules: ['naver-searchadvisor'], raw, responses, failures } };

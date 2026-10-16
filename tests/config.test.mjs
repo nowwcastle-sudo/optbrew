@@ -5,7 +5,7 @@ import { chromePaths, endpoints, limits, versions } from '../skills/optbrew/scri
 test('limits hold the collection bounds', () => {
   assert.deepEqual(limits(), { max_urls_default: 50, max_urls_cap: 200, max_depth: 3, concurrency: 2,
     timeout_ms: 20000, max_bytes: 5242880, max_redirects: 10, chrome_launch_timeout_ms: 30000, chrome_close_grace_ms: 5000,
-    cdp_command_timeout_ms: 30000, render_pages: 10, render_static_concurrency: 4, max_render_requests: 300 });
+    cdp_command_timeout_ms: 30000, render_pages: 10, render_static_concurrency: 4, max_render_requests: 300, psi_attempts: 1 });
 });
 
 test('versions hold today\'s release, evaluation, protocol and schema versions', () => {
@@ -16,7 +16,8 @@ test('versions hold today\'s release, evaluation, protocol and schema versions',
 test('endpoints hold every URL the product code uses', () => {
   assert.deepEqual(endpoints(), { anthropic_messages: 'https://api.anthropic.com/v1/messages', anthropic_version: '2023-06-01',
     npm_registry: 'https://registry.npmjs.org/', naver_guide: 'https://searchadvisor.naver.com/guide/',
-    plugin_schema: 'https://agent-plugins.org/schemas/1.0.0/plugin.schema.json', relative_url_base: 'http://path.invalid' });
+    plugin_schema: 'https://agent-plugins.org/schemas/1.0.0/plugin.schema.json', crux: 'https://chromeuxreport.googleapis.com/v1/records:queryRecord',
+    psi: 'https://www.googleapis.com/pagespeedonline/v5/runPagespeed?strategy=mobile&category=performance', relative_url_base: 'http://path.invalid' });
 });
 
 test('chrome paths list the platforms, PATH names and the Playwright layout', () => {

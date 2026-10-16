@@ -6,6 +6,7 @@ import path from 'node:path';
 import { test } from 'node:test';
 import { scanSecrets, readGitScanInputs, scanTrackedAndStaged } from '../scripts/scan-secrets.mjs';
 import { requestAnthropic } from '../skills/optbrew/scripts/adapters/anthropic.mjs';
+import { collectCwv } from '../skills/optbrew/scripts/core/cwv.mjs';
 
 test('scanner reports four fake secret classes without values and ignores public SHA', async () => {
   const dir = await mkdtemp(path.join(os.tmpdir(), 'optbrew-secret-'));
@@ -87,4 +88,16 @@ test('requestAnthropic does not call transport when env has no key', async () =>
     assert.equal(result.error, 'api_key_missing');
   }
   assert.equal(calls, 0);
+});
+
+test('collectCwv without a key never adds a key parameter', async () => {
+  const urls = [];
+  const store = { write: async () => ({ ref: 'cwv.json', sha256: '0' }), append: async () => {} };
+  const fetchFn = async url => { urls.push(url); return { status: 200, text: async () => '{}' }; };
+  for (const key of [null, undefined, '']) await collectCwv({ origin: 'https://example.test', key, fetchFn, store });
+  assert.equal(urls.length, 3);
+  for (const url of urls) {
+    assert.equal(new URL(url).searchParams.has('key'), false, url);
+    assert.doesNotMatch(url, /key/i, url);
+  }
 });

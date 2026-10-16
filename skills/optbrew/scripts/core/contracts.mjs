@@ -4,7 +4,9 @@ const schema = JSON.parse(readFileSync(new URL('../../references/schemas/contrac
 const registry = JSON.parse(readFileSync(new URL('../../references/check-registry.json', import.meta.url)));
 const families = new Map(registry.families.map(family => [family.family_id, family]));
 const tolerance = 1e-9;
-const cwv = { 'lcp-field': [2500, 4000, 'ms'], 'inp-field': [200, 500, 'ms'], 'cls-field': [0.1, 0.25, 'unitless'] };
+// [good, poor, unit] of each field CWV family, read from the registry so the thresholds are part of the evaluation source.
+const cwv = Object.fromEntries(registry.families.filter(family => family.thresholds?.good !== undefined)
+  .map(({ family_id, thresholds }) => [family_id, [thresholds.good, thresholds.poor, thresholds.unit]]));
 
 export class ContractError extends Error {
   constructor(message) { super(message); this.name = 'ContractError'; }

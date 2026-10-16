@@ -32,8 +32,8 @@ function readSitemaps(artifacts, declared, textOf) {
  * are the cross-page entity facts. `linkGraph` and `orphans` come from every collected HTML page, `sitemaps` from the
  * declared sitemaps. `alternates` maps a page url (as requested and as finally served) to `{ urls, alternates }`, the hreflang
  * links of every collected HTML page. `renderSample` holds the canonical urls of the pages the run renders: the protocol's fixed render pages, or for a run from before the render plan the first URL of each page type. `renders` are the stored render records, `renderTextOf(record)` the final DOM of one, and
- * `chrome` is `{ found, reason }` for the run's Chrome, or null when the run recorded none. `cwv` stays empty until the
- * field-data stage exists.
+ * `chrome` is `{ found, reason }` for the run's Chrome, or null when the run recorded none. `cwv` holds the stored
+ * field-data answers, each `{ source, origin, status, body | error, evidence_ref }`, empty when the run collected none.
  */
 export function prepare({ context, artifacts, collection = {}, textOf, renders = [], renderTextOf = () => '', chrome = null, cwv = [] }) {
   const { protocol } = context;
