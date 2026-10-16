@@ -2,6 +2,7 @@ import { writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { deflateRawSync } from 'node:zlib';
+import { preflight } from '../../skills/optbrew/scripts/preflight.mjs';
 import { environmentProbe } from './probe.mjs';
 import { tempDir } from './temp-dir.mjs';
 
@@ -26,14 +27,33 @@ export const brewPages = () => ({
 /** A site that lives in memory: a transport that answers from `pages` and counts every request, and the `selectTransport` that hands it out. */
 export function memorySite(pages = brewPages()) {
   const requests = [];
-  const transport = async ({ url }) => {
+  const calls = [];
+  // A page is found by full address, then host and path, then path; `{ redirect }` answers with a redirect.
+  const transport = async ({ url, headers = {} }) => {
     requests.push(url.href);
-    const hit = pages[url.pathname];
+    calls.push({ href: url.href, headers });
+    const hit = pages[url.href] ?? pages[`${url.host}${url.pathname}`] ?? pages[url.pathname];
+    if (hit?.redirect) return { status: 301, headers: { location: hit.redirect }, body: Buffer.alloc(0) };
     if (!hit) return { status: 404, headers: { 'content-type': 'text/plain' }, body: Buffer.from('missing') };
     return { status: 200, headers: { 'content-type': hit.type ?? 'text/html; charset=utf-8' }, body: Buffer.from(hit.body) };
   };
   const selected = { transport, resolve: async () => [{ address: PUBLIC_ADDRESS, family: 4 }], address_vetting: 'direct', proxy: null };
-  return { requests, selected, selectTransport: async () => selected };
+  return { requests, calls, selected, selectTransport: async () => selected };
+}
+
+/** The unscored read before the start questions, run on an in-memory site into `out/preflight`; the run selects its pages from it. */
+export function preflightOf(site, url, out) {
+  return preflight({ url, out, env: {}, selectTransport: site.selectTransport, findChrome: async () => ({ path: null, reason: 'chrome_not_found' }),
+    readGoogleKey: () => null, home: out });
+}
+
+/** A site of `count` pages under /section/, the home page linking to the first five, plus a sitemap that lists them all. */
+export function bigSite(count) {
+  const numbered = Array.from({ length: count }, (_, i) => `/section/page-${i + 1}`);
+  const pages = { '/': brewPage('Brew Home', numbered.slice(0, 5)), '/robots.txt': { type: 'text/plain', body: 'User-agent: *\nAllow: /\n' },
+    '/sitemap.xml': { type: 'application/xml', body: `<urlset>${numbered.map(p => `<url><loc>${SITE}${p}</loc></url>`).join('')}</urlset>` } };
+  for (const [i, p] of numbered.entries()) pages[p] = brewPage(`Brew Page ${i + 1}`, ['/']);
+  return pages;
 }
 
 export const questions = [{ id: 'q1', question: 'What does Brew Cafe sell?', category: 'brand' }];

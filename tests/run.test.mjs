@@ -213,7 +213,8 @@ test('a real local site: collect, render when Chrome exists, judge and report', 
   const site = await startSite(Object.fromEntries(Object.entries(brewPages()).map(([route, page]) => [route, { headers: { 'content-type': page.type ?? 'text/html' }, body: page.body }])));
   t.after(() => site.close());
   const ws = await workspace(answersFor(`${site.origin}/`));
-  const overrides = { env: { ...process.env, OPTBREW_GOOGLE_API_KEY: '' }, home: ws.home };
+  // The shipped command refuses a loopback address, as preflight does; a test names the pair it may audit.
+  const overrides = { env: { ...process.env, OPTBREW_GOOGLE_API_KEY: '' }, home: ws.home, localTargets: [{ host: '127.0.0.1', port: Number(new URL(site.origin).port) }] };
   const first = await run({ answersPath: ws.answersPath, out: ws.out }, overrides);
   assert.equal(first.status, 'awaiting_judgments');
   const index = await readJson(path.join(ws.out, 'evidence', 'evidence-index.json'));

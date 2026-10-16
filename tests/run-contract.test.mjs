@@ -6,8 +6,7 @@ import { appendFile, mkdir, readdir, readFile, writeFile } from 'node:fs/promise
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { run } from '../skills/optbrew/scripts/run.mjs';
-import { answersFor, brewPages, memorySite, passJudgments, quietEnv, SITE, workspace, zipOf } from './support/run-scenario.mjs';
-import { startSite } from './support/review-scenario.mjs';
+import { answersFor, memorySite, passJudgments, quietEnv, SITE, workspace, zipOf } from './support/run-scenario.mjs';
 
 const runScript = fileURLToPath(new URL('../skills/optbrew/scripts/run.mjs', import.meta.url));
 const readJson = async file => JSON.parse(await readFile(file, 'utf8'));
@@ -26,42 +25,38 @@ function cli(args, ws) {
   });
 }
 
-async function localSite(t) {
-  const site = await startSite(Object.fromEntries(Object.entries(brewPages()).map(([route, page]) => [route, { headers: { 'content-type': page.type ?? 'text/html' }, body: page.body }])));
-  t.after(() => site.close());
-  return site;
-}
-
-test('the CLI prints one JSON line on success and one plain sentence on failure', async t => {
-  const site = await localSite(t);
-  const ws = await workspace(answersFor(`${site.origin}/`));
-  const first = await cli(['--answers', ws.answersPath, '--out', ws.out], ws);
-  assert.equal(first.code, 0, first.stderr);
-  assert.equal(first.stdout.trim().split('\n').length, 1, 'stdout is one line');
-  const halted = JSON.parse(first.stdout);
-  assert.deepEqual(Object.keys(halted), ['status', 'judge_queue', 'queue_items']);
-  assert.equal(halted.status, 'awaiting_judgments');
-  const queue = await readJson(halted.judge_queue);
+test('the CLI prints one JSON line on success and one plain sentence on failure', async () => {
+  // The first call runs in this process (the site is in memory); the second is a resume, which needs no network, so a child can run it.
+  const call = async () => {
+    const site = memorySite();
+    const ws = await workspace(answersFor(`${SITE}/`));
+    const first = await run({ answersPath: ws.answersPath, out: ws.out }, { env: quietEnv(), home: ws.home, selectTransport: site.selectTransport });
+    const judgmentsPath = path.join(ws.dir, 'judgments.json');
+    await writeFile(judgmentsPath, JSON.stringify(passJudgments(await readJson(first.judge_queue))));
+    return { site, ws, first, judgmentsPath };
+  };
+  const { ws, first, judgmentsPath } = await call();
+  assert.deepEqual(Object.keys(first), ['status', 'judge_queue', 'queue_items']);
+  const queue = await readJson(first.judge_queue);
   assert.ok(queue.pages.every(page => page.families.every(family => family.family_id && family.unit_key)), 'every unit names its family and unit_key');
-  const judgmentsPath = path.join(ws.dir, 'judgments.json');
-  await writeFile(judgmentsPath, JSON.stringify(passJudgments(queue)));
   const second = await cli(['--answers', ws.answersPath, '--out', ws.out, '--judgments', judgmentsPath], ws);
   assert.equal(second.code, 0, second.stderr);
+  assert.equal(second.stdout.trim().split('\n').length, 1, 'stdout is one line');
   const done = JSON.parse(second.stdout);
   assert.deepEqual(done, { status: 'done', reports: { json: path.join(ws.out, 'report.json'), md: path.join(ws.out, 'report.md') }, score_input: path.join(ws.out, 'score-input.json') });
   for (const file of [done.reports.json, done.reports.md, done.score_input]) assert.ok((await readFile(file, 'utf8')).length > 0);
+  const again = await cli(['--answers', ws.answersPath, '--out', ws.out, '--judgments', judgmentsPath], ws);
+  assert.equal(again.code, 2);
+  assert.equal(lastLine(again.stderr), 'This folder already holds a finished audit. Use a new --out folder for a new one.');
 
-  const other = await workspace(answersFor(`${site.origin}/`));
-  const again = await cli(['--answers', other.answersPath, '--out', other.out], other);
-  const otherJudgments = path.join(other.dir, 'judgments.json');
-  await writeFile(otherJudgments, JSON.stringify(passJudgments(await readJson(JSON.parse(again.stdout).judge_queue))));
-  const evidence = path.join(other.out, 'evidence');
+  const other = await call();
+  const evidence = path.join(other.ws.out, 'evidence');
   await appendFile(path.join(evidence, (await readdir(evidence)).find(name => name.endsWith('.html'))), '<!-- edited -->');
-  const requests = site.requests.length;
-  const tampered = await cli(['--answers', other.answersPath, '--out', other.out, '--judgments', otherJudgments], other);
+  const requests = other.site.requests.length;
+  const tampered = await cli(['--answers', other.ws.answersPath, '--out', other.ws.out, '--judgments', other.judgmentsPath], other.ws);
   assert.equal(tampered.code, 2);
   assert.match(lastLine(tampered.stderr), /^index changed: /);
-  assert.equal(site.requests.length, requests, 'the stopped resume collected nothing');
+  assert.equal(other.site.requests.length, requests, 'the stopped resume collected nothing');
 
   const missing = await cli(['--answers', path.join(ws.dir, 'nope.json'), '--out', path.join(ws.dir, 'o2')], ws);
   assert.equal(missing.code, 2);
@@ -112,7 +107,7 @@ test('owner exports: a Search Console zip and a pasted Naver table become replay
   assert.equal(value('naver:clicks').sample_selection.kind, 'unknown', 'a pasted top-N table is not the whole site');
   assert.deepEqual(index.owner_exports.map(entry => [entry.kind, entry.status]), [['gsc', 'read'], ['naver', 'read']]);
   assert.ok(report.evidence_index.some(entry => entry.kind === 'native_export' && entry.source_ref === 'optbrew:owner-export'));
-  assert.equal(report.remaining.length, 0);
+  assert.equal(report.remaining.filter(row => row.reason.startsWith('export_')).length, 0, 'usable exports leave no remaining row');
 });
 
 test('owner exports: a missing or unreadable file is an unknown with a reason, never a crash', async () => {
@@ -121,10 +116,12 @@ test('owner exports: a missing or unreadable file is an unknown with a reason, n
   assert.deepEqual(index.owner_exports.map(entry => [entry.kind, entry.status, entry.reason]),
     [['gsc', 'unusable', 'export_file_missing'], ['naver', 'unusable', 'export_table_not_found']]);
   assert.equal(report.metrics.length, 0);
-  assert.deepEqual(report.remaining.map(row => row.reason), ['export_file_missing', 'export_table_not_found']);
+  const gaps = report.remaining.filter(row => row.reason.startsWith('export_'));
+  assert.deepEqual(gaps.map(row => row.reason), ['export_file_missing', 'export_table_not_found']);
+  assert.match(gaps[0].problem, /No file was found/);
   const damaged = await withExports([{ kind: 'gsc', file: 'bad.zip' }], { 'bad.zip': Buffer.from('not a zip at all') });
   assert.equal(damaged.index.owner_exports[0].reason, 'export_not_a_zip');
-  assert.equal(damaged.report.remaining.length, 1);
+  assert.equal(damaged.report.remaining.filter(row => row.reason.startsWith('export_')).length, 1);
 });
 
 test('--out may already hold preflight/ and the answers file; the queue file is pretty-printed', async () => {

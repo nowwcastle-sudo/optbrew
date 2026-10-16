@@ -712,8 +712,16 @@ export function buildReport(packet) {
     if (finding.blocker && !observations.some(obs => obs.check_id === finding.check_id &&
         obs.unit_key === finding.unit_key && obs.state === 'fail'))
       throw new ContractError('blocker requires confirmed failed check observation');
+    // A finding that groups several pages names each of them, and each must itself be a failed or unknown verdict.
+    for (const unit of finding.unit_keys ?? []) if (!observations.some(obs => obs.check_id === finding.check_id && obs.unit_key === unit && (obs.state === 'fail' || obs.state === 'unknown')))
+      throw new ContractError(`finding names a page without a matching check observation: ${unit}`);
+    // A finding that carries the model's source must rest on a model verdict of its unit; its evidence is the page the collector stored.
+    const modelFinding = finding.source_ref === OBSERVATION_SOURCES.host_model;
+    if (modelFinding && !observations.some(obs => obs.check_id === finding.check_id && obs.unit_key === finding.unit_key &&
+        obs.evaluator_type === 'host_model' && obs.state === 'fail'))
+      throw new ContractError(`model finding has no model verdict: ${finding.finding_id}`);
     for (const source of finding.sources) {
-      const evidence = requireRef(source.evidence_ref, source.source_ref);
+      const evidence = requireRef(source.evidence_ref, source.source_ref === OBSERVATION_SOURCES.host_model ? { anySource: true } : source.source_ref);
       // The same HTML plus response-header replay as the observation, bound to the finding's own unit.
       if (finding.check_id === 'index-policy' && finding.blocker &&
           !evidenceBlocksIndexing(evidence, packet.run_context.protocol.engines, collectedAny, unitUrl(finding.unit_key)))
@@ -733,7 +741,7 @@ export function buildReport(packet) {
     const resolution = resolving.length ? { observation_id: resolving[0].observation_id,
       evaluator_type: [...new Set(resolving.map(obs => obs.evaluator_type))].join(', '),
       source_ref: [...new Set(resolving.map(obs => obs.source_ref))].join(', ') } : null;
-    return { ...finding, remediation: selected ?? null, status, resolution };
+    return { ...finding, remediation: selected ?? null, status, resolution, ...(modelFinding ? { label: MODEL_JUDGMENT_LABEL } : {}) };
   });
   for (const change of packet.changes) {
     validateEntity('ChangeRecord', change);

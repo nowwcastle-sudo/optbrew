@@ -399,5 +399,7 @@ test('a caller cannot override Content-Length or raise the fetch ceiling above t
   await assert.rejects(fetchScoped(`${origin}/owned/page`, { ...base, maxBytes: hugeBytes, ceiling: { timeoutMs: hugeTime, maxBytes: hugeBytes } }), /exceed context ceiling/);
   await assert.rejects(fetchScoped(`${origin}/owned/page`, { ...base, timeoutMs: limits().cwv_timeout_ms }), /exceed context ceiling/, 'the crawl default ceiling still holds');
   const field = { timeoutMs: limits().cwv_timeout_ms, maxBytes: limits().cwv_max_bytes };
-  assert.equal((await fetchScoped(`${origin}/owned/page`, { ...base, ...field, ceiling: field })).status, 200, 'the field-data limits stay allowed');
+  await assert.rejects(fetchScoped(`${origin}/owned/page`, { ...base, ...field, ceiling: field }), /exceed context ceiling/, 'only the field-data adapter may use the field-data limits');
+  assert.equal((await fetchScoped(`${origin}/owned/page`, { ...base, ...field, ceiling: field, fieldData: true })).status, 200, 'the field-data limits stay allowed for it');
+  await assert.rejects(fetchScoped(`${origin}/owned/page`, { ...base, timeoutMs: hugeTime, ceiling: { timeoutMs: hugeTime, maxBytes: hugeBytes }, fieldData: true }), /exceed context ceiling/);
 });

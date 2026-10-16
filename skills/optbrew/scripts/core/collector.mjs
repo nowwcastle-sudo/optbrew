@@ -60,9 +60,10 @@ async function addressesFor(url, resolve) {
 }
 
 /** Fetch one URL with fresh DNS validation at every redirect and a pinned connection. */
-export async function fetchScoped(input, { context, transport = directTransport, resolve = host => lookup(host, { all: true, verbatim: true }), timeoutMs = limits().timeout_ms, maxBytes = limits().max_bytes, maxRedirects = limits().max_redirects, headers = {}, allowedAuxiliary = null, reserveRequest = null, addressVetting = 'direct', extraHeaders = [], method = 'GET', body: requestBody = null, ceiling = { timeoutMs: limits().timeout_ms, maxBytes: limits().max_bytes } }) {
-  // A caller may ask for a lower ceiling, never a higher one than the largest the config fixes (the field-data calls' limits).
-  const fixed = { timeoutMs: Math.max(limits().timeout_ms, limits().cwv_timeout_ms), maxBytes: Math.max(limits().max_bytes, limits().cwv_max_bytes) };
+export async function fetchScoped(input, { context, transport = directTransport, resolve = host => lookup(host, { all: true, verbatim: true }), timeoutMs = limits().timeout_ms, maxBytes = limits().max_bytes, maxRedirects = limits().max_redirects, headers = {}, allowedAuxiliary = null, reserveRequest = null, addressVetting = 'direct', extraHeaders = [], method = 'GET', body: requestBody = null, ceiling = { timeoutMs: limits().timeout_ms, maxBytes: limits().max_bytes }, fieldData = false }) {
+  // A caller may ask for a lower ceiling, never a higher one than the config fixes: the crawl's limits, or the field-data limits
+  // for the one adapter that says it is a field-data call (`transportFetch`).
+  const fixed = fieldData ? { timeoutMs: limits().cwv_timeout_ms, maxBytes: limits().cwv_max_bytes } : { timeoutMs: limits().timeout_ms, maxBytes: limits().max_bytes };
   if (![timeoutMs, maxBytes, maxRedirects].every(Number.isInteger) || timeoutMs < 1 || timeoutMs > Math.min(ceiling.timeoutMs, fixed.timeoutMs) ||
       maxBytes < 1 || maxBytes > Math.min(ceiling.maxBytes, fixed.maxBytes) || maxRedirects < 0 || maxRedirects > limits().max_redirects)
     throw new Error('fetch limits exceed context ceiling');
@@ -149,7 +150,7 @@ export function transportFetch(selected, { timeoutMs, maxBytes }) {
   return async (url, { method = 'GET', headers = {}, body = null } = {}) => {
     const result = await fetchScoped(url, { context: { scope: { allowed: [{ origin: new URL(url).origin }] } }, transport: selected.transport,
       resolve: selected.resolve, addressVetting: selected.address_vetting, method, headers, body, maxRedirects: FOLLOW_NONE,
-      timeoutMs, maxBytes, ceiling: { timeoutMs, maxBytes } });
+      timeoutMs, maxBytes, ceiling: { timeoutMs, maxBytes }, fieldData: true });
     return { status: result.status, text: async () => result.body.toString('utf8') };
   };
 }

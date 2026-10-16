@@ -1,17 +1,16 @@
 #!/usr/bin/env node
 import { lookup } from 'node:dns/promises';
 import { realpathSync } from 'node:fs';
-import { access, readFile } from 'node:fs/promises';
+import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { findChrome } from './core/chrome.mjs';
 import { validateEntity } from './core/contracts.mjs';
 import { renderChrome } from './core/render.mjs';
-import { restoreState, runStages, stages } from './core/stages.mjs';
+import { prepareOutput, restoreState, runStages, stages } from './core/stages.mjs';
 import { selectTransport } from './core/transport.mjs';
 
 const USAGE = 'usage: node skills/optbrew/scripts/run.mjs --answers <intake-answers.json> --out <dir> [--judgments <judgments.json>]';
-const INDEX_FILE = path.join('evidence', 'evidence-index.json');
 const RESUME_FROM = 'judge';
 const STATUS_DONE = 'done';
 
@@ -39,7 +38,8 @@ function judgmentList(value) {
 /**
  * One audit: the first call runs context, collect, render, cwv, derive and judge, and stops at the judge queue; the second call
  * (same `out`, now with `judgmentsPath`) rebuilds its state from the evidence in `out` and runs judge, score and report.
- * `overrides` is for tests: `env`, `home`, `chrome` (holder), `fetchFn`, `selectTransport`, `stages` (the stage list).
+ * `overrides` is for tests: `env`, `home`, `chrome` (holder), `fetchFn`, `selectTransport`, `stages` (the stage list), `localTargets`
+ * (loopback `{ host, port }` pairs a test may audit; the shipped command refuses a local address, as preflight does).
  * Everything is written under `out`, and the render chrome is closed whatever happens.
  */
 export async function run({ answersPath, out, judgmentsPath = null }, overrides = {}) {
@@ -51,10 +51,10 @@ export async function run({ answersPath, out, judgmentsPath = null }, overrides 
     try { validateEntity('IntakeAnswers', answers); }
     catch (error) { throw new Error(`The start answers are not valid (${error.message}).`); }
     const judgments = judgmentsPath ? judgmentList(await readJson(judgmentsPath, 'judgments')) : null;
-    const deps = { env, home: overrides.home, chrome, fetchFn: overrides.fetchFn,
+    const deps = { env, home: overrides.home, chrome, fetchFn: overrides.fetchFn, localTargets: overrides.localTargets,
       selectTransport: overrides.selectTransport ?? (input => selectTransport({ ...input, resolve: host => lookup(host, { all: true, verbatim: true }) })) };
-    const resuming = await access(path.join(outDir, INDEX_FILE)).then(() => true, () => false);
-    const state = resuming ? await restoreState({ out: outDir, answers }) : { answers, out: outDir };
+    const resuming = await prepareOutput(outDir) === 'resume';
+    const state = resuming ? await restoreState({ out: outDir, answers }) : { answers, out: outDir, answersDir: path.dirname(path.resolve(answersPath)) };
     const { state: end, halt } = await runStages(overrides.stages ?? stages(), { ...state, judgments }, deps, { from: resuming ? RESUME_FROM : null });
     return halt ? { status: halt, judge_queue: path.join(outDir, 'judge-queue.json'), queue_items: end.queue.items.length } :
       { status: STATUS_DONE, reports: end.reports, score_input: path.join(outDir, 'score-input.json'), ...(end.lab_cwv ? { lab_cwv: end.lab_cwv } : {}) };

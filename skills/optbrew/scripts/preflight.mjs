@@ -134,6 +134,8 @@ export async function preflight({ url, out, sourceTools = [], skillRoot = defaul
   }
 
   const startJson = {
+    // Where the first request landed (after apex/www and http/https redirects): the address the audit should start from.
+    final_url: first?.final_url ?? null,
     probe: { ...probe, sitemap_pages: sitemapPages },
     sitemap_pages: sitemapPages,
     sitemap_pages_basis: sitemapBasis,

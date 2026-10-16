@@ -94,6 +94,7 @@ test('an apex to www redirect is not a down site', async () => {
   assert.deepEqual(startJson.question_candidates_input.map(item => item.url), ['https://www.example.test/', 'https://www.example.test/about']);
   assert.deepEqual(fake.hosts, ['example.test', 'www.example.test', 'www.example.test', 'www.example.test']);
   assert.equal(startJson.sitemap_pages, 1);
+  assert.equal(startJson.final_url, 'https://www.example.test/', 'start.json says where the first request landed');
   // The reverse direction works the same way.
   const back = site({ 'www.example.test/': redirect('https://example.test/'), 'example.test/': html(page('Home')) });
   const result = await run(back, { url: 'https://www.example.test/' });
@@ -105,6 +106,7 @@ test('http to https redirect continues', async () => {
   const { startJson } = await run(fake, { url: 'http://example.test/' });
   assert.equal(startJson.probe.block_reason, null);
   assert.deepEqual(startJson.question_candidates_input.map(item => item.url), ['https://example.test/', 'https://example.test/about']);
+  assert.equal(startJson.final_url, 'https://example.test/');
 });
 
 test('a redirect to another site is recorded, not site_down', async () => {
@@ -112,7 +114,7 @@ test('a redirect to another site is recorded, not site_down', async () => {
   const { out, startJson } = await run(fake);
   assert.equal(startJson.probe.block_reason, null);
   assert.equal(startJson.probe.transport, 'direct');
-  assert.deepEqual([startJson.question_candidates_input, startJson.sitemap_pages], [[], null]);
+  assert.deepEqual([startJson.question_candidates_input, startJson.sitemap_pages, startJson.final_url], [[], null, null]);
   assert.deepEqual(fake.hosts, ['example.test']);
   const index = JSON.parse(await readFile(path.join(out, 'preflight', 'evidence', 'evidence-index.json'), 'utf8'));
   assert.deepEqual(index.failures.map(entry => entry.error), ['redirect_outside_scope']);

@@ -70,23 +70,26 @@ export function candidateSpans(bytes, evidence_sha256) {
 export async function buildJudgeQueue({ observations, store }) {
   const index = await store.index();
   const { raw } = index;
-  const recorded = new Map(raw.filter(entry => entry.content_hash).map(entry => [entry.evidence_ref, entry]));
+  // Raw bodies are named by their hash, so pages with identical bytes share one evidence file; a raw entry is told apart by its address too.
+  const recorded = new Map(raw.filter(entry => entry.content_hash).map(entry => [JSON.stringify([entry.evidence_ref, entry.normalized_url]), entry]));
   const judged = new Set(observations.filter(observation => observation.state !== 'unknown').map(observation => observation.unit_key));
+  // A page is the address its fetch-response verdict names, whatever other address answered with the same bytes.
   const pages = new Map();
   for (const observation of observations) {
-    const entry = observation.family_id === FETCH_FAMILY && observation.state === 'pass' ? recorded.get(observation.evidence_ref) : null;
-    if (entry && !pages.has(entry.evidence_ref)) pages.set(entry.evidence_ref, entry);
+    if (observation.family_id !== FETCH_FAMILY || observation.state !== 'pass') continue;
+    const url = observation.unit_key.split('|').at(-1);
+    const entry = recorded.get(JSON.stringify([observation.evidence_ref, url]));
+    if (entry && !pages.has(url)) pages.set(url, entry);
   }
   const families = modelFamilies();
   const items = [];
   const queue = { items };
-  for (const entry of pages.values()) {
+  for (const [url, entry] of pages) {
     const spans = candidateSpans(await store.read(entry.evidence_ref, entry.content_hash), entry.content_hash);
     if (!spans.length) continue;
     for (const family_id of families) {
-      const unit_key = unitKey(family_id, entry.normalized_url);
-      if (!judged.has(unit_key)) items.push({ family_id, unit_key, url: entry.normalized_url, evidence_ref: entry.evidence_ref,
-        evidence_sha256: entry.content_hash, spans });
+      const unit_key = unitKey(family_id, url);
+      if (!judged.has(unit_key)) items.push({ family_id, unit_key, url, evidence_ref: entry.evidence_ref, evidence_sha256: entry.content_hash, spans });
     }
   }
   const { ref, sha256 } = await store.write(QUEUE_KIND, `${JSON.stringify(queue, null, 2)}\n`);

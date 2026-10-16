@@ -28,7 +28,7 @@
     "Goal": { "type": "string", "minLength": 1 },
     "OwnerExport": { "type": "object", "additionalProperties": false, "required": ["kind", "path"], "properties": { "kind": { "enum": ["gsc", "naver"] }, "path": { "type": "string", "minLength": 1 } } },
     "IntakeAnswers": { "type": "object", "additionalProperties": false, "required": ["schema_version", "guidance_level", "url", "goals", "questions", "facts", "sample_mode", "max_urls", "source_tools", "probe"], "properties": {
-      "schema_version": { "const": "1.0.0" }, "guidance_level": { "enum": ["beginner", "brief"] }, "url": { "type": "string" }, "goals": { "type": "array", "items": { "$ref": "#/$defs/Goal" } },
+      "schema_version": { "type": "string" }, "guidance_level": { "enum": ["beginner", "brief"] }, "url": { "type": "string" }, "goals": { "type": "array", "items": { "$ref": "#/$defs/Goal" } },
       "owner_exports": { "type": "array", "items": { "$ref": "#/$defs/OwnerExport" } },
       "questions": { "type": "array", "items": { "$ref": "#/$defs/Question" } }, "facts": { "type": "array", "items": { "$ref": "#/$defs/Fact" } },
       "sample_mode": { "enum": ["sample", "raise", null] }, "max_urls": { "type": "integer", "minimum": 1 }, "source_tools": { "type": "array", "items": { "type": "string" } }, "probe": { "$ref": "#/$defs/EnvironmentProbe" }

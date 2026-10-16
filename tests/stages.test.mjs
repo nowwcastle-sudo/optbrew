@@ -9,7 +9,7 @@ import { ContractError, validateEntity } from '../skills/optbrew/scripts/core/co
 import { selectRenderPages } from '../skills/optbrew/scripts/core/render.mjs';
 import { runStages, stages } from '../skills/optbrew/scripts/core/stages.mjs';
 import { proxyTransport } from '../skills/optbrew/scripts/core/transport.mjs';
-import { answersFor, memorySite, questions, quietEnv, SITE, workspace } from './support/run-scenario.mjs';
+import { answersFor, brewPages, memorySite, preflightOf, questions, quietEnv, SITE, workspace } from './support/run-scenario.mjs';
 
 // Assembled from fragments: the repository never contains a literal key.
 const KEY = ['AI', 'za', 'Sy', 'Fake', 'Stage', 'Key', '0123456789', 'abcdefghij', 'KLMN'].join('');
@@ -49,13 +49,22 @@ test('runStages stops at a halt, can start at a named stage, and refuses an unkn
 test('context stage fixes the render pages with selectRenderPages', async () => {
   const { state } = await begin(['context'], { facts: [{ key: 'phone', value: '02-555-0142', source_url: `${SITE}/about` }, { key: 'email', value: 'a@brew.test', source_url: `${SITE}/about` }] });
   const { protocol } = state.context;
-  assert.deepEqual(protocol.page_types.map(type => type.id), ['primary', 'facts']);
+  assert.deepEqual(protocol.page_types.map(type => type.id), ['home', 'pages']);
   assert.deepEqual(protocol.render.pages, selectRenderPages(protocol.page_types));
   assert.deepEqual(protocol.render.pages.map(page => page.normalized), [`${SITE}/`, `${SITE}/about`]);
   assert.equal(protocol.render.enabled, true);
   assert.equal(state.context.audited, true);
   assert.deepEqual(state.context.environment_probe, state.answers.probe, 'the probe is copied from the answers, not taken again');
   assert.deepEqual(JSON.parse(await readFile(path.join(state.out, 'context.json'), 'utf8')), state.context);
+});
+
+test('a fact page the audit cannot cover is recorded in the intake record, not dropped silently', async () => {
+  const facts = [{ key: 'phone', value: '1', source_url: 'https://elsewhere.test/contact' }, { key: 'phone', value: '1', source_url: `${SITE}/about` }];
+  const { state } = await begin(['context'], { facts, max_urls: 4 });
+  const intake = JSON.parse(await readFile(path.join(state.out, 'intake.json'), 'utf8'));
+  assert.deepEqual(intake.selection.dropped_fact_pages, [{ url: 'https://elsewhere.test/contact', reason: 'outside_scope' }]);
+  assert.equal(intake.selection.pages, 2, 'the home page and the fact page inside the scope');
+  assert.deepEqual(intake.selection.start_redirect, null);
 });
 
 test('context stage plans question-coverage with its panel, or records why it cannot', async () => {
@@ -74,11 +83,33 @@ test('context stage plans question-coverage with its panel, or records why it ca
   assert.equal(plan(naver, 'naver-markup').applicable, true);
 });
 
+test('Naver is a target when a goal names it, an owner export is Naver, the start page is Korean or the host is .kr; Google always', async () => {
+  const engines = async over => (await begin(['context'], over)).state.context.protocol.engines;
+  assert.deepEqual(await engines({ goals: ['검색 유입', 'AI 답변 인용'] }), ['google']);
+  assert.deepEqual(await engines({ goals: ['검색 유입'], owner_exports: [{ kind: 'naver', path: 'naver.txt' }] }), ['google', 'naver']);
+  assert.deepEqual(await engines({ owner_exports: [{ kind: 'gsc', path: 'gsc.zip' }] }), ['google']);
+  assert.deepEqual(await engines({ url: 'https://brew.example.kr/' }), ['google', 'naver']);
+  // A start page that declares lang="ko" in the preflight evidence.
+  const pages = brewPages();
+  pages['/'] = { body: pages['/'].body.replace('lang="en"', 'lang="ko"') };
+  const site = memorySite(pages);
+  const ws = await workspace(answersFor(`${SITE}/`));
+  await preflightOf(site, `${SITE}/`, ws.out);
+  const { state } = await runStages(upTo('context'), { answers: answersFor(`${SITE}/`), out: ws.out }, { env: quietEnv(), selectTransport: site.selectTransport });
+  assert.deepEqual(state.context.protocol.engines, ['google', 'naver']);
+});
+
 test('max_urls: up to the cap in the answers and the context, never above it', async () => {
   const cap = limits().max_urls_cap;
-  assert.doesNotThrow(() => validateEntity('IntakeAnswers', answersFor(`${SITE}/`, { max_urls: cap })));
-  for (const max_urls of [cap + 1, 0, 1.5]) assert.throws(() => validateEntity('IntakeAnswers', answersFor(`${SITE}/`, { max_urls })), ContractError);
-  const { state } = await begin(['context'], { max_urls: cap });
+  const raise = max_urls => answersFor(`${SITE}/`, { max_urls, sample_mode: 'raise' });
+  assert.doesNotThrow(() => validateEntity('IntakeAnswers', raise(cap)));
+  for (const max_urls of [cap + 1, 0, 1.5]) assert.throws(() => validateEntity('IntakeAnswers', raise(max_urls)), ContractError);
+  // The answer "sample" or "raise" and the number must agree.
+  const over = limits().max_urls_default + 1;
+  assert.throws(() => validateEntity('IntakeAnswers', answersFor(`${SITE}/`, { max_urls: over })), /sample cannot go above/);
+  assert.throws(() => validateEntity('IntakeAnswers', raise(limits().max_urls_default)), /raised limit must be above/);
+  assert.doesNotThrow(() => validateEntity('IntakeAnswers', answersFor(`${SITE}/`, { sample_mode: null, max_urls: limits().max_urls_default })));
+  const { state } = await begin(['context'], { max_urls: cap, sample_mode: 'raise' });
   assert.equal(requestLimit(state.context.scope), cap);
   assert.throws(() => validateEntity('RunContext', { ...state.context, scope: { ...state.context.scope, max_urls: cap + 1 } }), /max_urls/);
   assert.equal(requestLimit({}), limits().max_urls_default);

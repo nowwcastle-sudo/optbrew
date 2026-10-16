@@ -1,7 +1,6 @@
 import { spawn } from 'node:child_process';
 import { createHash, randomUUID } from 'node:crypto';
-import { access, mkdir, readFile, readdir, stat, writeFile } from 'node:fs/promises';
-import { isIP } from 'node:net';
+import { access, mkdir, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { auditCollected } from '../../modules/naver-searchadvisor/scripts/audit.mjs';
@@ -11,12 +10,13 @@ import { collect, declaredRobotsIndex, transportFetch } from './collector.mjs';
 import { checkRegistry, limits, requestLimit, versions } from './config.mjs';
 import { compare } from './compare.mjs';
 import { validateEntity } from './contracts.mjs';
-import { collectCwv, labCwv } from './cwv.mjs';
+import { HTTP_OK, collectCwv, labCwv } from './cwv.mjs';
 import { deriveObservations } from './derive.mjs';
 import { lcpField, inpField, clsField } from './checks/cwv-field.mjs';
 import { openStore } from './evidence-store.mjs';
 import { OBSERVATION_SOURCES, buildJudgeQueue, mergeJudgments } from './judgments.mjs';
 import { keyHome, readGoogleKey } from './keys.mjs';
+import { groupPages, readPreflight, selectPages } from './page-select.mjs';
 import { freezeProtocol } from './protocol.mjs';
 import { renderPages, selectRenderPages } from './render.mjs';
 import { writeReport } from './report.mjs';
@@ -43,9 +43,8 @@ const SCORE_INPUT_FILE = 'score-input.json';
 // Said whenever the stored evidence cannot be trusted on the second call; the same words every time.
 const INDEX_CHANGED = 'index changed: the evidence in this folder no longer matches what the first call stored, so nothing was collected again; run again with a new --out folder.';
 const APPROVED_BY = 'start answers (intake-answers.json)';
-// Robots and sitemap files are auxiliary resources of the protocol, never audited pages.
-const AUXILIARY_PATH = /\/(?:robots\.txt|sitemap[^/]*\.xml)$/i;
 const NAVER_ENGINE = 'naver';
+const KOREAN_DOMAIN = '.kr';
 const NAVER_GOAL = /naver|네이버/i;
 // Families the start answers can switch off; every other family of the registry is planned for every run.
 const NAVER_FAMILY = 'naver-markup';
@@ -81,26 +80,50 @@ export async function runStages(list, state, deps, { from = null } = {}) {
   return { state: current, halt: null };
 }
 
-const loopback = host => host === 'localhost' || host.endsWith('.localhost') || (isIP(host) !== 0 && (host.startsWith('127.') || host === '::1'));
 const isLocalTarget = (scope, url) => { const target = urlTarget(new URL(url)); return (scope.local_targets ?? []).some(x => x.host === target.host && Number(x.port) === target.port); };
 
-/** The RunContext and the intake decision record that the start answers fix. Pure: nothing is fetched or written. */
-function contextFrom(answers) {
-  const start = new URL(answers.url);
-  if (!['http:', 'https:'].includes(start.protocol)) throw new Error('url must be http or https');
+/** The same site under the other spelling of its name: with or without `www.`, over http or https. */
+const sameSite = (a, b) => a.hostname.replace(/^www\./, '') === b.hostname.replace(/^www\./, '') && a.port === b.port;
+
+/**
+ * The address the audit starts from. Preflight (`<out>/preflight/start.json`) says where the first request landed; when that is
+ * the same site under another spelling, the run adopts it (and says so), because scope is the exact origin. Anywhere else is a
+ * different site: the run stops with one plain sentence.
+ */
+function startFrom(asked, preflight) {
+  if (!preflight.finalUrl) return { start: asked, adopted: null };
+  const landed = new URL(preflight.finalUrl);
+  if (landed.origin === asked.origin) return { start: asked, adopted: null };
+  if (!sameSite(asked, landed)) throw new Error(`The address ${asked.href} leads to another site (${landed.origin}), which this audit does not cover. If you own that site, start again with its address.`);
+  return { start: landed, adopted: { from: asked.href, to: landed.href } };
+}
+
+/** The answers as kept in the run folder: an export's file name and kind, never the folder it came from. */
+const keptAnswers = answers => ({ ...answers, ...(answers.owner_exports ? { owner_exports: answers.owner_exports.map(x => ({ kind: x.kind, name: path.basename(x.path) })) } : {}) });
+
+/**
+ * The RunContext and the intake decision record that the start answers fix, with the pages the audit covers (chosen here, from
+ * the preflight evidence, before any request of the audit). Nothing is fetched; only the preflight folder is read.
+ */
+async function contextFrom(answers, { out, localTargets = [] }) {
+  const asked = new URL(answers.url);
+  if (!['http:', 'https:'].includes(asked.protocol)) throw new Error('url must be http or https');
+  const preflight = await readPreflight(out, asked.href);
+  const { start, adopted } = startFrom(asked, preflight);
   const target = urlTarget(start);
-  const scope = { allowed: [{ origin: start.origin, path_prefix: '/' }], max_urls: answers.max_urls,
-    ...(loopback(target.host) ? { local_targets: [{ host: target.host, port: target.port }] } : {}) };
+  const local = localTargets.filter(x => x.host === target.host && Number(x.port) === target.port);
+  const scope = { allowed: [{ origin: start.origin, path_prefix: '/' }], max_urls: answers.max_urls, ...(local.length ? { local_targets: local } : {}) };
   const ref = href => ({ original: href, normalized: assertUrlInScope(href, scope).href });
   const auxiliary = [['robots', '/robots.txt'], ['sitemap', '/sitemap.xml']].map(([kind, pathname]) => ({ kind, ...ref(new URL(pathname, start.origin).href) }));
   const home = ref(start.href);
-  // The pages the owner confirmed facts on are audited with the start page, so facts can be compared across pages.
-  const budget = Math.max(0, requestLimit(scope) - 1 - auxiliary.length);
-  const factPages = [...new Set(answers.facts.map(fact => fact.source_url))].flatMap(href => {
-    try { return [ref(href)]; } catch { return []; }
-  }).filter(page => page.normalized !== home.normalized && !AUXILIARY_PATH.test(new URL(page.normalized).pathname)).slice(0, budget);
-  const pageTypes = [{ id: 'primary', urls: [home] }, ...(factPages.length ? [{ id: 'facts', urls: factPages }] : [])];
-  const engines = ['google', ...(NAVER_GOAL.test(answers.goals.join(' ')) ? [NAVER_ENGINE] : [])];
+  // Facts the owner confirmed on the address the run started from before its redirect now live on the adopted origin.
+  const factUrls = [...new Set(answers.facts.map(fact => adopted && new URL(fact.source_url).origin === asked.origin ?
+    fact.source_url.replace(asked.origin, start.origin) : fact.source_url))];
+  const { pages, dropped } = selectPages({ home: home.normalized, factUrls, preflight, scope, budget: requestLimit(scope) - auxiliary.length });
+  const pageTypes = groupPages(pages, home.normalized).map(type => ({ id: type.id, urls: type.urls.map(ref) }));
+  const wantsNaver = NAVER_GOAL.test(answers.goals.join(' ')) || (answers.owner_exports ?? []).some(x => x.kind === NAVER_ENGINE) ||
+    preflight.korean || target.host.endsWith(KOREAN_DOMAIN);
+  const engines = ['google', ...(wantsNaver ? [NAVER_ENGINE] : [])];
   const planned = id => id === NAVER_FAMILY ? engines.includes(NAVER_ENGINE) : QUESTION_FAMILIES.includes(id) ? answers.questions.length > 0 : true;
   const families = checkRegistry().families.map(({ family_id }) => planned(family_id) ? { family_id, applicable: true } :
     { family_id, applicable: false, applicability_decision: { ...NOT_APPLICABLE[family_id], evidence_ref: INTAKE_FILE } });
@@ -121,22 +144,23 @@ function contextFrom(answers) {
   const { protocol_hash } = freezeProtocol(context);
   const intake = { run_id: context.run_id, target: context.target, protocol_hash, approved_by: APPROVED_BY,
     decisions: families.filter(family => family.applicability_decision).map(family => ({ scope: 'family', family_id: family.family_id,
-      condition: family.applicability_decision.condition, reason: family.applicability_decision.reason })), answers };
+      condition: family.applicability_decision.condition, reason: family.applicability_decision.reason })),
+    selection: { pages: pages.length, limit: requestLimit(scope), dropped_fact_pages: dropped, start_redirect: adopted }, answers: keptAnswers(answers) };
   const mappings = providers.map(provider => ({ file: `owner-mapping-${provider}.json`,
     record: { run_id: context.run_id, target: context.target, ...mapping(provider), approved_by: APPROVED_BY } }));
-  return { context, intake, mappings };
+  return { context, intake, mappings, adopted };
 }
 
 const contextStage = {
   name: 'context',
-  async run(state) {
+  async run(state, deps) {
     validateEntity('IntakeAnswers', state.answers);
-    const { context, intake, mappings } = contextFrom(state.answers);
+    const { context, intake, mappings, adopted } = await contextFrom(state.answers, { out: state.out, localTargets: deps.localTargets });
     await mkdir(state.out, { recursive: true });
     await writeFile(path.join(state.out, CONTEXT_FILE), json(context), { flag: 'wx' });
     await writeFile(path.join(state.out, INTAKE_FILE), json(intake), { flag: 'wx' });
     for (const { file, record } of mappings) await writeFile(path.join(state.out, file), json(record), { flag: 'wx' });
-    return { state: { ...state, context, modules: RUN_MODULES } };
+    return { state: { ...state, context, modules: RUN_MODULES, start_redirect: adopted } };
   },
 };
 
@@ -184,12 +208,14 @@ async function magnus(artifact) {
  * recorded with its reason (`owner_exports` in the audit index) and never stops the run; the report lists it as remaining work.
  * A readable file is kept as evidence (the bytes, and the rows read from them) so the numbers can be replayed.
  */
-async function ingestOwnerExports(state) {
+async function ingestOwnerExports(state, env) {
   const { context, store } = state;
   const entries = [];
   for (const { kind, path: file } of state.answers?.owner_exports ?? []) {
     try {
-      const where = path.resolve(file);
+      // A path is read as the owner wrote it: `~` is the home folder, and a relative path starts at the answers file's folder.
+      const where = path.resolve(state.answersDir ?? '.', file.replace(/^~(?=$|[\\/])/, keyHome(env)));
+      if ((await stat(where)).size > limits().max_bytes) throw Object.assign(new Error('too large'), { reason: 'export_file_too_large' });
       const bytes = await readFile(where);
       const parsed = readOwnerExport(kind, bytes);
       const raw = await store.write('owner-export', bytes);
@@ -269,7 +295,7 @@ const collectStage = {
       evaluated_count: collection.evaluated_count, request_count: collection.request_count, skipped: collection.skipped, limit_reached: collection.limit_reached });
     await document('ledger', { entries: collection.ledger, limit: requestLimit(context.scope) });
     await document('modules', module_outputs);
-    await ingestOwnerExports(state);
+    await ingestOwnerExports(state, deps.env);
     state.audit = { artifacts, module_outputs, discovered_count: collection.discovered_count, evaluated_count: collection.evaluated_count,
       request_count: collection.request_count, skipped: collection.skipped, limit_reached: collection.limit_reached };
     return { state };
@@ -281,6 +307,10 @@ const renderStage = {
   name: 'render',
   async run(state, deps) {
     const { context, store } = state;
+    // Nothing to render or measure when not one selected page answered: say so plainly instead of reporting an empty audit.
+    const selected = new Set(context.protocol.page_types.flatMap(type => type.urls.map(url => url.normalized)));
+    if (!state.audit.artifacts.some(artifact => selected.has(artifact.normalized_url) && Number.isInteger(artifact.status)))
+      throw new Error('None of the selected pages could be fetched, so there is nothing to audit. Check that the address is right and that the site can be reached from this computer, then start again.');
     const handle = deps.chrome.open({ context, route: await routeOf(state, deps) });
     const { chrome } = await renderPages({ context, chrome: handle, store });
     await store.set('chrome', chrome);
@@ -293,11 +323,14 @@ async function measureLab(state) {
   const [page] = state.context.protocol.render.pages;
   const browser = page && await state.chrome_handle.get();
   if (!browser) return null;
-  const session = await scopedPage({ chrome: browser, context: state.context, budget: state.context.protocol.render.max_render_requests, fetchStatic: state.chrome_handle.fetchStatic });
+  let session = null;
   try {
-    await session.goto(page.normalized);
-    return await labCwv({ page: session });
-  } finally { await session.close(); }
+    session = await scopedPage({ chrome: browser, context: state.context, budget: state.context.protocol.render.max_render_requests, fetchStatic: state.chrome_handle.fetchStatic });
+    const loaded = await session.goto(page.normalized);
+    // The lab number of an error or blocked page says nothing about the site, and a failed measure is not worth stopping the audit for.
+    return loaded.status === HTTP_OK && !loaded.blocked_reason && !loaded.error ? await labCwv({ page: session }) : null;
+  } catch { return null; }
+  finally { await session?.close().catch(() => {}); }
 }
 
 /**
@@ -355,6 +388,15 @@ async function readStored(state) {
     chrome: index.chrome ?? null, cwv } };
 }
 
+/** The hash of every run document the index does not hash itself, so a resume can tell an edited one. Names are relative to `out`. */
+async function documentHashes(state) {
+  const names = [CONTEXT_FILE, INTAKE_FILE, ...(await readdir(state.out)).filter(name => OWNER_EXPORT_FILE.test(name) || OWNER_MAPPING_FILE.test(name)),
+    ...Object.values(DOCUMENTS).map(name => path.join('evidence', name))].filter(name => !(state.ownerless && [CONTEXT_FILE, INTAKE_FILE].includes(name)));
+  const hashes = {};
+  for (const name of names) hashes[name.split(path.sep).join('/')] = sha256Of(await readFile(path.join(state.out, name)));
+  return hashes;
+}
+
 const deriveStage = {
   name: 'derive',
   async run(state) {
@@ -362,6 +404,8 @@ const deriveStage = {
     const observations = deriveObservations((await readStored(state)).input);
     await store.write('observations', json(observations), { name: DOCUMENTS.observations });
     await store.index();
+    // `audit.mjs` runs without a context or intake file of its own; only a full run records those too.
+    await store.set('documents', await documentHashes({ ...state, ownerless: !state.answers }));
     return { state: { ...state, observations } };
   },
 };
@@ -373,8 +417,9 @@ const deriveStage = {
 function queueByPage(queue) {
   const pages = new Map();
   for (const item of queue.items) {
-    if (!pages.has(item.evidence_ref)) pages.set(item.evidence_ref, { url: item.url, evidence_ref: item.evidence_ref, evidence_sha256: item.evidence_sha256, spans: item.spans, families: [] });
-    pages.get(item.evidence_ref).families.push({ family_id: item.family_id, unit_key: item.unit_key });
+    // By address, not by evidence: two pages whose bytes are identical share an evidence file and are still two pages.
+    if (!pages.has(item.url)) pages.set(item.url, { url: item.url, evidence_ref: item.evidence_ref, evidence_sha256: item.evidence_sha256, spans: item.spans, families: [] });
+    pages.get(item.url).families.push({ family_id: item.family_id, unit_key: item.unit_key });
   }
   return { pages: [...pages.values()] };
 }
@@ -428,18 +473,43 @@ async function evidenceList(state) {
   return list;
 }
 
-/** One finding per failed verdict, so the fix list is never empty while a check failed. A model's finding cites the page evidence the collector stored. */
+/**
+ * The fix list: one finding for each distinct problem, not for each page it appears on. Failed verdicts with the same check and
+ * the same message (the page's own address left out of it) are one finding that lists every page it affects in `unit_keys`; its
+ * own unit is the first of them. A model's finding is marked with the model source and cites the page evidence the collector stored.
+ */
 function findingsOf(observations, evidence) {
   const blocking = new Set(checkRegistry().families.filter(family => family.blocker_on_fail).map(family => family.family_id));
   const core = new Set(checkRegistry().families.filter(family => family.core_policy).map(family => family.family_id));
-  return observations.filter(observation => observation.state === 'fail').map(observation => {
+  const groups = new Map();
+  for (const observation of [...observations].filter(x => x.state === 'fail').sort((a, b) => a.unit_key < b.unit_key ? -1 : a.unit_key > b.unit_key ? 1 : 0)) {
+    const model = observation.evaluator_type === 'host_model';
     const blocker = observation.blocker === true || blocking.has(observation.family_id);
-    return { schema_version: versions().contract_schema, finding_id: `finding-${observation.observation_id}`, check_id: observation.check_id,
-      unit_key: observation.unit_key, priority: blocker ? 'P0' : core.has(observation.family_id) ? 'P1' : 'P2', blocker, message: observation.reason,
-      source_ref: evidence.find(x => x.ref === observation.evidence_ref)?.source_ref ?? observation.source_ref, evidence_ref: observation.evidence_ref,
-      remediation_ids: [], status: 'confirmed' };
-  });
+    const page = observation.unit_key.split('|').at(-1);
+    const key = JSON.stringify([observation.check_id, observation.reason.split(page).join('{page}'), model, blocker]);
+    if (!groups.has(key)) groups.set(key, { observation, model, blocker, unit_keys: [] });
+    groups.get(key).unit_keys.push(observation.unit_key);
+  }
+  return [...groups.values()].map(({ observation, model, blocker, unit_keys }) => ({ schema_version: versions().contract_schema,
+    finding_id: `finding-${observation.observation_id}`, check_id: observation.check_id, unit_key: observation.unit_key, unit_keys,
+    priority: blocker ? 'P0' : core.has(observation.family_id) ? 'P1' : 'P2', blocker, message: observation.reason,
+    source_ref: model ? OBSERVATION_SOURCES.host_model : evidence.find(x => x.ref === observation.evidence_ref)?.source_ref ?? observation.source_ref,
+    evidence_ref: observation.evidence_ref, remediation_ids: [], status: 'confirmed' }));
 }
+
+// What the report says next to an export that could not be used.
+const EXPORT_PROBLEMS = {
+  export_file_missing: 'No file was found at the path given',
+  export_file_unreadable: 'The file could not be opened',
+  export_file_too_large: 'The file is larger than this audit reads',
+  export_not_a_zip: 'The file is not the zip archive Search Console gives',
+  export_zip_damaged: 'The zip archive is damaged',
+  export_zip_method_unsupported: 'The zip archive uses a compression this audit does not read',
+  export_table_not_found: 'The file holds no table with clicks and impressions',
+  export_numbers_unreadable: 'The numbers in the table could not be read',
+  export_period_missing: 'The pasted text does not show the period it covers',
+  export_not_accepted: 'The numbers did not pass the import checks',
+};
 
 /** The metrics the owner's exports give (re-read from the stored rows, so a resumed run has them too) and a remaining-work row for each export that could not be used. */
 async function ownerExportResults(state) {
@@ -449,7 +519,7 @@ async function ownerExportResults(state) {
     if (entry.status === 'read') {
       const stored = JSON.parse(await readFile(path.join(state.out, entry.ref), 'utf8'));
       metrics.push(...normalizeImport(stored.provider, stored.rows, stored.metadata));
-    } else remaining.push({ problem: `The ${entry.kind} export file could not be used`, reason: entry.reason,
+    } else remaining.push({ problem: `The ${entry.kind} export file could not be used: ${EXPORT_PROBLEMS[entry.reason] ?? entry.reason}`, reason: entry.reason,
       required_input_or_authority: 'A new export file from the site owner', next_action: 'Export the report again as the runbook describes and give its path in the start answers',
       reobserve_when: 'on the next run that includes the new file' });
   }
@@ -463,13 +533,14 @@ const reportStage = {
     const { context, input, out, store } = state;
     const costs = { schema_version: versions().contract_schema, run_id: context.run_id, budgets: [], reservations: [], settlements: [],
       approval_ref: null, source_ref: RUN_SOURCE, evidence_ref: COSTS_FILE };
-    await writeFile(path.join(out, COSTS_FILE), json(costs), { flag: 'wx' });
+    // Overwritten, not created: a report stage that stopped after this write must be able to run again.
+    await writeFile(path.join(out, COSTS_FILE), json(costs));
     const evidence_index = await evidenceList(state);
     const { metrics, remaining } = await ownerExportResults(state);
     const packet = { schema_version: versions().contract_schema, run_context: context, baseline: { input, scores: state.scores }, after: null,
       comparison: compare(input, null), metrics, findings: findingsOf(state.observations, evidence_index), changes: [], costs, remaining,
       evidence_root: out, evidence_index, audit_snapshots: [{ phase: PHASE, audit_ref: store.indexRef, context_ref: context.evidence_ref }],
-      source_ref: RUN_SOURCE, data_class: 'real', lab_cwv: state.lab_cwv ?? null };
+      source_ref: RUN_SOURCE, data_class: 'real', lab_cwv: state.lab_cwv ?? null, start_redirect: state.start_redirect ?? null };
     const { jsonPath, markdownPath } = await writeReport(packet, out);
     return { state: { ...state, packet, reports: { json: jsonPath, md: markdownPath } } };
   },
@@ -480,10 +551,34 @@ export function stages() {
   return [contextStage, collectStage, renderStage, cwvStage, deriveStage, judgeStage, scoreStage, reportStage];
 }
 
+// The files a first call writes in the run folder (besides the evidence folder); none of them is the owner's.
+const FIRST_CALL_FILES = [CONTEXT_FILE, INTAKE_FILE, COSTS_FILE, QUEUE_FILE, SCORE_INPUT_FILE];
+
+/**
+ * What to do with the run folder. A folder whose first call stored a judge queue is resumed. A folder with a finished report is
+ * refused in plain words. Anything else is a first call that stopped early (closed terminal, timeout): its own files are cleared
+ * and the run starts over; `preflight/` and the answers file are never touched.
+ */
+export async function prepareOutput(out) {
+  const indexFile = path.join(out, 'evidence', 'evidence-index.json');
+  let queued = false;
+  if (await exists(indexFile)) {
+    try { queued = JSON.parse(await readFile(indexFile, 'utf8')).judge_queue?.length > 0; }
+    catch { return 'resume'; }
+  }
+  if (await exists(path.join(out, 'report.json'))) throw new Error('This folder already holds a finished audit. Use a new --out folder for a new one.');
+  if (queued) return 'resume';
+  const names = await readdir(out).catch(() => []);
+  const owned = [...FIRST_CALL_FILES, 'evidence', ...names.filter(name => OWNER_EXPORT_FILE.test(name) || OWNER_MAPPING_FILE.test(name))];
+  await Promise.all(owned.map(name => rm(path.join(out, name), { recursive: true, force: true })));
+  return 'fresh';
+}
+
 /**
  * The state a first call left in `<out>`, rebuilt from the evidence index and the fixed context it points to; nothing else
- * is saved between calls. Every hash is checked, and the verdicts are derived again from the stored evidence: they must equal
- * the recorded ones. Anything that fails stops the run with an error; nothing is collected again.
+ * is saved between calls. Every hash is checked (the evidence the index lists, and the run documents it records), and the
+ * verdicts are derived again from the stored evidence: they must equal the recorded ones. Anything that fails stops the run with
+ * one error; nothing is collected again.
  */
 export async function restoreState({ out, answers }) {
   const evidenceDir = path.join(out, 'evidence');
@@ -491,16 +586,15 @@ export async function restoreState({ out, answers }) {
   // Whatever fails while the stored evidence is read back or re-derived is one condition with one message.
   const changed = async job => { try { return await job(); } catch { throw new Error(INDEX_CHANGED); } };
   const recorded = await changed(async () => JSON.parse(await readFile(store.indexRef, 'utf8')));
-  const context = await changed(async () => {
+  const { context, intake } = await changed(async () => {
     const value = JSON.parse(await readFile(path.resolve(out, recorded.context_ref), 'utf8'));
     validateEntity('RunContext', value);
     if (recorded.run_id !== value.run_id) throw new Error('another run');
-    return value;
+    for (const [name, sha] of Object.entries(recorded.documents)) if (sha256Of(await readFile(path.join(out, name))) !== sha) throw new Error('edited document');
+    return { context: value, intake: JSON.parse(await readFile(path.join(out, INTAKE_FILE), 'utf8')) };
   });
-  let asked = null;
-  try { asked = assertUrlInScope(answers.url, context.scope).href; } catch { /* a URL outside the run's scope is not this run's */ }
-  if (asked !== context.target) throw new Error('The answers are not the ones this run was made from; use the same answers file, or a new --out folder.');
-  const state = { answers, out, evidenceDir, store, context, modules: recorded.modules };
+  if (intake.answers?.url !== answers.url) throw new Error('The answers are not the ones this run was made from; use the same answers file, or a new --out folder.');
+  const state = { answers, out, evidenceDir, store, context, modules: recorded.modules, start_redirect: intake.selection?.start_redirect ?? null };
   return changed(async () => {
     const stored = await readStored(state);
     const saved = JSON.parse(await readFile(recorded.observations_ref, 'utf8'));
