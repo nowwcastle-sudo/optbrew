@@ -2,6 +2,7 @@
 import test, { after } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile, rm, writeFile, mkdir } from 'node:fs/promises';
+import { spawnSync } from 'node:child_process';
 import path from 'node:path';
 import { versions } from '../skills/optbrew/scripts/core/config.mjs';
 import { ContractError, validateEntity } from '../skills/optbrew/scripts/core/contracts.mjs';
@@ -12,6 +13,7 @@ import { score } from '../skills/optbrew/scripts/core/score.mjs';
 import { prepareOutput, restoreState } from '../skills/optbrew/scripts/core/stages.mjs';
 import { buildScenario, page, startSite } from './support/review-scenario.mjs';
 import { answersFor } from './support/run-scenario.mjs';
+import { extractPublished013, root, skipUnreachable013 } from './support/published.mjs';
 import { tempDir } from './support/temp-dir.mjs';
 
 const skill = new URL('../skills/optbrew/', import.meta.url);
@@ -101,13 +103,30 @@ test('start_redirect is {from, to} or null in a report packet', async t => {
     assert.throws(() => validateEntity('ReportPacket', withRedirect(bad)), /start_redirect/, JSON.stringify(bad));
 });
 
-test('a run folder whose evidence index names no context comes from an older release', async t => {
-  const out = await tempDir('optbrew-contracts-020-');
-  t.after(() => rm(out, { recursive: true, force: true }));
-  await mkdir(path.join(out, 'evidence'));
-  await writeFile(path.join(out, 'evidence', 'evidence-index.json'), JSON.stringify({ run_id: 'old-audit', entries: [] }));
+test('a folder the published 0.1.3 audit wrote gets the migration sentence, not "files this audit did not make"', { skip: skipUnreachable013, timeout: 120000 }, async t => {
+  const work = await tempDir('optbrew-contracts-020-');
+  t.after(() => rm(work, { recursive: true, force: true }));
+  // The real 0.1.3 bundle audits a local site with a 0.1.3 context: the folder is whatever that release writes.
+  const old = await extractPublished013(work);
+  const origin = site.origin;
+  const template = spawnSync('git', ['show', 'v0.1.3:tests/fixtures/scoring/before.json'], { cwd: root, encoding: 'utf8' });
+  assert.equal(template.status, 0, template.stderr);
+  const context = JSON.parse(template.stdout).run_context;
+  Object.assign(context, { run_id: 'audit-013', target: `${origin}/`, environment: 'local', evidence_ref: 'context.json',
+    scope: { allowed: [{ origin, path_prefix: '/' }], local_targets: [{ host: '127.0.0.1', port: site.port }], max_urls: 50 } });
+  context.protocol.page_types = [{ id: 'primary', urls: ['/', '/a'].map(p => ({ original: origin + p, normalized: origin + p })) }];
+  context.protocol.engines = ['google'];
+  for (const family of context.protocol.families) if (family.applicability_decision) family.applicability_decision.evidence_ref = 'intake.json';
+  const contextFile = path.join(work, 'run-context.json'), out = path.join(work, 'out');
+  await writeFile(contextFile, JSON.stringify(context));
+  const audit = spawnSync(process.execPath, [path.join(old.bundle, 'scripts', 'audit.mjs'), '--context', contextFile,
+    '--modules', 'naver-searchadvisor', '--output-dir', out], { encoding: 'utf8' });
+  assert.equal(audit.status, 0, audit.stderr);
+  const index = JSON.parse(await readFile(path.join(out, 'evidence', 'evidence-index.json'), 'utf8'));
+  assert.ok(typeof index.context_ref === 'string' && index.observations_ref && index.ledger_ref, 'the 0.1.3 index has the same keys as this release');
   await assert.rejects(prepareOutput(out), error => error instanceof MigrationRequired &&
-    /^migration_required: this run folder comes from an older optbrew release \(.+\); run the audit again with optbrew \d+\.\d+\.\d+ in a new output folder$/.test(error.message));
+    /^migration_required: this run folder comes from an older optbrew \(contract 1\.0\.0\); run the audit again with optbrew \d+\.\d+\.\d+ in a new output folder$/.test(error.message));
+  assert.ok((await readFile(path.join(out, 'evidence', 'evidence-index.json'), 'utf8')).length > 0, 'nothing was deleted');
 });
 
 test('compare with no follow-up still enforces the frozen protocol rules', async () => {
