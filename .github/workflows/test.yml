@@ -1,0 +1,103 @@
+name: test
+
+# Runs the whole suite, Chrome integration tests included, on Linux and on Windows with core.autocrlf=true.
+# Security: read-only token, no secrets, no pull_request_target, every action pinned by full commit SHA.
+on:
+  push:
+    branches: ['**']
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    name: test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    # The Chrome phase runs its files one at a time after everything else and takes several minutes.
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            expected_skipped: 0
+          # Platform skips with no Chrome involved: keys.test.mjs (2, Windows has no POSIX file modes) and the four release
+          # tests that refuse a CRLF checkout (skipCrlfCheckout, 4). A different number fails the last step.
+          - os: windows-latest
+            expected_skipped: 6
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Convert line endings on checkout (Windows)
+        if: runner.os == 'Windows'
+        run: git config --global core.autocrlf true
+
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # All history and all tags: the update and migration tests extract the published v0.1.2 and v0.1.3 releases.
+          fetch-depth: 0
+          fetch-tags: true
+          persist-credentials: false
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          # The floor of package.json "engines".
+          node-version: '22.4'
+
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: '3.10'
+
+      - name: Install Python test requirements
+        run: pip install -r requirements-dev.txt
+
+      - name: Install Node dependencies
+        run: npm ci --ignore-scripts
+
+      - name: Let Chrome start its sandbox (Linux)
+        if: runner.os == 'Linux'
+        # Ubuntu 24.04 restricts unprivileged user namespaces with AppArmor; Chrome's sandbox needs them.
+        run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || echo 'sysctl key not present'
+
+      - name: Point optbrew at the runner's Chrome (Linux)
+        if: runner.os == 'Linux'
+        run: |
+          # render.test.mjs skips its cross-origin font test when this system font is missing.
+          test -f /usr/share/fonts/truetype/dejavu/DejaVuSans.ttf || sudo apt-get install -y --no-install-recommends fonts-dejavu-core
+          chrome="$(command -v google-chrome-stable || command -v google-chrome || true)"
+          test -n "$chrome" || { echo 'Google Chrome is not installed on this runner' >&2; exit 1; }
+          echo "OPTBREW_CHROME=$chrome" >> "$GITHUB_ENV"
+          "$chrome" --version
+
+      - name: Point optbrew at the runner's Chrome (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          $chrome = Join-Path $env:ProgramFiles 'Google\Chrome\Application\chrome.exe'
+          if (-not (Test-Path -LiteralPath $chrome)) { throw 'Google Chrome is not installed on this runner' }
+          "OPTBREW_CHROME=$chrome" | Out-File -FilePath $env:GITHUB_ENV -Encoding utf8 -Append
+          (Get-Item -LiteralPath $chrome).VersionInfo.ProductVersion
+
+      - name: Python tests
+        run: python -m unittest discover -s tests/python
+
+      - name: Test
+        # The spec reporter prints the "ℹ skipped N" summary line of each phase, which the last step reads.
+        run: npm test -- --test-reporter=spec 2>&1 | tee "$RUNNER_TEMP/optbrew-test.log"
+
+      - name: Check that nothing was skipped by accident
+        env:
+          EXPECTED_SKIPPED: ${{ matrix.expected_skipped }}
+        run: |
+          # scripts/test.mjs prints one summary per phase: first every test file but Chrome's, then the Chrome files.
+          mapfile -t counts < <(tr -d '\r' < "$RUNNER_TEMP/optbrew-test.log" | sed -nE 's/^[^ ]+ skipped ([0-9]+)$/\1/p')
+          echo "skipped per phase (other files, Chrome files): ${counts[*]}"
+          test "${#counts[@]}" -eq 2 || { echo "expected 2 summaries, found ${#counts[@]}" >&2; exit 1; }
+          test "${counts[1]}" -eq 0 || { echo "a Chrome test was skipped: Chrome did not start on this runner" >&2; exit 1; }
+          test "${counts[0]}" -eq "$EXPECTED_SKIPPED" || { echo "expected $EXPECTED_SKIPPED skipped, found ${counts[0]}" >&2; exit 1; }
