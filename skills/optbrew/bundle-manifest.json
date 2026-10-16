@@ -599,6 +599,62 @@
       "sha256": "1fc3f475804dea6cac75832f9b76c0710f7c08b5080688a784243ef11756f528"
     },
     {
+      "path": "references/runbooks/anthropic-api-key.md",
+      "sha256": "1661c15103044e9c953bd85934ab7ac315e0351500da7185b63db5a242c18e7e"
+    },
+    {
+      "path": "references/runbooks/chrome-install.md",
+      "sha256": "f5eaec01ba62aeebdbad4505ff2ebf20a1363d4d52db06c0d0fa1092419828e6"
+    },
+    {
+      "path": "references/runbooks/cwv-site-collection.md",
+      "sha256": "af052897a78b4db85b1e71c974e6b33a6d39b93a1410678f084cfbc9b06bac18"
+    },
+    {
+      "path": "references/runbooks/google-api-key.md",
+      "sha256": "57dc31296a3dd8f45ef25b2a499a6fafa5d1c99293fea86b70f2ff298c8ea6e1"
+    },
+    {
+      "path": "references/runbooks/gsc-export.md",
+      "sha256": "07732f240bdf78ce73a6882e3003c9cc95484375bd193b10a5541cb9750973e4"
+    },
+    {
+      "path": "references/runbooks/index.json",
+      "sha256": "7fa4fb04d898af368afadc405bf2a9622ef9870ee11ba69b78452d2c7de9a9f2"
+    },
+    {
+      "path": "references/runbooks/key-set-claude-cloud.md",
+      "sha256": "e401ad972958cb0944803f52704425884f7e953b71270a5aeb485571cf07ddfc"
+    },
+    {
+      "path": "references/runbooks/key-set-codex.md",
+      "sha256": "7c06b95a10d237d69055c9f6dfc5b39c0c678951e1cf68bbb49d8a2c484bab2d"
+    },
+    {
+      "path": "references/runbooks/key-set-local.md",
+      "sha256": "df1851d9e30596b307c484fa50cc8bbf7025269f3990d4ac9ecbef4f4520629b"
+    },
+    {
+      "path": "references/runbooks/naver-searchadvisor-export.md",
+      "sha256": "d4e5546bc9915ee6e3fbcf3e9c71fff1182a2761dea9618dc59cdc250822a879"
+    },
+    {
+      "path": "references/runbooks/network-claude-cloud-custom.md",
+      "sha256": "2dc18ff3b85dd21c1e68592fb12918d727ecff3d50442b92ac5bab4c4d18ee06"
+    },
+    {
+      "path": "references/runbooks/network-codex-approval.md",
+      "sha256": "5c386bb7ba936f0ec0aa09a65782d6b2a2afc857d70828c74f8850e294992106"
+    },
+    {
+      "path": "references/runbooks/network-codex-config.md",
+      "sha256": "785bc8d89aa9347f55c6e19e671c48387b26dc7b47c44b867bf1ccdee240e69a"
+    },
+    {
+      "path": "references/runbooks/seranking.md",
+      "sha256": "1dc9c0a969eecf8abd099c95437f943d1b32ccea53962933c6f245f3ed2f5868"
+    },
+    {
       "path": "references/schemas/contract.schema.json",
       "sha256": "4a20a6602eaf45832281cbee27b75e023de932954db72ec837ee5d51c3e88528"
     },
@@ -767,6 +823,10 @@
       "sha256": "347f418e2f73a507f69809e6b21b853bab01518250b965bc324fed589627141b"
     },
     {
+      "path": "scripts/core/runbooks.mjs",
+      "sha256": "a77bbdc5ec3c0b21e4ed3cfb5ce2e3cb1998040f2d3b885a1a71d64f2829428b"
+    },
+    {
       "path": "scripts/core/scope.mjs",
       "sha256": "c302fe0fd0711faafc39f5741e735ebd9921723b56f071134afe8ef1fc073053"
     },
@@ -791,5 +851,5 @@
       "sha256": "a53223b7eefab2204c026a62b1da04cfdb8a07be8d3749613e8241a81b027d9b"
     }
   ],
-  "bundle_hash": "c1994840b6438a13f0d506c5c8696c6adcc6c3dc21025fc3b69d89252f22d120"
+  "bundle_hash": "2cf57cc3c73fb9facf630c44c5872a945c6a06d41418621c5a27ec5b3b9a3264"
 }
