@@ -120,6 +120,7 @@ export async function goldenObservations() {
       context.evidence_ref = 'context.json';
       const urls = scenario.urls.map(p => ({ original: `${origin}${p}`, normalized: `${origin}${p}` }));
       context.protocol.page_types = [{ id: 'primary', urls }];
+      context.protocol.render = { ...context.protocol.render, enabled: true, pages: urls.slice(0, 1) };
       context.protocol.auxiliary_resources = scenario.aux.map(kind => {
         const url = `${origin}/${kind === 'robots' ? 'robots.txt' : 'sitemap.xml'}`;
         return { kind, original: url, normalized: url };

@@ -7,6 +7,8 @@ import { selectRenderPages } from '../render.mjs';
 
 const SKIP_REASONS = ['depth_limit', 'url_limit', 'request_limit'];
 const normalizeTitle = title => title.toLowerCase().replace(/\s+/g, ' ').trim();
+/** The pages the run renders: the ones its protocol fixed (none when rendering is off), else, before render plans existed, the default sample. */
+const renderPlan = protocol => protocol.render ? (protocol.render.enabled ? protocol.render.pages : []) : selectRenderPages(protocol.page_types);
 
 /** The declared sitemaps among the collected artifacts: every listed url, whether one is an index, and the unusable ones. */
 function readSitemaps(artifacts, declared, textOf) {
@@ -29,7 +31,7 @@ function readSitemaps(artifacts, declared, textOf) {
  * artifact and its normalized title key. `titleCounts` maps a title key to the rows that carry it. `facts` and `comparison`
  * are the cross-page entity facts. `linkGraph` and `orphans` come from every collected HTML page, `sitemaps` from the
  * declared sitemaps. `alternates` maps a page url (as requested and as finally served) to `{ urls, alternates }`, the hreflang
- * links of every collected HTML page. `renderSample` holds the canonical urls of the pages the run renders. `renders` are the stored render records, `renderTextOf(record)` the final DOM of one, and
+ * links of every collected HTML page. `renderSample` holds the canonical urls of the pages the run renders: the protocol's fixed render pages, or for a run from before the render plan the first URL of each page type. `renders` are the stored render records, `renderTextOf(record)` the final DOM of one, and
  * `chrome` is `{ found, reason }` for the run's Chrome, or null when the run recorded none. `cwv` stays empty until the
  * field-data stage exists.
  */
@@ -66,5 +68,5 @@ export function prepare({ context, artifacts, collection = {}, textOf, renders =
   const complete = !collection.limit_reached && !(collection.skipped ?? []).some(x => SKIP_REASONS.includes(x.reason));
   return { context, artifacts, textOf, planned, selected, pageRows, titleCounts, facts, comparison: compareFacts(facts), sitemaps,
     linkGraph: graph, orphans: findOrphans({ pageRows, rows: htmlRows, graph, sitemaps, complete }), alternates,
-    renderSample: new Set(selectRenderPages(protocol.page_types).map(page => canonicalUrl(page.normalized))), renders, renderTextOf, chrome, cwv };
+    renderSample: new Set(renderPlan(protocol).map(page => canonicalUrl(page.normalized))), renders, renderTextOf, chrome, cwv };
 }

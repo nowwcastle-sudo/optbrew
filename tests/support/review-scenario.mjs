@@ -33,7 +33,7 @@ export async function startSite(routes) {
 }
 
 /** Audit local pages and wrap the preserved run evidence in a replayable report packet. */
-export async function buildScenario(site, paths, { engines = ['google'], robots = false, sitemap = false, enable = [], modules = ['naver-searchadvisor'], maxUrls = 50, name = 'scenario' } = {}) {
+export async function buildScenario(site, paths, { engines = ['google'], robots = false, sitemap = false, enable = [], modules = ['naver-searchadvisor'], maxUrls = 50, name = 'scenario', render = [] } = {}) {
   const dir = await tempDir(`optbrew-final-review-${name}-`);
   const { origin, port } = site;
   const context = structuredClone(JSON.parse(await readFile(template, 'utf8')).run_context);
@@ -53,6 +53,7 @@ export async function buildScenario(site, paths, { engines = ['google'], robots 
     const family = context.protocol.families.find(x => x.family_id === id);
     family.applicable = true; delete family.applicability_decision;
   }
+  if (render.length) context.protocol.render = { ...context.protocol.render, enabled: true, pages: render.map(p => ({ original: origin + p, normalized: origin + p })) };
   const auxiliary = [];
   if (robots) auxiliary.push({ kind: 'robots', original: `${origin}/robots.txt`, normalized: `${origin}/robots.txt` });
   if (sitemap) auxiliary.push({ kind: 'sitemap', original: `${origin}/sitemap.xml`, normalized: `${origin}/sitemap.xml` });

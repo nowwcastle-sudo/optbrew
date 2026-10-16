@@ -20,12 +20,12 @@ const link = (route, text) => `<a href="${route}">${text}</a>`;
 const alternate = (lang, route) => `<link rel="alternate" hreflang="${lang}" href="${url(route)}">`;
 
 /** Collected raw pages as the check blocks see them: every selected URL answered 200 with its HTML. */
-function prepared(pages, { renders = [], renderHtml = {}, chrome } = {}) {
+function prepared(pages, { renders = [], renderHtml = {}, chrome, render } = {}) {
   const artifacts = Object.entries(pages).map(([route, body]) => ({ normalized_url: url(route), requested_url: url(route), final_url: url(route),
     capability: 'raw_html', status: 200, content_hash: 'hash', evidence_ref: `evidence/${route}`, redirect_chain: [], header_lines: [], body }));
   const context = { protocol: { engines: ['google'], auxiliary_resources: [],
     families: FAMILIES.map(family_id => ({ family_id, applicable: true })),
-    page_types: [{ id: 'primary', urls: artifacts.map(x => ({ normalized: x.normalized_url })) }] } };
+    page_types: [{ id: 'primary', urls: artifacts.map(x => ({ normalized: x.normalized_url })) }], ...(render ? { render } : {}) } };
   return prepare({ context, artifacts, textOf: x => x.body, renders, renderTextOf: x => renderHtml[x.url] ?? '',
     ...(chrome === undefined ? {} : { chrome }) });
 }
@@ -168,6 +168,16 @@ test('render-content: missing chrome is unknown with chrome_missing, for the pag
   }
 });
 
+test('chrome_missing follows the run\'s fixed render pages', () => {
+  const pages = { '/': doc('<div id="app"></div>'), '/other': doc('<div id="app"></div>'), '/third': doc('<div id="app"></div>') };
+  const fixed = judge(renderContent, pages, { chrome: { found: false, reason: 'chrome_not_found' },
+    render: { enabled: true, pages: [{ original: url('/third'), normalized: url('/third') }, { original: url('/other'), normalized: url('/other') }] } });
+  assert.deepEqual(Object.keys(fixed).sort(), ['/other', '/third'], 'selectRenderPages would pick / instead');
+  assert.deepEqual(Object.values(fixed).map(x => x.reason), ['chrome_missing', 'chrome_missing']);
+  const off = judge(renderContent, pages, { chrome: null, render: { enabled: false, pages: [] } });
+  assert.deepEqual(off, {}, 'rendering was not requested, so no page is waiting for Chrome');
+});
+
 test('render-content: a render matches its page by canonical URL, whether recorded under url or final_url', () => {
   const pages = { '/': doc('<div id="app"></div>') };
   const options = overrides => ({ renders: [record('/', overrides)], renderHtml: { [url('/')]: richDom, [url('/index.html')]: richDom, [url('/start')]: richDom }, chrome: { found: true, reason: null } });
@@ -216,7 +226,7 @@ async function replayable() {
 }
 
 async function storedRender(site, origin) {
-  const scenario = await buildScenario(site, ['/', '/ko'], { enable: FAMILIES, name: 'checks-new' });
+  const scenario = await buildScenario(site, ['/', '/ko'], { enable: FAMILIES, name: 'checks-new', render: ['/'] });
   const dom =`<html><head><title>Brew</title></head><body>${RICH}${link('/ko', 'Korean site')}</body></html>`;
   const store = openStore(scenario.evidence(''));
   const domFile = await store.write('render-dom', dom);

@@ -692,7 +692,7 @@
     },
     {
       "path": "scripts/core/checks/prepare.mjs",
-      "sha256": "4045eafff1b39162cdbc346e1c8a2de0b7af738f0ed705140751c7e7f06997e1"
+      "sha256": "eea3e534f479ba81f3aa11d47d14287a74050bc37f15245235eb7cecf5084c33"
     },
     {
       "path": "scripts/core/checks/render-content.mjs",
@@ -795,5 +795,5 @@
       "sha256": "a53223b7eefab2204c026a62b1da04cfdb8a07be8d3749613e8241a81b027d9b"
     }
   ],
-  "bundle_hash": "157e3ae63bed414959d6af0f9e0d0580a36467d58588fd662141f1a7ea968d4e"
+  "bundle_hash": "d7d6c0f9a15aea8bc8855b6f10a260f7a43cbe69c483c2ac8682c5f8ef216a25"
 }
