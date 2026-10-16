@@ -635,6 +635,58 @@
       "sha256": "4c1d894f34556a2b72371b9534222ae4e4a0653d3c9a196dd4722fcb7fdba3d9"
     },
     {
+      "path": "scripts/core/checks/canonical-consistency.mjs",
+      "sha256": "dbfc8d493fe80cd882fe3544b2ad0fcc9b05d947424d488d897daabbef4248ff"
+    },
+    {
+      "path": "scripts/core/checks/discovery.mjs",
+      "sha256": "4ec4cd959d0b66e3b09203d4512e27c32dfabf357bf42630e9cb1e7da8ead71d"
+    },
+    {
+      "path": "scripts/core/checks/document-title.mjs",
+      "sha256": "b5dc675ccf8ca62f324e19640259f10509cbcdbe8041a962ca690e0161827443"
+    },
+    {
+      "path": "scripts/core/checks/entity-identity.mjs",
+      "sha256": "55223873ea6027d9a7812b744aab447363858354766a0d3c42c69bda4d60f5d2"
+    },
+    {
+      "path": "scripts/core/checks/fact-consistency.mjs",
+      "sha256": "7e9ca9f12e3df42ef9b3b980261ec8dc4f4f4e35ddf39577b84c5f36e672f8d9"
+    },
+    {
+      "path": "scripts/core/checks/fetch-response.mjs",
+      "sha256": "65dd1a293f43e64d718338abdc10093acfd0892c040b7c209292881484e9960e"
+    },
+    {
+      "path": "scripts/core/checks/index-policy.mjs",
+      "sha256": "b2c47aaf368aee587da0ad3c6d6b76186fd04eaaf6c7eb84a9253c9f9dab9b13"
+    },
+    {
+      "path": "scripts/core/checks/index.mjs",
+      "sha256": "8d94201fbe337f722ac15df659e3fad327ea08d244335e39cf85ee519b9fe671"
+    },
+    {
+      "path": "scripts/core/checks/naver-markup.mjs",
+      "sha256": "f00c296e20c45a71fe97848e73859770f264e0eccf18c2fc2ed9b4841a3d44d3"
+    },
+    {
+      "path": "scripts/core/checks/observation.mjs",
+      "sha256": "2f62da754a9e75e91489940982b786ff5b9f250d799385560b4bc0af1ae1cee8"
+    },
+    {
+      "path": "scripts/core/checks/prepare.mjs",
+      "sha256": "8fa11bc001c7eec782af3cd920c66c310bdecf0292f2ae13d8a914be658335a4"
+    },
+    {
+      "path": "scripts/core/checks/search-crawl-policy.mjs",
+      "sha256": "66f916445c55c20df6b1e0b83189d07ad8161cdbcad55254dd022654a8b72092"
+    },
+    {
+      "path": "scripts/core/checks/structured-data-truth.mjs",
+      "sha256": "d1a0a966fb191d4ac107be288f149f4975d970e486552e2b6b9ac9639dd2346f"
+    },
+    {
       "path": "scripts/core/collector.mjs",
       "sha256": "15d59e32fc339788f412c543a3ba723d06cade4bb1fa0abc825b36631bc32803"
     },
@@ -660,7 +712,7 @@
     },
     {
       "path": "scripts/core/derive.mjs",
-      "sha256": "78b668d3e3cb8cd0b73fe1818be0d1dff21a9c66687eb9ce23ebdae032b94715"
+      "sha256": "fc982ed508953ccedf23a90d22f1e40efca815b0d32b2cc678c3931dbd543c16"
     },
     {
       "path": "scripts/core/evidence-store.mjs",
@@ -677,6 +729,10 @@
     {
       "path": "scripts/core/html.mjs",
       "sha256": "b8a30e127a60b93e14b78ad70047193d6b6b576ee97430e5138eb5edecf119b9"
+    },
+    {
+      "path": "scripts/core/link-graph.mjs",
+      "sha256": "ffa5fa5a748e5ee4ee9c2df1fe5b84e2c89e115e156d1c9ba8cab68a405324cb"
     },
     {
       "path": "scripts/core/metrics.mjs",
@@ -707,5 +763,5 @@
       "sha256": "a53223b7eefab2204c026a62b1da04cfdb8a07be8d3749613e8241a81b027d9b"
     }
   ],
-  "bundle_hash": "38180875fe0404c992197bcbe37ac9d0ee64adb12d032d59ad769cb23e637cd1"
+  "bundle_hash": "cf62f3bcc477b64be511057176eb15958e9cddc2cc9528665d2a44be91afb2e9"
 }
