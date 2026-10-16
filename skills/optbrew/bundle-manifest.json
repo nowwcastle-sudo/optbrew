@@ -14,7 +14,7 @@
     },
     {
       "path": "references/scoring.md",
-      "sha256": "b0a68d9289789396e29e723c323bdd603b8494f87c76865872157ff9c87bef3e"
+      "sha256": "c6991e2a982c2f04b400a3d378fe4613c0da3148979311aac87b441ead2169b4"
     },
     {
       "path": "references/measurement.md",
@@ -45,7 +45,7 @@
       "sha256": "703d5c16878c526114afb540e4a6d54bd74831f35a824c03a839e2480097d279"
     }
   ],
-  "evaluation_hash": "5f4da71e95a2ff0e8dd1a6a4188c79fd51a3ca5254dfd3b460e3b177af600dc0",
+  "evaluation_hash": "3d5974f6ddfea3eb5f6d3e1d72b9456a984a78558ea8afaaf825629ac734b6c1",
   "protocol_sources": [
     {
       "path": "references/schemas/contract.schema.json",
@@ -660,7 +660,7 @@
     },
     {
       "path": "references/scoring.md",
-      "sha256": "b0a68d9289789396e29e723c323bdd603b8494f87c76865872157ff9c87bef3e"
+      "sha256": "c6991e2a982c2f04b400a3d378fe4613c0da3148979311aac87b441ead2169b4"
     },
     {
       "path": "references/versions.json",
@@ -772,7 +772,7 @@
     },
     {
       "path": "scripts/core/collector.mjs",
-      "sha256": "af3ef08e8abb3ca4533baa082ce279dc13a4aa0c9b2028bbb32e696f385a16be"
+      "sha256": "aa120dff0bb29308645d424015bb36473e2248b8e70eda25b45d5248f6f023dd"
     },
     {
       "path": "scripts/core/compare.mjs",
@@ -796,7 +796,7 @@
     },
     {
       "path": "scripts/core/cwv.mjs",
-      "sha256": "986a3242e91404a4b6cc4acdc04827e9293e6535992da6ca8b3be52911ad1f28"
+      "sha256": "2e259d4d7287ae5e08b228893c5db17235b3c81bc98e20b5f787391c9b392e7f"
     },
     {
       "path": "scripts/core/derive.mjs",
@@ -856,7 +856,7 @@
     },
     {
       "path": "scripts/core/transport.mjs",
-      "sha256": "9bbb77795b4952f6f7ddbe465ef37aafad55a991e0391c38ba4e4d4de172d0d5"
+      "sha256": "e04194f3a883a4731a974ceee2c2fd97fa7decaa750a96488b28f40739a581d4"
     },
     {
       "path": "scripts/core/weights.mjs",
@@ -871,5 +871,5 @@
       "sha256": "a53223b7eefab2204c026a62b1da04cfdb8a07be8d3749613e8241a81b027d9b"
     }
   ],
-  "bundle_hash": "89732178640295ce03495ff63b0a97e11d14c79bad75dc2c7082c610c707f7db"
+  "bundle_hash": "cc0a6113e9ee8f2a4c04558bb75243921941794ce0b50d4b365049403fb01478"
 }

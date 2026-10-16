@@ -9,6 +9,8 @@ import { directTransport } from './transport.mjs';
 
 const HEADER_NAMES = ['content-type', 'content-length', 'content-range', 'content-encoding', 'location', 'x-robots-tag', 'last-modified', 'etag'];
 const REDIRECTS = new Set([301, 302, 303, 307, 308]);
+// An API call follows no redirect: zero hops.
+const FOLLOW_NONE = 0;
 const text = value => Buffer.isBuffer(value) ? value : Buffer.from(value ?? '');
 
 function auxiliaryDocument(url) {
@@ -132,6 +134,21 @@ export async function fetchScoped(input, { context, transport = directTransport,
     throw error;
   }
   finally { clearTimeout(timer); }
+}
+
+/**
+ * A fetch-like function over the transport `selectTransport` chose, for API calls the audit makes itself (field CWV): the
+ * host is resolved and vetted exactly as `fetchScoped` does it (direct: pinned vetted address; proxy: the proxy resolves,
+ * literals are vetted), a redirect is never followed, and the limits are the caller's, not the page collection's.
+ * It answers `{ status, text() }` and throws what `fetchScoped` throws.
+ */
+export function transportFetch(selected, { timeoutMs, maxBytes }) {
+  return async (url, { method = 'GET', headers = {}, body = null } = {}) => {
+    const result = await fetchScoped(url, { context: { scope: { allowed: [{ origin: new URL(url).origin }] } }, transport: selected.transport,
+      resolve: selected.resolve, addressVetting: selected.address_vetting, method, headers, body, maxRedirects: FOLLOW_NONE,
+      timeoutMs, maxBytes, ceiling: { timeoutMs, maxBytes } });
+    return { status: result.status, text: async () => result.body.toString('utf8') };
+  };
 }
 
 /** Index of the declared robots.txt artifact on the same origin as the page, as the audit and the report both select it. */

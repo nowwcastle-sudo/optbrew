@@ -3,8 +3,8 @@ import { endpoints, limits } from './config.mjs';
 export const HTTP_OK = 200;
 const HTTP_NOT_FOUND = 404;
 const NOT_FOUND = /chrome ux report data not found/i;
-// Google API keys are letters, digits, "_" and "-"; anything else is not a key optbrew can send, and a short string could not be removed safely.
-const KEY_SHAPE = /^[A-Za-z0-9_-]{20,}$/;
+// Google API keys are letters, digits, ".", "_" and "-" (AI Studio's AQ. keys have a dot); anything else is not a key optbrew can send, and a short string could not be removed safely.
+const KEY_SHAPE = /^[A-Za-z0-9._-]{20,}$/;
 // CrUX is asked for phones, as PageSpeed Insights is (strategy=mobile in endpoints.json).
 const FORM_FACTOR = 'PHONE';
 // CLS counts shifts in session windows: a gap of 1 s ends a window and a window ends after 5 s (the web.dev definition).
@@ -44,7 +44,7 @@ async function keep(store, source, origin, keyState, result) {
 export async function collectCwv({ origin, key = null, fetchFn, store }) {
   if (typeof fetchFn !== 'function') throw new TypeError('collectCwv needs fetchFn');
   const usable = typeof key === 'string' && KEY_SHAPE.test(key);
-  const keyState = key ? (usable ? 'used' : 'malformed_ignored') : 'absent';
+  const keyState = key ? (usable ? 'used' : 'key_ignored_malformed') : 'absent';
   const auth = usable ? { 'x-goog-api-key': key } : {};
   const secret = usable ? key : null;
   if (usable) {

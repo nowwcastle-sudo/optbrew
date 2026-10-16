@@ -131,9 +131,19 @@ test('a key that is not shaped like a Google key is ignored and the record says 
   assert.equal(new URL(calls[0].url).origin, new URL(endpoints().psi).origin, 'no CrUX call without a usable key');
   assert.equal(calls[0].init.headers['x-goog-api-key'], undefined);
   const [{ record }] = await stored(store);
-  assert.deepEqual([record.source, record.key], ['psi', 'malformed_ignored']);
+  assert.deepEqual([record.source, record.key], ['psi', 'key_ignored_malformed']);
   assert.equal(record.body.note, 'short appears here', 'a short string is never stripped from a body');
   assert.ok(filesText(dir).includes('short appears here'));
+});
+
+test('an AQ.-style key with a dot is used', async () => {
+  const { store } = await newStore();
+  const aiStudioKey = ['AQ', '.', 'Fake', 'Cwv', 'Key', '0123456789', 'abcdefghij'].join('');
+  const { calls, fetchFn } = fakeFetch(reply(200, crux({ largest_contentful_paint: 2100 })));
+  await collectCwv({ origin: ORIGIN, key: aiStudioKey, fetchFn, store });
+  assert.equal(calls[0].url, endpoints().crux);
+  assert.equal(calls[0].init.headers['x-goog-api-key'], aiStudioKey);
+  assert.equal((await stored(store))[0].record.key, 'used');
 });
 
 test('collectCwv refuses to run without a fetch function', async () => {

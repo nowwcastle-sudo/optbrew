@@ -3,12 +3,9 @@ import https from 'node:https';
 import tls from 'node:tls';
 import { isIP } from 'node:net';
 import { performance } from 'node:perf_hooks';
-import { fetchScoped } from './collector.mjs';
 import { unbracket, urlTarget } from './scope.mjs';
 
 const DNS_FAILURES = new Set(['ENOTFOUND', 'EAI_AGAIN']);
-// An API call follows no redirect: zero hops.
-const FOLLOW_NONE = 0;
 
 /** Send one request (`body`, when there is one, is its whole payload) and read the response into `{ status, headers, rawHeaders, body }`; both transports share this, byte limit included. */
 function exchange({ send, timeoutMs, maxBytes, body = null }) {
@@ -154,19 +151,4 @@ export async function selectTransport({ env, resolve, probeHost }) {
     if (!proxy) throw dnsError(probeHost, error.code, 'no usable HTTPS_PROXY is set');
     return { transport: proxyTransport(proxy), resolve: async () => [], address_vetting: 'proxy', proxy };
   }
-}
-
-/**
- * A fetch-like function over the transport `selectTransport` chose, for API calls the audit makes itself (field CWV): the
- * host is resolved and vetted exactly as `fetchScoped` does it (direct: pinned vetted address; proxy: the proxy resolves,
- * literals are vetted), a redirect is never followed, and the limits are the caller's, not the page collection's.
- * It answers `{ status, text() }` and throws what `fetchScoped` throws.
- */
-export function transportFetch(selected, { timeoutMs, maxBytes }) {
-  return async (url, { method = 'GET', headers = {}, body = null } = {}) => {
-    const result = await fetchScoped(url, { context: { scope: { allowed: [{ origin: new URL(url).origin }] } }, transport: selected.transport,
-      resolve: selected.resolve, addressVetting: selected.address_vetting, method, headers, body, maxRedirects: FOLLOW_NONE,
-      timeoutMs, maxBytes, ceiling: { timeoutMs, maxBytes } });
-    return { status: result.status, text: async () => result.body.toString('utf8') };
-  };
 }
