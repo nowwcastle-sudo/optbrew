@@ -68,11 +68,11 @@
     },
     {
       "path": "SKILL.md",
-      "sha256": "a44fc8f630529aff3bbd5647e678a910582d81628aa2d621edc2aac8a7034c6b"
+      "sha256": "5f695f01a36f46d7523b1ac46a1d389f014e3f389f5c0924772f8a62835bc46d"
     },
     {
       "path": "THIRD_PARTY_NOTICES.md",
-      "sha256": "acf45ff963f27bf3346d5012b6ed27e0609e73b2ca917ef451f834659403eadf"
+      "sha256": "c55982babffc00d0c141e619a2fad5a40e58079903979c87e38ba194e7de62f2"
     },
     {
       "path": "agents/openai.yaml",
@@ -572,11 +572,11 @@
     },
     {
       "path": "references/intake.md",
-      "sha256": "d157d9c21b51bdac435a8c3ca2e847e34e2929060aea23852d9063a77dde8f50"
+      "sha256": "17a140d48c1026f33c75e1d040faeb4855c02c19436e90fceb15ac39a33fd015"
     },
     {
       "path": "references/judging.md",
-      "sha256": "f3f37de930e3f54f60506bf11bd1571600ffc54b6132e04f95078eddf0a14064"
+      "sha256": "4168c144ebc05f1671fb1fc39f5323a04849bc57a832f2654c210a0d577806b1"
     },
     {
       "path": "references/limits.json",
@@ -899,5 +899,5 @@
       "sha256": "a53223b7eefab2204c026a62b1da04cfdb8a07be8d3749613e8241a81b027d9b"
     }
   ],
-  "bundle_hash": "7b176afe51e14f6fca69a8b4f88d6188b4b47ddbae3f9e41182b8b7dccc6686f"
+  "bundle_hash": "0dee2b781830e6f44603b802822075112a5e057ea322688d26219327c8c35517"
 }

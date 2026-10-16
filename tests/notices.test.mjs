@@ -25,14 +25,21 @@ test('the root notice mirrors the bundled notice with only the license links rew
   assert.equal(await read('THIRD_PARTY_NOTICES.md'), bundled);
 });
 
-test('the vendor script writes the borrowed notices, so regenerating the notices keeps them', async () => {
-  assert.match(await read('scripts/vendor.mjs'), /borrowed-notices\.md/);
+test('the vendor script generates the committed notice, borrowed notices included', async () => {
+  const { thirdPartyNotice } = await import('../scripts/vendor.mjs');
+  const lock = JSON.parse(await read('skills/optbrew/source-lock.json'));
+  assert.equal(thirdPartyNotice(lock.modules, await read('scripts/borrowed-notices.md')), await read('skills/optbrew/THIRD_PARTY_NOTICES.md'));
 });
 
 test('the caveman paragraph sits in one SKILL.md section, under its source, license and change line', async () => {
-  const sections = (await read('skills/optbrew/SKILL.md')).split(/^## /m).slice(1);
+  const skill = await read('skills/optbrew/SKILL.md');
+  const sections = skill.split(/^## /m).slice(1);
   const borrowing = sections.filter(section => /caveman/i.test(section));
   assert.equal(borrowing.length, 1);
+  // The borrowed rules themselves, not only the word "caveman", appear once and inside that section.
+  const rule = '결과를 먼저 말한다.';
+  assert.equal(skill.split(rule).length - 1, 1);
+  assert.ok(borrowing[0].includes(rule));
   const [title, lead] = borrowing[0].split('\n\n');
   assert.equal(title, '진행 보고');
   for (const part of ['Julius Brussee', 'Apache-2.0', '변경함']) assert.ok(lead.includes(part), `${part} is missing above the borrowed paragraph`);

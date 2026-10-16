@@ -1,10 +1,10 @@
 ## Borrowed text
 
-These two works are not vendored code. SKILL.md, section "진행 보고", adapts the output rules of caveman. The top sections of the HTML report follow the approach of eli5 (big picture, few words).
+These two works are not vendored code. SKILL.md, section "진행 보고", adapts the output rules of caveman. The top sections of the HTML report, added in the same release, follow the approach of eli5 (big picture, few words).
 
 ### caveman
 
-Source: https://github.com/JuliusBrussee/caveman, `skills/caveman/SKILL.md`, version 4.0.1 (installed copy). License: Apache License, Version 2.0, https://www.apache.org/licenses/LICENSE-2.0. Changes: the rules were translated into Korean, shortened, and rewritten for progress sentences during an audit; SKILL.md marks the paragraph "변경함". The upstream NOTICE file follows word for word.
+Source: https://github.com/JuliusBrussee/caveman, `skills/caveman/SKILL.md`, version 4.0.1. No upstream commit is recorded: the text was copied from the installed 4.0.1 plugin. License: Apache License, Version 2.0, https://www.apache.org/licenses/LICENSE-2.0. Changes: the rules were translated into Korean, shortened, and rewritten for progress sentences during an audit; SKILL.md marks the paragraph "변경함". Upstream keeps the pre-3.0.0 MIT text in its `LICENSE-MIT` file for contributions made before 3.0.0; that file is not redistributed here. The upstream NOTICE file follows word for word.
 
 ```text
 Caveman
@@ -60,7 +60,7 @@ extension/fonts/GEIST_LICENSE.txt.
 
 ### eli5
 
-Source: the `eli5` plugin version 1.0.0 by Thariq Shihipar, from the claude-community plugin marketplace. Its `plugin.json` declares `"license": "MIT"`; the plugin ships no separate license file and states no copyright year. Use: only the approach "big pictures, few words" is followed; no upstream text is copied. The MIT License:
+Source: the `eli5` plugin version 1.0.0 by Thariq Shihipar, from the claude-community plugin marketplace. Its `plugin.json` declares `"license": "MIT"`; the plugin ships no separate license file and states no copyright year. Use: only the approach "big pictures, few words" is followed; no upstream text is copied. The text below is the standard MIT License text with the author name taken from `plugin.json`. It is not copied from an upstream file.
 
 ```text
 MIT License

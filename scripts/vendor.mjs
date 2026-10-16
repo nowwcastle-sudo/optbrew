@@ -187,6 +187,14 @@ async function writeOutputs(outputRoot, outputs) {
   }
 }
 
+/** The generated third-party notices: one line per vendored module, then the notices for text borrowed into first-party files. */
+export function thirdPartyNotice(modules, borrowed) {
+  const notice = ['# Third-party notices', '', 'The files below retain their upstream copyright and permission notices. Service accounts, API data and Naver guide article bodies are outside these code licenses.', ''];
+  for (const module of modules) notice.push(`- **${module.module_id}** — ${module.repo} at ${module.commit}; ${module.license}; Git license blob ${module.license_blob_sha}; exact notice: [licenses/${module.module_id}.txt](licenses/${module.module_id}.txt). Exclusions: ${module.excluded_files.join('; ')}.`);
+  notice.push('', borrowed.replaceAll('\r\n', '\n').trimEnd());
+  return notice.join('\n') + '\n';
+}
+
 export async function vendor({ sourcesRoot = defaultSources, outputRoot = repoRoot, configPath = path.join(repoRoot, 'scripts/vendor.config.json'), patchSet = {} } = {}) {
   const config = JSON.parse(await readFile(configPath, 'utf8'));
   const patchEntries = [...(config.reviewed_patches ?? []), ...(patchSet.patches ?? [])];
@@ -276,10 +284,7 @@ export async function vendor({ sourcesRoot = defaultSources, outputRoot = repoRo
     outputs.push([destination, bytes]);
     lock.files.push({ module_id: 'optbrew', repo: null, commit: null, license: 'MIT', license_blob_sha: null, upstream_path: null, package_path: destination, original_git_blob_sha: null, original_sha256: null, distributed_sha256: artifact.sha256, transformations: ['Reviewed first-party artifact copied'], patch_id: null, patch_base_sha256: null, patch_reason: null, excluded_files: [], source_kind: 'first_party', canonical_path: source, canonical_sha256: artifact.sha256 });
   }
-  const notice = ['# Third-party notices', '', 'The files below retain their upstream copyright and permission notices. Service accounts, API data and Naver guide article bodies are outside these code licenses.', ''];
-  for (const module of lock.modules) notice.push(`- **${module.module_id}** — ${module.repo} at ${module.commit}; ${module.license}; Git license blob ${module.license_blob_sha}; exact notice: [licenses/${module.module_id}.txt](licenses/${module.module_id}.txt). Exclusions: ${module.excluded_files.join('; ')}.`);
-  notice.push('', (await readFile(borrowedNotices, 'utf8')).replaceAll('\r\n', '\n').trimEnd());
-  outputs.push(['skills/optbrew/THIRD_PARTY_NOTICES.md',Buffer.from(notice.join('\n') + '\n')]);
+  outputs.push(['skills/optbrew/THIRD_PARTY_NOTICES.md', Buffer.from(thirdPartyNotice(lock.modules, await readFile(borrowedNotices, 'utf8')))]);
   outputs.push(['skills/optbrew/source-lock.json', Buffer.from(JSON.stringify(lock, null, 2) + '\n')]);
   await writeOutputs(outputRoot, outputs);
   return lock;
