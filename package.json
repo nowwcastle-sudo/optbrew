@@ -53,7 +53,7 @@
     "!**/test_*.py"
   ],
   "scripts": {
-    "test": "node --test",
+    "test": "node scripts/test.mjs",
     "build-bundle": "node scripts/build-bundle.mjs --bundle skills/optbrew",
     "vendor": "node scripts/vendor.mjs",
     "scan-secrets": "node scripts/scan-secrets.mjs --tracked-and-staged"

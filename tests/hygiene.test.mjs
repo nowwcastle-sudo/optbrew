@@ -163,3 +163,19 @@ test('every test file that creates a temp dir also removes it', async () => {
   await walk('tests');
   noViolations(found, 'pair mkdtemp with rm/rmSync, or create the dir through tests/support/temp-dir.mjs');
 });
+
+test('every test file that uses the Chrome or render core carries the Chrome marker', async () => {
+  const found = [];
+  const walk = async dir => {
+    for (const entry of await readdir(path.join(root, dir), { withFileTypes: true })) {
+      const relative = `${dir}/${entry.name}`;
+      if (entry.isDirectory()) await walk(relative);
+      else if (entry.name.endsWith('.test.mjs')) {
+        const text = await readFile(path.join(root, relative), 'utf8');
+        if (/core\/(?:chrome|render)\.mjs/.test(text) && !text.startsWith('// @optbrew-chrome')) found.push(relative);
+      }
+    }
+  };
+  await walk('tests');
+  noViolations(found, 'add "// @optbrew-chrome" as the first line so npm test runs the file serially');
+});
