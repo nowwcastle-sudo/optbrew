@@ -7,6 +7,8 @@ const dir = new URL('../../references/runbooks/', import.meta.url);
 let cachedIndex;
 const index = () => cachedIndex ??= JSON.parse(readFileSync(new URL('index.json', dir), 'utf8'));
 const entryOf = id => index().find(entry => entry.id === id);
+/** One index entry (`id`, `kind`, `when`, `fills`, `item`, and sometimes `line` and `expands_to`), or undefined. */
+export const runbookEntry = entryOf;
 /** The `harness:` value in a runbook's front matter. */
 const harnessOf = id => parse(id, readFileSync(new URL(`${id}.md`, dir), 'utf8')).head.harness;
 

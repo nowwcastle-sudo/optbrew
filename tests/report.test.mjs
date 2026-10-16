@@ -259,7 +259,7 @@ test('report recomputes raw scores and keeps remote-only, synthetic and missing 
   assert.match(markdown, /Synthetic example/);
   assert.match(markdown, /proposed_only/);
   assert.match(markdown, /not_connected/);
-  for (const header of ['Score', 'Remediation', 'Actual outcomes', 'Remaining work']) assert.match(markdown, new RegExp(header));
+  for (const header of ['Fix first', 'Completeness', 'Still blank', 'Remaining work', 'Actual outcomes', 'Run conditions']) assert.match(markdown, new RegExp(header));
   assert.match(markdown, /Unexpected \\\| noindex/);
 });
 

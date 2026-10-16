@@ -1,0 +1,166 @@
+import { compileUnits, scoreWeighted } from './weights.mjs';
+import { CWV_FAMILIES } from './checks/cwv-field.mjs';
+import { runbookHarnesses } from './probe.mjs';
+import { remainingRunbooks, runbookEntry, startRunbooks } from './runbooks.mjs';
+
+/** The optbrew operating rule (design spec, scoring.md): at least 80% of the applicable weight must be measured. */
+export const COVERAGE_THRESHOLD = 80;
+
+/** The one place a probe harness picks the runbook that saves a Google key (harness vocabulary of EnvironmentProbe). */
+const KEY_SET_RUNBOOK = { 'claude-code': 'key-set-local', codex: 'key-set-codex', 'claude-code-cloud': 'key-set-claude-cloud', other: 'key-set-local' };
+const KEY_RUNBOOK = 'google-api-key';
+
+/** Said once under the run conditions; it never feeds a score (R36). */
+const JAVASCRIPT_NOTE = 'Naver and AI crawlers may not run JavaScript, so a page that needs JavaScript to show its content can look empty to them. This note is not part of any score.';
+
+const html = value => String(value ?? 'unknown').replace(/\\/g, '\\\\').replace(/&/g, '&amp;').replace(/</g, '&lt;')
+  .replace(/>/g, '&gt;').replace(/\|/g, '\\|').replace(/\r?\n/g, '<br>');
+const table = (columns, rows) => `| ${columns.join(' | ')} |\n| ${columns.map(() => '---').join(' | ')} |\n${rows.map(row => `| ${row.map(html).join(' | ')} |`).join('\n') || `| ${columns.map(() => '—').join(' | ')} |`}`;
+const floorTenth = value => value === null ? 'unknown' : Math.floor(value * 10 + 1e-9) / 10;
+
+/** One headline per profile. Below the coverage threshold the single number is withheld and only the measured subset is shown. */
+export function scoreHeadline(result) {
+  const exact = result.A > 0 ? 100 * result.M / result.A : null;
+  const coverageOk = result.score !== null && exact !== null && exact >= COVERAGE_THRESHOLD - 1e-9;
+  // The design spec also asks for verdicts on the core access and indexing checks before a score counts as sufficient.
+  const coreOk = (result.unknown_core ?? []).length === 0;
+  const status = !coverageOk ? 'insufficient_coverage' : !coreOk ? 'insufficient_core' : 'sufficient';
+  return { profile: result.profile, status, headline_score: status === 'sufficient' ? result.score : null,
+    measured_subset_score: result.score, coverage: result.coverage, coverage_exact: exact, coverage_threshold: COVERAGE_THRESHOLD,
+    unresolved_core: (result.unknown_core ?? []).length, missing_bounds: result.missing_bounds, readiness_status: result.readiness_status };
+}
+
+/** A phase with no audit cannot replay its verdicts: its score is never the headline (R49). */
+const phaseHeadline = (result, input) => {
+  const headline = scoreHeadline(result);
+  return input.run_context.audited === true || headline.status !== 'sufficient' ? headline : { ...headline, status: 'unaudited', headline_score: null };
+};
+
+const withoutCwv = (input, profile) => scoreWeighted(compileUnits(input, profile).filter(unit => !CWV_FAMILIES.includes(unit.family_id))).coverage;
+
+const affectedKey = finding => `${finding.check_id}\0${finding.message.trim().replace(/\s+/g, ' ').toLowerCase()}`;
+
+/** Blocking first, then priority (P0 before P3), then the problem on the most pages, then the unit for a stable order. */
+function sortedFixes(findings) {
+  const pages = new Map();
+  for (const finding of findings) pages.set(affectedKey(finding), (pages.get(affectedKey(finding)) ?? new Set()).add(finding.unit_key));
+  return [...findings].sort((a, b) => Number(b.blocker) - Number(a.blocker) || a.priority.localeCompare(b.priority) ||
+    pages.get(affectedKey(b)).size - pages.get(affectedKey(a)).size || a.unit_key.localeCompare(b.unit_key));
+}
+
+/**
+ * What is still blank: the runbooks for the unknown reasons, then the start items the user left unanswered (D25).
+ * Choosing the Google key adds the runbook that saves it for the probe's harness.
+ */
+function remainingBlanks(verified) {
+  const probe = verified.run_context.environment_probe;
+  const observations = (verified.after ?? verified.baseline).input.observations;
+  // The blocking runbooks are not remaining work: a run that reached a report was not blocked.
+  const { improving } = startRunbooks({ ...probe, block_reason: null }, { level: 'brief', skillRoot: null, harnesses: runbookHarnesses(probe.harness) });
+  const answered = new Set(verified.answered_runbooks);
+  const ids = [...new Set([...remainingRunbooks(observations), ...improving.map(entry => entry.id).filter(id => !answered.has(id))])];
+  return ids.map(id => {
+    const entry = runbookEntry(id);
+    const runbookIds = entry.expands_to ?? [id];
+    return { item: entry.item, fills: entry.fills, runbook_ids: id === KEY_RUNBOOK ? [...runbookIds, KEY_SET_RUNBOOK[probe.harness]] : runbookIds };
+  });
+}
+
+/**
+ * The report, composed once: the conclusion, what to fix, how complete the audit is, what is blank, and the run conditions.
+ * `verified` is the checked report data: run_context, baseline and after ({ input, scores }), findings, model_judgments,
+ * lab_cwv and answered_runbooks. Every format renders this and nothing else.
+ */
+export function composeReport(verified) {
+  const { baseline } = verified;
+  return {
+    headline: baseline.scores.map(result => phaseHeadline(result, baseline.input)),
+    fixes: sortedFixes(verified.findings),
+    completeness: baseline.scores.map(result => ({ profile: result.profile, pass_rate_in_measured: result.score, coverage: result.coverage,
+      coverage_without_cwv: withoutCwv(baseline.input, result.profile) })),
+    remaining: remainingBlanks(verified),
+    conditions: { probe: verified.run_context.environment_probe, model_judgments: verified.model_judgments, lab_cwv: verified.lab_cwv,
+      notes: [JAVASCRIPT_NOTE] },
+  };
+}
+
+const headlineLine = h => h.status === 'sufficient' ? `${h.profile}: ${h.headline_score} (coverage ${h.coverage}%)` :
+  h.status === 'unaudited' ? `${h.profile}: not audited, so no score is shown (the verdicts could not be replayed); measured subset ${h.measured_subset_score ?? 'unknown'}, coverage ${h.coverage}%` :
+  h.status === 'insufficient_core' ? `${h.profile}: insufficient core checks (${h.unresolved_core} access or indexing check(s) have no verdict, although ${h.coverage}% is measured); measured subset ${h.measured_subset_score ?? 'unknown'}, bounds ${h.missing_bounds?.join('–') ?? 'unknown'}` :
+  `${h.profile}: insufficient coverage (${floorTenth(h.coverage_exact)}% of the applicable weight is measured; at least ${h.coverage_threshold}% is needed); measured subset ${h.measured_subset_score ?? 'unknown'}, bounds ${h.missing_bounds?.join('–') ?? 'unknown'}`;
+
+const headlineCell = h => h.status === 'sufficient' ? `${h.headline_score} (coverage ${h.coverage}%)` :
+  h.status === 'unaudited' ? `not audited (measured subset ${h.measured_subset_score ?? 'unknown'}; coverage ${h.coverage ?? 'unknown'}%)` :
+  h.status === 'insufficient_core' ? `insufficient core checks (${h.unresolved_core} unresolved; measured subset ${h.measured_subset_score ?? 'unknown'}; coverage ${h.coverage ?? 'unknown'}%; bounds ${h.missing_bounds?.join('–') ?? 'unknown'})` :
+  `insufficient coverage (measured subset ${h.measured_subset_score ?? 'unknown'}; coverage ${h.coverage ?? 'unknown'}%; bounds ${h.missing_bounds?.join('–') ?? 'unknown'})`;
+
+const conclusion = fixes => {
+  const open = fixes.filter(finding => finding.status !== 'verified_production');
+  const blocking = open.filter(finding => finding.blocker).length;
+  return open.length ? `${open.length} thing(s) to fix first${blocking ? `, ${blocking} of them blocking` : ''}.` : 'Nothing is left to fix in what was checked.';
+};
+
+/** The rows of every table, from the composed report and the checked data around it. */
+function tableRows(composed, verified) {
+  const { baseline, after, comparison, changes } = verified;
+  const afterByProfile = new Map(after?.scores.map(result => [result.profile, result]) ?? []);
+  const score = baseline.scores.map(before => {
+    const later = afterByProfile.get(before.profile);
+    const delta = comparison.score_deltas.find(x => x.profile === before.profile);
+    const beforeHeadline = phaseHeadline(before, baseline.input), afterHeadline = later ? phaseHeadline(later, after.input) : null;
+    const cautious = beforeHeadline.status !== 'sufficient' || (afterHeadline && afterHeadline.status !== 'sufficient');
+    return [before.profile, headlineCell(beforeHeadline), afterHeadline ? headlineCell(afterHeadline) : 'unknown',
+      `${delta?.percentage_point_delta ?? 'unknown'}${cautious && delta ? ' (between measured subsets)' : ''}`,
+      `${before.coverage ?? 'unknown'} → ${later?.coverage ?? 'unknown'}`,
+      `${before.missing_bounds?.join('–') ?? 'unknown'} → ${later?.missing_bounds?.join('–') ?? 'unknown'}`,
+      `${before.readiness_status} → ${later?.readiness_status ?? 'unknown'}`,
+      composed.completeness.find(x => x.profile === before.profile).coverage_without_cwv ?? 'unknown'];
+  });
+  const remediation = composed.fixes.map(f => [f.priority, `${f.message} ${f.unit_key}`, f.sources.map(x => `${x.source_ref} ${x.evidence_ref}`).join('; '),
+    f.remediation ? `${f.remediation.mechanism} (${f.remediation.source_url}, checked ${f.remediation.checked_date})` : 'unknown',
+    changes.filter(x => x.finding_ids.some(id => f.finding_ids.includes(id))).map(x => x.path).join('; ') || f.remediation?.location_hint || 'owner implementation location required',
+    f.remediation ? `${f.remediation.cost}; ${f.remediation.effort}` : 'unknown', f.remediation?.validation ?? 'unknown',
+    f.resolution ? `${f.status} (resolved by ${f.resolution.evaluator_type} observation from ${f.resolution.source_ref})` : f.status]);
+  return { score, remediation,
+    actual_outcomes: verified.outcome_rows,
+    remaining_work: verified.remaining.map(x => [x.problem, x.reason, x.required_input_or_authority, x.next_action, x.reobserve_when]),
+    model_judgments: composed.conditions.model_judgments.map(x => [x.phase, `${x.family_id} ${x.unit_key}`, x.state,
+      `${x.evidence_ref} bytes ${x.evidence_span.map(span => `${span.start}–${span.end}`).join(', ')}`, x.label]) };
+}
+
+const conditionLines = (conditions, verified) => {
+  const { probe, lab_cwv: lab } = conditions;
+  const { baseline, after } = verified;
+  return [
+    `Host: ${probe.harness}; transport: ${probe.transport ?? 'unknown'}; Chrome: ${probe.chrome.found ? probe.chrome.kind : `not found (${probe.chrome.reason ?? 'unknown'})`}; Google key: ${probe.google_key ? 'present' : 'absent'}`,
+    `Analysis tools: ${probe.source_tools.join(', ') || 'none named'}; model judgments checked: ${conditions.model_judgments.length}`,
+    `Baseline blockers: ${baseline.scores[0]?.blockers.length ?? 0} (${baseline.scores[0]?.blockers.map(x => `${x.family_id} ${x.unit_key}`).join('; ') || 'none'}) → ` +
+      `After blockers: ${after ? after.scores[0]?.blockers.length ?? 0 : 'unknown'} (${after ? after.scores[0]?.blockers.map(x => `${x.family_id} ${x.unit_key}`).join('; ') || 'none' : 'after not observed'}); ` +
+      `after core unknown: ${after ? after.scores[0]?.unknown_core.length ?? 0 : 'unknown'}; actual outcomes: ${verified.metrics.length ? 'see measured and missing states below' : 'not_connected / unknown'}`,
+    `Cost and capability limitations: ${verified.cost_issues.join('; ') || 'none recorded'}`,
+    `Metric source limitations: ${verified.metric_origin_limitations.join('; ') || 'no measured provider input'}`,
+    `Lab Core Web Vitals (reference, not scored): ${lab ? `LCP ${lab.lcp ?? 'unknown'} ms; CLS ${lab.cls ?? 'unknown'}` : 'not measured'}`,
+    ...conditions.notes,
+  ];
+};
+
+/** `report.md` and the table rows `report.json` carries, both rendered from the composed report. */
+export function renderReport(composed, verified) {
+  const tables = tableRows(composed, verified);
+  const { run_context: context } = verified;
+  const blanks = composed.remaining.map(x => [x.item, x.fills.join(', ') || 'none', x.runbook_ids.join(', ')]);
+  const markdown = `# optbrew report\n\n${verified.data_class === 'synthetic' ? '**Synthetic example — no real site or provider outcome.**\n\n' : ''}` +
+    `Target: ${html(context.target)}  \nEnvironment: ${html(context.environment)}  \nGoals: ${html(context.goals.join(', '))}  \n` +
+    `Comparison: ${html(verified.comparison.status)} (${html(verified.comparison.reasons.join(', ') || 'none')})  \n` +
+    `Result: ${html(conclusion(composed.fixes))}\n\n` +
+    `## Fix first\n\n${table(['Priority', 'Problem / URL', 'Evidence', 'Selected remedy', 'Change path or owner location', 'Cost / effort', 'Verification', 'Status'], tables.remediation)}\n\n` +
+    `## Completeness (pass rate within what was measured)\n\nHeadline:  \n${composed.headline.map(h => `- ${html(headlineLine(h))}  \n`).join('')}\n` +
+    `${table(['Area', 'Before', 'After', 'Difference', 'Coverage before → after', 'Missing bounds', 'Status', 'Coverage without field CWV (before)'], tables.score)}\n\n` +
+    `## Still blank\n\n${table(['Missing', 'Would fill', 'Runbooks'], blanks)}\n\n` +
+    `## Remaining work\n\n${table(['Problem', 'Reason', 'Needed input / authority', 'Next action', 'Reobserve when'], tables.remaining_work)}\n\n` +
+    `## Actual outcomes\n\n${table(['Engine / property', 'Metric', 'Window / sample', 'Before raw', 'After raw', 'Difference', 'Completion', 'Limitations'], tables.actual_outcomes)}\n\n` +
+    `## Run conditions\n\n${conditionLines(composed.conditions, verified).map(line => `- ${html(line)}\n`).join('')}\n` +
+    (tables.model_judgments.length ? `## Model judgments\n\n${table(['Phase', 'Check / unit', 'State', 'Evidence span (UTF-8 bytes, end excluded)', 'Basis'], tables.model_judgments)}\n\n` : '') +
+    `Evidence root: ${html(verified.evidence_root)}; run ID: ${html(context.run_id)}. Read report.json to replay raw score inputs.\n`;
+  return { markdown, tables };
+}
