@@ -9,7 +9,7 @@ import { PassThrough } from 'node:stream';
 import { setTimeout as sleep } from 'node:timers/promises';
 import { createCdpClient, pipeTransport } from '../skills/optbrew/scripts/core/cdp.mjs';
 import { chromeHandle, findChrome, launchChrome, scopedPage } from '../skills/optbrew/scripts/core/chrome.mjs';
-import { killTreeByPid, processesWith } from './support/processes.mjs';
+import { killTreeByPid, processesWith, remaining } from './support/processes.mjs';
 
 const found = findChrome();
 const skip = found ? false : 'no Chrome found on this machine (set OPTBREW_CHROME)';
@@ -36,7 +36,7 @@ const profiles = dir => readdir(dir).then(names => names.filter(name => name.sta
 // One suite, so the cleanup hook runs after the last test and never beside a running one.
 describe('chrome block', async () => {
   after(async () => {
-    const leftovers = await processesWith(root);
+    const leftovers = await remaining(root);
     for (const entry of leftovers) await killTreeByPid(entry.pid);
     await Promise.all(servers.map(server => new Promise(resolve => { server.close(resolve); server.closeAllConnections(); })));
     await rm(root, { recursive: true, force: true, maxRetries: 20, retryDelay: 100 });
@@ -64,6 +64,14 @@ describe('chrome block', async () => {
     const probed = [];
     findChrome({ env: {}, platform: 'win32', exists: file => { probed.push(file); return false; } });
     assert.deepEqual(probed, []);
+  });
+
+  test('an OPTBREW_CHROME that does not exist is reported, not replaced by another browser', () => {
+    const exists = file => file !== '/gone/chrome';
+    assert.deepEqual(findChrome({ env: { OPTBREW_CHROME: '/gone/chrome' }, platform: 'linux', exists }),
+      { path: null, kind: null, reason: 'optbrew_chrome_missing' });
+    const standard = findChrome({ env: {}, platform: 'linux', exists });
+    assert.equal(standard.reason, undefined);
   });
 
   test('searches PATH with the PATHEXT executable extensions on win32', () => {
@@ -135,6 +143,9 @@ describe('chrome block', async () => {
     const none = chromeHandle({ find: () => null, launch: async () => { launches += 1; return { close: async () => {} }; } });
     assert.equal(await none.get(), null);
     await none.close();
+    const missing = chromeHandle({ find: () => ({ path: null, kind: null, reason: 'optbrew_chrome_missing' }), launch: async () => { launches += 1; return { close: async () => {} }; } });
+    assert.equal(await missing.get(), null);
+    await missing.close();
     const unused = chromeHandle({ find: () => ({ path: 'x', kind: 'chrome' }), launch: async () => { launches += 1; return { close: async () => {} }; } });
     await unused.close();
     assert.equal(launches, 0);
@@ -149,6 +160,14 @@ describe('chrome block', async () => {
     const missing = path.join(root, 'does-not-exist', 'chrome');
     await assert.rejects(launchChrome({ path: missing, tmpRoot: runDir }), /chrome could not be started/);
     assert.deepEqual(await profiles(runDir), []);
+  });
+
+  test('a launch that times out cleans up and leaves nothing open', { skip }, async () => {
+    for (const transports of [['pipe'], ['port']]) {
+      await assert.rejects(launchChrome({ path: found.path, tmpRoot: runDir, transports, launchTimeoutMs: 1 }), /chrome launch timed out|did not publish|cancelled/);
+      assert.deepEqual(await profiles(runDir), []);
+      assert.deepEqual(await remaining(runDir), []);
+    }
   });
 
   test('launches chrome from a path with spaces and Hangul', { skip }, async () => {
@@ -168,7 +187,7 @@ describe('chrome block', async () => {
       assert.ok(running.some(entry => entry.commandLine.includes('--user-data-dir=') && entry.commandLine.includes('프로필 (한글) 폴더')));
     } finally { await chrome.close(); }
     assert.deepEqual(await profiles(hangulDir), []);
-    assert.deepEqual(await processesWith(hangulDir), []);
+    assert.deepEqual(await remaining(hangulDir), []);
   });
 
   test('never reuses or closes a user\'s running chrome', { skip }, async () => {
@@ -188,7 +207,7 @@ describe('chrome block', async () => {
       });
       assert.equal(user.exitCode, null, 'the user\'s chrome is still running');
       assert.ok((await processesWith(userProfile)).length > 0);
-      assert.deepEqual(await processesWith(runDir), []);
+      assert.deepEqual(await remaining(runDir), []);
     } finally {
       await killTreeByPid(user.pid);
       await new Promise(resolve => (user.exitCode !== null ? resolve() : user.once('exit', resolve)));
@@ -202,7 +221,7 @@ describe('chrome block', async () => {
     await page.close();
     await chrome.close();
     await chrome.close();
-    assert.deepEqual(await processesWith(runDir), []);
+    assert.deepEqual(await remaining(runDir), []);
     assert.deepEqual(await profiles(runDir), []);
   });
 
@@ -210,7 +229,7 @@ describe('chrome block', async () => {
     await withChrome({ transports: ['port'] }, async chrome => {
       assert.match((await chrome.cdp.send('Browser.getVersion')).product, /Chrome|Edg/);
     });
-    assert.deepEqual(await processesWith(runDir), []);
+    assert.deepEqual(await remaining(runDir), []);
     assert.deepEqual(await profiles(runDir), []);
   });
 
@@ -239,12 +258,58 @@ describe('chrome block', async () => {
   fetch('http://cdn.example.test:${targetPort}/data.json').catch(() => console.error('cross-origin fetch failed'));
   fetch('/beacon', { method: 'POST' }).catch(() => {});
   </script>`);
+    } else if (req.url === '/workers') {
+      res.writeHead(200, { 'content-type': 'text/html' });
+      res.end(`<!doctype html><title>Workers</title><script>
+  navigator.serviceWorker.register('/sw.js');
+  new SharedWorker('/shared.js');
+  new Worker('/dedicated.js');
+  </script>`);
+    } else if (/^\/(sw|shared|dedicated)\.js$/.test(req.url)) {
+      const name = req.url.slice(1, -3);
+      const start = name === 'sw' ? "self.addEventListener('activate', () => { run(); });" : 'run();';
+      res.writeHead(200, { 'content-type': 'text/javascript' });
+      res.end(`function run() {
+    fetch('/${name}-ran');
+    fetch('http://cdn.example.test:${targetPort}/${name}-post', { method: 'POST', mode: 'no-cors' }).catch(() => {});
+    fetch('http://cdn.example.test:${targetPort}/${name}-get', { mode: 'no-cors' }).catch(() => {});
+  }
+  ${start}`);
+    } else if (req.url === '/opener') { res.writeHead(200, { 'content-type': 'text/html' }); res.end('<title>opener</title>'); }
+    else if (req.url === '/popup-inside') {
+      res.writeHead(200, { 'content-type': 'text/html' });
+      res.end(`<title>popup</title><script>fetch('http://cdn.example.test:${targetPort}/popup-post', { method: 'POST', mode: 'no-cors' }).catch(() => {});</script>`);
+    } else if (req.url === '/oopif') {
+      res.writeHead(200, { 'content-type': 'text/html' });
+      res.end(`<title>oopif</title><iframe src="http://in2.example.test:${ownerPort}/inner"></iframe>`);
+    } else if (req.url === '/inner') {
+      res.writeHead(200, { 'content-type': 'text/html' });
+      res.end(`<title>inner</title><script>fetch('http://cdn.example.test:${targetPort}/inner-post', { method: 'POST', mode: 'no-cors' }).catch(() => {});</script>`);
     } else { res.writeHead(200, { 'content-type': 'text/html' }); res.end('<title>plain</title>'); }
   }));
 
   const ownerScope = { allowed: [{ origin: `http://127.0.0.1:${ownerPort}` }], local_targets: [{ host: '127.0.0.1', port: ownerPort }] };
   const owner = suffix => `http://127.0.0.1:${ownerPort}${suffix}`;
   const hostRules = `MAP *.example.test 127.0.0.1`;
+
+  async function until(condition, what) {
+    for (let waited = 0; waited < 100; waited++) {
+      if (condition()) return;
+      await sleep(100);
+    }
+    assert.fail(`timed out waiting for ${what}`);
+  }
+  const blockedPaths = page => page.requests.filter(request => request.action === 'blocked').map(request => new URL(request.url).pathname);
+
+  /** Run `code` in the page behind `url` with a user gesture (so Chrome allows a popup), over a second session of ours. */
+  async function evaluateWithGesture(chrome, url, code) {
+    const { targetInfos } = await chrome.cdp.send('Target.getTargets');
+    const target = targetInfos.find(info => info.type === 'page' && info.url === url);
+    assert.ok(target, `a page target for ${url}`);
+    const { sessionId } = await chrome.cdp.send('Target.attachToTarget', { targetId: target.targetId, flatten: true });
+    await chrome.cdp.send('Runtime.evaluate', { expression: code, userGesture: true }, sessionId);
+    await chrome.cdp.send('Target.detachFromTarget', { sessionId });
+  }
 
   test('scopedPage blocks an out-of-scope navigation and records third-party static', { skip }, async () => {
     targetSeen.length = 0;
@@ -306,6 +371,64 @@ describe('chrome block', async () => {
         assert.equal(page.requests[0].resource_type, 'Document');
         assert.equal(page.requests[2].blocked_reason, 'render_budget');
         assert.ok(page.requests.slice(0, 2).every(request => request.blocked_reason !== 'render_budget'));
+      } finally { await page.close(); }
+    });
+  });
+
+  test('a service worker cannot reach an out-of-scope host', { skip }, async () => {
+    targetSeen.length = 0;
+    await withChrome({ hostRules }, async chrome => {
+      const page = await scopedPage({ chrome, context: { scope: ownerScope }, budget: 100 });
+      try {
+        assert.equal((await page.goto(owner('/workers'))).title, 'Workers');
+        await until(() => page.requests.some(request => request.target_type === 'service_worker' && request.url === owner('/sw-ran')), 'the service worker to run');
+        await until(() => blockedPaths(page).includes('/sw-post'), 'the service worker POST to be recorded');
+        const post = page.requests.find(request => request.url.endsWith('/sw-post'));
+        assert.deepEqual([post.target_type, post.action, post.blocked_reason], ['service_worker', 'blocked', 'non_get_request']);
+        assert.ok(!targetSeen.includes('POST /sw-post'), 'the out-of-scope host never received the service worker request');
+      } finally { await page.close(); }
+    });
+  });
+
+  test('shared and dedicated workers follow the same rule', { skip }, async () => {
+    targetSeen.length = 0;
+    await withChrome({ hostRules }, async chrome => {
+      const page = await scopedPage({ chrome, context: { scope: ownerScope }, budget: 100 });
+      try {
+        await page.goto(owner('/workers'));
+        for (const name of ['shared', 'dedicated']) {
+          await until(() => blockedPaths(page).includes(`/${name}-post`), `the ${name} worker POST to be recorded`);
+          // A fetch() GET is not a static resource, so it is blocked too.
+          await until(() => blockedPaths(page).includes(`/${name}-get`), `the ${name} worker GET to be recorded`);
+        }
+        const typeOf = name => page.requests.find(request => request.url.endsWith(`/${name}-post`)).target_type;
+        // A dedicated worker's requests are paused on its owner's session, so they are listed under the page.
+        assert.deepEqual([typeOf('shared'), typeOf('dedicated')], ['shared_worker', 'page']);
+        assert.ok(!targetSeen.some(seen => /-(post|get)$/.test(seen)), 'the out-of-scope host received nothing from the workers');
+      } finally { await page.close(); }
+    });
+  });
+
+  test('a popup or iframe target follows the same rule', { skip }, async () => {
+    targetSeen.length = 0;
+    const scope = { allowed: [...ownerScope.allowed, { origin: `http://in2.example.test:${ownerPort}` }], local_targets: ownerScope.local_targets };
+    await withChrome({ hostRules }, async chrome => {
+      const page = await scopedPage({ chrome, context: { scope }, budget: 100 });
+      try {
+        // An allowed iframe on another site runs in its own process; its own requests must still be checked.
+        await page.goto(owner('/oopif'));
+        await until(() => blockedPaths(page).includes('/inner-post'), 'the cross-site iframe POST to be recorded');
+        assert.equal(page.requests.find(request => request.url.endsWith('/inner-post')).target_type, 'iframe');
+
+        // A popup opened with a user gesture gets the same interception, for its document and for what it requests.
+        await page.goto(owner('/opener'));
+        // One gesture opens one popup, so each popup gets its own.
+        await evaluateWithGesture(chrome, owner('/opener'), `window.open(${JSON.stringify(owner('/popup-inside'))}, '_blank'); 1`);
+        await evaluateWithGesture(chrome, owner('/opener'), `window.open('http://cdn.example.test:${targetPort}/popup-out', '_blank'); 1`);
+        await until(() => blockedPaths(page).includes('/popup-post') && blockedPaths(page).includes('/popup-out'), 'the popup requests to be recorded');
+        assert.equal(page.requests.find(request => request.url.endsWith('/popup-post')).target_type, 'page');
+        assert.ok(page.requests.some(request => request.url === owner('/popup-inside') && request.action === 'allowed'));
+        assert.ok(!targetSeen.some(seen => /(popup|inner)-/.test(seen) || seen === 'GET /popup-out'), 'the out-of-scope host received nothing from the popup or the iframe');
       } finally { await page.close(); }
     });
   });

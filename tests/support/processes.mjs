@@ -21,6 +21,17 @@ export async function processesWith(marker) {
     .filter(entry => entry.commandLine.includes(marker) && entry.pid !== process.pid);
 }
 
+/**
+ * The processes still listed for `marker` after waiting for them to end: Windows keeps a killed process in the list for a
+ * while on a busy machine, so "none left" is judged once the list is empty or `waitMs` has passed (then it is the last list).
+ */
+export async function remaining(marker, waitMs = 20000) {
+  const deadline = Date.now() + waitMs;
+  let found = await processesWith(marker);
+  while (found.length && Date.now() < deadline) found = await processesWith(marker);
+  return found;
+}
+
 /** Kill a process tree by pid (`taskkill /T /F` on Windows, the process group elsewhere). Never kills by image name. */
 export async function killTreeByPid(pid) {
   if (process.platform === 'win32') await run('taskkill', ['/T', '/F', '/PID', String(pid)]).catch(() => {});

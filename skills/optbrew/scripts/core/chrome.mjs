@@ -1,4 +1,4 @@
-import { spawn } from 'node:child_process';
+import { execFile, spawn } from 'node:child_process';
 import { existsSync, readdirSync } from 'node:fs';
 import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import os from 'node:os';
@@ -29,12 +29,14 @@ const guessKind = file => /edge/i.test(path.basename(file)) ? 'edge' : /chromium
 /**
  * Where a Chromium browser lives, in the order OPTBREW_CHROME, the platform's standard install paths, names on PATH
  * (Windows: tried with the PATHEXT executable extensions), then Chromium under PLAYWRIGHT_BROWSERS_PATH.
+ * Returns `{ path, kind }`, or `null` when nothing is found. An OPTBREW_CHROME that points at a missing file is the
+ * owner's explicit choice, so it is not silently replaced: the result is `{ path: null, kind: null, reason: 'optbrew_chrome_missing' }`.
  */
 export function findChrome({ env = process.env, platform = process.platform, exists = existsSync, list = readdirSync } = {}) {
   const config = chromePaths();
   const p = platform === 'win32' ? path.win32 : path.posix;
   const override = envValue(env, 'OPTBREW_CHROME');
-  if (override && exists(override)) return { path: override, kind: guessKind(override) };
+  if (override) return exists(override) ? { path: override, kind: guessKind(override) } : { path: null, kind: null, reason: 'optbrew_chrome_missing' };
 
   for (const entry of config[platform] ?? []) {
     const candidate = expand(entry.path, env);
@@ -71,18 +73,45 @@ export function findChrome({ env = process.env, platform = process.platform, exi
 
 const exited = child => child.exitCode !== null || child.signalCode !== null;
 
-/** Kill a process tree: Windows `taskkill /T /F`, elsewhere the process group the child leads. */
-function killTree(child) {
-  if (exited(child) || child.pid === undefined) return Promise.resolve();
+/** Kill a process tree by pid: Windows `taskkill /T /F`, elsewhere the process group, else the process alone. */
+function killTree(pid) {
   if (process.platform !== 'win32') {
-    try { process.kill(-child.pid, 'SIGKILL'); } catch { child.kill('SIGKILL'); }
+    try { process.kill(-pid, 'SIGKILL'); } catch { try { process.kill(pid, 'SIGKILL'); } catch { /* already gone */ } }
     return Promise.resolve();
   }
   return new Promise(resolve => {
-    const killer = spawn('taskkill', ['/T', '/F', '/PID', String(child.pid)], { stdio: 'ignore', windowsHide: true });
+    const killer = spawn('taskkill', ['/T', '/F', '/PID', String(pid)], { stdio: 'ignore', windowsHide: true });
     killer.once('error', resolve);
     killer.once('exit', resolve);
   });
+}
+
+const LIST_WINDOWS = 'Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -and $_.CommandLine.Contains($env:OPTBREW_MARKER) } | ForEach-Object { $_.ProcessId }';
+
+/** Pids whose command line names `marker`. The marker travels in the environment, so the query never finds itself. */
+function pidsWithCommandLine(marker) {
+  const [command, args] = process.platform === 'win32' ?
+    ['powershell', ['-NoProfile', '-NonInteractive', '-Command', LIST_WINDOWS]] : ['ps', ['-eo', 'pid=,args=']];
+  return new Promise(resolve => {
+    execFile(command, args, { env: { ...process.env, OPTBREW_MARKER: marker }, maxBuffer: 1 << 24, windowsHide: true }, (error, stdout) => {
+      if (error) { resolve([]); return; }
+      resolve(stdout.split(/\r?\n/).map(line => /^\s*(\d+)(?:\s+(.*))?$/.exec(line))
+        .filter(match => match && (process.platform === 'win32' || match[2]?.includes(marker)))
+        .map(match => Number(match[1])).filter(pid => pid !== process.pid));
+    });
+  });
+}
+
+/**
+ * Helpers such as the crash handler can outlive the browser for a moment, and no longer belong to its process tree. This run's
+ * temporary profile path is unique and sits on their command lines, so it identifies them; nothing else is ever touched.
+ */
+async function killLeftovers(userDataDir, graceMs) {
+  const deadline = Date.now() + graceMs;
+  // Ending a process takes a moment on Windows, so ask again until none is listed (or the grace period is over).
+  for (let pids = await pidsWithCommandLine(userDataDir); pids.length && Date.now() < deadline; pids = await pidsWithCommandLine(userDataDir)) {
+    for (const pid of pids) await killTree(pid);
+  }
 }
 
 /** Answer authentication challenges from memory: only a proxy challenge gets the proxy credentials, once per request. */
@@ -111,8 +140,8 @@ async function readActivePort(userDataDir, deadline) {
 }
 
 /** One launch attempt with one transport; on any failure it kills its own process tree and removes its profile directory. */
-async function attempt({ executable, proxy, hostRules, tmpRoot, transport: kind }) {
-  const { chrome_launch_timeout_ms: launchTimeout, chrome_close_grace_ms: closeGrace, cdp_command_timeout_ms: commandTimeout } = limits();
+async function attempt({ executable, proxy, hostRules, tmpRoot, transport: kind, launchTimeout }) {
+  const { chrome_close_grace_ms: closeGrace, cdp_command_timeout_ms: commandTimeout } = limits();
   const userDataDir = await mkdtemp(path.join(tmpRoot, 'optbrew-chrome-'));
   const args = ['--headless=new', `--user-data-dir=${userDataDir}`, '--no-first-run', '--no-default-browser-check',
     '--disable-background-networking', '--disable-extensions',
@@ -132,9 +161,11 @@ async function attempt({ executable, proxy, hostRules, tmpRoot, transport: kind 
   failed.catch(() => {});
 
   let transport = null;
+  let cancelled = false;
   const cleanup = async () => {
     transport?.close();
-    if (!exited(child)) { await killTree(child); await Promise.race([gone, sleep(closeGrace)]); }
+    if (!exited(child) && child.pid !== undefined) { await killTree(child.pid); await Promise.race([gone, sleep(closeGrace)]); }
+    await killLeftovers(userDataDir, closeGrace);
     await rm(userDataDir, { recursive: true, force: true, maxRetries: 20, retryDelay: 100 });
   };
 
@@ -142,7 +173,10 @@ async function attempt({ executable, proxy, hostRules, tmpRoot, transport: kind 
   try {
     const deadline = Date.now() + launchTimeout;
     const connect = async () => {
-      transport = kind === 'pipe' ? pipeTransport(child.stdio[3], child.stdio[4]) : await webSocketTransport(await readActivePort(userDataDir, deadline));
+      const opened = kind === 'pipe' ? pipeTransport(child.stdio[3], child.stdio[4]) : await webSocketTransport(await readActivePort(userDataDir, deadline));
+      // A connection that completes after the launch was abandoned must not outlive the cleanup.
+      if (cancelled) { opened.close(); throw new Error('chrome launch was cancelled'); }
+      transport = opened;
       cdp = createCdpClient(transport, { timeoutMs: commandTimeout });
       await cdp.send('Browser.getVersion');
     };
@@ -150,6 +184,7 @@ async function attempt({ executable, proxy, hostRules, tmpRoot, transport: kind 
     const timeout = new Promise((_, reject) => { timer = setTimeout(() => reject(new Error('chrome launch timed out')), launchTimeout); });
     try { await Promise.race([connect(), failed, timeout]); } finally { clearTimeout(timer); }
   } catch (error) {
+    cancelled = true;
     await cleanup();
     throw error;
   }
@@ -172,10 +207,11 @@ async function attempt({ executable, proxy, hostRules, tmpRoot, transport: kind 
  * stays in memory (never on the command line, in a log or in an error). `close()` always ends this run's process tree
  * and deletes the profile directory.
  */
-export async function launchChrome({ path: executable, proxy = null, hostRules = null, tmpRoot = os.tmpdir(), transports = ['pipe', 'port'] }) {
+export async function launchChrome({ path: executable, proxy = null, hostRules = null, tmpRoot = os.tmpdir(), transports = ['pipe', 'port'],
+  launchTimeoutMs = limits().chrome_launch_timeout_ms }) {
   let failure;
   for (const transport of transports) {
-    try { return await attempt({ executable, proxy, hostRules, tmpRoot, transport }); }
+    try { return await attempt({ executable, proxy, hostRules, tmpRoot, transport, launchTimeout: launchTimeoutMs }); }
     catch (error) { failure = error; }
   }
   throw failure;
@@ -191,7 +227,7 @@ export function chromeHandle({ find, launch }) {
       if (closed) return Promise.reject(new Error('chrome handle is closed'));
       pending ??= (async () => {
         const found = await find();
-        return found ? launch(found) : null;
+        return found?.path ? launch(found) : null;
       })();
       return pending;
     },
@@ -234,18 +270,56 @@ const consoleText = args => args.map(arg => arg.value ?? arg.description ?? '').
 const READ_PAGE = `JSON.stringify({ final_url: location.href, title: document.title, dom: document.documentElement.outerHTML,
   links: Array.from(document.querySelectorAll('a[href]'), anchor => anchor.href) })`;
 
+const INTERCEPT_ALL = { patterns: [{ urlPattern: '*' }], handleAuthRequests: true };
+const AUTO_ATTACH = { autoAttach: true, waitForDebuggerOnStart: true, flatten: true };
+// Top-level targets that can run page code or make requests of their own. The last entry drops every other type.
+const TOP_LEVEL = [{ type: 'page' }, { type: 'service_worker' }, { type: 'shared_worker' }, { exclude: true }];
+// A dedicated worker has no Fetch domain of its own ("'Fetch.enable' wasn't found"): its requests are paused on the session
+// of the frame that owns it, which already has the interception.
+const OWNER_INTERCEPTS = new Set(['worker']);
+
+/**
+ * One browser-level auto-attach per Chrome: each new top-level target (a popup, a service worker, a shared worker) is
+ * paused and handed to the scopedPage that owns its browser context; any other target is resumed untouched.
+ * Resolves to the `browserContextId -> adopt` map.
+ */
+const routers = new WeakMap();
+function routerFor(cdp) {
+  if (!routers.has(cdp)) {
+    routers.set(cdp, (async () => {
+      const claims = new Map();
+      cdp.on('Target.attachedToTarget', (params, parent) => {
+        if (parent !== undefined) return;
+        const adopt = claims.get(params.targetInfo.browserContextId);
+        if (adopt) adopt(params);
+        else if (params.waitingForDebugger) cdp.send('Runtime.runIfWaitingForDebugger', {}, params.sessionId).catch(() => {});
+      });
+      await cdp.send('Target.setAutoAttach', { ...AUTO_ATTACH, filter: TOP_LEVEL });
+      return claims;
+    })());
+  }
+  return routers.get(cdp);
+}
+
 /**
  * One isolated page whose every request passes the scope rules: in-scope requests continue; an out-of-scope document or
  * any request that is not GET/HEAD fails with BlockedByClient; an out-of-scope GET script, stylesheet, font or image
  * loads and is recorded as `third_party_static`. Redirect hops arrive as new requests and are checked again. Past
  * `budget` intercepted requests every request fails with `render_budget`.
+ * The rules cover every target the page owns, not only its main frame: iframes and dedicated workers (auto-attached from the
+ * page session), popups, service workers and shared workers (auto-attached from the browser). Each is paused, gets the same
+ * Fetch interception, and only then runs; the records say which kind of target made the request (`target_type`).
  */
 export async function scopedPage({ chrome, context, budget }) {
   const { cdp } = chrome;
+  const claims = await routerFor(cdp);
   const { browserContextId } = await cdp.send('Target.createBrowserContext', { disposeOnDetach: true });
   const offs = [];
   const requests = [];
   const consoleErrors = [];
+  const sessions = new Map();
+  const targets = new Set();
+  const idleLoaders = new Set();
   let targetId = null;
   let sessionId = null;
   let mainFrameId = null;
@@ -253,6 +327,8 @@ export async function scopedPage({ chrome, context, budget }) {
   let mainBlocked = null;
   let budgetBlocked = false;
   let lastDocument = null;
+  let announceMainTarget;
+  const mainTarget = new Promise(resolve => { announceMainTarget = resolve; });
 
   const send = (method, params) => cdp.send(method, params, sessionId);
   const on = (event, fn) => {
@@ -260,37 +336,68 @@ export async function scopedPage({ chrome, context, budget }) {
     offs.push(off);
     return off;
   };
-  const once = (event, test) => new Promise(resolve => {
-    const off = on(event, params => { if (test(params)) { off(); resolve(params); } });
-  });
+  const once = (event, test) => {
+    let off;
+    const promise = new Promise(resolve => { off = on(event, params => { if (test(params)) { off(); resolve(params); } }); });
+    return { promise, off };
+  };
 
-  async function onPaused({ requestId, request, resourceType, redirectedRequestId, frameId }) {
+  async function onPaused(session, { requestId, request, resourceType, redirectedRequestId, frameId }) {
     seen += 1;
     const verdict = seen > budget ? { action: 'blocked', blocked_reason: 'render_budget' } : decide(request, resourceType, context.scope);
     if (verdict.blocked_reason === 'render_budget') budgetBlocked = true;
     // Past the budget only the first overflowing request is listed, so a request flood cannot grow the list.
     if (seen <= budget + 1) {
-      requests.push({ url: request.url, method: request.method, resource_type: resourceType, redirected: Boolean(redirectedRequestId), ...verdict });
+      requests.push({ url: request.url, method: request.method, resource_type: resourceType, target_type: sessions.get(session),
+        redirected: Boolean(redirectedRequestId), ...verdict });
     }
     if (verdict.action === 'blocked') {
-      if (resourceType === 'Document' && frameId === mainFrameId) mainBlocked ??= verdict.blocked_reason;
-      await send('Fetch.failRequest', { requestId, errorReason: 'BlockedByClient' });
-    } else await send('Fetch.continueRequest', { requestId });
+      if (session === sessionId && resourceType === 'Document' && frameId === mainFrameId) mainBlocked ??= verdict.blocked_reason;
+      await cdp.send('Fetch.failRequest', { requestId, errorReason: 'BlockedByClient' }, session);
+    } else await cdp.send('Fetch.continueRequest', { requestId }, session);
+  }
+
+  /** Put a newly attached target under the same interception before it runs. The main page is driven over its own session. */
+  async function adopt({ sessionId: child, targetInfo, waitingForDebugger }) {
+    const resume = () => waitingForDebugger ? cdp.send('Runtime.runIfWaitingForDebugger', {}, child).catch(() => {}) : undefined;
+    // Our own page can be announced before createTarget has answered, so its identity is only known after that.
+    const ownMainPage = targetInfo.type === 'page' && targetInfo.targetId === await mainTarget;
+    if (ownMainPage || targets.has(targetInfo.targetId)) { await resume(); return; }
+    targets.add(targetInfo.targetId);
+    if (!OWNER_INTERCEPTS.has(targetInfo.type)) {
+      sessions.set(child, targetInfo.type);
+      try { await cdp.send('Fetch.enable', INTERCEPT_ALL, child); }
+      catch {
+        // A target that cannot be intercepted must not run: close it instead of resuming it.
+        await cdp.send('Target.closeTarget', { targetId: targetInfo.targetId }).catch(() => {});
+        return;
+      }
+    }
+    // Targets nested under this one (iframes, workers) attach to this session in turn; not every target type supports it.
+    await cdp.send('Target.setAutoAttach', AUTO_ATTACH, child).catch(() => {});
+    await resume();
   }
 
   async function close() {
+    claims.delete(browserContextId);
     for (const off of offs.splice(0)) off();
     if (targetId) await cdp.send('Target.closeTarget', { targetId }).catch(() => {});
     await cdp.send('Target.disposeBrowserContext', { browserContextId }).catch(() => {});
   }
 
   try {
+    claims.set(browserContextId, params => { adopt(params).catch(() => {}); });
     ({ targetId } = await cdp.send('Target.createTarget', { url: 'about:blank', browserContextId }));
+    announceMainTarget(targetId);
     ({ sessionId } = await cdp.send('Target.attachToTarget', { targetId, flatten: true }));
-    on('Fetch.requestPaused', params => { onPaused(params).catch(() => {}); });
+    sessions.set(sessionId, 'page');
+    targets.add(targetId);
+    offs.push(cdp.on('Fetch.requestPaused', (params, session) => { if (sessions.has(session)) onPaused(session, params).catch(() => {}); }));
+    offs.push(cdp.on('Target.attachedToTarget', (params, parent) => { if (parent !== undefined && sessions.has(parent)) adopt(params).catch(() => {}); }));
     on('Network.responseReceived', ({ type, frameId, response }) => {
       if (type === 'Document' && frameId === mainFrameId) lastDocument = { status: response.status };
     });
+    on('Page.lifecycleEvent', ({ name, loaderId }) => { if (name === 'networkIdle') idleLoaders.add(loaderId); });
     on('Runtime.consoleAPICalled', ({ type, args }) => { if (type === 'error') consoleErrors.push(consoleText(args)); });
     on('Runtime.exceptionThrown', ({ exceptionDetails }) => { consoleErrors.push(exceptionDetails.exception?.description ?? exceptionDetails.text); });
     await send('Page.enable');
@@ -298,8 +405,10 @@ export async function scopedPage({ chrome, context, budget }) {
     await send('Runtime.enable');
     await send('Page.setLifecycleEventsEnabled', { enabled: true });
     mainFrameId = (await send('Page.getFrameTree')).frameTree.frame.id;
-    await send('Fetch.enable', { patterns: [{ urlPattern: '*' }], handleAuthRequests: true });
+    await send('Fetch.enable', INTERCEPT_ALL);
+    await send('Target.setAutoAttach', AUTO_ATTACH);
   } catch (error) {
+    announceMainTarget(null);
     await close();
     throw error;
   }
@@ -311,12 +420,16 @@ export async function scopedPage({ chrome, context, budget }) {
       mainBlocked = null;
       lastDocument = null;
       const result = { final_url: null, status: null, title: null, dom: null, links: [], console_errors: consoleErrors, blocked_reason: null, error: null };
-      const idle = once('Page.lifecycleEvent', ({ frameId, name }) => frameId === mainFrameId && name === 'networkIdle');
       const deadline = sleep(limits().timeout_ms, 'timeout');
       const navigated = await Promise.race([send('Page.navigate', { url }), deadline]);
       if (navigated === 'timeout') result.error = 'timeout';
       else if (navigated.errorText) result.error = navigated.errorText;
-      else if (await Promise.race([idle, deadline]) === 'timeout') result.error = 'timeout';
+      else if (!idleLoaders.has(navigated.loaderId)) {
+        // Only this navigation's own idle event counts: the blank page we started from reports its idle half a second after it opened.
+        const idle = once('Page.lifecycleEvent', ({ name, loaderId }) => name === 'networkIdle' && loaderId === navigated.loaderId);
+        try { if (await Promise.race([idle.promise, deadline]) === 'timeout') result.error = 'timeout'; }
+        finally { idle.off(); }
+      }
       result.blocked_reason = mainBlocked ?? (budgetBlocked ? 'render_budget' : null);
       if (mainBlocked || (result.error && result.error !== 'timeout')) return result;
       const { result: evaluated } = await send('Runtime.evaluate', { expression: READ_PAGE, returnByValue: true });
