@@ -6,6 +6,7 @@ import { isIP } from 'node:net';
 import { performance } from 'node:perf_hooks';
 import { assertInScope, assertUrlInScope } from './scope.mjs';
 import { anchorLinks, canonicalLink } from './html.mjs';
+import { limits } from './config.mjs';
 
 const HEADER_NAMES = ['content-type', 'content-length', 'content-range', 'content-encoding', 'location', 'x-robots-tag', 'last-modified', 'etag'];
 const REDIRECTS = new Set([301, 302, 303, 307, 308]);
@@ -31,7 +32,7 @@ function safeHeaders(headers) {
 }
 
 /** Response header lines in wire order; repeated lines (for example two X-Robots-Tag lines) stay separate. */
-export function headerLines(response) {
+function headerLines(response) {
   const lines = [];
   if (Array.isArray(response.rawHeaders)) {
     for (let i = 0; i + 1 < response.rawHeaders.length; i += 2) {
@@ -88,8 +89,8 @@ async function addressesFor(url, resolve) {
 }
 
 /** Fetch one URL with fresh DNS validation at every redirect and a pinned connection. */
-export async function fetchScoped(input, { context, transport = nodeTransport, resolve = host => lookup(host, { all: true, verbatim: true }), timeoutMs = 20000, maxBytes = 5242880, maxRedirects = 10, headers = {}, allowedAuxiliary = null, reserveRequest = null }) {
-  if (![timeoutMs, maxBytes, maxRedirects].every(Number.isInteger) || timeoutMs < 1 || timeoutMs > 20000 || maxBytes < 1 || maxBytes > 5242880 || maxRedirects < 0 || maxRedirects > 10)
+export async function fetchScoped(input, { context, transport = nodeTransport, resolve = host => lookup(host, { all: true, verbatim: true }), timeoutMs = limits().timeout_ms, maxBytes = limits().max_bytes, maxRedirects = limits().max_redirects, headers = {}, allowedAuxiliary = null, reserveRequest = null }) {
+  if (![timeoutMs, maxBytes, maxRedirects].every(Number.isInteger) || timeoutMs < 1 || timeoutMs > limits().timeout_ms || maxBytes < 1 || maxBytes > limits().max_bytes || maxRedirects < 0 || maxRedirects > limits().max_redirects)
     throw new Error('fetch limits exceed context ceiling');
   let url = assertUrlInScope(input, context.scope);
   if (allowedAuxiliary) undeclaredAuxiliary(url, allowedAuxiliary);
@@ -181,9 +182,9 @@ export function links(html, base) {
 /** Bounded crawl of fixed protocol URLs and their in-scope links. */
 export async function collect(context, { transport, resolve } = {}) {
   const scope = context?.scope;
-  const limit = Math.min(scope?.max_urls ?? 50, 50);
-  const depthLimit = Math.min(scope?.max_depth ?? 3, 3);
-  const concurrency = Math.min(scope?.concurrency ?? 2, 2);
+  const limit = Math.min(scope?.max_urls ?? limits().max_urls_default, limits().max_urls_default);
+  const depthLimit = Math.min(scope?.max_depth ?? limits().max_depth, limits().max_depth);
+  const concurrency = Math.min(scope?.concurrency ?? limits().concurrency, limits().concurrency);
   if (![limit, depthLimit, concurrency].every(Number.isInteger) || limit < 1 || depthLimit < 0 || concurrency < 1)
     throw new Error('invalid collection limits');
   const initial = context.protocol.page_types.flatMap(type => type.urls.map(ref => ref.normalized));

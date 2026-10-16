@@ -6,6 +6,7 @@ import { access, mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { validateEntity } from './core/contracts.mjs';
+import { limits } from './core/config.mjs';
 import { collect, declaredRobotsIndex } from './core/collector.mjs';
 import { auditCollected } from '../modules/naver-searchadvisor/scripts/audit.mjs';
 import { deriveObservations } from './core/derive.mjs';
@@ -18,7 +19,7 @@ async function magnus(artifact) {
     const child = spawn(process.platform === 'win32' ? 'python' : 'python3', [magnusScript, '--stdin', '--source-url', artifact.final_url, '--json'],
       { stdio: ['pipe', 'pipe', 'pipe'] });
     const chunks = []; let bytes = 0;
-    child.stdout.on('data', chunk => { bytes += chunk.length; if (bytes > 5242880) child.kill(); else chunks.push(chunk); });
+    child.stdout.on('data', chunk => { bytes += chunk.length; if (bytes > limits().max_bytes) child.kill(); else chunks.push(chunk); });
     child.on('error', () => resolve({ status: 'unavailable', reason: 'python_unavailable' }));
     child.on('close', code => {
       if (code !== 0) return resolve({ status: 'unavailable', reason: 'python_audit_failed' });
@@ -113,7 +114,7 @@ export async function runAudit({ context, modules, outputDir, transport, resolve
     evaluated_count: collection.evaluated_count, request_count: collection.request_count, skipped: collection.skipped, limit_reached: collection.limit_reached };
   await writeFile(path.join(evidenceDir, 'collection.json'), `${JSON.stringify({ artifacts, discovered_count: collection.discovered_count,
     evaluated_count: collection.evaluated_count, request_count: collection.request_count, skipped: collection.skipped, limit_reached: collection.limit_reached }, null, 2)}\n`, { flag: 'wx' });
-  await writeFile(path.join(evidenceDir, 'ledger.json'), `${JSON.stringify({ entries: collection.ledger, limit: Math.min(context.scope?.max_urls ?? 50, 50) }, null, 2)}\n`, { flag: 'wx' });
+  await writeFile(path.join(evidenceDir, 'ledger.json'), `${JSON.stringify({ entries: collection.ledger, limit: Math.min(context.scope?.max_urls ?? limits().max_urls_default, limits().max_urls_default) }, null, 2)}\n`, { flag: 'wx' });
   await writeFile(path.join(evidenceDir, 'modules.json'), `${JSON.stringify(module_outputs, null, 2)}\n`, { flag: 'wx' });
   await writeFile(path.join(evidenceDir, 'observations.json'), `${JSON.stringify(observations, null, 2)}\n`, { flag: 'wx' });
   await writeFile(result.evidence_ref, `${JSON.stringify({ run_id: context.run_id, context_ref: context.evidence_ref,

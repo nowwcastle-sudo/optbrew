@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 
 const digest = bytes => createHash('sha256').update(bytes).digest('hex');
 const binaries = { codex: 'codex.exe', claude: 'claude.exe' };
+const hostSessionTimeout = 120000;
 const pluginRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 async function executable(host) {
@@ -72,7 +73,7 @@ export async function runOwnedProcess(file, args, cwd, timeoutMs, stdoutPath, st
 }
 
 /** Run fresh account-host sessions. Scenario input contains only a request and optional raw material. */
-export async function runHostScenarios({ host, scenarios, workspaceRoot, outputDir, timeoutMs = 120000 }) {
+export async function runHostScenarios({ host, scenarios, workspaceRoot, outputDir, timeoutMs = hostSessionTimeout }) {
   if (!Array.isArray(scenarios) || !scenarios.length || !Number.isInteger(timeoutMs) || timeoutMs < 1000)
     throw new Error('scenarios and positive timeoutMs required');
   const binary = await executable(host);
@@ -142,7 +143,7 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
     process.exitCode = 2;
   } else runHostScenarios({ host, scenarios: JSON.parse(await readFile(scenarioFile, 'utf8')),
     workspaceRoot: path.resolve(workspaceRoot), outputDir: path.resolve(outputDir),
-    timeoutMs: timeoutText ? Number(timeoutText) : 120000 })
+    timeoutMs: timeoutText ? Number(timeoutText) : hostSessionTimeout })
     .then(receipt => process.stdout.write(`${receipt.evidence_ref}\n`))
     .catch(error => { process.stderr.write(`${error.message}\n`); process.exitCode = 1; });
 }

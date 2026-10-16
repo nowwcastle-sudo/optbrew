@@ -1,4 +1,5 @@
 import { validateEntity, ContractError } from '../core/contracts.mjs';
+import { versions } from '../core/config.mjs';
 
 const providers = new Set(['gsc', 'ga4', 'google_ai', 'bing_ai', 'naver', 'se_ranking']);
 const day = 86400000;
@@ -61,7 +62,7 @@ export function normalizeImport(provider, rows, metadata) {
     const dimensions = ['property', 'hostname', 'path', 'query', 'search_type', 'device', 'country', 'aggregation'];
     const dimension = key => row.filters?.[key] ?? metadata[key] ?? 'unknown';
     const export_scope = Object.fromEntries(dimensions.map(key => [key, metadata[key] ?? 'unknown']));
-    const observation = { schema_version: '1.0.0', metric_id: `${provider}:${row.metric_id}`,
+    const observation = { schema_version: versions().contract_schema, metric_id: `${provider}:${row.metric_id}`,
       value_state, value, numerator: row.numerator ?? null, denominator: row.denominator ?? null,
       definition: row.definition ?? row.provider_definition ?? metadata.provider_definition,
       filters: { ...(row.filters ?? {}), provider, property: dimension('property'),

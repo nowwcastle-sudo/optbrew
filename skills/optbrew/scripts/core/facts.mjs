@@ -1,4 +1,5 @@
 import { decodeEntities, jsonLdBlocks, stripComments, stripInert, visibleText } from './html.mjs';
+import { endpoints } from './config.mjs';
 
 /**
  * Cross-page entity fact extraction and comparison, pure functions of the raw HTML of the selected pages.
@@ -13,7 +14,7 @@ const BRANCH = /\b(?:branch)\b|지점|지사/i;
 // URL path segments that list branches: /branch/, /branches/, /locations/, /stores/, /지점/.
 const BRANCH_PATH = /^(?:branch|branches|locations|stores|지점)$/i;
 const branchPath = url => {
-  try { return new URL(url, 'http://page.invalid').pathname.split('/').some(part => BRANCH_PATH.test(decodeURIComponent(part))); }
+  try { return new URL(url, endpoints().relative_url_base).pathname.split('/').some(part => BRANCH_PATH.test(decodeURIComponent(part))); }
   catch { return false; }
 };
 

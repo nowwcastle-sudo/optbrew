@@ -1,0 +1,9 @@
+{
+  "max_urls_default": 50,
+  "max_urls_cap": 200,
+  "max_depth": 3,
+  "concurrency": 2,
+  "timeout_ms": 20000,
+  "max_bytes": 5242880,
+  "max_redirects": 10
+}

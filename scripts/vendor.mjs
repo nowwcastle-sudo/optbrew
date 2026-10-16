@@ -3,6 +3,7 @@ import { execFileSync } from 'node:child_process';
 import { readFile, readdir, mkdir, writeFile, lstat, realpath } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { endpoints } from '../skills/optbrew/scripts/core/config.mjs';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const defaultSources = path.resolve(repoRoot, '../../../work/seo-alternatives/sources');
@@ -59,7 +60,7 @@ function transformText(module, upstream, text, selected, transformations) {
     transformations.push('Audit output routes policy evidence to official URL index');
   }
   if (module.module_id === 'naver-searchadvisor' && upstream === 'references/INDEX.md') {
-    result = result.replace(/\]\(guide\/[^)]+\)(\s+—\s+`([^`]+)`)/g, (_all, suffix, guid) => `](https://searchadvisor.naver.com/guide/${guid})${suffix}`);
+    result = result.replace(/\]\(guide\/[^)]+\)(\s+—\s+`([^`]+)`)/g, (_all, suffix, guid) => `](${endpoints().naver_guide}${guid})${suffix}`);
     transformations.push('INDEX links point to official Naver URLs; article bodies excluded');
   }
   if (module.module_id === 'naver-searchadvisor' && upstream === 'NOTICE.md') {

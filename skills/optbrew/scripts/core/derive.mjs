@@ -1,5 +1,6 @@
 import { createHash } from 'node:crypto';
 import { validateEntity } from './contracts.mjs';
+import { versions } from './config.mjs';
 import { auditCollected } from '../../modules/naver-searchadvisor/scripts/audit.mjs';
 import { parseRobots, robotsVerdict } from '../../modules/naver-searchadvisor/scripts/robots.mjs';
 import { anchorLinks, decodeEntities } from './html.mjs';
@@ -30,7 +31,7 @@ export function deriveObservations({ context, artifacts, collection = {}, textOf
   const out = [];
   const add = (family, engine, url, state, reason, evidence_ref) => {
     const unit_key = `${family}|${engine ? `${engine}|` : ''}${url}`;
-    out.push(validateEntity('CheckObservation', { schema_version: '1.0.0',
+    out.push(validateEntity('CheckObservation', { schema_version: versions().contract_schema,
       observation_id: createHash('sha256').update(unit_key).digest('hex'), check_id: family, family_id: family, unit_key,
       state, q: state === 'pass' ? 1 : state === 'fail' ? 0 : null, partial_basis: null, reason, evaluator_type: 'code',
       source_ref: 'optbrew:collector', evidence_ref }));

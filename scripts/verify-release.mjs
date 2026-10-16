@@ -4,6 +4,7 @@ import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath } from 'node:url';
 import { verifyBundle, evaluationSourcePaths, protocolSourcePaths } from '../skills/optbrew/scripts/core/bundle.mjs';
+import { endpoints } from '../skills/optbrew/scripts/core/config.mjs';
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
@@ -26,7 +27,7 @@ export async function releaseMetadataErrors(root, version) {
     JSON.stringify(pkg.pi?.skills) === JSON.stringify(['./skills/optbrew']), 'package.json', 'package_skill_path_mismatch');
   for (const [file, value] of [['plugin.json', portable], ['.codex-plugin/plugin.json', codex]]) {
     expect(value.name === 'optbrew' &&
-      value.$schema === 'https://agent-plugins.org/schemas/1.0.0/plugin.schema.json' &&
+      value.$schema === endpoints().plugin_schema &&
       value.version === version && value.extensions?.['com.openai']?.release_version === version &&
       JSON.stringify(value.extensions?.['com.openai']?.skills) === JSON.stringify(['./skills/optbrew']),
     file, 'plugin_release_mismatch');

@@ -1,0 +1,7 @@
+{
+  "anthropic_messages": "https://api.anthropic.com/v1/messages",
+  "npm_registry": "https://registry.npmjs.org/",
+  "naver_guide": "https://searchadvisor.naver.com/guide/",
+  "plugin_schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "relative_url_base": "http://path.invalid"
+}

@@ -3,8 +3,9 @@ import { createHash } from 'node:crypto';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { reserveCost, settleCost } from '../core/cost-ledger.mjs';
+import { endpoints, limits } from '../core/config.mjs';
 
-const ENDPOINT = new URL('https://api.anthropic.com/v1/messages');
+const ENDPOINT = new URL(endpoints().anthropic_messages);
 const VERSION = '2023-06-01';
 // Official model overview, checked 2026-10-14. Accepted requests reserve the full context window plus max output.
 const MODELS = new Map(['claude-fable-5-1', 'claude-opus-5-5', 'claude-sonnet-5-5', 'claude-haiku-5-5']
@@ -16,7 +17,7 @@ async function nodeTransport({ headers, body, timeoutMs, signal }) {
       const chunks = []; let size = 0;
       res.on('data', chunk => {
         size += chunk.length;
-        if (size > 5242880) { req.destroy(new Error('provider response too large')); return; }
+        if (size > limits().max_bytes) { req.destroy(new Error('provider response too large')); return; }
         chunks.push(chunk);
       });
       res.on('end', () => resolve({ status: res.statusCode, body: Buffer.concat(chunks).toString('utf8') }));
@@ -76,12 +77,12 @@ export async function requestAnthropic({ context, request, env = process.env, tr
     try { reservation = await reserveCost(ledgerPath, { provider: 'anthropic', upperBounds, approvalRef: decision.approval_ref, runId: context.run_id }); }
     catch { return observation(request, 'cost_reservation_failed'); }
     const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 20000);
+    const timer = setTimeout(() => controller.abort(), limits().timeout_ms);
     let response;
     try {
       response = await Promise.race([
         transport({ url: ENDPOINT, headers: { 'content-type': 'application/json', 'x-api-key': env.ANTHROPIC_API_KEY,
-          'anthropic-version': VERSION }, body, timeoutMs: 20000, signal: controller.signal }),
+          'anthropic-version': VERSION }, body, timeoutMs: limits().timeout_ms, signal: controller.signal }),
         new Promise((_, reject) => controller.signal.addEventListener('abort', () => reject(new Error('timeout')), { once: true })),
       ]);
     } catch {

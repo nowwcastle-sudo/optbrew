@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
+import { versions } from './config.mjs';
 
 const digest = bytes => createHash('sha256').update(bytes).digest('hex');
 /** Hash a file as committed: a checkout with core.autocrlf may turn LF into CRLF. A NUL byte marks a binary file, hashed as is. */
@@ -9,7 +10,7 @@ const manifestName = 'bundle-manifest.json';
 export const evaluationSourcePaths = ['references/check-registry.json', 'references/profiles.json',
   'references/scoring.md', 'references/measurement.md', 'scripts/core/score.mjs', 'scripts/core/weights.mjs',
   'scripts/core/contracts.mjs', 'scripts/core/compare.mjs', 'scripts/core/metrics.mjs', 'scripts/core/bootstrap.mjs'];
-export const protocolSourcePaths = ['references/schemas/contract.schema.json', 'scripts/core/protocol.mjs'];
+export const protocolSourcePaths = ['references/schemas/contract.schema.json', 'references/limits.json', 'scripts/core/protocol.mjs'];
 
 /** Match the package.json skill exclusions for generated Python cache files. */
 export function isDistributedBundlePath(relative) {
@@ -44,10 +45,10 @@ export async function createBundleManifest({ bundleRoot, releaseVersion }) {
   const evaluation_sources = selected(evaluationSourcePaths);
   const protocol_sources = selected(protocolSourcePaths);
   const identity = evaluation_sources.length && protocol_sources.length ? {
-    evaluation_version: '0.3.0', protocol_version: '0.1.0',
+    evaluation_version: versions().evaluation, protocol_version: versions().protocol,
     evaluation_sources, evaluation_hash: digest(JSON.stringify(evaluation_sources)),
     protocol_sources, protocol_hash: digest(JSON.stringify(protocol_sources)) } : {};
-  return { schema_version: '1.0.0', release_version: releaseVersion,
+  return { schema_version: versions().bundle_manifest_schema, release_version: releaseVersion,
     ...identity, files, bundle_hash: digest(JSON.stringify(files)) };
 }
 
@@ -57,7 +58,7 @@ export async function verifyBundle({ bundleRoot, manifest }) {
   let actual;
   try { actual = await createBundleManifest({ bundleRoot, releaseVersion: manifest?.release_version }); }
   catch (error) { return { status: 'invalid', checked_files: 0, errors: [{ path: '', code: error.message }], bundle_hash: null }; }
-  if (!Array.isArray(manifest?.files) || manifest.schema_version !== '1.0.0') errors.push({ path: manifestName, code: 'invalid_manifest' });
+  if (!Array.isArray(manifest?.files) || manifest.schema_version !== versions().bundle_manifest_schema) errors.push({ path: manifestName, code: 'invalid_manifest' });
   const expected = new Map(Array.isArray(manifest?.files) ? manifest.files.map(f => [f.path, f.sha256]) : []);
   const found = new Map(actual.files.map(f => [f.path, f.sha256]));
   if (expected.size !== manifest?.files?.length) errors.push({ path: manifestName, code: 'duplicate_path' });

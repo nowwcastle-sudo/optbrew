@@ -3,6 +3,7 @@ import { readFileSync, realpathSync } from 'node:fs';
 import { access, mkdir, rename, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { ContractError, validateEntity } from './contracts.mjs';
+import { endpoints, limits, versions } from './config.mjs';
 import { score } from './score.mjs';
 import { compare } from './compare.mjs';
 import { freezeProtocol } from './protocol.mjs';
@@ -168,8 +169,9 @@ function exportPath(value, host) {
   }
   if (!text.startsWith('/') || /^\/[/\\]/.test(text)) return null;
   try {
-    const url = new URL(text, 'http://path.invalid');
-    return url.host === 'path.invalid' ? url.pathname : null;
+    const base = new URL(endpoints().relative_url_base);
+    const url = new URL(text, base);
+    return url.host === base.host ? url.pathname : null;
   } catch { return null; }
 }
 const pathWithin = (value, prefix, host) => {
@@ -381,7 +383,7 @@ function checkLedger(input, audit, collection, artifacts, requireRef) {
   const entries = ledger.entries;
   const fail = message => { throw new ContractError(`request ledger: ${message}`); };
   if (!Array.isArray(entries)) fail('entries missing');
-  const limit = Math.min(input.run_context.scope?.max_urls ?? 50, 50);
+  const limit = Math.min(input.run_context.scope?.max_urls ?? limits().max_urls_default, limits().max_urls_default);
   if (ledger.limit !== limit) fail('request limit differs from the run scope');
   const total = entries.reduce((sum, entry) => sum + entry.requests, 0);
   // The limit is a hard ceiling: every request, redirect hops included, takes one slot before it is sent.
@@ -691,7 +693,7 @@ export function buildReport(packet) {
   if (packet.costs.reservations.some(x => x.provider === 'anthropic') ||
       (packet.capabilities?.selected ?? []).some(x => x.provider === 'anthropic'))
     costIssues.push('Anthropic direct v0.1.0: text-only; claude-fable-5-1, claude-opus-5-5, claude-sonnet-5-5, claude-haiku-5-5; max output 128000; one token reserve >=1000000+max_tokens per attempt; tools/search and currency-only or mixed bounds unsupported; reservation is capacity, not actual billing');
-  const result = { schema_version: '1.0.0', run_context: packet.run_context,
+  const result = { schema_version: versions().contract_schema, run_context: packet.run_context,
     data_class: packet.data_class ?? 'unknown', baseline: { input: packet.baseline.input, scores: baselineScores },
     after: packet.after ? { input: packet.after.input, scores: afterScores } : null, comparison,
     metrics: packet.metrics, findings, changes: packet.changes, costs: packet.costs,
