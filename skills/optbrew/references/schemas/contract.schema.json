@@ -17,7 +17,15 @@
       "target": { "type": ["string", "object"] }, "environment": { "type": "string" }, "evaluation_version": { "type": "string" }, "protocol_version": { "type": "string" }, "target_identity": { "type": "object" },
       "render": { "$ref": "#/$defs/RenderPlan" }
     } },
-    "RunContext": { "type": "object", "required": ["schema_version", "run_id", "target", "environment", "goals", "allowed_changes", "scope", "protocol", "evaluation_version", "protocol_version", "data_sources", "cost_decision", "evidence_ref"], "properties": {
+    "EnvironmentProbe": { "type": "object", "additionalProperties": false, "required": ["harness", "transport", "address_vetting", "block_reason", "chrome", "google_key", "source_tools", "sitemap_pages"], "properties": {
+      "harness": { "enum": ["claude-code", "codex", "claude-code-cloud", "other"] }, "transport": { "enum": ["direct", "proxy", null] }, "address_vetting": { "enum": ["direct", "proxy", null] },
+      "proxy": { "type": ["object", "null"], "additionalProperties": false, "required": ["host", "port"], "properties": { "host": { "type": "string" }, "port": { "type": "integer" } } },
+      "block_reason": { "enum": ["codex_sandbox", "cloud_network_level", "site_down", null] },
+      "chrome": { "type": "object", "additionalProperties": false, "required": ["found", "kind"], "properties": { "found": { "type": "boolean" }, "kind": { "type": ["string", "null"] }, "reason": { "type": ["string", "null"] } } },
+      "google_key": { "type": "boolean" }, "source_tools": { "type": "array", "items": { "type": "string" } }, "sitemap_pages": { "type": ["integer", "null"], "minimum": 0 }
+    } },
+    "RunContext": { "type": "object", "required": ["schema_version", "run_id", "target", "environment", "goals", "allowed_changes", "scope", "protocol", "evaluation_version", "protocol_version", "data_sources", "cost_decision", "evidence_ref", "environment_probe"], "properties": {
+      "environment_probe": { "$ref": "#/$defs/EnvironmentProbe" },
       "schema_version": { "const": "1.0.0" }, "run_id": { "type": "string" }, "target": { "type": ["string", "object"] }, "environment": { "type": "string" }, "goals": { "type": "array" }, "allowed_changes": { "type": "array" }, "scope": { "type": "object" }, "protocol": { "$ref": "#/$defs/Protocol" }, "evaluation_version": { "type": "string" }, "protocol_version": { "type": "string" }, "data_sources": { "type": "array" }, "cost_decision": { "type": "object" }, "evidence_ref": { "type": "string" }
     } },
     "CheckObservation": { "type": "object", "required": ["schema_version", "observation_id", "check_id", "family_id", "unit_key", "state", "q", "partial_basis", "reason", "evaluator_type", "source_ref", "evidence_ref"], "properties": {

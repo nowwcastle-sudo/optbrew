@@ -49,18 +49,18 @@
   "protocol_sources": [
     {
       "path": "references/schemas/contract.schema.json",
-      "sha256": "4a20a6602eaf45832281cbee27b75e023de932954db72ec837ee5d51c3e88528"
+      "sha256": "1ad87124a59af47add1a7f2b2ff361c5af675d6277696d808b269d20f473b6d7"
     },
     {
       "path": "references/limits.json",
-      "sha256": "0bcbb6225f70536a4d33f576e2d1223611aeca29dbebe15983927e91c3be8fca"
+      "sha256": "75f7cc0d0eb06e357de2ecee4a5d785b4525542be828fcb3a404e44702bf90d9"
     },
     {
       "path": "scripts/core/protocol.mjs",
       "sha256": "c7f85f963abd125155fed1a3a4e707885e8d63fa6d146c1a00c431440dda0336"
     }
   ],
-  "protocol_hash": "725fdc819398ff85bb86f3307635f980f5385d2036552b86558f85245ffcc2ab",
+  "protocol_hash": "8c2d1bec48f1a63fce2a5a537a3be3648ffc637f46ecbbafcbd4edee0fb83dba",
   "files": [
     {
       "path": "LICENSE",
@@ -567,12 +567,16 @@
       "sha256": "784cdfd5cdf8ad1cb096a4a321c81708c9ffce63a785c31839d42348c5f02879"
     },
     {
+      "path": "references/harness-signals.json",
+      "sha256": "1e753fc85a418fc08331a2958c3e89145f6c3f0384fc6825ad282e1b340f3067"
+    },
+    {
       "path": "references/intake.md",
       "sha256": "86b2d7d3fc900f32a6af805dc1f6997087272ebf125d424d352630ed5004779a"
     },
     {
       "path": "references/limits.json",
-      "sha256": "0bcbb6225f70536a4d33f576e2d1223611aeca29dbebe15983927e91c3be8fca"
+      "sha256": "75f7cc0d0eb06e357de2ecee4a5d785b4525542be828fcb3a404e44702bf90d9"
     },
     {
       "path": "references/measurement.md",
@@ -656,7 +660,7 @@
     },
     {
       "path": "references/schemas/contract.schema.json",
-      "sha256": "4a20a6602eaf45832281cbee27b75e023de932954db72ec837ee5d51c3e88528"
+      "sha256": "1ad87124a59af47add1a7f2b2ff361c5af675d6277696d808b269d20f473b6d7"
     },
     {
       "path": "references/scoring.md",
@@ -776,7 +780,7 @@
     },
     {
       "path": "scripts/core/config.mjs",
-      "sha256": "41f717cbcb3184d77ba6d845538683c7bb46f4d14e4843232d2d1c2561ed7e1a"
+      "sha256": "027f77c75568c883fa3ea1b6ed6beae3718b7ed2cbdfdf0463034bc1b8cc4dde"
     },
     {
       "path": "scripts/core/contracts.mjs",
@@ -823,6 +827,10 @@
       "sha256": "78b74c079c03b5d8fda8be886e0a6ede4c6af357905dfe4d9d032cb112453869"
     },
     {
+      "path": "scripts/core/probe.mjs",
+      "sha256": "fec5b37bccbf354f5d47bf6e314c4cd7d83cbfd202535129e72fe771d3f0a753"
+    },
+    {
       "path": "scripts/core/protocol.mjs",
       "sha256": "c7f85f963abd125155fed1a3a4e707885e8d63fa6d146c1a00c431440dda0336"
     },
@@ -859,9 +867,13 @@
       "sha256": "b800a478d601bddf461c6237295fd54279fcd1a14459261e938f0b5a342c6467"
     },
     {
+      "path": "scripts/preflight.mjs",
+      "sha256": "ced83fc6a304c8488cc7f647bb939e94a4731b5712a1282cdc8c28972f525149"
+    },
+    {
       "path": "source-lock.json",
       "sha256": "a53223b7eefab2204c026a62b1da04cfdb8a07be8d3749613e8241a81b027d9b"
     }
   ],
-  "bundle_hash": "30e0d513ddfd88bbe03f46ee340fe1b9736c699f66c1bc4d757fe75339653154"
+  "bundle_hash": "1a933ad5c445840164f7ac291d4421e8f41d2d38ce55c49e17c0129806252f61"
 }
