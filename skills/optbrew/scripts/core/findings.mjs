@@ -6,6 +6,9 @@ const evidenceRank = { official: 0, reproduced: 1, research: 2, case: 3, hypothe
 /** The text two findings must share, ignoring case and spacing, to be the same issue. */
 export const messageKey = message => message.trim().replace(/\s+/g, ' ').toLowerCase();
 
+/** A finding's text with its own unit's page address replaced, so the same problem on two pages reads the same. */
+export const pageNeutral = (text, unitKey) => text.split(unitKey.split('|').at(-1)).join('{page}');
+
 /** Merge the same check, unit and issue while preserving every module source. */
 export function mergeFindings(findings) {
   if (!Array.isArray(findings)) throw new ContractError('findings must be an array');
@@ -26,6 +29,8 @@ export function mergeFindings(findings) {
       existing.blocker ||= item.blocker;
       if (existing.blocker) existing.priority = 'P0';
       existing.finding_ids = [...new Set([...existing.finding_ids, item.finding_id])];
+      // A finding that names several pages keeps all of them when two sources of the same issue are merged.
+      if (existing.unit_keys || item.unit_keys) existing.unit_keys = [...new Set([...(existing.unit_keys ?? [existing.unit_key]), ...(item.unit_keys ?? [item.unit_key])])];
       existing.remediation_ids = [...new Set([...existing.remediation_ids, ...item.remediation_ids])];
     }
   }

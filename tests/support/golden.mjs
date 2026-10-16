@@ -85,6 +85,8 @@ async function stable(o, port, root) {
   row.evidence_ref = `<out>/${await stableRef(o.evidence_ref, port)}`;
   if (o.applicability_decision) row.applicability_decision = { ...o.applicability_decision, reason: clean(o.applicability_decision.reason),
     evidence_ref: `<out>/${await stableRef(o.applicability_decision.evidence_ref, port)}` };
+  // A measurement may name pages, so its random port is masked too.
+  if (o.measurement) row.measurement = JSON.parse(JSON.stringify(o.measurement).replaceAll(`127.0.0.1:${port}`, '127.0.0.1:PORT'));
   return row;
 }
 

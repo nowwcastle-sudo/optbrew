@@ -8,7 +8,7 @@ import { compare } from './compare.mjs';
 import { freezeProtocol } from './protocol.mjs';
 import { measurePanel } from './metrics.mjs';
 import { normalizeImport } from '../adapters/imports.mjs';
-import { mergeFindings, selectRemediations } from './findings.mjs';
+import { mergeFindings, pageNeutral, selectRemediations } from './findings.mjs';
 import { auditCollected, indexingDirectives } from '../../modules/naver-searchadvisor/scripts/audit.mjs';
 import { deriveObservations } from './derive.mjs';
 import { readVerified } from './evidence-store.mjs';
@@ -573,7 +573,7 @@ function checkAuditPhase(input, phase, snapshot, requireRef) {
   const derived = deriveObservations({ context: input.run_context, artifacts, collection,
     textOf: artifact => artifact.content_hash ? requireRef(artifact.evidence_ref).text : null,
     renders: records, renderTextOf, chrome: audit.chrome ?? null, cwv: storedCwv(audit, requireRef) });
-  const shape = x => [x.state, x.q, x.partial_basis, x.evidence_ref, x.reason, x.evaluator_type, x.source_ref, x.applicability_decision ?? null];
+  const shape = x => [x.state, x.q, x.partial_basis, x.evidence_ref, x.reason, x.evaluator_type, x.source_ref, x.applicability_decision ?? null, x.measurement ?? null];
   for (const expected of derived) {
     if (!observations.some(x => x.unit_key === expected.unit_key) || !savedObservations.some(x => x.unit_key === expected.unit_key))
       throw new ContractError(`planned collector observation missing: ${expected.unit_key}`);
@@ -680,6 +680,14 @@ export function buildReport(packet) {
   const modelRows = [['baseline', packet.baseline.input], ['after', packet.after?.input]].flatMap(([phase, input]) => modelJudgmentRows(phase, input, snapshotFor(phase), requireRef));
   checkAuditPhase(packet.baseline.input, 'baseline', snapshotFor('baseline'), requireRef);
   checkAuditPhase(packet.after?.input, 'after', snapshotFor('after'), requireRef);
+  // An adopted start address is said in the run conditions, so it must match the intake record and the run's target.
+  const startRedirect = packet.start_redirect ?? null;
+  if (startRedirect) {
+    const intakeEntry = packet.evidence_index.find(x => x.kind === 'intake');
+    const intake = intakeEntry ? JSON.parse(requireRef(intakeEntry.ref).text) : null;
+    if (startRedirect.to !== packet.run_context.target || !same(intake?.selection?.start_redirect, startRedirect))
+      throw new ContractError('start redirect differs from the intake record or the run target');
+  }
   const merged = mergeFindings(packet.findings);
   const observations = [...packet.baseline.input.observations, ...(packet.after?.input.observations ?? [])];
   const collectedAny = collectedResponses(snapshots, requireRef);
@@ -690,11 +698,13 @@ export function buildReport(packet) {
     if (finding.blocker && !observations.some(obs => obs.check_id === finding.check_id &&
         obs.unit_key === finding.unit_key && obs.state === 'fail'))
       throw new ContractError('blocker requires confirmed failed check observation');
-    // A finding that groups several pages names each of them, and each must itself be a failed or unknown verdict.
-    for (const unit of finding.unit_keys ?? []) if (!observations.some(obs => obs.check_id === finding.check_id && obs.unit_key === unit && (obs.state === 'fail' || obs.state === 'unknown')))
-      throw new ContractError(`finding names a page without a matching check observation: ${unit}`);
     // A finding that carries the model's source must rest on a model verdict of its unit; its evidence is the page the collector stored.
     const modelFinding = finding.source_ref === OBSERVATION_SOURCES.host_model;
+    // A finding that groups several pages names each of them, and each must itself be a failed verdict of the same problem (the same text
+    // once its own address is left out) by the same kind of judge: a listed page cannot be one that was not measured.
+    for (const unit of finding.unit_keys ?? []) if (!observations.some(obs => obs.check_id === finding.check_id && obs.unit_key === unit && obs.state === 'fail' &&
+        pageNeutral(obs.reason, unit) === pageNeutral(finding.message, finding.unit_key) && (obs.evaluator_type === 'host_model') === modelFinding))
+      throw new ContractError(`finding names a page that is not a failed verdict of the same problem: ${unit}`);
     if (modelFinding && !observations.some(obs => obs.check_id === finding.check_id && obs.unit_key === finding.unit_key &&
         obs.evaluator_type === 'host_model' && obs.state === 'fail'))
       throw new ContractError(`model finding has no model verdict: ${finding.finding_id}`);
@@ -801,7 +811,7 @@ export function buildReport(packet) {
     capabilities: packet.capabilities ?? null, cost_issues: costIssues, metric_origin_limitations: metricOriginLimitations, follow_ups: remaining,
     evidence_root: packet.evidence_root, evidence_index: packet.evidence_index,
     audit_ref: packet.audit_ref ?? null, audit_snapshots: snapshots, model_judgments: modelRows, source_ref: packet.source_ref,
-    outcome_rows: metricRows(packet.metrics), lab_cwv: packet.lab_cwv ?? null, answered_runbooks: packet.answered_runbooks ?? [] };
+    outcome_rows: metricRows(packet.metrics), lab_cwv: packet.lab_cwv ?? null, start_redirect: startRedirect, answered_runbooks: packet.answered_runbooks ?? [] };
   const composed = composeReport(verified);
   const { markdown, tables } = renderReport(composed, verified);
   // The composed report leads; the checked data it was built from follows. `findings` is the sorted fixes again, for readers of earlier reports.

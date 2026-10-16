@@ -42,13 +42,15 @@ export const renderContent = {
       // A challenge page is short; a long page that happens to quote a marker is judged on its content.
       const markerText = `${stored.title ?? ''} ${renderedLength <= challenge_max_body_chars ? visibleText(dom) : ''}`.toLowerCase();
       if (challenge_markers.some(marker => markerText.includes(marker))) { observe('unknown', RENDER_BLOCKED); continue; }
+      // The counts belong to the page, so they travel in the measurement and the reason stays the same for every page.
+      const measurement = { raw_body_characters: rawLength, rendered_body_characters: renderedLength };
       const ratio = renderedLength === 0 ? (rawLength > 0 ? Infinity : 0) : rawLength / renderedLength;
       if (ratio >= min_body_ratio && squash(info.title) === squash(stored.title)
           && sameOriginLinks(anchorLinks(html, artifact.final_url), artifact.final_url).length === stored.links.length) {
-        const reason = `Raw HTML holds ${rawLength} of ${renderedLength} rendered body characters, with the same title and link count`;
-        observe('not_applicable', reason, { applicability_decision: { condition: 'not_render_dependent', reason, evidence_ref: artifact.evidence_ref } });
-      } else if (renderedLength > 0) observe('pass', `${CONTENT_AFTER_RENDER}: ${renderedLength} body characters rendered, ${rawLength} in the raw HTML`);
-      else if (rawLength > 0) observe('pass', `The raw HTML holds ${rawLength} body characters and the render is empty`);
+        const reason = 'Raw HTML holds the rendered body text, with the same title and link count';
+        observe('not_applicable', reason, { measurement, applicability_decision: { condition: 'not_render_dependent', reason, evidence_ref: artifact.evidence_ref } });
+      } else if (renderedLength > 0) observe('pass', CONTENT_AFTER_RENDER, { measurement });
+      else if (rawLength > 0) observe('pass', 'The raw HTML holds body text and the render is empty', { measurement });
       else observe('fail', 'Neither the raw HTML nor the rendered page has any body text');
     }
     return out;

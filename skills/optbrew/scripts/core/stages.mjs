@@ -16,7 +16,8 @@ import { lcpField, inpField, clsField } from './checks/cwv-field.mjs';
 import { openStore } from './evidence-store.mjs';
 import { OBSERVATION_SOURCES, buildJudgeQueue, mergeJudgments } from './judgments.mjs';
 import { keyHome, readGoogleKey } from './keys.mjs';
-import { groupPages, readPreflight, selectPages } from './page-select.mjs';
+import { groupPages, readPreflight, sameSite, selectPages } from './page-select.mjs';
+import { pageNeutral } from './findings.mjs';
 import { freezeProtocol } from './protocol.mjs';
 import { renderPages, selectRenderPages } from './render.mjs';
 import { writeReport } from './report.mjs';
@@ -82,19 +83,18 @@ export async function runStages(list, state, deps, { from = null } = {}) {
 
 const isLocalTarget = (scope, url) => { const target = urlTarget(new URL(url)); return (scope.local_targets ?? []).some(x => x.host === target.host && Number(x.port) === target.port); };
 
-/** The same site under the other spelling of its name: with or without `www.`, over http or https. */
-const sameSite = (a, b) => a.hostname.replace(/^www\./, '') === b.hostname.replace(/^www\./, '') && a.port === b.port;
-
 /**
  * The address the audit starts from. Preflight (`<out>/preflight/start.json`) says where the first request landed; when that is
  * the same site under another spelling, the run adopts it (and says so), because scope is the exact origin. Anywhere else is a
  * different site: the run stops with one plain sentence.
  */
 function startFrom(asked, preflight) {
+  const away = text => `The address ${asked.href} leads to another site (${text}), which this audit does not cover. If you own that site, start again with its address.`;
+  if (preflight.redirectedTo && !sameSite(asked, new URL(preflight.redirectedTo))) throw new Error(away(new URL(preflight.redirectedTo).origin));
   if (!preflight.finalUrl) return { start: asked, adopted: null };
   const landed = new URL(preflight.finalUrl);
   if (landed.origin === asked.origin) return { start: asked, adopted: null };
-  if (!sameSite(asked, landed)) throw new Error(`The address ${asked.href} leads to another site (${landed.origin}), which this audit does not cover. If you own that site, start again with its address.`);
+  if (!sameSite(asked, landed)) throw new Error(away(landed.origin));
   return { start: landed, adopted: { from: asked.href, to: landed.href } };
 }
 
@@ -119,7 +119,7 @@ async function contextFrom(answers, { out, localTargets = [] }) {
   // Facts the owner confirmed on the address the run started from before its redirect now live on the adopted origin.
   const factUrls = [...new Set(answers.facts.map(fact => adopted && new URL(fact.source_url).origin === asked.origin ?
     fact.source_url.replace(asked.origin, start.origin) : fact.source_url))];
-  const { pages, dropped } = selectPages({ home: home.normalized, factUrls, preflight, scope, budget: requestLimit(scope) - auxiliary.length });
+  const { pages, dropped, sources } = selectPages({ home: home.normalized, factUrls, preflight, scope, budget: requestLimit(scope) - auxiliary.length });
   const pageTypes = groupPages(pages, home.normalized).map(type => ({ id: type.id, urls: type.urls.map(ref) }));
   const wantsNaver = NAVER_GOAL.test(answers.goals.join(' ')) || (answers.owner_exports ?? []).some(x => x.kind === NAVER_ENGINE) ||
     preflight.korean || target.host.endsWith(KOREAN_DOMAIN);
@@ -145,7 +145,7 @@ async function contextFrom(answers, { out, localTargets = [] }) {
   const intake = { run_id: context.run_id, target: context.target, protocol_hash, approved_by: APPROVED_BY,
     decisions: families.filter(family => family.applicability_decision).map(family => ({ scope: 'family', family_id: family.family_id,
       condition: family.applicability_decision.condition, reason: family.applicability_decision.reason })),
-    selection: { pages: pages.length, limit: requestLimit(scope), dropped_fact_pages: dropped, start_redirect: adopted }, answers: keptAnswers(answers) };
+    selection: { pages: pages.length, limit: requestLimit(scope), dropped_fact_pages: dropped, start_redirect: adopted, sources }, answers: keptAnswers(answers) };
   const mappings = providers.map(provider => ({ file: `owner-mapping-${provider}.json`,
     record: { run_id: context.run_id, target: context.target, ...mapping(provider), approved_by: APPROVED_BY } }));
   return { context, intake, mappings, adopted };
@@ -485,8 +485,7 @@ function findingsOf(observations, evidence) {
   for (const observation of [...observations].filter(x => x.state === 'fail').sort((a, b) => a.unit_key < b.unit_key ? -1 : a.unit_key > b.unit_key ? 1 : 0)) {
     const model = observation.evaluator_type === 'host_model';
     const blocker = observation.blocker === true || blocking.has(observation.family_id);
-    const page = observation.unit_key.split('|').at(-1);
-    const key = JSON.stringify([observation.check_id, observation.reason.split(page).join('{page}'), model, blocker]);
+    const key = JSON.stringify([observation.check_id, pageNeutral(observation.reason, observation.unit_key), model, blocker]);
     if (!groups.has(key)) groups.set(key, { observation, model, blocker, unit_keys: [] });
     groups.get(key).unit_keys.push(observation.unit_key);
   }
@@ -515,6 +514,11 @@ const EXPORT_PROBLEMS = {
 async function ownerExportResults(state) {
   const metrics = [];
   const remaining = [];
+  // A preflight that was there but could not be used leaves the sample at the start page and the fact pages; the report says so.
+  const selection = JSON.parse(await readFile(path.join(state.out, INTAKE_FILE), 'utf8')).selection;
+  if (selection?.sources?.preflight === 'unreadable') remaining.push({ problem: 'The read of the site made before the start questions could not be used, so only the start page and the pages with confirmed facts were audited',
+    reason: 'preflight_unreadable', required_input_or_authority: 'A new read of the site', next_action: 'Run the start read again, then start the audit again in a new --out folder',
+    reobserve_when: 'on the next run that starts from a readable start read' });
   for (const entry of (await state.store.index()).owner_exports ?? []) {
     if (entry.status === 'read') {
       const stored = JSON.parse(await readFile(path.join(state.out, entry.ref), 'utf8'));
@@ -570,8 +574,24 @@ export async function prepareOutput(out) {
   if (queued) return 'resume';
   const names = await readdir(out).catch(() => []);
   const owned = [...FIRST_CALL_FILES, 'evidence', ...names.filter(name => OWNER_EXPORT_FILE.test(name) || OWNER_MAPPING_FILE.test(name))];
+  // Only a folder this tool wrote is cleared: the files to clear must be provably the run's own, or nothing is touched.
+  if (owned.some(name => names.includes(name)) && !(await wroteByRun(out, names)))
+    throw new Error('This folder holds files this audit did not make (for example an evidence or context.json of your own). Use a new --out folder.');
   await Promise.all(owned.map(name => rm(path.join(out, name), { recursive: true, force: true })));
   return 'fresh';
+}
+
+/** Proof that the first-call files in a folder are the run's own: its evidence index and context.json name the same run, or (before the index exists) context.json and intake.json do. */
+async function wroteByRun(out, names) {
+  const read = async file => { try { return JSON.parse(await readFile(path.join(out, file), 'utf8')); } catch { return null; } };
+  const context = await read(CONTEXT_FILE);
+  if (!context?.run_id) return false;
+  if (names.includes('evidence')) {
+    const index = await read(path.join('evidence', 'evidence-index.json'));
+    // A run that stopped before its first record has an empty evidence folder and no index yet.
+    return index ? index.run_id === context.run_id : (await readdir(path.join(out, 'evidence'))).length === 0;
+  }
+  return (await read(INTAKE_FILE))?.run_id === context.run_id;
 }
 
 /**

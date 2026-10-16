@@ -420,6 +420,12 @@
     "evaluator_type": "code",
     "source_ref": "optbrew:collector",
     "evidence_ref": "<out>/evidence/947ad3ecd2d39c1fb45e87fb89ecf4e871b1ff74aaa4d4af9a7acb14a216fc5e.html",
+    "measurement": {
+      "name_reference": null,
+      "name_differs_on": [],
+      "without_same_as_on": [],
+      "home_page": "http://127.0.0.1:PORT/"
+    },
     "site": "clean"
   },
   {
@@ -1055,10 +1061,15 @@
     "state": "fail",
     "q": 0,
     "partial_basis": null,
-    "reason": "Title duplicates http://127.0.0.1:PORT/dup",
+    "reason": "Title duplicates the title of other pages",
     "evaluator_type": "code",
     "source_ref": "optbrew:collector",
     "evidence_ref": "<out>/evidence/260ba0e7e892c57fcef46111d4a877daff635a4cf6df79c757ffdc076ee0cedc.html",
+    "measurement": {
+      "duplicate_pages": [
+        "http://127.0.0.1:PORT/dup"
+      ]
+    },
     "site": "defect"
   },
   {
@@ -1133,10 +1144,15 @@
     "state": "fail",
     "q": 0,
     "partial_basis": null,
-    "reason": "Title duplicates http://127.0.0.1:PORT/",
+    "reason": "Title duplicates the title of other pages",
     "evaluator_type": "code",
     "source_ref": "optbrew:collector",
     "evidence_ref": "<out>/evidence/007526ad105b554a5386c19c25f62806b7564ac45657e352ea89a5c1bb5fc9b3.html",
+    "measurement": {
+      "duplicate_pages": [
+        "http://127.0.0.1:PORT/"
+      ]
+    },
     "site": "defect"
   },
   {
@@ -1185,10 +1201,18 @@
     "state": "fail",
     "q": 0,
     "partial_basis": null,
-    "reason": "Entity identity: Organization JSON-LD without sameAs on http://127.0.0.1:PORT/",
+    "reason": "Entity identity: Organization JSON-LD lacks sameAs on some pages",
     "evaluator_type": "code",
     "source_ref": "optbrew:collector",
     "evidence_ref": "<out>/evidence/260ba0e7e892c57fcef46111d4a877daff635a4cf6df79c757ffdc076ee0cedc.html",
+    "measurement": {
+      "name_reference": null,
+      "name_differs_on": [],
+      "without_same_as_on": [
+        "http://127.0.0.1:PORT/"
+      ],
+      "home_page": "http://127.0.0.1:PORT/"
+    },
     "site": "defect"
   },
   {
@@ -2327,10 +2351,13 @@
     "state": "fail",
     "q": 0,
     "partial_basis": null,
-    "reason": "1 JSON-LD block(s) fail to parse",
+    "reason": "JSON-LD block(s) fail to parse",
     "evaluator_type": "code",
     "source_ref": "optbrew:collector",
     "evidence_ref": "<out>/evidence/ab38ae9a9d9d58dd8b77c6dc5c5da40d301b69d4f0cdf40d50fa20112a0bbbe6.html",
+    "measurement": {
+      "parse_errors": 1
+    },
     "site": "defect"
   }
 ]

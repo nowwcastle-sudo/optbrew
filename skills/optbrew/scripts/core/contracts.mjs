@@ -161,8 +161,8 @@ export function validateEntity(typeName, value) {
     checkMaxUrls(value.max_urls, 'IntakeAnswers.max_urls');
     // The start question is "sample or raise the limit": the two answers and the number must agree.
     const raised = value.sample_mode === 'raise';
-    if (raised !== value.max_urls > limits().max_urls_default)
-      fail('IntakeAnswers.max_urls', raised ? 'a raised limit must be above the default' : 'a sample cannot go above the default limit; answer "raise" to go higher');
+    if (raised ? value.max_urls <= limits().max_urls_default : value.max_urls !== limits().max_urls_default)
+      fail('IntakeAnswers.max_urls', raised ? 'a raised limit must be above the default' : `a sample uses the default limit (${limits().max_urls_default}); answer "raise" to go higher`);
   }
   if (typeName === 'CheckObservation') checkObservation(value);
   if (typeName === 'ScoreInput') value.observations.forEach(checkObservation);

@@ -107,7 +107,7 @@ test('owner exports: a Search Console zip and a pasted Naver table become replay
   assert.equal(value('naver:clicks').sample_selection.kind, 'unknown', 'a pasted top-N table is not the whole site');
   assert.deepEqual(index.owner_exports.map(entry => [entry.kind, entry.status]), [['gsc', 'read'], ['naver', 'read']]);
   assert.ok(report.evidence_index.some(entry => entry.kind === 'native_export' && entry.source_ref === 'optbrew:owner-export'));
-  assert.equal(report.remaining.filter(row => row.reason.startsWith('export_')).length, 0, 'usable exports leave no remaining row');
+  assert.equal(report.follow_ups.filter(row => row.reason.startsWith('export_')).length, 0, 'usable exports leave no remaining row');
 });
 
 test('owner exports: a missing or unreadable file is an unknown with a reason, never a crash', async () => {
@@ -116,12 +116,12 @@ test('owner exports: a missing or unreadable file is an unknown with a reason, n
   assert.deepEqual(index.owner_exports.map(entry => [entry.kind, entry.status, entry.reason]),
     [['gsc', 'unusable', 'export_file_missing'], ['naver', 'unusable', 'export_table_not_found']]);
   assert.equal(report.metrics.length, 0);
-  const gaps = report.remaining.filter(row => row.reason.startsWith('export_'));
+  const gaps = report.follow_ups.filter(row => row.reason.startsWith('export_'));
   assert.deepEqual(gaps.map(row => row.reason), ['export_file_missing', 'export_table_not_found']);
   assert.match(gaps[0].problem, /No file was found/);
   const damaged = await withExports([{ kind: 'gsc', file: 'bad.zip' }], { 'bad.zip': Buffer.from('not a zip at all') });
   assert.equal(damaged.index.owner_exports[0].reason, 'export_not_a_zip');
-  assert.equal(damaged.report.remaining.filter(row => row.reason.startsWith('export_')).length, 1);
+  assert.equal(damaged.report.follow_ups.filter(row => row.reason.startsWith('export_')).length, 1);
 });
 
 test('--out may already hold preflight/ and the answers file; the queue file is pretty-printed', async () => {

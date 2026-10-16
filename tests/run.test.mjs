@@ -39,7 +39,7 @@ test('first call halts awaiting judgments with a queue', async () => {
   const queue = await readJson(first.judge_queue);
   assert.ok(queuedUnits(queue).length > 0);
   assert.equal(first.queue_items, queuedUnits(queue).length);
-  assert.ok(site.requests.length > 0 && site.requests.length <= 20, 'the crawl stays within max_urls');
+  assert.ok(site.requests.length > 0 && site.requests.length <= 50, 'the crawl stays within max_urls');
   const index = await readJson(path.join(ws.out, 'evidence', 'evidence-index.json'));
   // Carry 11: the queue lives in the evidence store, and the file in --out is that stored queue.
   assert.equal(index.judge_queue.length, 1);

@@ -116,8 +116,9 @@ node "<SKILL_DIR>/scripts/preflight.mjs" --url "<주소>" --out "<OUT>" --source
 
 - `goals`는 사용자의 말에 가까운 짧은 문자열 목록이다.
 - `facts`는 `fact_candidates`의 `key`, `value`, `source_url`을 그대로 쓴다. 사용자가 뺀 사실은 뺀다.
-- `sample_mode`는 5번 질문이 없었으면 `null`이고 `max_urls`는 50이다. "표본"이면 `sample`이고 `max_urls`는 50이다. "상한을 올림"이면 `raise`이고 `max_urls`는 `sitemap_pages`다. 단 `sitemap_pages_basis`가 `lower_bound`이거나 `sitemap_pages`가 200을 넘으면 200이다.
+- `sample_mode`는 5번 질문이 없었으면 `null`이고 `max_urls`는 50이다. "표본"이면 `sample`이고 `max_urls`는 50이다. "상한을 올림"이면 `raise`이고 `max_urls`는 `sitemap_pages`에 3을 더한 수다(robots.txt, sitemap.xml, 시작 쪽도 요청 한도에 들어간다). 단 `sitemap_pages_basis`가 `lower_bound`이거나 `sitemap_pages`가 200을 넘으면 200이다.
 - `owner_exports`는 5단계에서 경로를 받았을 때만 쓴다. 받은 것이 없으면 이 필드를 통째로 뺀다. 파일이 없거나 읽을 수 없으면 감사는 멈추지 않고, 그 칸이 보고서에 "알 수 없음"과 이유로 남는다.
+- `url`은 `start.json`의 `final_url`을 그대로 쓴다. `www`나 `https`로 넘어간 뒤의 주소다. `final_url`이 `null`이면 사용자가 말한 주소를 쓴다. 이 주소가 같은 사이트의 다른 이름이면 감사는 넘어간 주소로 돈다. 다른 사이트이면 7단계에서 한 문장으로 멈춘다.
 - 한도 숫자의 원천은 [limits.json](references/limits.json)이다.
 
 ## 7단계. 감사를 실행한다
@@ -129,11 +130,12 @@ node "<SKILL_DIR>/scripts/preflight.mjs" --url "<주소>" --out "<OUT>" --source
 node "<SKILL_DIR>/scripts/run.mjs" --answers "<OUT>/intake-answers.json" --out "<OUT>"
 ```
 
-3. 종료 코드가 0이면 마지막 줄의 JSON에서 `status`를 읽는다. 이 JSON의 `judge_queue`, `reports`, `score_input`은 경로이거나 경로를 담은 값이다. 파일 이름을 짐작하지 말고 이 값에서 읽는다.
+3. 종료 코드가 0이면 마지막 줄의 JSON에서 `status`를 읽는다. 이 JSON의 `judge_queue`, `reports`, `score_input`은 경로이거나 경로를 담은 값이다. 파일 이름을 짐작하지 말고 이 값에서 읽는다. `reports`는 `json`과 `md`(있으면 `html`) 경로를 담고, `queue_items`는 판정할 항목 수다. `lab_cwv`가 있으면 크롬으로 잰 참고 값이며 채점하지 않는다.
    - `awaiting_judgments`이면 8단계로 간다. 판정 목록의 경로는 `judge_queue`에 있다.
    - `done`이면 9단계로 간다.
 4. 종료 코드가 0이 아니면 실패다. stderr의 마지막 줄은 사람이 읽는 한 문장이다. 그 문장을 사용자 말로 한 줄로 옮기고 멈춘다. 같은 명령을 되풀이하지 않는다.
 5. 마지막 줄이 `index changed:`로 시작하면 결과 폴더의 증거가 바뀌어 이어갈 수 없다는 뜻이다. 새 `<OUT>` 폴더로 1단계부터 다시 한다고 알린다.
+6. 첫 실행이 끝나기 전에 멈췄다면(터미널을 닫음, 시간 초과) 같은 `<OUT>`로 같은 명령을 다시 실행해도 된다. 그 실행이 만든 파일만 지우고 처음부터 다시 한다. 감사가 만들지 않은 파일이 든 폴더는 거부하고 새 폴더를 쓰라고 한 문장으로 알린다. 끝난 결과 폴더도 거부한다.
 6. `probe.harness`가 `codex`이고 승인 창이 떴다면 정상이다. `network-codex-approval` 런북을 5단계 3번의 방법으로 보여 준다.
 
 ## 8단계. 내용 판정을 한다
@@ -165,7 +167,7 @@ node "<SKILL_DIR>/scripts/run.mjs" --answers "<OUT>/intake-answers.json" --out "
 1. 고칠 소스 폴더를 사용자에게 묻는다. 원격에만 있는 사이트면 고치지 않는다. 각 문제의 수정안과 적용·확인 방법만 `proposed_only`로 낸다.
 2. 고치기 전에 원인을 찾는다. [source-analysis.md](references/source-analysis.md)대로 2단계에서 찾은 도구를 먼저 쓴다. 도구가 없으면 직접 읽고, "소스 분석 도구가 없어 직접 읽어 찾았습니다. 놓친 곳이 있을 수 있습니다."라고 한 줄 알린다.
 3. 고칠 파일마다 `_백업_원본_*` 이름으로 복사해 둔다. 승인받은 파일만 고친다.
-4. 고치기 전 파일과 고친 뒤 파일의 sha256을 구한다. 해시는 파일 바이트의 SHA-256 소문자 16진수 64자다. 운영체제의 명령을 쓴다: Windows PowerShell은 `Get-FileHash -Algorithm SHA256 "<파일>"`, macOS는 `shasum -a 256 "<파일>"`, Linux는 `sha256sum "<파일>"`.
+4. 고치기 전 파일과 고친 뒤 파일의 sha256을 구한다. 해시는 파일 바이트의 SHA-256 소문자 16진수 64자다. 운영체제의 명령을 쓴다: Windows PowerShell은 `(Get-FileHash -Algorithm SHA256 "<파일>").Hash.ToLower()`(이 명령은 대문자로 출력하므로 소문자로 바꾼다), macOS는 `shasum -a 256 "<파일>"`, Linux는 `sha256sum "<파일>"`.
 5. 고친 파일마다 `ChangeRecord`를 `<OUT>/changes/<change_id>.json`에 쓴다. `change_id`는 `c1`, `c2`처럼 붙인다. 필드는 모두 필요하다.
 
 ```json
@@ -185,7 +187,7 @@ node "<SKILL_DIR>/scripts/run.mjs" --answers "<OUT>/intake-answers.json" --out "
 ```
 
 6. `analysis`는 [source-analysis.md](references/source-analysis.md)의 기록 규칙대로 채운다.
-7. 사용자에게 한 줄 알린다: 0.2.0 보고서는 이 변경 기록을 읽지 않는다. 기록은 사용자가 무엇을 고쳤는지 보관하는 용도다.
+7. 사용자에게 한 줄 알린다: 0.2.0 보고서는 이 변경 기록을 읽지 않는다. 기록은 사용자가 무엇을 고쳤는지 보관하는 용도다. 0.2.0에서 `backup_ref`와 `evidence_ref`는 파일 경로이며 증거 저장소의 참조가 아니다. 다시 확인(11단계)해도 `verification`은 갱신되지 않고 `pending`으로 남는다.
 8. 수정안은 [routing.md](references/routing.md)에서 맞는 가이드 하나를 골라 근거로 삼는다. 정책 해석과 제출 권한은 [policies.md](references/policies.md)를 따른다.
 
 ## 11단계. 다시 확인한다

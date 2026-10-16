@@ -60,7 +60,7 @@ test('context stage fixes the render pages with selectRenderPages', async () => 
 
 test('a fact page the audit cannot cover is recorded in the intake record, not dropped silently', async () => {
   const facts = [{ key: 'phone', value: '1', source_url: 'https://elsewhere.test/contact' }, { key: 'phone', value: '1', source_url: `${SITE}/about` }];
-  const { state } = await begin(['context'], { facts, max_urls: 4 });
+  const { state } = await begin(['context'], { facts });
   const intake = JSON.parse(await readFile(path.join(state.out, 'intake.json'), 'utf8'));
   assert.deepEqual(intake.selection.dropped_fact_pages, [{ url: 'https://elsewhere.test/contact', reason: 'outside_scope' }]);
   assert.equal(intake.selection.pages, 2, 'the home page and the fact page inside the scope');
@@ -106,7 +106,7 @@ test('max_urls: up to the cap in the answers and the context, never above it', a
   for (const max_urls of [cap + 1, 0, 1.5]) assert.throws(() => validateEntity('IntakeAnswers', raise(max_urls)), ContractError);
   // The answer "sample" or "raise" and the number must agree.
   const over = limits().max_urls_default + 1;
-  assert.throws(() => validateEntity('IntakeAnswers', answersFor(`${SITE}/`, { max_urls: over })), /sample cannot go above/);
+  assert.throws(() => validateEntity('IntakeAnswers', answersFor(`${SITE}/`, { max_urls: over })), /a sample uses the default limit/);
   assert.throws(() => validateEntity('IntakeAnswers', raise(limits().max_urls_default)), /raised limit must be above/);
   assert.doesNotThrow(() => validateEntity('IntakeAnswers', answersFor(`${SITE}/`, { sample_mode: null, max_urls: limits().max_urls_default })));
   const { state } = await begin(['context'], { max_urls: cap, sample_mode: 'raise' });

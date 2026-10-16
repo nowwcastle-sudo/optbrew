@@ -60,7 +60,7 @@ export const questions = [{ id: 'q1', question: 'What does Brew Cafe sell?', cat
 
 /** Valid start answers for `url`; `over` replaces top-level fields. */
 export const answersFor = (url, over = {}) => ({ schema_version: '1.0.0', guidance_level: 'brief', url, goals: ['SEO'], questions,
-  facts: [], sample_mode: 'sample', max_urls: 20, source_tools: [],
+  facts: [], sample_mode: 'sample', max_urls: 50, source_tools: [],
   probe: environmentProbe({ chrome: { found: false, kind: null, reason: 'chrome_not_found' } }), ...over });
 
 /** An environment with no Chrome and no Google key, so a run cannot launch a browser or read the user's own key. */

@@ -43,11 +43,21 @@ const resolved = finding => finding.status === 'verified_production';
 const priorityRank = priority => /^P(\d+)$/.test(priority) ? Number(priority.slice(1)) : Infinity;
 const compareRank = (a, b) => a === b ? 0 : a < b ? -1 : 1;
 const affectedKey = finding => `${finding.check_id}\0${messageKey(finding.message)}`;
+/** The pages a finding affects: the ones it lists, or its own unit. */
+const pagesOf = finding => finding.unit_keys ?? [finding.unit_key];
+const PAGES_SHOWN = 5;
+/** How a fix row names its pages: the one unit, or the count and the first few addresses. */
+const pagesLabel = finding => {
+  const units = pagesOf(finding);
+  if (units.length === 1) return units[0];
+  const shown = units.slice(0, PAGES_SHOWN).map(unit => unit.split('|').at(-1)).join(', ');
+  return `(${units.length} pages: ${shown}${units.length > PAGES_SHOWN ? `, and ${units.length - PAGES_SHOWN} more` : ''})`;
+};
 
 /** Open before resolved, then blocking, then priority (P0 first, an unknown one last), then the problem on the most pages, then the unit. */
 function sortedFixes(findings, changes) {
   const pages = new Map();
-  for (const finding of findings) pages.set(affectedKey(finding), (pages.get(affectedKey(finding)) ?? new Set()).add(finding.unit_key));
+  for (const finding of findings) pages.set(affectedKey(finding), new Set([...(pages.get(affectedKey(finding)) ?? []), ...pagesOf(finding)]));
   const withPaths = findings.map(finding => ({ ...finding,
     change_paths: changes.filter(change => change.finding_ids.some(id => finding.finding_ids.includes(id))).map(change => change.path) }));
   return withPaths.sort((a, b) => Number(resolved(a)) - Number(resolved(b)) || Number(b.blocker) - Number(a.blocker) ||
@@ -116,7 +126,7 @@ export function composeReport(verified) {
     fixes,
     completeness,
     remaining: remainingBlanks(verified, latest),
-    conditions: { probe: latest.run_context.environment_probe, model_judgments: verified.model_judgments, lab_cwv: verified.lab_cwv,
+    conditions: { probe: latest.run_context.environment_probe, model_judgments: verified.model_judgments, lab_cwv: verified.lab_cwv, start_redirect: verified.start_redirect ?? null,
       blockers: { before: blockerSummary(verified.baseline.scores), after: verified.after ? blockerSummary(verified.after.scores) : null },
       notes: afterRender ? [JAVASCRIPT_NOTE] : [] },
   };
@@ -142,7 +152,7 @@ function tableRows(composed, verified) {
     `${before.coverage ?? 'unknown'} → ${after?.coverage ?? 'unknown'}`,
     `${before.missing_bounds?.join('–') ?? 'unknown'} → ${after?.missing_bounds?.join('–') ?? 'unknown'}`,
     `${before.readiness_status} → ${after?.readiness_status ?? 'unknown'}`, withoutField ?? 'unknown']);
-  const remediation = composed.fixes.map(f => [f.priority, `${f.message} ${f.unit_key}`, f.sources.map(x => `${x.source_ref} ${x.evidence_ref}`).join('; '),
+  const remediation = composed.fixes.map(f => [f.priority, `${f.message} ${pagesLabel(f)}`, f.sources.map(x => `${x.source_ref} ${x.evidence_ref}`).join('; '),
     f.remediation ? `${f.remediation.mechanism} (${f.remediation.source_url}, checked ${f.remediation.checked_date})` : 'unknown',
     f.change_paths.join('; ') || f.remediation?.location_hint || 'owner implementation location required',
     f.remediation ? `${f.remediation.cost}; ${f.remediation.effort}` : 'unknown', f.remediation?.validation ?? 'unknown',
@@ -166,6 +176,7 @@ const conditionLines = (conditions, verified) => {
     `Cost and capability limitations: ${verified.cost_issues.join('; ') || 'none recorded'}`,
     `Metric source limitations: ${verified.metric_origin_limitations.join('; ') || 'no measured provider input'}`,
     `Lab Core Web Vitals (reference, not scored): ${lab ? `LCP ${lab.lcp ?? 'unknown'} ms; CLS ${lab.cls ?? 'unknown'}` : 'not measured'}`,
+    ...(conditions.start_redirect ? [`Start address: ${conditions.start_redirect.from} leads to ${conditions.start_redirect.to}, so the audit ran on ${conditions.start_redirect.to}`] : []),
     ...conditions.notes,
   ];
 };

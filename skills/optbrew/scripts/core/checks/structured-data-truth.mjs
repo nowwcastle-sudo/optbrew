@@ -7,7 +7,7 @@ export const structuredDataTruth = {
   family_id: FAMILY,
   derive({ pageRows }) {
     return pageRows.filter(row => row.info.jsonld_parse_errors > 0).map(({ url, artifact, info }) => makeObservation({
-      family_id: FAMILY, unit_key: unitKey(FAMILY, url), state: 'fail', reason: `${info.jsonld_parse_errors} JSON-LD block(s) fail to parse`,
-      evidence_ref: artifact.evidence_ref }));
+      family_id: FAMILY, unit_key: unitKey(FAMILY, url), state: 'fail', reason: 'JSON-LD block(s) fail to parse',
+      evidence_ref: artifact.evidence_ref, extra: { measurement: { parse_errors: info.jsonld_parse_errors } } }));
   },
 };

@@ -111,6 +111,7 @@ export async function fetchScoped(input, { context, transport = directTransport,
         catch {
           const error = new Error('redirect outside scope');
           error.code = 'redirect_outside_scope';
+          try { error.redirect_to = new URL(savedHeaders.location, url).href; } catch { /* an unparsable location names no site */ }
           error.redirect_chain = [...redirect_chain, { url: url.href, status: response.status, location: '[blocked]' }];
           throw error;
         }

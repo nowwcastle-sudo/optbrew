@@ -143,7 +143,8 @@ test('render-content: content that only the render shows passes, and a blank pag
   const options = dom => ({ renders: [record('/')], renderHtml: { [url('/')]: dom }, chrome: { found: true, reason: null } });
   const shown = judge(renderContent, { '/': shell }, options(richDom));
   assert.equal(shown['/'].state, 'pass');
-  assert.match(shown['/'].reason, /rendered/);
+  assert.equal(shown['/'].reason, 'Content shows after rendering', 'the reason is the same for every page');
+  assert.ok(shown['/'].measurement.rendered_body_characters > shown['/'].measurement.raw_body_characters, 'the counts are in the measurement');
   const blank = judge(renderContent, { '/': shell }, options('<html><head><title>Page</title></head><body></body></html>'));
   assert.equal(blank['/'].state, 'fail');
 });

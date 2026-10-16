@@ -100,7 +100,9 @@ test('Fix 4: a page listed in a reachable declared sitemap is discoverable, and 
   assert.match(reasonOf(scenario, 'discovery', '/orphan'), /Listed in a declared sitemap/);
   assert.equal(stateOf(scenario, 'document-title', '/dup-1'), 'fail');
   assert.equal(stateOf(scenario, 'document-title', '/dup-2'), 'fail');
-  assert.match(reasonOf(scenario, 'document-title', '/dup-1'), /Title duplicates .*\/dup-2/);
+  assert.equal(reasonOf(scenario, 'document-title', '/dup-1'), 'Title duplicates the title of other pages', 'the reason is the same on every page');
+  const dup = scenario.packet.baseline.input.observations.find(x => x.unit_key.endsWith('/dup-1') && x.family_id === 'document-title');
+  assert.match(dup.measurement.duplicate_pages.join(' '), /\/dup-2/, 'the other page is in the measurement');
   assert.equal(stateOf(scenario, 'document-title', '/hub'), 'unknown');
   assert.doesNotThrow(() => buildReport(scenario.packet));
 });
@@ -155,9 +157,12 @@ test('Fix 5: cross-page entity facts produce fact-consistency and entity-identit
   const entity = scenario.packet.baseline.input.observations.find(x => x.family_id === 'entity-identity');
   assert.equal(entity.unit_key, 'entity-identity|site');
   assert.equal(entity.state, 'fail');
-  assert.match(entity.reason, /name differs from "Brewline Coffee Roasters" on .*\/press/);
-  assert.match(entity.reason, /Organization JSON-LD without sameAs on .*\/about/);
-  assert.match(entity.reason, /no Organization or LocalBusiness JSON-LD on .*\//);
+  assert.match(entity.reason, /the business name differs between pages/);
+  assert.match(entity.reason, /Organization JSON-LD lacks sameAs on some pages/);
+  assert.match(entity.reason, /no Organization or LocalBusiness JSON-LD on the home page/);
+  assert.equal(entity.measurement.name_reference, 'Brewline Coffee Roasters');
+  assert.match(entity.measurement.name_differs_on.join(' '), /\/press/);
+  assert.match(entity.measurement.without_same_as_on.join(' '), /\/about/);
   assert.doesNotThrow(() => buildReport(scenario.packet));
   await scenario.forgeObservations(list => Object.assign(list.find(x => x.family_id === 'fact-consistency' && x.unit_key.endsWith('/support')), { state: 'pass', q: 1, reason: 'forged' }));
   assert.throws(() => buildReport(scenario.packet), /collector verdict differs from raw evidence: fact-consistency/);

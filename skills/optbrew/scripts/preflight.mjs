@@ -79,6 +79,8 @@ export async function preflight({ url, out, sourceTools = [], skillRoot = defaul
   const reserveRequest = () => { if (used >= budget) return false; used++; return true; };
   let route = null;
 
+  // Where the first request was sent when that was another site (it is recorded for the run, which stops on it).
+  let leftTo = null;
   const get = async href => {
     try {
       const artifact = await fetchScoped(href, { context: { scope }, ...route, reserveRequest });
@@ -87,6 +89,7 @@ export async function preflight({ url, out, sourceTools = [], skillRoot = defaul
       return artifact;
     } catch (error) {
       await store.append('failures', { normalized_url: href, error: error.code ?? 'fetch_failed' });
+      if (href === start.href && error.redirect_to) leftTo = error.redirect_to;
       throw error;
     }
   };
@@ -135,7 +138,9 @@ export async function preflight({ url, out, sourceTools = [], skillRoot = defaul
 
   const startJson = {
     // Where the first request landed (after apex/www and http/https redirects): the address the audit should start from.
+    requested_url: start.href,
     final_url: first?.final_url ?? null,
+    redirected_to: leftTo,
     probe: { ...probe, sitemap_pages: sitemapPages },
     sitemap_pages: sitemapPages,
     sitemap_pages_basis: sitemapBasis,
