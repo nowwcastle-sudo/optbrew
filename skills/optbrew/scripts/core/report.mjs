@@ -16,7 +16,6 @@ import { links } from './collector.mjs';
 import { checkRenderLedger } from './render.mjs';
 import { assertUrlInScope } from './scope.mjs';
 import { composeReport, renderReport } from './report-compose.mjs';
-export { COVERAGE_THRESHOLD, scoreHeadline } from './report-compose.mjs';
 import { runbookEntry } from './runbooks.mjs';
 import { sensitive } from './secrets.mjs';
 import { OBSERVATION_SOURCES, QUEUE_KIND, candidateSpans, checkSpan, isCodeJudged, isModelJudged, queuedSpan } from './judgments.mjs';
@@ -634,9 +633,6 @@ function modelJudgmentRows(phase, input, snapshot, requireRef) {
 export function buildReport(packet) {
   validateEntity('ReportPacket', packet);
   if (sensitive.test(JSON.stringify(packet))) throw new ContractError('private identifier or secret in report packet');
-  const lab = packet.lab_cwv;
-  if (lab != null && !['lcp', 'cls'].every(key => lab[key] === null || Number.isFinite(lab[key])))
-    throw new ContractError('lab_cwv must be { lcp, cls }, each a number or null');
   for (const id of packet.answered_runbooks ?? []) if (!runbookEntry(id)) throw new ContractError(`answered_runbooks names an unknown runbook: ${id}`);
   if (packet.baseline.input.run_context.run_id !== packet.run_context.run_id ||
       !same(packet.baseline.input.run_context, packet.run_context) || packet.costs.run_id !== packet.run_context.run_id)
@@ -786,17 +782,17 @@ export function buildReport(packet) {
     data_class: packet.data_class ?? 'unknown', baseline: { input: packet.baseline.input, scores: baselineScores },
     after: packet.after ? { input: packet.after.input, scores: afterScores } : null, comparison,
     metrics: packet.metrics, findings, changes: packet.changes, costs: packet.costs,
-    capabilities: packet.capabilities ?? null, cost_issues: costIssues, metric_origin_limitations: metricOriginLimitations, remaining,
+    capabilities: packet.capabilities ?? null, cost_issues: costIssues, metric_origin_limitations: metricOriginLimitations, follow_ups: remaining,
     evidence_root: packet.evidence_root, evidence_index: packet.evidence_index,
     audit_ref: packet.audit_ref ?? null, audit_snapshots: snapshots, model_judgments: modelRows, source_ref: packet.source_ref,
     outcome_rows: metricRows(packet.metrics), lab_cwv: packet.lab_cwv ?? null, answered_runbooks: packet.answered_runbooks ?? [] };
   const composed = composeReport(verified);
   const { markdown, tables } = renderReport(composed, verified);
-  // The composed report leads; the checked data it was built from follows, so findings come before scores.
+  // The composed report leads; the checked data it was built from follows. `findings` is the sorted fixes again, for readers of earlier reports.
   const checked = { ...verified };
   for (const key of ['schema_version', 'data_class', 'outcome_rows', 'lab_cwv', 'answered_runbooks']) delete checked[key];
   return { json: { schema_version: verified.schema_version, data_class: verified.data_class, composed, ...checked,
-    headline: composed.headline, findings: composed.fixes, tables }, markdown };
+    findings: composed.fixes, tables }, markdown };
 }
 
 /** Write both outputs after all validation; temporary files stay in the destination. */

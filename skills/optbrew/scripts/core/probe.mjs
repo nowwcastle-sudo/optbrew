@@ -15,6 +15,15 @@ const RUNBOOK_HARNESSES = {
   [OTHER]: ['any', 'local'],
 };
 
+/** The runbook that saves a Google key for each probe harness (beside RUNBOOK_HARNESSES, the other place the two vocabularies meet). */
+const KEY_SET_RUNBOOKS = { 'claude-code': 'key-set-local', codex: 'key-set-codex', 'claude-code-cloud': 'key-set-claude-cloud', [OTHER]: 'key-set-local' };
+
+export function keySetRunbook(harness) {
+  const id = KEY_SET_RUNBOOKS[harness];
+  if (!id) throw new Error(`unknown harness: ${harness}`);
+  return id;
+}
+
 export function runbookHarnesses(harness) {
   const values = RUNBOOK_HARNESSES[harness];
   if (!values) throw new Error(`unknown harness: ${harness}`);

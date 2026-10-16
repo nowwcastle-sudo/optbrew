@@ -49,7 +49,7 @@
   "protocol_sources": [
     {
       "path": "references/schemas/contract.schema.json",
-      "sha256": "9a83a41456a33a2d849957108f460530804997f78c7bc1b3b13f0ca92cf5eb3e"
+      "sha256": "3638437d5fc03ff9e30707bca648023be070e16f26d97a5156ef699b7358e9c9"
     },
     {
       "path": "references/limits.json",
@@ -60,7 +60,7 @@
       "sha256": "c7f85f963abd125155fed1a3a4e707885e8d63fa6d146c1a00c431440dda0336"
     }
   ],
-  "protocol_hash": "21eb5420fde09d8655a993813900be2b6dcf97e0196e394caedf8a0c2d75a0b7",
+  "protocol_hash": "f2484627253491064ad381002adf5cc64545197bc74d7f92aae165a69d83ab36",
   "files": [
     {
       "path": "LICENSE",
@@ -596,7 +596,7 @@
     },
     {
       "path": "references/report.md",
-      "sha256": "eef10cdb22298cadfa69714711bbbfaa9a18b72fd909343ba1ce41df2ecb753d"
+      "sha256": "8164d0d96898bfb0514462b89308617ddef5043b002fc62bd47bea56ffd0088d"
     },
     {
       "path": "references/routing.md",
@@ -624,7 +624,7 @@
     },
     {
       "path": "references/runbooks/index.json",
-      "sha256": "77df04b61dc07b3d917847f52dd3dc7976657dc4662f45b60b93aea81b421503"
+      "sha256": "cdc9b2cc9524a9f9a42e1b3aeb17d91fcca00c7c61a66f9f540d53123cb83bae"
     },
     {
       "path": "references/runbooks/key-set-claude-cloud.md",
@@ -660,7 +660,7 @@
     },
     {
       "path": "references/schemas/contract.schema.json",
-      "sha256": "9a83a41456a33a2d849957108f460530804997f78c7bc1b3b13f0ca92cf5eb3e"
+      "sha256": "3638437d5fc03ff9e30707bca648023be070e16f26d97a5156ef699b7358e9c9"
     },
     {
       "path": "references/scoring.md",
@@ -760,7 +760,7 @@
     },
     {
       "path": "scripts/core/checks/render-content.mjs",
-      "sha256": "e9d78ee318e4377b8349a5f07441baec657b844d82c764c6ba24cdf5545feee8"
+      "sha256": "ab3a3195831848612a73c65da5cc8d3db5e323314ed643bd59371a8484401a6f"
     },
     {
       "path": "scripts/core/checks/search-crawl-policy.mjs",
@@ -816,7 +816,7 @@
     },
     {
       "path": "scripts/core/findings.mjs",
-      "sha256": "ec3b1758468add607219dc963e32d8305a341ef7a8a34632d7dd6a534dbf93ab"
+      "sha256": "6cda87605a2b1f8fd4bc9095f8eac0ac388316f770100ace7b2928eda720239d"
     },
     {
       "path": "scripts/core/html.mjs",
@@ -840,7 +840,7 @@
     },
     {
       "path": "scripts/core/probe.mjs",
-      "sha256": "8b06e55af077d459bf3312cf26b352ffa38fc3f9e75596799fb08c6438822b9d"
+      "sha256": "cc91a7e1ee8d844a51b38a4980687fdb7b371fed46cec9e67dd7ca5507e58fdd"
     },
     {
       "path": "scripts/core/protocol.mjs",
@@ -852,11 +852,11 @@
     },
     {
       "path": "scripts/core/report-compose.mjs",
-      "sha256": "8506ddbf61c658d695f682e6d67dfd81d25b336e3fa2244afe9f1b47bceb3500"
+      "sha256": "e5190f6b1ace150d63f2caa9df43c94c5eeb6733d46bf40bf86139ce21766b7d"
     },
     {
       "path": "scripts/core/report.mjs",
-      "sha256": "45a43b38a956fc2443019c5bdce5b26e7beb6fdbb6bcbe39a9c88782b8d88742"
+      "sha256": "b5e30eae2b8427c66bc281d323c3f1781f3aa98fd53707cd2b86d325d9070f24"
     },
     {
       "path": "scripts/core/runbooks.mjs",
@@ -895,5 +895,5 @@
       "sha256": "a53223b7eefab2204c026a62b1da04cfdb8a07be8d3749613e8241a81b027d9b"
     }
   ],
-  "bundle_hash": "ea74f32d70d770798e00ff0b0bf6bf2c4c47e64fb0887cdcf5429914bf3f8ca6"
+  "bundle_hash": "0ac1cab32b75560db8e52f801b2e3e5d5fc23c3720c1c4a74b51598690f879f1"
 }

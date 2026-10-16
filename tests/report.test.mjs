@@ -11,6 +11,7 @@ import { normalizeImport } from '../skills/optbrew/scripts/adapters/imports.mjs'
 import { measurePanel } from '../skills/optbrew/scripts/core/metrics.mjs';
 import { freezeProtocol } from '../skills/optbrew/scripts/core/protocol.mjs';
 import { compare } from '../skills/optbrew/scripts/core/compare.mjs';
+import { headlineOf } from './support/compose.mjs';
 
 const fixture = () => JSON.parse(readFileSync(new URL('./fixtures/reports/remote-only.json', import.meta.url)));
 const sha = text => createHash('sha256').update(text).digest('hex');
@@ -435,8 +436,8 @@ test('final review I2/N5: neither a byte-hash receipt nor an agent-sourced pass 
     addChange(hashOnly, 'c1');
     const report = buildReport(hashOnly.packet).json;
     assert.equal(report.findings[0].status, 'modified_unverified');
-    assert.equal(report.remaining.filter(x => x.reason === 'production_deployment_pending').length, 0);
-    assert.ok(report.remaining.some(x => x.reason === 'modified_unverified'));
+    assert.equal(report.follow_ups.filter(x => x.reason === 'production_deployment_pending').length, 0);
+    assert.ok(report.follow_ups.some(x => x.reason === 'modified_unverified'));
   } finally { rmSync(hashOnly.dir, { recursive: true, force: true }); }
   // A passing after observation with every label and binding is still only a statement unless the collector produced it.
   const statement = localRun();
@@ -865,20 +866,18 @@ test('final review round 3: a model cannot stand in for a code-judged family', (
 });
 
 test('0.1.2 fix 2: a measured score is never the headline below 80% coverage', async () => {
-  const report = await import('../skills/optbrew/scripts/core/report.mjs');
   const synthetic = (coverage, score, extra = {}) => ({ profile: 'SEO', score, coverage, A: 100, M: coverage, N: score * coverage / 100,
     missing_bounds: [10.1, 99.9], readiness_status: 'provisional', ...extra });
-  assert.equal(report.COVERAGE_THRESHOLD, 80);
-  assert.deepEqual(report.scoreHeadline(synthetic(79.9, 100)), { profile: 'SEO', status: 'insufficient_coverage', headline_score: null,
-    measured_subset_score: 100, coverage: 79.9, coverage_exact: 79.9, coverage_threshold: 80, unresolved_core: 0, missing_bounds: [10.1, 99.9], readiness_status: 'provisional' });
-  assert.equal(report.scoreHeadline(synthetic(80, 91.2)).status, 'sufficient');
-  assert.equal(report.scoreHeadline(synthetic(80, 91.2)).headline_score, 91.2);
-  assert.equal(report.scoreHeadline({ profile: 'SEO', score: null, coverage: 0, A: 100, M: 0, missing_bounds: [0, 100], readiness_status: 'unverified' }).status, 'insufficient_coverage');
+  assert.deepEqual(headlineOf(synthetic(79.9, 100)), { profile: 'SEO', status: 'insufficient_coverage', headline_score: null,
+    measured_subset_score: 100, coverage: 79.9, coverage_exact: 79.9, coverage_threshold: 80, unresolved_core: 0, missing_bounds: [10.1, 99.9], readiness_status: 'provisional', audited: true });
+  assert.equal(headlineOf(synthetic(80, 91.2)).status, 'sufficient');
+  assert.equal(headlineOf(synthetic(80, 91.2)).headline_score, 91.2);
+  assert.equal(headlineOf({ profile: 'SEO', score: null, coverage: 0, A: 100, M: 0, missing_bounds: [0, 100], readiness_status: 'unverified' }).status, 'insufficient_coverage');
 
   const packet = fixture(); packet.evidence_root = path.resolve('tests/fixtures/reports');
   const { json, markdown } = buildReport(packet);
   const seo = json.baseline.scores.find(x => x.profile === 'SEO');
-  const headline = json.headline.find(x => x.profile === 'SEO');
+  const headline = json.composed.completeness.find(x => x.profile === 'SEO').before.headline;
   assert.ok(seo.coverage < 80);
   assert.equal(headline.status, 'insufficient_coverage');
   assert.equal(headline.headline_score, null);

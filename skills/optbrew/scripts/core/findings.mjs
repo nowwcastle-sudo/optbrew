@@ -3,6 +3,9 @@ import { ContractError, validateEntity } from './contracts.mjs';
 const rank = { P0: 0, P1: 1, P2: 2, P3: 3 };
 const evidenceRank = { official: 0, reproduced: 1, research: 2, case: 3, hypothesis: 4 };
 
+/** The text two findings must share, ignoring case and spacing, to be the same issue. */
+export const messageKey = message => message.trim().replace(/\s+/g, ' ').toLowerCase();
+
 /** Merge the same check, unit and issue while preserving every module source. */
 export function mergeFindings(findings) {
   if (!Array.isArray(findings)) throw new ContractError('findings must be an array');
@@ -11,7 +14,7 @@ export function mergeFindings(findings) {
     validateEntity('Finding', item);
     if (item.check_id !== item.unit_key.split('|')[0] || !Object.hasOwn(rank, item.priority))
       throw new ContractError('finding check or priority invalid');
-    const key = `${item.check_id}\0${item.unit_key}\0${item.message.trim().replace(/\s+/g, ' ').toLowerCase()}`;
+    const key = `${item.check_id}\0${item.unit_key}\0${messageKey(item.message)}`;
     const source = { source_ref: item.source_ref, evidence_ref: item.evidence_ref };
     if (!byIssue.has(key)) byIssue.set(key, { ...item, priority: item.blocker ? 'P0' : item.priority,
       finding_ids: [item.finding_id], sources: [source] });
