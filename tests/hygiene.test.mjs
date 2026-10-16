@@ -172,7 +172,9 @@ test('every test file that uses the Chrome or render core carries the Chrome mar
       if (entry.isDirectory()) await walk(relative);
       else if (entry.name.endsWith('.test.mjs')) {
         const text = await readFile(path.join(root, relative), 'utf8');
-        if (/core\/(?:chrome|render)\.mjs/.test(text) && !text.startsWith('// @optbrew-chrome')) found.push(relative);
+        // run.mjs and stages.mjs launch Chrome indirectly (the render stage), so a test that imports either runs serially too.
+        // This file only names run.mjs as an entry point; it imports no product code.
+        if (relative !== 'tests/hygiene.test.mjs' && /core\/(?:chrome|render|stages)\.mjs|scripts\/run\.mjs/.test(text) && !text.startsWith('// @optbrew-chrome')) found.push(relative);
       }
     }
   };

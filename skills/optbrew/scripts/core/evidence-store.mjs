@@ -5,7 +5,7 @@ import path from 'node:path';
 
 const INDEX_FILE = 'evidence-index.json';
 // Raw collected bodies keep their own extension; every other kind is a JSON record.
-const RAW_KINDS = new Set(['html', 'bin', 'render-dom']);
+const RAW_KINDS = new Set(['html', 'bin', 'render-dom', 'owner-export']);
 // Written with the index so an audit that fetched nothing still has them; the others appear on first append.
 const BASE_SECTIONS = ['raw', 'responses', 'failures'];
 const ALL_SECTIONS = [...BASE_SECTIONS, 'renders', 'render_ledger', 'cwv'];
@@ -82,6 +82,15 @@ export function openStore(dir, header = null) {
         if (!Object.hasOwn(index, section)) index[section] = [];
         else if (!Array.isArray(index[section])) throw new Error(`not an index section: ${section}`);
         index[section].push(entry);
+        await save(index);
+      });
+    },
+    /** Record one value that is a single object, not a list (such as the Chrome result), replacing an earlier value of the same name. */
+    set(field, value) {
+      if (!/^[a-z][a-z0-9_]*$/.test(field) || ALL_SECTIONS.includes(field) || Object.hasOwn(header ?? {}, field)) throw new Error(`invalid index field: ${field}`);
+      return serial(async () => {
+        const index = (await load()) ?? empty();
+        index[field] = value;
         await save(index);
       });
     },

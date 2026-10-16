@@ -4,7 +4,7 @@ import { isIP } from 'node:net';
 import { performance } from 'node:perf_hooks';
 import { assertInScope, assertUrlInScope, urlTarget } from './scope.mjs';
 import { anchorLinks, canonicalLink } from './html.mjs';
-import { limits } from './config.mjs';
+import { limits, requestLimit } from './config.mjs';
 import { directTransport } from './transport.mjs';
 
 const HEADER_NAMES = ['content-type', 'content-length', 'content-range', 'content-encoding', 'location', 'x-robots-tag', 'last-modified', 'etag'];
@@ -61,7 +61,10 @@ async function addressesFor(url, resolve) {
 
 /** Fetch one URL with fresh DNS validation at every redirect and a pinned connection. */
 export async function fetchScoped(input, { context, transport = directTransport, resolve = host => lookup(host, { all: true, verbatim: true }), timeoutMs = limits().timeout_ms, maxBytes = limits().max_bytes, maxRedirects = limits().max_redirects, headers = {}, allowedAuxiliary = null, reserveRequest = null, addressVetting = 'direct', extraHeaders = [], method = 'GET', body: requestBody = null, ceiling = { timeoutMs: limits().timeout_ms, maxBytes: limits().max_bytes } }) {
-  if (![timeoutMs, maxBytes, maxRedirects].every(Number.isInteger) || timeoutMs < 1 || timeoutMs > ceiling.timeoutMs || maxBytes < 1 || maxBytes > ceiling.maxBytes || maxRedirects < 0 || maxRedirects > limits().max_redirects)
+  // A caller may ask for a lower ceiling, never a higher one than the largest the config fixes (the field-data calls' limits).
+  const fixed = { timeoutMs: Math.max(limits().timeout_ms, limits().cwv_timeout_ms), maxBytes: Math.max(limits().max_bytes, limits().cwv_max_bytes) };
+  if (![timeoutMs, maxBytes, maxRedirects].every(Number.isInteger) || timeoutMs < 1 || timeoutMs > Math.min(ceiling.timeoutMs, fixed.timeoutMs) ||
+      maxBytes < 1 || maxBytes > Math.min(ceiling.maxBytes, fixed.maxBytes) || maxRedirects < 0 || maxRedirects > limits().max_redirects)
     throw new Error('fetch limits exceed context ceiling');
   // Proxy vetting skips DNS-name checks, which is only safe when the proxy transport (not a direct connection) carries the request.
   if (addressVetting === 'proxy' && transport.addressVetting !== 'proxy') throw new Error('proxy address vetting requires the proxy transport');
@@ -170,7 +173,7 @@ export function links(html, base) {
 /** Bounded crawl of fixed protocol URLs and their in-scope links. */
 export async function collect(context, { transport, resolve, addressVetting } = {}) {
   const scope = context?.scope;
-  const limit = Math.min(scope?.max_urls ?? limits().max_urls_default, limits().max_urls_default);
+  const limit = requestLimit(scope);
   const depthLimit = Math.min(scope?.max_depth ?? limits().max_depth, limits().max_depth);
   const concurrency = Math.min(scope?.concurrency ?? limits().concurrency, limits().concurrency);
   if (![limit, depthLimit, concurrency].every(Number.isInteger) || limit < 1 || depthLimit < 0 || concurrency < 1)

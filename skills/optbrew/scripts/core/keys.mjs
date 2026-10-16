@@ -42,10 +42,16 @@ export function readGoogleKey({ env = process.env, home = keyHome(env) } = {}) {
   return clean(env?.[ENV_NAME]) ?? clean(readCredentials(credentialsPath(home)).google);
 }
 
-/** Presence and the first 8 hex characters of the SHA-256; the key value itself is never returned. */
+/**
+ * Presence and the first 8 hex characters of the SHA-256; the key value itself is never returned. A key file that exists but is
+ * not a JSON object adds `corrupt: true` (the file is only read, never changed), so the user is told to fix it instead of
+ * being told there is no key.
+ */
 export function googleKeyStatus({ env = process.env, home = keyHome(env) } = {}) {
   const key = readGoogleKey({ env, home });
-  return { google: { present: key !== null, sha256_8: key === null ? null : createHash('sha256').update(key).digest('hex').slice(0, HASH_CHARS) } };
+  let corrupt = false;
+  try { loadCredentials(credentialsPath(home)); } catch { corrupt = true; }
+  return { google: { present: key !== null, sha256_8: key === null ? null : createHash('sha256').update(key).digest('hex').slice(0, HASH_CHARS), ...(corrupt ? { corrupt: true } : {}) } };
 }
 
 /** Replace the key file atomically (temp file, then rename) so a reader never sees a half-written file. */

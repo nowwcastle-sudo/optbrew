@@ -24,6 +24,15 @@
       "chrome": { "type": "object", "additionalProperties": false, "required": ["found", "kind"], "properties": { "found": { "type": "boolean" }, "kind": { "type": ["string", "null"] }, "reason": { "type": ["string", "null"] } } },
       "google_key": { "type": "boolean" }, "source_tools": { "type": "array", "items": { "type": "string" } }, "sitemap_pages": { "type": ["integer", "null"], "minimum": 0 }
     } },
+    "Fact": { "type": "object", "additionalProperties": false, "required": ["key", "value", "source_url"], "properties": { "key": { "type": "string" }, "value": { "type": "string" }, "source_url": { "type": "string" } } },
+    "Goal": { "type": "string", "minLength": 1 },
+    "OwnerExport": { "type": "object", "additionalProperties": false, "required": ["kind", "path"], "properties": { "kind": { "enum": ["gsc", "naver"] }, "path": { "type": "string", "minLength": 1 } } },
+    "IntakeAnswers": { "type": "object", "additionalProperties": false, "required": ["schema_version", "guidance_level", "url", "goals", "questions", "facts", "sample_mode", "max_urls", "source_tools", "probe"], "properties": {
+      "schema_version": { "const": "1.0.0" }, "guidance_level": { "enum": ["beginner", "brief"] }, "url": { "type": "string" }, "goals": { "type": "array", "items": { "$ref": "#/$defs/Goal" } },
+      "owner_exports": { "type": "array", "items": { "$ref": "#/$defs/OwnerExport" } },
+      "questions": { "type": "array", "items": { "$ref": "#/$defs/Question" } }, "facts": { "type": "array", "items": { "$ref": "#/$defs/Fact" } },
+      "sample_mode": { "enum": ["sample", "raise", null] }, "max_urls": { "type": "integer", "minimum": 1 }, "source_tools": { "type": "array", "items": { "type": "string" } }, "probe": { "$ref": "#/$defs/EnvironmentProbe" }
+    } },
     "RunContext": { "type": "object", "required": ["schema_version", "run_id", "target", "environment", "goals", "allowed_changes", "scope", "protocol", "evaluation_version", "protocol_version", "data_sources", "cost_decision", "evidence_ref", "environment_probe"], "properties": {
       "environment_probe": { "$ref": "#/$defs/EnvironmentProbe" },
       "schema_version": { "const": "1.0.0" }, "run_id": { "type": "string" }, "target": { "type": ["string", "object"] }, "environment": { "type": "string" }, "goals": { "type": "array" }, "allowed_changes": { "type": "array" }, "scope": { "type": "object" }, "protocol": { "$ref": "#/$defs/Protocol" }, "evaluation_version": { "type": "string" }, "protocol_version": { "type": "string" }, "data_sources": { "type": "array" }, "cost_decision": { "type": "object" }, "evidence_ref": { "type": "string" }, "audited": { "type": "boolean" }

@@ -29,9 +29,12 @@ function exchange({ send, timeoutMs, maxBytes, body = null }) {
   });
 }
 
-/** Request headers; a body brings its Content-Length. */
-const requestHeaders = (headers, body = null) => ({ 'User-Agent': 'optbrew/0.1 (bounded public audit)', Accept: '*/*', 'Accept-Encoding': 'identity',
-  ...(body === null ? {} : { 'Content-Length': Buffer.byteLength(body) }), ...headers });
+/** Request headers; a body brings its Content-Length, and a caller's own Content-Length (any case) is dropped so it can never disagree with the bytes sent. */
+const requestHeaders = (headers, body = null) => {
+  const merged = Object.fromEntries(Object.entries({ 'User-Agent': 'optbrew/0.1 (bounded public audit)', Accept: '*/*', 'Accept-Encoding': 'identity', ...headers })
+    .filter(([name]) => name.toLowerCase() !== 'content-length'));
+  return body === null ? merged : { ...merged, 'Content-Length': Buffer.byteLength(body) };
+};
 
 /** Node's lookup callback pins the already-vetted address while TLS still verifies the URL hostname. */
 export function directTransport({ url, address, timeoutMs, maxBytes, headers = {}, signal, method = 'GET', body = null }) {

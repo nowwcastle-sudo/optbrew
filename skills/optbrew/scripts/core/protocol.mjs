@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { ContractError, validateEntity, validateApplicabilityDecision } from './contracts.mjs';
 import { assertUrlInScope } from './scope.mjs';
-import { limits } from './config.mjs';
+import { limits, requestLimit } from './config.mjs';
 
 const registry = JSON.parse(readFileSync(new URL('../../references/check-registry.json', import.meta.url)));
 const knownFamilies = new Map(registry.families.map(x => [x.family_id, x]));
@@ -45,8 +45,7 @@ export function freezeProtocol(context) {
   const resources = p.auxiliary_resources ?? [];
   unique(resources.map(x => x.normalized), 'auxiliary resources');
   if (resources.some(x => urls.includes(x.normalized))) throw new ContractError('auxiliary resource duplicates a selected URL');
-  const requestLimit = Math.min(context.scope.max_urls ?? limits().max_urls_default, limits().max_urls_default);
-  if (urls.length + resources.length > requestLimit) throw new ContractError('selected pages and auxiliary resources exceed request scope');
+  if (urls.length + resources.length > requestLimit(context.scope)) throw new ContractError('selected pages and auxiliary resources exceed request scope');
   for (const resource of resources) {
     for (const url of [resource.original, resource.normalized]) {
       try { assertUrlInScope(url, context.scope); }

@@ -386,3 +386,18 @@ test('transportFetch refuses an out-of-scope literal address in proxy mode and n
   await assert.rejects(send('http://169.254.169.254/latest', { method: 'POST', body: '{}' }), /scope|address|private|link/i);
   await assert.rejects(send(`${origin}/owned/redir`), /redirect/i);
 });
+
+test('a caller cannot override Content-Length or raise the fetch ceiling above the fixed limits', async () => {
+  const payload = 'x'.repeat(40);
+  const local = { allowed: scope.allowed, local_targets: [{ host: 'example.test', port: targetPort }] };
+  const base = { context: { scope: local }, transport: directTransport, resolve: async () => [{ address: '127.0.0.1', family: 4 }] };
+  const sent = await fetchScoped(`${origin}/owned/echo`, { ...base, method: 'POST', body: payload, headers: { 'Content-Length': '3', 'content-length': '3' } });
+  assert.equal(JSON.parse(sent.body.toString('utf8')).length, String(Buffer.byteLength(payload)), 'the length of the bytes sent, not the length the caller named');
+  const hugeTime = limits().cwv_timeout_ms * 10;
+  const hugeBytes = limits().cwv_max_bytes * 10;
+  await assert.rejects(fetchScoped(`${origin}/owned/page`, { ...base, timeoutMs: hugeTime, ceiling: { timeoutMs: hugeTime, maxBytes: hugeBytes } }), /exceed context ceiling/);
+  await assert.rejects(fetchScoped(`${origin}/owned/page`, { ...base, maxBytes: hugeBytes, ceiling: { timeoutMs: hugeTime, maxBytes: hugeBytes } }), /exceed context ceiling/);
+  await assert.rejects(fetchScoped(`${origin}/owned/page`, { ...base, timeoutMs: limits().cwv_timeout_ms }), /exceed context ceiling/, 'the crawl default ceiling still holds');
+  const field = { timeoutMs: limits().cwv_timeout_ms, maxBytes: limits().cwv_max_bytes };
+  assert.equal((await fetchScoped(`${origin}/owned/page`, { ...base, ...field, ceiling: field })).status, 200, 'the field-data limits stay allowed');
+});

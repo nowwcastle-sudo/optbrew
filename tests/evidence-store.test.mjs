@@ -129,6 +129,20 @@ test('a crash between write and append leaves a readable index', async () => {
   });
 });
 
+test('set() records one object-valued field and never touches lists or the header', async () => {
+  await withDir(async dir => {
+    const store = openStore(dir, header);
+    await store.append('raw', { normalized_url: 'https://a.test/' });
+    await store.set('chrome', { found: false, reason: 'chrome_not_found' });
+    await store.set('chrome', { found: true, reason: null });
+    const index = JSON.parse(await readFile(store.indexRef, 'utf8'));
+    assert.deepEqual(index.chrome, { found: true, reason: null });
+    assert.deepEqual(index.raw, [{ normalized_url: 'https://a.test/' }]);
+    assert.equal(index.run_id, header.run_id);
+    for (const field of ['raw', 'cwv', 'run_id', 'Chrome', '../x']) assert.throws(() => store.set(field, {}), /invalid index field/);
+  });
+});
+
 test('index() creates the index from the header when the run has none yet', async () => {
   await withDir(async dir => {
     const store = openStore(dir, header);

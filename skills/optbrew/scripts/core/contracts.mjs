@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import { limits, versions } from './config.mjs';
 
 const schema = JSON.parse(readFileSync(new URL('../../references/schemas/contract.schema.json', import.meta.url)));
 const registry = JSON.parse(readFileSync(new URL('../../references/check-registry.json', import.meta.url)));
@@ -54,6 +55,7 @@ function checkRule(rule, value, path) {
     for (const [key, child] of Object.entries(rule.properties ?? {})) if (Object.hasOwn(value, key)) checkRule(child, value[key], `${path}.${key}`);
     if (rule.if && rule.then && matches(rule.if, value)) checkRule(rule.then, value, path);
   }
+  if (typeof value === 'string' && rule.minLength !== undefined && value.length < rule.minLength) fail(path, 'too short');
   if (Array.isArray(value) && rule.minItems !== undefined && value.length < rule.minItems) fail(path, 'too few items');
   if (Array.isArray(value) && rule.items) value.forEach((item, i) => checkRule(rule.items, item, `${path}[${i}]`));
 }
@@ -141,12 +143,23 @@ function checkMetric(value) {
       /(?:^|:)citation_response_rate$/.test(value.metric_id)) fail(path, 'positive-only sample cannot estimate all-question citation rate');
 }
 
+/** The request limit a run may ask for: a whole number from 1 up to the configured cap. */
+function checkMaxUrls(value, path) {
+  if (!Number.isInteger(value) || value < 1 || value > limits().max_urls_cap) fail(path, `must be a whole number from 1 to ${limits().max_urls_cap}`);
+}
+
 /** Validate a persisted entity and return its original value. */
 export function validateEntity(typeName, value) {
   const rule = schema.$defs[typeName];
   if (!rule) throw new ContractError(`unknown entity type: ${typeName}`);
   jsonSafe(value);
   checkRule(rule, value, typeName);
+  if (typeName === 'RunContext' && value.scope?.max_urls !== undefined) checkMaxUrls(value.scope.max_urls, 'RunContext.scope.max_urls');
+  if (typeName === 'IntakeAnswers') {
+    // Answers are written by an agent from the installed skill's text: a different contract version means the text and the scripts disagree.
+    if (value.schema_version !== versions().contract_schema) fail('IntakeAnswers.schema_version', `expected ${versions().contract_schema}`);
+    checkMaxUrls(value.max_urls, 'IntakeAnswers.max_urls');
+  }
   if (typeName === 'CheckObservation') checkObservation(value);
   if (typeName === 'ScoreInput') value.observations.forEach(checkObservation);
   if (typeName === 'MetricObservation') checkMetric(value);

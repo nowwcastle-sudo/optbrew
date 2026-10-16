@@ -158,7 +158,8 @@ export async function mergeJudgments({ observations, judgments, store }) {
       }
     }
     const partial = state === 'partial' ? partialBasis(judgment) : { basis: null, q: undefined };
-    made.push(makeObservation({ family_id, unit_key, state, q: judgment.q ?? partial.q, reason: judgment.reason,
+    // A q the model supplies is ignored: the state fixes it (pass 1, fail 0, unknown none) and a partial takes the basis's q.
+    made.push(makeObservation({ family_id, unit_key, state, q: partial.q, reason: judgment.reason,
       evidence_ref: item.evidence_ref, partial_basis: partial.basis, extra }));
   }
   const replaced = new Set(made.map(observation => observation.unit_key));

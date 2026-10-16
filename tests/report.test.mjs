@@ -494,6 +494,15 @@ test('review P1-1: production status requires same changed bytes, target and aft
   } finally { rmSync(run.dir, { recursive: true, force: true }); }
 });
 
+test('the after-phase context must be indexed as a context record, as the baseline context is', () => {
+  const run = productionRun();
+  try {
+    assert.ok(buildReport(run.packet).json.after, 'a context record is accepted');
+    run.packet.evidence_index.find(x => x.ref === 'after-context.json').kind = 'record';
+    assert.throws(() => buildReport(run.packet), /after context evidence differs/);
+  } finally { rmSync(run.dir, { recursive: true, force: true }); }
+});
+
 test('review fix2: after target must match deployed target while same-target protocol changes remain eligible', () => {
   const sameTarget = productionRun();
   try {

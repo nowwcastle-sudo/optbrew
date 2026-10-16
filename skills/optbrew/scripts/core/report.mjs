@@ -2,7 +2,7 @@ import { readFileSync, realpathSync } from 'node:fs';
 import { access, mkdir, rename, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { ContractError, validateEntity } from './contracts.mjs';
-import { endpoints, limits, versions } from './config.mjs';
+import { endpoints, requestLimit, versions } from './config.mjs';
 import { score } from './score.mjs';
 import { compare } from './compare.mjs';
 import { freezeProtocol } from './protocol.mjs';
@@ -243,7 +243,14 @@ function checkDecisions(input, requireRef, collectedFor) {
   for (const observation of input.observations) {
     // A model's verdict cites evidence the collector stored; modelJudgmentRows binds it to that page's raw evidence.
     const evidence = requireRef(observation.evidence_ref, observation.evaluator_type === 'host_model' ? { anySource: true } : observation.source_ref);
-    if (observation.applicability_decision) decisionRecord(observation.applicability_decision, 'unit', { key: 'unit_key', value: observation.unit_key });
+    // A collector verdict's own N/A decision cites the page evidence it was derived from, and replay re-derives it (the audit
+    // phase compares the decision too); only an outside decision needs an approved decision record.
+    if (observation.applicability_decision) {
+      if (observation.evaluator_type === 'code' && observation.source_ref === OBSERVATION_SOURCES.code) {
+        if (observation.applicability_decision.evidence_ref !== observation.evidence_ref)
+          throw new ContractError(`collector N/A decision does not cite the verdict's evidence: ${observation.unit_key}`);
+      } else decisionRecord(observation.applicability_decision, 'unit', { key: 'unit_key', value: observation.unit_key });
+    }
     if (observation.check_id === 'index-policy' && observation.state === 'fail') {
       if (evidence.kind !== 'raw_html' && evidence.kind !== 'http_response')
         throw new ContractError('index-policy failure requires raw HTML or response-header evidence');
@@ -390,7 +397,7 @@ function checkLedger(input, audit, collection, artifacts, requireRef) {
   const entries = ledger.entries;
   const fail = message => { throw new ContractError(`request ledger: ${message}`); };
   if (!Array.isArray(entries)) fail('entries missing');
-  const limit = Math.min(input.run_context.scope?.max_urls ?? limits().max_urls_default, limits().max_urls_default);
+  const limit = requestLimit(input.run_context.scope);
   if (ledger.limit !== limit) fail('request limit differs from the run scope');
   const total = entries.reduce((sum, entry) => sum + entry.requests, 0);
   // The limit is a hard ceiling: every request, redirect hops included, takes one slot before it is sent.
@@ -589,7 +596,7 @@ function checkAuditPhase(input, phase, snapshot, requireRef) {
   const derived = deriveObservations({ context: input.run_context, artifacts, collection,
     textOf: artifact => artifact.content_hash ? requireRef(artifact.evidence_ref).text : null,
     renders: records, renderTextOf, chrome: audit.chrome ?? null, cwv: storedCwv(audit, requireRef) });
-  const shape = x => [x.state, x.q, x.partial_basis, x.evidence_ref, x.reason, x.evaluator_type, x.source_ref];
+  const shape = x => [x.state, x.q, x.partial_basis, x.evidence_ref, x.reason, x.evaluator_type, x.source_ref, x.applicability_decision ?? null];
   for (const expected of derived) {
     if (!observations.some(x => x.unit_key === expected.unit_key) || !savedObservations.some(x => x.unit_key === expected.unit_key))
       throw new ContractError(`planned collector observation missing: ${expected.unit_key}`);
@@ -679,7 +686,8 @@ export function buildReport(packet) {
   let afterScores = null;
   if (packet.after) {
     if (packet.after.input.run_context.run_id !== packet.run_context.run_id) throw new ContractError('after run ID mismatch');
-    if (!same(JSON.parse(requireRef(packet.after.input.run_context.evidence_ref).text), packet.after.input.run_context))
+    const afterContext = requireRef(packet.after.input.run_context.evidence_ref);
+    if (afterContext.kind !== 'context' || !same(JSON.parse(afterContext.text), packet.after.input.run_context))
       throw new ContractError('after context evidence differs from input');
     afterScores = score(packet.after.input);
     if (!same(packet.after.scores, afterScores)) throw new ContractError('after score differs from raw observations');

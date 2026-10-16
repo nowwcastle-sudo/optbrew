@@ -46,7 +46,10 @@ test('empty env key and corrupt key file are treated as missing', async () => {
     assert.equal(readGoogleKey({ env: { OPTBREW_GOOGLE_API_KEY: '' }, home }), null, corrupt);
     const status = await run(['status'], { home, env: { OPTBREW_GOOGLE_API_KEY: '' } });
     assert.equal(status.code, 0);
-    assert.deepEqual(JSON.parse(status.stdout), { google: { present: false, sha256_8: null } });
+    // A file that is not a JSON object is reported as corrupt (and still read as "no key"); a valid object without a key is not.
+    const broken = ['{not json', '', '[]', 'null'].includes(corrupt);
+    assert.deepEqual(JSON.parse(status.stdout), { google: { present: false, sha256_8: null, ...(broken ? { corrupt: true } : {}) } }, corrupt);
+    assert.equal(await readFile(path.join(home, '.optbrew', 'credentials.json'), 'utf8'), corrupt, 'status never changes the file');
   }
 });
 

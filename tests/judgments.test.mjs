@@ -151,6 +151,19 @@ test('a judged unit is not queued again and an unknown placeholder is replaced',
   await assert.rejects(mergeJudgments({ observations: [...fresh.observations, known], store: fresh.store, judgments: [pass('claim-support', [span.span_id])] }), /already has a verdict/);
 });
 
+test("a judgment's own q is ignored", async () => {
+  const { store, observations } = await fixtureStore();
+  const queue = await buildJudgeQueue({ observations, store });
+  const span = id => queuedItem(queue, id).spans[0].span_id;
+  const merged = await mergeJudgments({ observations, store, judgments: [
+    pass('claim-support', [span('claim-support')], { q: 0.3 }),
+    { family_id: 'original-value', unit_key: unit('original-value'), state: 'fail', q: 0.9, reason: '자기 자료가 없다', span_ids: [span('original-value')] },
+    { family_id: 'answer-clarity', unit_key: unit('answer-clarity'), state: 'partial', q: 0.9, reason: '일부만 답한다', span_ids: [span('answer-clarity')] },
+    { family_id: 'freshness-truth', unit_key: unit('freshness-truth'), state: 'unknown', q: 0.4, reason: '날짜가 없다', span_ids: [] }] });
+  const q = id => merged.find(x => x.unit_key === unit(id)).q;
+  assert.deepEqual(['claim-support', 'original-value', 'answer-clarity', 'freshness-truth'].map(q), [1, 0, 0.5, null]);
+});
+
 test('a partial judgment must fit the verdict mode of its family', async () => {
   const { store, observations } = await fixtureStore();
   const queue = await buildJudgeQueue({ observations, store });

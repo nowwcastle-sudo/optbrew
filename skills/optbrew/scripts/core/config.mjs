@@ -17,6 +17,9 @@ export const endpoints = block('endpoints');
 export const chromePaths = block('chrome-paths');
 export const harnessSignals = block('harness-signals');
 
-const checkRegistry = block('check-registry');
+/** The request ceiling of one run: the start question's `max_urls` (default 50), never above the cap (200). */
+export const requestLimit = scope => Math.min(scope?.max_urls ?? limits().max_urls_default, limits().max_urls_cap);
+
+export const checkRegistry = block('check-registry');
 /** The judgment thresholds one family's check block reads from `check-registry.json`. */
 export const thresholds = familyId => checkRegistry().families.find(family => family.family_id === familyId).thresholds;
