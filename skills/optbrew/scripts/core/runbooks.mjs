@@ -50,6 +50,13 @@ export function startRunbooks(probe, { level, skillRoot }) {
   return { blocking, improving };
 }
 
+/** The runbooks that answering one start item opens: its `expands_to` list in order, else the item itself. */
+export function answeredRunbooks(id, { level, skillRoot }) {
+  const entry = entryOf(id);
+  if (!entry) throw new Error(`unknown runbook: ${id}`);
+  return (entry.expands_to ?? [id]).map(runbookId => loadRunbook(runbookId, level, { skillRoot }));
+}
+
 /** Runbook ids for the `unknown` observations whose reason a runbook can fix, in index order, each once. */
 export function remainingRunbooks(observations) {
   const reasons = new Set(observations.filter(observation => observation.state === 'unknown').map(observation => observation.reason));

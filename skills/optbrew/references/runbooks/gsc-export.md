@@ -8,6 +8,8 @@ harness: any
 
 ## beginner
 
+이 절차는 Google Search Console용입니다. 이 서비스를 쓰지 않으면 이 절차는 건너뛰세요.
+
 왜 필요한가: optbrew는 사이트를 밖에서 읽는 것만 할 수 있어서, 사이트가 Google 검색에서 실제로 몇 번 보이고 클릭됐는지는 모릅니다. 사이트 소유자만 보는 Search Console 데이터를 파일로 내려받아 주면 그 숫자를 감사 결과와 함께 볼 수 있습니다. 사이트가 Search Console에 등록되어 있고 내가 소유자(또는 권한이 있는 사용자)일 때만 합니다. 내 사이트가 아니면 건너뜁니다.
 
 1. 브라우저에서 search.google.com/search-console을 엽니다.
@@ -23,6 +25,7 @@ harness: any
 
 ## brief
 
+- Google Search Console용입니다. 이 서비스를 쓰지 않으면 이 절차는 건너뛰세요.
 - search.google.com/search-console → 속성 선택 → **실적 → 검색결과**에서 기간을 정하고 내보내기 아이콘으로 Google Sheets·Excel·CSV 중 하나를 받습니다. (한글 이름은 화면 확인 필요)
 - CSV는 시트별 파일이 든 zip으로 받아집니다. 쿼리·페이지·국가·기기·날짜와 적용 필터가 들어 있습니다.
 - 화면 내보내기는 1,000행까지입니다. 더 필요하면 API나 BigQuery 내보내기가 있습니다.

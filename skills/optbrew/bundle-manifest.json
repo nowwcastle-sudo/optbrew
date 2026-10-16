@@ -616,11 +616,11 @@
     },
     {
       "path": "references/runbooks/gsc-export.md",
-      "sha256": "74fb919ff30ca7157cbf1617f55e2e0e760ece440ec5b3a68d74a42bd08bece2"
+      "sha256": "07732f240bdf78ce73a6882e3003c9cc95484375bd193b10a5541cb9750973e4"
     },
     {
       "path": "references/runbooks/index.json",
-      "sha256": "157bb1c64e36436e053a0bcc664325004cee6792dd12e399a86000434acfd68d"
+      "sha256": "7fa4fb04d898af368afadc405bf2a9622ef9870ee11ba69b78452d2c7de9a9f2"
     },
     {
       "path": "references/runbooks/key-set-claude-cloud.md",
@@ -636,7 +636,7 @@
     },
     {
       "path": "references/runbooks/naver-searchadvisor-export.md",
-      "sha256": "b9d28a5fa11a35cfc23d5255fa679e573ede8353794f0c57a20b2b89bee746b3"
+      "sha256": "d4e5546bc9915ee6e3fbcf3e9c71fff1182a2761dea9618dc59cdc250822a879"
     },
     {
       "path": "references/runbooks/network-claude-cloud-custom.md",
@@ -820,7 +820,7 @@
     },
     {
       "path": "scripts/core/runbooks.mjs",
-      "sha256": "245bc093d2030b9d0ded010f36344e3caba7d70fcd68422a11220d8789887af9"
+      "sha256": "a77bbdc5ec3c0b21e4ed3cfb5ce2e3cb1998040f2d3b885a1a71d64f2829428b"
     },
     {
       "path": "scripts/core/scope.mjs",
@@ -843,5 +843,5 @@
       "sha256": "a53223b7eefab2204c026a62b1da04cfdb8a07be8d3749613e8241a81b027d9b"
     }
   ],
-  "bundle_hash": "a06a4e3c8e53f092b2a9d0af843ff9467dcb10c629f57a6925fe41e3f5b90cf4"
+  "bundle_hash": "8c78d4e4a0d0431fe7090a720f74dd71a3119e27d5d5de6dae5deebb98e580ad"
 }
