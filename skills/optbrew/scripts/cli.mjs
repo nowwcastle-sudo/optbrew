@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { score } from './core/score.mjs';
 import { compare } from './core/compare.mjs';
 import { writeReport } from './core/report.mjs';
+import { MigrationRequired } from './core/migration.mjs';
 
 /** Local calculation CLI. */
 export async function runCli(argv = process.argv.slice(2)) {
@@ -37,5 +38,5 @@ export async function runCli(argv = process.argv.slice(2)) {
 }
 
 if (process.argv[1] && realpathSync(path.resolve(process.argv[1])) === realpathSync(fileURLToPath(import.meta.url))) {
-  runCli().catch(error => { process.stderr.write(`${error.name}: ${error.message}\n`); process.exitCode = 1; });
+  runCli().catch(error => { process.stderr.write(`${error instanceof MigrationRequired ? '' : `${error.name}: `}${error.message}\n`); process.exitCode = 1; });
 }

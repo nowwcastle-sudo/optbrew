@@ -102,7 +102,9 @@ test('managed update of the published 0.1.3 install is refused: the contract sch
   const record = await readInstallRecord(f.recordRoot);
   assert.equal(record.release_version, '0.1.3');
   assert.equal(record.bundle_hash, old.manifest.bundle_hash);
-  assert.ok((await doctor({ home: f.home, scope: 'user', agents })).targets.every(x => x.file_present && x.registered && !x.hash_ok));
+  const report = await doctor({ home: f.home, scope: 'user', agents });
+  assert.ok(report.targets.every(x => x.file_present && x.registered && !x.hash_ok));
+  assert.ok(report.warnings.some(w => /migration_required/.test(w) && /Reinstall after a migration_required update/.test(w)), report.warnings.join('\n'));
   assert.equal(await readFile(path.join(f.home, '.optbrew/runs/run.json'), 'utf8'), 'private run evidence');
 });
 

@@ -36,7 +36,7 @@ test('0.1.2 baselines are not comparable with 0.1.3 inputs: real published outpu
   assert.notEqual(current.evaluation_version, '0.2.0');
   assert.ok(score(after).every(item => item.evaluation_version === current.evaluation_version));
   // The current bundle refuses to score a 0.1.2 baseline, in one plain sentence (its version labels are older) ...
-  assert.throws(() => score(before), /^ContractError: migration_required: this score input was made with audit protocol .+ run the audit again/);
+  assert.throws(() => score(before), /migration_required: this score input comes from an older optbrew \(audit protocol .+\); run the audit again/);
   // ... and comparing against it is answered in plain words, not with a schema error.
   const result = compare(before, after);
   assert.equal(result.status, 'not_comparable');

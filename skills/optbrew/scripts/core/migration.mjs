@@ -4,7 +4,7 @@ import { versions } from './config.mjs';
 /** Evidence an older optbrew made: one plain sentence that says what is old and what to do. */
 export class MigrationRequired extends ContractError {
   constructor(what, detail) {
-    super(`migration_required: this ${what} ${detail}; run the audit again with optbrew ${versions().release} in a new --out folder`);
+    super(`migration_required: this ${what} ${detail}; run the audit again with optbrew ${versions().release} in a new output folder`);
   }
 }
 
@@ -33,5 +33,5 @@ export function olderVersion(input) {
 /** Refuse evidence an older optbrew made, in one sentence, before any schema check can turn it into a stack trace. */
 export function assertCurrentEvidence(input, what) {
   const older = olderVersion(input);
-  if (older) throw new MigrationRequired(what, `was made with ${older.name} ${older.found}, which an older optbrew wrote`);
+  if (older) throw new MigrationRequired(what, `comes from an older optbrew (${older.name} ${older.found})`);
 }

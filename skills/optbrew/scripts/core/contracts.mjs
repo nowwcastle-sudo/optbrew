@@ -156,7 +156,7 @@ export function validateEntity(typeName, value) {
   // Answers are written by an agent from the installed skill's text: a different contract version means the text and the scripts disagree.
   // Checked before the schema so the user reads one plain sentence, not a schema path.
   if (typeName === 'IntakeAnswers' && value?.schema_version !== versions().contract_schema)
-    fail('IntakeAnswers.schema_version', `the answers file says ${JSON.stringify(value?.schema_version)} but this optbrew needs ${JSON.stringify(versions().contract_schema)}; copy the contract_schema value from references/versions.json`);
+    fail('IntakeAnswers.schema_version', `the answers file ${value?.schema_version === undefined ? 'has no schema_version' : `says ${JSON.stringify(value.schema_version)}`} but this optbrew needs ${JSON.stringify(versions().contract_schema)}; copy the contract_schema value from references/versions.json`);
   checkRule(rule, value, typeName);
   if (typeName === 'RunContext' && value.scope?.max_urls !== undefined) checkMaxUrls(value.scope.max_urls, 'RunContext.scope.max_urls');
   if (typeName === 'IntakeAnswers') {

@@ -30,22 +30,22 @@
     },
     {
       "path": "scripts/core/contracts.mjs",
-      "sha256": "162f2531d72e286c0b98f58c6e6d1ec0d68de6aacb12903d00c19bf25c7dfb70"
+      "sha256": "75a7fd711d354e96ba8013326875db88ec8938351fc51923ca9e12e2f2d38748"
     },
     {
       "path": "scripts/core/compare.mjs",
-      "sha256": "d79feaeba431ef7f78a9c10de9f14c88bcb31904dafe5db30460048174b5b3e4"
+      "sha256": "639f9ec5ce590f97cb78f13fbff51aed6269156933bfee64fed1a63be79199aa"
     },
     {
       "path": "scripts/core/metrics.mjs",
-      "sha256": "0ae1b690472ea3e6e8c7a2d7f10fdaf37a7918e4fd2dff4bdffee263d5553c0a"
+      "sha256": "431af37d1b9d3f85a7299df64575164cc22207ec4bc02670701882298f7b3c17"
     },
     {
       "path": "scripts/core/bootstrap.mjs",
       "sha256": "703d5c16878c526114afb540e4a6d54bd74831f35a824c03a839e2480097d279"
     }
   ],
-  "evaluation_hash": "5aba23662cf1a193e1b2e4b278813d5e79df23cd0aa049d09600476c5b7e63e4",
+  "evaluation_hash": "8cbbd4b810db204d06aa0f51848b4e2203429ba46cf2619997ff4abf4121cb8f",
   "protocol_sources": [
     {
       "path": "references/schemas/contract.schema.json",
@@ -548,7 +548,7 @@
     },
     {
       "path": "references/api.md",
-      "sha256": "ff514ca0ac7f1a39a4ff06f31adf2d0114ae18ba3a625050aec6a2d990e8bbd3"
+      "sha256": "6deb2345ce7fce0f8e25fc7327b45ab246134389766b4a541aa1ac668ff543ae"
     },
     {
       "path": "references/check-registry.json",
@@ -604,7 +604,7 @@
     },
     {
       "path": "references/routing.md",
-      "sha256": "1eba4dd2a0c9684b50921758b17517c2b6312fbfc363dd1e16bd0d7d091b2a5c"
+      "sha256": "f7b08e5e89a033246f7ba336203110c48ecafea99f42a7685a6cd10592a802e3"
     },
     {
       "path": "references/runbooks/anthropic-api-key.md",
@@ -692,7 +692,7 @@
     },
     {
       "path": "scripts/cli.mjs",
-      "sha256": "01d60a5dedcd8b478570d7c523f72df735631cdf11e1a78a7e1d64db3f528a28"
+      "sha256": "1e44c5fb406e517411f3fe02ee75362084a0fbc1fe73686ab7eb30727221e769"
     },
     {
       "path": "scripts/core/bootstrap.mjs",
@@ -788,7 +788,7 @@
     },
     {
       "path": "scripts/core/compare.mjs",
-      "sha256": "d79feaeba431ef7f78a9c10de9f14c88bcb31904dafe5db30460048174b5b3e4"
+      "sha256": "639f9ec5ce590f97cb78f13fbff51aed6269156933bfee64fed1a63be79199aa"
     },
     {
       "path": "scripts/core/config.mjs",
@@ -796,7 +796,7 @@
     },
     {
       "path": "scripts/core/contracts.mjs",
-      "sha256": "162f2531d72e286c0b98f58c6e6d1ec0d68de6aacb12903d00c19bf25c7dfb70"
+      "sha256": "75a7fd711d354e96ba8013326875db88ec8938351fc51923ca9e12e2f2d38748"
     },
     {
       "path": "scripts/core/cost-ledger.mjs",
@@ -844,11 +844,11 @@
     },
     {
       "path": "scripts/core/metrics.mjs",
-      "sha256": "0ae1b690472ea3e6e8c7a2d7f10fdaf37a7918e4fd2dff4bdffee263d5553c0a"
+      "sha256": "431af37d1b9d3f85a7299df64575164cc22207ec4bc02670701882298f7b3c17"
     },
     {
       "path": "scripts/core/migration.mjs",
-      "sha256": "a48421a8cda8efbf30c97397f1cc4145e2779df58543a399a91c35d61a73a3ec"
+      "sha256": "9190e8a2bb2cc2cbce56179ed411b4432ad4c3e65cf6af5b46a130ec7aa98992"
     },
     {
       "path": "scripts/core/page-select.mjs",
@@ -872,7 +872,7 @@
     },
     {
       "path": "scripts/core/report.mjs",
-      "sha256": "7832efbd682962470636437dfd0be880466211c571b33f5ab1f9b931efb9411c"
+      "sha256": "5873ceecfe34d29279782779ba4a609e83fe4811c95534ac8f6519db2814ff30"
     },
     {
       "path": "scripts/core/runbooks.mjs",
@@ -892,7 +892,7 @@
     },
     {
       "path": "scripts/core/stages.mjs",
-      "sha256": "1512316fd8a57b908db802b8829ed6a0720ddf3fb0523fbc9e7e3b72e3bdefa8"
+      "sha256": "e61924536908bb984db4fffbc4363ddb881e402fc2d396f08c95e4bc07fb3711"
     },
     {
       "path": "scripts/core/transport.mjs",
@@ -919,5 +919,5 @@
       "sha256": "a53223b7eefab2204c026a62b1da04cfdb8a07be8d3749613e8241a81b027d9b"
     }
   ],
-  "bundle_hash": "a67bbb7ffb2ebac9a6e5ba33bafe609f077b290740280770c6712fe43891a8c7"
+  "bundle_hash": "d95813a6628410ddda2753b2c4a1400813f6ecbe9356c7508d21896d1b86e2eb"
 }

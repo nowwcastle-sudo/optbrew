@@ -23,7 +23,7 @@ const olderReason = (input, label) => {
 export function compare(before, after) {
   const oldBaseline = olderReason(before, 'baseline');
   if (after === null || after === undefined) {
-    if (!oldBaseline) validateEntity('ScoreInput', before);
+    if (!oldBaseline) { validateEntity('ScoreInput', before); freezeProtocol(before.run_context); }
     return { status: 'no_after', score_deltas: [], reasons: ['after_missing'] };
   }
   if (oldBaseline) return { status: 'not_comparable', score_deltas: [], reasons: [oldBaseline] };

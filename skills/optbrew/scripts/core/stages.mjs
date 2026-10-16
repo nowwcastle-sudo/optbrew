@@ -582,15 +582,20 @@ const FIRST_CALL_FILES = [CONTEXT_FILE, INTAKE_FILE, COSTS_FILE, QUEUE_FILE, SCO
  */
 export async function prepareOutput(out) {
   const indexFile = path.join(out, 'evidence', 'evidence-index.json');
-  let queued = false;
+  let queued = false, olderIndex = false;
   if (await exists(indexFile)) {
-    try { queued = JSON.parse(await readFile(indexFile, 'utf8')).judge_queue?.length > 0; }
-    catch { return 'resume'; }
+    try {
+      const index = JSON.parse(await readFile(indexFile, 'utf8'));
+      queued = index.judge_queue?.length > 0;
+      // This release's index always names its context; one that does not comes from an older release's audit.
+      olderIndex = typeof index.context_ref !== 'string';
+    } catch { return 'resume'; }
   }
   if (await exists(path.join(out, 'report.json'))) throw new Error('This folder already holds a finished audit. Use a new --out folder for a new one.');
   // A folder an older optbrew started is neither resumed nor cleared: its evidence is not this release's to judge or delete.
   const earlier = await readFile(path.join(out, CONTEXT_FILE), 'utf8').then(JSON.parse, () => null);
   assertCurrentEvidence(earlier, 'run folder');
+  if (olderIndex) throw new MigrationRequired('run folder', 'comes from an older optbrew release (its evidence index names no context)');
   if (queued) return 'resume';
   const names = await readdir(out).catch(() => []);
   const owned = [...FIRST_CALL_FILES, 'evidence', ...names.filter(name => OWNER_EXPORT_FILE.test(name) || OWNER_MAPPING_FILE.test(name))];

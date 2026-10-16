@@ -19,7 +19,7 @@ const json = async relative => JSON.parse(await readFile(new URL(relative, skill
 const scoringInput = () => json('../../tests/fixtures/scoring/partial.json');
 const OLD = { schema_version: '1.0.0', evaluation_version: '0.3.0', protocol_version: '0.1.0' };
 // One sentence, no schema path, no stack: what is old, then what to do.
-const plain = /^migration_required: this [\w ]+ was made with [\w ]+ \d+\.\d+\.\d+, which an older optbrew wrote; run the audit again with optbrew \d+\.\d+\.\d+ in a new --out folder$/;
+const plain = /^migration_required: this [\w() -]+ comes from an older optbrew \([\w ]+ \d+\.\d+\.\d+\); run the audit again with optbrew \d+\.\d+\.\d+ in a new output folder$/;
 
 const site = await startSite({ '/': page('', 'home page'), '/a': page('', 'a page') });
 after(() => site.close());
@@ -64,18 +64,56 @@ test('compare reports an older input by its version labels, whatever its shape',
   }
 });
 
-test('a packet that plans no field Core Web Vitals reading is a migration, not a mismatch', async t => {
+test('a current packet that lacks a planned field Core Web Vitals reading is an integrity error; an old-labelled one is a migration', async t => {
+  for (const family of ['lcp-field', 'inp-field', 'cls-field']) {
+    const scenario = await buildScenario(site, ['/', '/a'], { name: `c20-${++counter}`, engines: ['google'] });
+    t.after(() => rm(scenario.dir, { recursive: true, force: true }));
+    assert.doesNotThrow(() => buildReport(scenario.packet));
+    await scenario.forgeObservations(list => {
+      const at = list.findIndex(x => x.family_id === family);
+      assert.notEqual(at, -1, `the scenario plans a ${family} unit`);
+      list.splice(at, 1);
+    });
+    assert.throws(() => buildReport(scenario.packet), error => error instanceof ContractError && !(error instanceof MigrationRequired) &&
+      error.message.startsWith(`planned collector observation missing: ${family}|`), family);
+    // The same packet made by an older release is stopped by its labels before any replay.
+    Object.assign(scenario.packet.run_context, OLD);
+    assert.throws(() => buildReport(scenario.packet), error => error instanceof MigrationRequired && plain.test(error.message), `${family} old`);
+  }
+});
+
+test('a follow-up phase made by an older release is refused in the same sentence', async t => {
   const scenario = await buildScenario(site, ['/', '/a'], { name: `c20-${++counter}`, engines: ['google'] });
   t.after(() => rm(scenario.dir, { recursive: true, force: true }));
-  assert.doesNotThrow(() => buildReport(scenario.packet));
-  await scenario.forgeObservations(list => {
-    const at = list.findIndex(x => x.family_id === 'lcp-field');
-    assert.notEqual(at, -1, 'the scenario plans an lcp-field unit');
-    list.splice(at, 1);
-  });
-  assert.throws(() => buildReport(scenario.packet), error => error instanceof MigrationRequired && /lcp-field/.test(error.message));
-  await scenario.forgeObservations(list => list.splice(list.findIndex(x => x.family_id === 'document-title'), 1));
-  assert.throws(() => buildReport(scenario.packet), error => error instanceof ContractError && !(error instanceof MigrationRequired));
+  const older = await scoringInput();
+  Object.assign(older.run_context, OLD);
+  scenario.packet.after = { input: older, scores: [] };
+  assert.throws(() => buildReport(scenario.packet), error => error instanceof MigrationRequired && plain.test(error.message));
+});
+
+test('start_redirect is {from, to} or null in a report packet', async t => {
+  const scenario = await buildScenario(site, ['/', '/a'], { name: `c20-${++counter}`, engines: ['google'] });
+  t.after(() => rm(scenario.dir, { recursive: true, force: true }));
+  const withRedirect = value => ({ ...scenario.packet, start_redirect: value });
+  assert.doesNotThrow(() => validateEntity('ReportPacket', withRedirect({ from: 'http://a.test/', to: 'https://a.test/' })));
+  assert.doesNotThrow(() => validateEntity('ReportPacket', withRedirect(null)));
+  for (const bad of [{ from: 'http://a.test/' }, { from: 'a', to: 'b', via: 'c' }, 'https://a.test/', { from: 1, to: 'b' }])
+    assert.throws(() => validateEntity('ReportPacket', withRedirect(bad)), /start_redirect/, JSON.stringify(bad));
+});
+
+test('a run folder whose evidence index names no context comes from an older release', async t => {
+  const out = await tempDir('optbrew-contracts-020-');
+  t.after(() => rm(out, { recursive: true, force: true }));
+  await mkdir(path.join(out, 'evidence'));
+  await writeFile(path.join(out, 'evidence', 'evidence-index.json'), JSON.stringify({ run_id: 'old-audit', entries: [] }));
+  await assert.rejects(prepareOutput(out), error => error instanceof MigrationRequired &&
+    /^migration_required: this run folder comes from an older optbrew release \(.+\); run the audit again with optbrew \d+\.\d+\.\d+ in a new output folder$/.test(error.message));
+});
+
+test('compare with no follow-up still enforces the frozen protocol rules', async () => {
+  const before = await scoringInput();
+  before.run_context.protocol.page_types.push(structuredClone(before.run_context.protocol.page_types[0]));
+  assert.throws(() => compare(before, null), /page_types/);
 });
 
 test('install records stay at schema 1.0.0', async () => {
@@ -110,5 +148,5 @@ test('the answers file SKILL.md describes passes with the current version and 1.
   assert.doesNotThrow(() => validateEntity('IntakeAnswers', answersFor(url, { schema_version: versions().contract_schema })));
   assert.throws(() => validateEntity('IntakeAnswers', answersFor(url, { schema_version: '1.0.0' })),
     error => /^IntakeAnswers\.schema_version: the answers file says "1\.0\.0" but this optbrew needs "2\.0\.0"; copy the contract_schema value from references\/versions\.json$/.test(error.message));
-  assert.throws(() => validateEntity('IntakeAnswers', { ...answersFor(url), schema_version: undefined }), /schema_version/);
+  assert.throws(() => validateEntity('IntakeAnswers', Object.fromEntries(Object.entries(answersFor(url)).filter(([key]) => key !== 'schema_version'))), /the answers file has no schema_version but this optbrew needs/);
 });
