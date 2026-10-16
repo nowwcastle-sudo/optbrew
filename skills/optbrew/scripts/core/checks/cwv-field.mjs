@@ -20,6 +20,9 @@ const FIELDS = {
   'cls-field': { crux: 'cumulative_layout_shift', psi: 'CUMULATIVE_LAYOUT_SHIFT_SCORE', scaled: true },
 };
 
+/** The families that need visitor field data; a run without a Google key leaves them unknown. */
+export const CWV_FAMILIES = Object.keys(FIELDS);
+
 const finite = value => value !== null && value !== '' && Number.isFinite(Number(value)) ? Number(value) : null;
 
 /** The p75 a stored answer holds for a family, or null when it holds none. */

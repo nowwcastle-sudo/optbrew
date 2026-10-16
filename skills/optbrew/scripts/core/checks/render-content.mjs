@@ -7,6 +7,8 @@ const FAMILY = 'render-content';
 const CHROME_MISSING = 'chrome_missing';
 const RENDER_BLOCKED = 'render_blocked';
 const RENDER_FAILED = 'render_failed';
+/** How the reason of a page that passes only after rendering begins; the report keys its JavaScript note on it. */
+export const CONTENT_AFTER_RENDER = 'Content shows after rendering';
 
 const squash = value => String(value ?? '').replace(/\s+/g, ' ').trim();
 /** Visible characters of the body, whitespace not counted. */
@@ -45,7 +47,7 @@ export const renderContent = {
           && sameOriginLinks(anchorLinks(html, artifact.final_url), artifact.final_url).length === stored.links.length) {
         const reason = `Raw HTML holds ${rawLength} of ${renderedLength} rendered body characters, with the same title and link count`;
         observe('not_applicable', reason, { applicability_decision: { condition: 'not_render_dependent', reason, evidence_ref: artifact.evidence_ref } });
-      } else if (renderedLength > 0) observe('pass', `Content shows after rendering: ${renderedLength} body characters rendered, ${rawLength} in the raw HTML`);
+      } else if (renderedLength > 0) observe('pass', `${CONTENT_AFTER_RENDER}: ${renderedLength} body characters rendered, ${rawLength} in the raw HTML`);
       else if (rawLength > 0) observe('pass', `The raw HTML holds ${rawLength} body characters and the render is empty`);
       else observe('fail', 'Neither the raw HTML nor the rendered page has any body text');
     }

@@ -173,8 +173,9 @@ test('every test file that uses the Chrome or render core carries the Chrome mar
       else if (entry.name.endsWith('.test.mjs')) {
         const text = await readFile(path.join(root, relative), 'utf8');
         // run.mjs and stages.mjs launch Chrome indirectly (the render stage), so a test that imports either runs serially too.
-        // This file only names run.mjs as an entry point; it imports no product code.
-        if (relative !== 'tests/hygiene.test.mjs' && /core\/(?:chrome|render|stages)\.mjs|scripts\/run\.mjs/.test(text) && !text.startsWith('// @optbrew-chrome')) found.push(relative);
+        // This file only names run.mjs as an entry point; it imports no product code. A bare 'scripts/run.mjs' in prose
+        // (skill-bundle checks SKILL.md step order) is not a module path, so only paths under skills/optbrew/ count.
+        if (relative !== 'tests/hygiene.test.mjs' && /skills\/optbrew\/scripts\/(?:core\/(?:chrome|render|stages)|run)\.mjs/.test(text) && !text.startsWith('// @optbrew-chrome')) found.push(relative);
       }
     }
   };

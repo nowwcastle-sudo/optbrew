@@ -243,10 +243,10 @@ test('real local HTTP baseline, authorized edit and same-condition rescan clear 
   assert.equal(indexStatus(copy => { afterEntry(copy).target = 'http://other.example/'; }), 'modified_unverified', 'other target');
   assert.equal(report.after.scores.find(x => x.profile === 'SEO').blockers.length, 0);
   assert.equal(report.metrics.length, 0);
-  assert.equal(report.remaining.filter(x => x.reason === 'verified_local').length, 0);
+  assert.equal(report.follow_ups.filter(x => x.reason === 'verified_local').length, 0);
   assert.equal(report.findings.find(x => x.check_id === 'document-title').status, 'modified_unverified');
-  assert.equal(report.remaining.filter(x => x.reason === 'production_deployment_pending').length, 1);
-  assert.equal(report.remaining.filter(x => x.reason === 'modified_unverified').length, 1);
+  assert.equal(report.follow_ups.filter(x => x.reason === 'production_deployment_pending').length, 1);
+  assert.equal(report.follow_ups.filter(x => x.reason === 'modified_unverified').length, 1);
   assert.match(markdown, /Baseline blockers: 1 .*After blockers: 0/);
   assert.match(markdown, /actual outcomes: not_connected \/ unknown/);
   assert.match(markdown, /verified_local/);

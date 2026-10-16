@@ -5,8 +5,8 @@
   "skills/optbrew/scripts/core/bundle.mjs": "Task 22",
   "skills/optbrew/scripts/core/capabilities.mjs": "Task 22",
   "skills/optbrew/scripts/core/facts.mjs": "Task 22",
-  "skills/optbrew/scripts/core/report.mjs": "Task 15",
-  "skills/optbrew/scripts/core/runbooks.mjs": "Task 15",
+  "skills/optbrew/scripts/core/report.mjs": "Task 16",
+  "skills/optbrew/scripts/core/runbooks.mjs": "Task 16",
   "skills/optbrew/scripts/core/score.mjs": "Task 22",
   "skills/optbrew/scripts/core/transport.mjs": "Task 22"
 }

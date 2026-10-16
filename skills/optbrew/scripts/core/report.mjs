@@ -15,6 +15,8 @@ import { readVerified } from './evidence-store.mjs';
 import { links } from './collector.mjs';
 import { checkRenderLedger } from './render.mjs';
 import { assertUrlInScope } from './scope.mjs';
+import { composeReport, renderReport } from './report-compose.mjs';
+import { runbookEntry } from './runbooks.mjs';
 import { sensitive } from './secrets.mjs';
 import { OBSERVATION_SOURCES, QUEUE_KIND, candidateSpans, checkSpan, isCodeJudged, isModelJudged, queuedSpan } from './judgments.mjs';
 import { parseRobots, robotsVerdict } from '../../modules/naver-searchadvisor/scripts/robots.mjs';
@@ -22,9 +24,6 @@ import { parseRobots, robotsVerdict } from '../../modules/naver-searchadvisor/sc
 const catalog = JSON.parse(readFileSync(new URL('../../references/remediations.json', import.meta.url))).items;
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 const named = value => typeof value === 'string' && value.trim().length > 0;
-const html = value => String(value ?? 'unknown').replace(/\\/g, '\\\\').replace(/&/g, '&amp;').replace(/</g, '&lt;')
-  .replace(/>/g, '&gt;').replace(/\|/g, '\\|').replace(/\r?\n/g, '<br>');
-const table = (columns, rows) => `| ${columns.join(' | ')} |\n| ${columns.map(() => '---').join(' | ')} |\n${rows.map(row => `| ${row.map(html).join(' | ')} |`).join('\n') || `| ${columns.map(() => '—').join(' | ')} |`}`;
 const days = window => (Date.parse(`${window.end}T00:00:00Z`) - Date.parse(`${window.start}T00:00:00Z`)) / 86400000 + 1;
 const dayBefore = date => new Date(Date.parse(`${date}T00:00:00Z`) - 86400000).toISOString().slice(0, 10);
 function completeWindow(metric) {
@@ -38,28 +37,6 @@ function completeWindow(metric) {
   const localCollectionDate = `${parts.year}-${parts.month}-${parts.day}`;
   return completeDate <= dayBefore(localCollectionDate) && metric.window.end <= completeDate;
 }
-
-/** The optbrew operating rule (design spec, scoring.md): at least 80% of the applicable weight must be measured. */
-export const COVERAGE_THRESHOLD = 80;
-
-/** One headline per profile. Below the coverage threshold the single number is withheld and only the measured subset is shown. */
-export function scoreHeadline(result) {
-  const exact = result.A > 0 ? 100 * result.M / result.A : null;
-  const coverageOk = result.score !== null && exact !== null && exact >= COVERAGE_THRESHOLD - 1e-9;
-  // The design spec also asks for verdicts on the core access and indexing checks before a score counts as sufficient.
-  const coreOk = (result.unknown_core ?? []).length === 0;
-  const status = !coverageOk ? 'insufficient_coverage' : !coreOk ? 'insufficient_core' : 'sufficient';
-  return { profile: result.profile, status, headline_score: status === 'sufficient' ? result.score : null,
-    measured_subset_score: result.score, coverage: result.coverage, coverage_exact: exact, coverage_threshold: COVERAGE_THRESHOLD,
-    unresolved_core: (result.unknown_core ?? []).length, missing_bounds: result.missing_bounds, readiness_status: result.readiness_status };
-}
-const floorTenth = value => value === null ? 'unknown' : Math.floor(value * 10 + 1e-9) / 10;
-const headlineCell = result => {
-  const headline = scoreHeadline(result);
-  return headline.status === 'sufficient' ? `${headline.headline_score} (coverage ${headline.coverage}%)` :
-    headline.status === 'insufficient_core' ? `insufficient core checks (${headline.unresolved_core} unresolved; measured subset ${headline.measured_subset_score ?? 'unknown'}; coverage ${headline.coverage ?? 'unknown'}%; bounds ${headline.missing_bounds?.join('–') ?? 'unknown'})` :
-    `insufficient coverage (measured subset ${headline.measured_subset_score ?? 'unknown'}; coverage ${headline.coverage ?? 'unknown'}%; bounds ${headline.missing_bounds?.join('–') ?? 'unknown'})`;
-};
 
 function metricRows(metrics) {
   const groups = new Map();
@@ -663,6 +640,7 @@ function modelJudgmentRows(phase, input, snapshot, requireRef) {
 export function buildReport(packet) {
   validateEntity('ReportPacket', packet);
   if (sensitive.test(JSON.stringify(packet))) throw new ContractError('private identifier or secret in report packet');
+  for (const id of packet.answered_runbooks ?? []) if (!runbookEntry(id)) throw new ContractError(`answered_runbooks names an unknown runbook: ${id}`);
   if (packet.baseline.input.run_context.run_id !== packet.run_context.run_id ||
       !same(packet.baseline.input.run_context, packet.run_context) || packet.costs.run_id !== packet.run_context.run_id)
     throw new ContractError('report run context or cost ledger mismatch');
@@ -816,54 +794,21 @@ export function buildReport(packet) {
   if (packet.costs.reservations.some(x => x.provider === 'anthropic') ||
       (packet.capabilities?.selected ?? []).some(x => x.provider === 'anthropic'))
     costIssues.push('Anthropic direct v0.1.0: text-only; claude-fable-5-1, claude-opus-5-5, claude-sonnet-5-5, claude-haiku-5-5; max output 128000; one token reserve >=1000000+max_tokens per attempt; tools/search and currency-only or mixed bounds unsupported; reservation is capacity, not actual billing');
-  const result = { schema_version: versions().contract_schema, run_context: packet.run_context,
+  const verified = { schema_version: versions().contract_schema, run_context: packet.run_context,
     data_class: packet.data_class ?? 'unknown', baseline: { input: packet.baseline.input, scores: baselineScores },
     after: packet.after ? { input: packet.after.input, scores: afterScores } : null, comparison,
     metrics: packet.metrics, findings, changes: packet.changes, costs: packet.costs,
-    capabilities: packet.capabilities ?? null, cost_issues: costIssues, metric_origin_limitations: metricOriginLimitations, remaining,
+    capabilities: packet.capabilities ?? null, cost_issues: costIssues, metric_origin_limitations: metricOriginLimitations, follow_ups: remaining,
     evidence_root: packet.evidence_root, evidence_index: packet.evidence_index,
-    audit_ref: packet.audit_ref ?? null, audit_snapshots: snapshots, model_judgments: modelRows, source_ref: packet.source_ref };
-  const byProfile = new Map(afterScores?.map(x => [x.profile, x]) ?? []);
-  const scoreRows = baselineScores.map(before => {
-    const after = byProfile.get(before.profile);
-    const delta = comparison.score_deltas.find(x => x.profile === before.profile);
-    const cautious = scoreHeadline(before).status !== 'sufficient' || (after && scoreHeadline(after).status !== 'sufficient');
-    return [before.profile, headlineCell(before), after ? headlineCell(after) : 'unknown',
-      `${delta?.percentage_point_delta ?? 'unknown'}${cautious && delta ? ' (between measured subsets)' : ''}`,
-      `${before.coverage ?? 'unknown'} → ${after?.coverage ?? 'unknown'}`,
-      `${before.missing_bounds?.join('–') ?? 'unknown'} → ${after?.missing_bounds?.join('–') ?? 'unknown'}`,
-      `${before.readiness_status} → ${after?.readiness_status ?? 'unknown'}`];
-  });
-  const headlines = baselineScores.map(scoreHeadline);
-  result.headline = headlines;
-  const headlineText = headlines.map(h => h.status === 'sufficient' ? `${h.profile}: ${h.headline_score} (coverage ${h.coverage}%)` :
-    h.status === 'insufficient_core' ? `${h.profile}: insufficient core checks (${h.unresolved_core} access or indexing check(s) have no verdict, although ${h.coverage}% is measured); measured subset ${h.measured_subset_score ?? 'unknown'}, bounds ${h.missing_bounds?.join('–') ?? 'unknown'}` :
-    `${h.profile}: insufficient coverage (${floorTenth(h.coverage_exact)}% of the applicable weight is measured; at least ${h.coverage_threshold}% is needed); measured subset ${h.measured_subset_score ?? 'unknown'}, bounds ${h.missing_bounds?.join('–') ?? 'unknown'}`);
-  const remediationRows = findings.map(f => [f.priority, `${f.message} ${f.unit_key}`, f.sources.map(x => `${x.source_ref} ${x.evidence_ref}`).join('; '),
-    f.remediation ? `${f.remediation.mechanism} (${f.remediation.source_url}, checked ${f.remediation.checked_date})` : 'unknown',
-    packet.changes.filter(x => x.finding_ids.some(id => f.finding_ids.includes(id))).map(x => x.path).join('; ') || f.remediation?.location_hint || 'owner implementation location required',
-    f.remediation ? `${f.remediation.cost}; ${f.remediation.effort}` : 'unknown', f.remediation?.validation ?? 'unknown',
-    f.resolution ? `${f.status} (resolved by ${f.resolution.evaluator_type} observation from ${f.resolution.source_ref})` : f.status]);
-  const outcomeRows = metricRows(packet.metrics);
-  const remainingRows = remaining.map(x => [x.problem, x.reason, x.required_input_or_authority, x.next_action, x.reobserve_when]);
-  const modelTableRows = modelRows.map(x => [x.phase, `${x.family_id} ${x.unit_key}`, x.state, `${x.evidence_ref} bytes ${x.evidence_span.map(span => `${span.start}–${span.end}`).join(', ')}`, x.label]);
-  const markdown = `# optbrew report\n\n${packet.data_class === 'synthetic' ? '**Synthetic example — no real site or provider outcome.**\n\n' : ''}` +
-    `Target: ${html(packet.run_context.target)}  \nEnvironment: ${html(packet.run_context.environment)}  \nGoals: ${html(packet.run_context.goals.join(', '))}  \n` +
-    `Comparison: ${html(comparison.status)} (${html(comparison.reasons.join(', ') || 'none')})  \n` +
-    `Headline:  \n${headlineText.map(line => `- ${html(line)}  \n`).join('')}` +
-    `Baseline blockers: ${html(baselineScores[0]?.blockers.length ?? 0)} (${html(baselineScores[0]?.blockers.map(x => `${x.family_id} ${x.unit_key}`).join('; ') || 'none')}) → ` +
-    `After blockers: ${afterScores ? html(afterScores[0]?.blockers.length ?? 0) : 'unknown'} (${afterScores ? html(afterScores[0]?.blockers.map(x => `${x.family_id} ${x.unit_key}`).join('; ') || 'none') : 'after not observed'}); ` +
-    `after core unknown: ${afterScores ? html(afterScores[0]?.unknown_core.length ?? 0) : 'unknown'}; actual outcomes: ${packet.metrics.length ? 'see measured and missing states below' : 'not_connected / unknown'}  \n` +
-    `Cost and capability limitations: ${html(costIssues.join('; ') || 'none recorded')}  \n` +
-    `Metric source limitations: ${html(metricOriginLimitations.join('; ') || 'no measured provider input')}\n\n` +
-    `## Score\n\n${table(['Area', 'Before', 'After', 'Difference', 'Coverage before → after', 'Missing bounds', 'Status'], scoreRows)}\n\n` +
-    `## Remediation\n\n${table(['Priority', 'Problem / URL', 'Evidence', 'Selected remedy', 'Change path or owner location', 'Cost / effort', 'Verification', 'Status'], remediationRows)}\n\n` +
-    `## Actual outcomes\n\n${table(['Engine / property', 'Metric', 'Window / sample', 'Before raw', 'After raw', 'Difference', 'Completion', 'Limitations'], outcomeRows)}\n\n` +
-    `## Remaining work\n\n${table(['Problem', 'Reason', 'Needed input / authority', 'Next action', 'Reobserve when'], remainingRows)}\n\n` +
-    (modelRows.length ? `## Model judgments\n\n${table(['Phase', 'Check / unit', 'State', 'Evidence span (UTF-8 bytes, end excluded)', 'Basis'], modelTableRows)}\n\n` : '') +
-    `Evidence root: ${html(packet.evidence_root)}; run ID: ${html(packet.run_context.run_id)}. Read report.json to replay raw score inputs.\n`;
-  result.tables = { score: scoreRows, remediation: remediationRows, actual_outcomes: outcomeRows, remaining_work: remainingRows, model_judgments: modelTableRows };
-  return { json: result, markdown };
+    audit_ref: packet.audit_ref ?? null, audit_snapshots: snapshots, model_judgments: modelRows, source_ref: packet.source_ref,
+    outcome_rows: metricRows(packet.metrics), lab_cwv: packet.lab_cwv ?? null, answered_runbooks: packet.answered_runbooks ?? [] };
+  const composed = composeReport(verified);
+  const { markdown, tables } = renderReport(composed, verified);
+  // The composed report leads; the checked data it was built from follows. `findings` is the sorted fixes again, for readers of earlier reports.
+  const checked = { ...verified };
+  for (const key of ['schema_version', 'data_class', 'outcome_rows', 'lab_cwv', 'answered_runbooks']) delete checked[key];
+  return { json: { schema_version: verified.schema_version, data_class: verified.data_class, composed, ...checked,
+    findings: composed.fixes, tables }, markdown };
 }
 
 /** Write both outputs after all validation; temporary files stay in the destination. */
