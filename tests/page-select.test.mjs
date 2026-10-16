@@ -34,6 +34,14 @@ test('only a fact page is reported: a sitemap or link that is an auxiliary resou
   assert.deepEqual(result.dropped, []);
 });
 
+test('a fact page listed twice is reported once, whatever the reason', () => {
+  const sitemap = `${ORIGIN}/pages-sitemap.xml`;
+  const result = select({ factUrls: [sitemap, sitemap, `${ORIGIN}/menu.pdf`, `${ORIGIN}/menu.pdf`, 'https://elsewhere.test/a', 'https://elsewhere.test/a'], auxiliary: [sitemap] });
+  assert.deepEqual(result.dropped.map(entry => entry.reason), ['auxiliary_resource', 'not_a_page', 'outside_scope']);
+  const over = select({ factUrls: [`${ORIGIN}/a`, `${ORIGIN}/a`, `${ORIGIN}/b`, `${ORIGIN}/b`], budget: 2 });
+  assert.deepEqual(over.dropped, [{ url: `${ORIGIN}/b`, reason: 'over_limit' }]);
+});
+
 test('a fact page that repeats the home page or another fact page adds no entry, and the other reasons still apply', () => {
   const result = select({ factUrls: [`${ORIGIN}/`, `${ORIGIN}/about`, `${ORIGIN}/about`, 'https://elsewhere.test/contact'], budget: 2 });
   assert.deepEqual(result.pages, [`${ORIGIN}/`, `${ORIGIN}/about`]);

@@ -43,6 +43,10 @@ test('the version sources agree on the release in versions.json', () => {
   for (const [file, pick] of jsonVersions) assert.equal(pick(json(file)), release, `${file} must carry ${release}`);
 });
 
+test('the lock file records the same Node floor as package.json', () => {
+  assert.deepEqual(json('package-lock.json').packages[''].engines, json('package.json').engines);
+});
+
 test('a manifest that may carry a version either carries the release or carries none', () => {
   const marketplace = json('.claude-plugin/marketplace.json');
   const carried = [json('skills/.claude-plugin/plugin.json').version, marketplace.version, ...marketplace.plugins.map(plugin => plugin.version)];

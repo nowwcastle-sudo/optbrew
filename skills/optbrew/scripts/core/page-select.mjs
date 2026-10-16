@@ -77,16 +77,18 @@ export function selectPages({ home, factUrls, preflight, scope, budget, auxiliar
   const declared = new Set(auxiliary);
   const seen = new Set();
   const dropped = [];
+  // A fact page listed twice is reported once.
+  const drop = (url, reason) => { if (!dropped.some(entry => entry.url === url && entry.reason === reason)) dropped.push({ url, reason }); };
   const add = (href, owner) => {
     let normalized;
     try { normalized = assertUrlInScope(href, scope).href; }
-    catch { if (owner) dropped.push({ url: href, reason: 'outside_scope' }); return; }
+    catch { if (owner) drop(href, 'outside_scope'); return; }
     const { pathname } = new URL(normalized);
     // A declared sitemap or robots file is an auxiliary resource, never a page; a fact page that names one is reported, not lost.
     const reason = declared.has(normalized) || AUXILIARY_PATH.test(pathname) ? 'auxiliary_resource' : NOT_A_PAGE.test(pathname) ? 'not_a_page' : null;
-    if (reason) { if (owner) dropped.push({ url: href, reason }); return; }
+    if (reason) { if (owner) drop(href, reason); return; }
     if (seen.has(normalized)) return;
-    if (chosen.length >= budget) { if (owner) dropped.push({ url: href, reason: 'over_limit' }); return; }
+    if (chosen.length >= budget) { if (owner) drop(href, 'over_limit'); return; }
     seen.add(normalized);
     chosen.push(normalized);
   };

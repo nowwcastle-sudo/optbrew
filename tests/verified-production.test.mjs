@@ -15,10 +15,17 @@ const FIXED = '<meta name="robots" content="index,follow">';
 const sha = text => createHash('sha256').update(text).digest('hex');
 
 /**
+ * The four labels the report reads on the after phase's raw evidence (report.mjs, statusFor): which phase, which target, which
+ * environment, which page. No product code writes them yet (run.mjs builds the baseline only), so the fixture does, through this one helper.
+ */
+const labelAfterEvidence = (entry, { target, url }) => Object.assign(entry, { phase: 'after', target, environment: 'production', source_url: url });
+
+/**
  * An audited run of a site that blocks indexing, a deployed fix, and a second audit of the fixed site, all built with the audit
  * itself and the scenario helpers: both phases are replayed by the report, nothing is written into a golden file.
+ * `deployed: false` is a fix the owner has not confirmed on the live site; `labelled: false` leaves the after evidence unlabelled.
  */
-async function auditedFix(t, { deployed = true } = {}) {
+async function auditedFix(t, { deployed = true, labelled = true } = {}) {
   let fixed = false;
   const site = await startSite({ '/': () => ({ body: page(fixed ? FIXED : '<meta name="robots" content="noindex">') }) });
   t.after(() => site.close());
@@ -80,7 +87,7 @@ async function auditedFix(t, { deployed = true } = {}) {
     backup_ref: 'c1-before.txt', evidence_ref: 'c1-after.txt',
     verification: { status: 'passed', deployed, evidence_ref: 'c1-verify.json', observation_id: resolved.observation_id, observation_evidence_ref: resolved.evidence_ref } };
   const raw = packet.evidence_index.find(x => x.ref === resolved.evidence_ref);
-  Object.assign(raw, { phase: 'after', target: context.target, environment: 'production', source_url: baselineFail.unit_key.split('|').at(-1) });
+  if (labelled) labelAfterEvidence(raw, { target: context.target, url: baselineFail.unit_key.split('|').at(-1) });
 
   Object.assign(packet, { findings: [finding], changes: [record], after: { input: afterInput, scores: score(afterInput) },
     comparison: compare(packet.baseline.input, afterInput),
@@ -103,4 +110,15 @@ test('the same audited fix is not verified_production while the owner has not co
   const report = buildReport(run.packet).json;
   assert.equal(report.findings[0].status, 'modified_unverified');
   assert.equal(report.findings[0].resolution, null);
+});
+
+test('the same audited fix is not verified_production when its after evidence is not labelled as the live after phase', async t => {
+  const { run } = await auditedFix(t, { labelled: false });
+  assert.equal(buildReport(run.packet).json.findings[0].status, 'modified_unverified', 'no labels');
+  const { run: baselineLabel, resolved } = await auditedFix(t);
+  baselineLabel.packet.evidence_index.find(x => x.ref === resolved.evidence_ref).phase = 'baseline';
+  assert.equal(buildReport(baselineLabel.packet).json.findings[0].status, 'modified_unverified', 'labelled as the baseline phase');
+  const { run: local, resolved: localResolved } = await auditedFix(t);
+  local.packet.evidence_index.find(x => x.ref === localResolved.evidence_ref).environment = 'local';
+  assert.equal(buildReport(local.packet).json.findings[0].status, 'modified_unverified', 'labelled as a local environment');
 });

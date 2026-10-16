@@ -6,12 +6,15 @@ on:
   push:
     branches: ['**']
   pull_request:
+  # Starts another run on a commit that already ran: `gh workflow run test.yml --ref <branch>` (docs/release.md, step 6).
+  workflow_dispatch:
 
 permissions:
   contents: read
 
+# One run per commit at a time: a push and a pull request for the same commit do not both run.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  group: ${{ github.workflow }}-${{ github.event.pull_request.head.sha || github.sha }}
   cancel-in-progress: true
 
 jobs:
@@ -23,13 +26,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        include:
-          - os: ubuntu-latest
-            expected_skipped: 0
-          # Platform skips with no Chrome involved: keys.test.mjs (2, Windows has no POSIX file modes) and the four release
-          # tests that refuse a CRLF checkout (skipCrlfCheckout, 4). A different number fails the last step.
-          - os: windows-latest
-            expected_skipped: 6
+        os: [ubuntu-latest, windows-latest]
     defaults:
       run:
         shell: bash
@@ -45,6 +42,7 @@ jobs:
           fetch-tags: true
           persist-credentials: false
 
+      # v7.1.0 was released 2026-10-08, nine days before this workflow was written; the SHA was read from the GitHub API.
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           # The floor of package.json "engines".
@@ -60,16 +58,14 @@ jobs:
       - name: Install Node dependencies
         run: npm ci --ignore-scripts
 
-      - name: Let Chrome start its sandbox (Linux)
-        if: runner.os == 'Linux'
-        # Ubuntu 24.04 restricts unprivileged user namespaces with AppArmor; Chrome's sandbox needs them.
-        run: sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0 || echo 'sysctl key not present'
-
       - name: Point optbrew at the runner's Chrome (Linux)
         if: runner.os == 'Linux'
+        # Ubuntu 23.10 and later ship an AppArmor profile for Chrome stable at /opt/google/chrome/chrome that allows the sandbox its
+        # user namespaces, so no sysctl change is made here. If a run reports "No usable sandbox", read the AppArmor section of
+        # https://pptr.dev/troubleshooting before adding a workaround.
         run: |
           # render.test.mjs skips its cross-origin font test when this system font is missing.
-          test -f /usr/share/fonts/truetype/dejavu/DejaVuSans.ttf || sudo apt-get install -y --no-install-recommends fonts-dejavu-core
+          test -f /usr/share/fonts/truetype/dejavu/DejaVuSans.ttf || { sudo apt-get update && sudo apt-get install -y --no-install-recommends fonts-dejavu-core; }
           chrome="$(command -v google-chrome-stable || command -v google-chrome || true)"
           test -n "$chrome" || { echo 'Google Chrome is not installed on this runner' >&2; exit 1; }
           echo "OPTBREW_CHROME=$chrome" >> "$GITHUB_ENV"
@@ -88,16 +84,9 @@ jobs:
         run: python -m unittest discover -s tests/python
 
       - name: Test
-        # The spec reporter prints the "ℹ skipped N" summary line of each phase, which the last step reads.
+        # The spec reporter prints each skipped test with its reason and the "ℹ skipped N" summary of each phase, which the last step reads.
         run: npm test -- --test-reporter=spec 2>&1 | tee "$RUNNER_TEMP/optbrew-test.log"
 
       - name: Check that nothing was skipped by accident
-        env:
-          EXPECTED_SKIPPED: ${{ matrix.expected_skipped }}
-        run: |
-          # scripts/test.mjs prints one summary per phase: first every test file but Chrome's, then the Chrome files.
-          mapfile -t counts < <(tr -d '\r' < "$RUNNER_TEMP/optbrew-test.log" | sed -nE 's/^[^ ]+ skipped ([0-9]+)$/\1/p')
-          echo "skipped per phase (other files, Chrome files): ${counts[*]}"
-          test "${#counts[@]}" -eq 2 || { echo "expected 2 summaries, found ${#counts[@]}" >&2; exit 1; }
-          test "${counts[1]}" -eq 0 || { echo "a Chrome test was skipped: Chrome did not start on this runner" >&2; exit 1; }
-          test "${counts[0]}" -eq "$EXPECTED_SKIPPED" || { echo "expected $EXPECTED_SKIPPED skipped, found ${counts[0]}" >&2; exit 1; }
+        # The Chrome phase must skip nothing. The other files may skip only for the by-design reasons listed in the script.
+        run: node scripts/check-skips.mjs "$RUNNER_TEMP/optbrew-test.log"
