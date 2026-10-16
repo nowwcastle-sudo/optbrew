@@ -68,11 +68,11 @@
     },
     {
       "path": "SKILL.md",
-      "sha256": "7b7b8446104967f24478949e59a9158acadef14db87e558dd613ba12f16aa619"
+      "sha256": "5f695f01a36f46d7523b1ac46a1d389f014e3f389f5c0924772f8a62835bc46d"
     },
     {
       "path": "THIRD_PARTY_NOTICES.md",
-      "sha256": "077c99f2f462d6f1cdfdf991a1c98034e0d29d7f53c0f4c6a8a41fdca98aa23c"
+      "sha256": "c55982babffc00d0c141e619a2fad5a40e58079903979c87e38ba194e7de62f2"
     },
     {
       "path": "agents/openai.yaml",
@@ -572,7 +572,11 @@
     },
     {
       "path": "references/intake.md",
-      "sha256": "86b2d7d3fc900f32a6af805dc1f6997087272ebf125d424d352630ed5004779a"
+      "sha256": "17a140d48c1026f33c75e1d040faeb4855c02c19436e90fceb15ac39a33fd015"
+    },
+    {
+      "path": "references/judging.md",
+      "sha256": "4168c144ebc05f1671fb1fc39f5323a04849bc57a832f2654c210a0d577806b1"
     },
     {
       "path": "references/limits.json",
@@ -600,7 +604,7 @@
     },
     {
       "path": "references/routing.md",
-      "sha256": "1fc3f475804dea6cac75832f9b76c0710f7c08b5080688a784243ef11756f528"
+      "sha256": "1eba4dd2a0c9684b50921758b17517c2b6312fbfc363dd1e16bd0d7d091b2a5c"
     },
     {
       "path": "references/runbooks/anthropic-api-key.md",
@@ -665,6 +669,10 @@
     {
       "path": "references/scoring.md",
       "sha256": "c6991e2a982c2f04b400a3d378fe4613c0da3148979311aac87b441ead2169b4"
+    },
+    {
+      "path": "references/source-analysis.md",
+      "sha256": "7efcfa344d5115bd37e14ca51aac100b26eff43d17283749c54d42d2622acc37"
     },
     {
       "path": "references/versions.json",
@@ -895,5 +903,5 @@
       "sha256": "a53223b7eefab2204c026a62b1da04cfdb8a07be8d3749613e8241a81b027d9b"
     }
   ],
-  "bundle_hash": "8bdeb1757f48cec06b432e300db0242324bb1947b384375c9c2d3317bd43f37e"
+  "bundle_hash": "57ef51e6d550714c32bd59dcd5c1a537084d3b6509bc33ef2a94576af735bb6f"
 }
