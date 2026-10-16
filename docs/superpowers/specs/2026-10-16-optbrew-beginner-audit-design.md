@@ -112,7 +112,7 @@ optbrew를 부른 사용자는 스킬 하나만 부른다. 그런데 2026-10-15 
 ### [2] 수집
 
 - HTTP 수집: 지금 `fetchScoped` 경계 그대로, 전송만 둘(직접 / 프록시 CONNECT). (C1)
-- 렌더링: 크롬 headless + CDP. Fetch 도메인으로 범위 밖 요청을 `failRequest`하고, 렌더 중 요청도 요청 한도에 넣는다. (C2)
+- 렌더링: 크롬 headless + CDP. 범위 밖 문서 이동과 GET이 아닌 요청은 `failRequest`하고, 렌더 중 하위 요청은 별도 상한 `max_render_requests`로 센다. (C2, C18)
 - 렌더 결과는 원본 HTML과 따로 증거로 저장한다(`<sha256>.render.json`: 최종 DOM, 콘솔 오류 수, 요청 목록).
 - CWV: D16 순서.
 
@@ -128,7 +128,7 @@ optbrew를 부른 사용자는 스킬 하나만 부른다. 그런데 2026-10-15 
 ### [5] 보고서
 
 - `report.json`, `report.md`, 새 `report.html`(D18).
-- 구조(세 형식 공통 순서): ① 한 줄 결론 ② 고칠 것(심각도 순, 실제 결함 우선) ③ 완성도(목표별 「측정한 범위 안의 통과율」과 측정 범위) ④ 남은 빈칸(빈칸마다 「하면 채워지는 것」 + 런북) ⑤ 실행 조건(하네스, 전송 방식, 크롬, 분석 도구, 모델 판정 수, 키 유무).
+- 구조(세 형식 공통 순서): ① 한 줄 결론 ② 고칠 것(정렬: `Finding.blocker` true 먼저 → `Finding.priority` 오름차순 → 영향 쪽 수 많은 순) ③ 완성도(목표별 「측정한 범위 안의 통과율」과 측정 범위) ④ 남은 빈칸(빈칸마다 「하면 채워지는 것」 + 런북) ⑤ 실행 조건(하네스, 전송 방식, 크롬, 분석 도구, 모델 판정 수, 키 유무).
 - 런북은 시작 질문의 런북과 같은 저장본, 같은 깊이(D4).
 
 ### [6] 로컬 수정과 [7] 재확인
@@ -146,7 +146,7 @@ optbrew를 부른 사용자는 스킬 하나만 부른다. 그런데 2026-10-15 
 | C5 | 새 코드 판정 3개: `internal-navigation`(링크 깊이·고아 쪽, 지금 derive의 링크 그래프 재사용), `locale-links`(hreflang 상호 참조·x-default), `render-content`(원본 HTML과 렌더 DOM의 본문·제목·링크 차이). | HTML·렌더 결과만으로 판정 가능해 모델 판정보다 재현성이 높다. |
 | C6 | 소스 분석 도구 탐지는 에이전트가 자기 도구 목록(스킬·MCP·플러그인 이름)에서 찾는다. 목록은 `references/source-analysis.md`에 이름과 쓰임으로 적고, 맞는 도구가 없으면 D5대로 보고한다. 스크립트가 하네스 설정 파일을 읽지는 않는다. | 하네스마다 설정 위치가 다르고, 설정 파일 읽기는 사용자 비밀값 노출 위험이 있다. |
 | C7 | 모델 판정 절차 `references/judging.md`: 항목별 질문, 통과 기준, 근거 인용 형식, 「판정 불가」 조건. youthdc 2차의 237건 판정 방식을 기준으로 쓴다. | D8을 매번 같은 기준으로 돌리기 위해. |
-| C8 | 런북 저장 위치 `skills/optbrew/references/runbooks/<id>.md`. 머리에 `checked: YYYY-MM-DD`, `source: <1차 출처 URL>`, `harness: <대상>`, `level: beginner|brief` 두 판을 한 파일에. 구현 때 Claude가 브라우저로 실제 화면을 따라가며 확인하고, 로그인이 필요한 화면은 대표가 로그인한 상태에서 함께 따라간다. | D3. 감사 때 조사 토큰을 쓰지 않기 위해. |
+| C8 | 런북 저장 위치 `skills/optbrew/references/runbooks/<id>.md`. 머리에 `checked: YYYY-MM-DD`, `source: <1차 출처 URL>`, `harness: <대상>`, 본문에 `## beginner`·`## brief` 두 절(두 안내 수준)을 한 파일에. 구현 때 Claude가 브라우저로 실제 화면을 따라가며 확인하고, 로그인이 필요한 화면은 대표가 로그인한 상태에서 함께 따라간다. | D3. 감사 때 조사 토큰을 쓰지 않기 위해. |
 | C9 | 런북 목록(최소): `network-codex-approval`, `network-codex-config`(선택), `network-claude-cloud-custom`, `google-api-key`(CrUX·PSI 함께 켜기), `key-set-local`, `key-set-claude-cloud`, `key-set-codex`, `chrome-install`, `cwv-site-collection`(web-vitals로 방문자 측정값 모으기), `gsc-export`, `naver-searchadvisor-export`, `anthropic-api-key`(선택), `seranking`(선택). | 10-15 보고서의 「대표 계정 필요」 항목과 [0]의 막힘 원인 전부. |
 | C10 | `optbrew key set google`: 입력 숨김, `~/.optbrew/credentials.json`에 저장, 가능한 플랫폼에서 소유자만 읽기 권한. `optbrew key status`는 존재 여부와 해시 앞 8자만 보인다. `key remove`도 둔다. | D17. 전역 원칙 「비밀값은 존재·길이·해시 앞자리만」. |
 | C11 | HTML 보고서는 의존성 없는 한 파일(인라인 CSS·SVG). 런북 펼치기는 `<details>`. 그림은 SVG 도식(화면 구역과 누를 위치). 라이트·다크 모두 읽히게. | 오프라인으로 열려야 하고 디렉터리 심사에 외부 스크립트가 없어야 한다. |
