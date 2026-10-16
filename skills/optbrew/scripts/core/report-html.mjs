@@ -1,24 +1,21 @@
-import { LOCATION_NEEDED, SECTION_TITLES, UNKNOWN, headlineLine, pagesLabel, resolved } from './report-compose.mjs';
+import { SECTION_TITLES, SYNTHETIC_BANNER, UNKNOWN, coverageOf, headlineLine, pagesLabel, percent, resolved } from './report-compose.mjs';
 import { runbookEntry } from './runbooks.mjs';
 
 /** Fixes shown open in the "fix first" section; the rest wait inside one fold so the top stays short. */
 const FIXES_SHOWN = 10;
 const LEVEL_NAMES = { beginner: '자세한 단계', brief: '요약' };
+const VERDICTS = { sufficient: '충분', insufficient_coverage: '확인 부족', insufficient_core: '핵심 검사 빠짐', unaudited: '감사 안 됨' };
 
 /** Every value that came from the audited site or from the user passes through here: the site is untrusted input. */
 const esc = value => String(value ?? UNKNOWN).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
-/** Runbook inline marks, applied after escaping: `code` and **bold**. */
-const inline = text => esc(text).replace(/`([^`]+)`/g, '<code>$1</code>').replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+/** Runbook inline marks, applied after escaping: `code` spans first, then **bold** outside them, so the tags never cross. */
+const inline = text => esc(text).split(/(`[^`]+`)/).map(part => part.startsWith('`') && part.endsWith('`') && part.length > 1 ?
+  `<code>${part.slice(1, -1)}</code>` : part.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')).join('');
 
-// Where on the screen a runbook step points, read from the words of the step: the zone name and the pattern that picks it.
-const ZONES = [
-  ['address', '주소창', /주소창|주소 칸/],
-  ['terminal', '터미널 창', /터미널|PowerShell|명령 프롬프트|셸/],
-  ['side', '왼쪽 메뉴', /왼쪽|메뉴 아이콘|☰/],
-  ['top', '화면 위쪽', /위쪽|맨 위|상단|검색 상자|검색창/],
-  ['dialog', '새로 열린 창', /창(이|에서|을|이 뜨|이 열)|팝업|대화 상자|물으면/],
-];
-const MAIN_ZONE = ['main', '화면 가운데'];
+// A runbook step shows a drawing only when its author names the screen zone with a trailing tag, `{화면: 주소창}`.
+// A zone is never guessed from the words of a step: a wrong mark sends a beginner to the wrong place.
+const ZONES = { '주소창': 'address', '화면 위쪽': 'top', '왼쪽 메뉴': 'side', '화면 가운데': 'main', '새 창': 'dialog', '터미널': 'terminal' };
+const ZONE_TAG = /\s*\{화면:\s*([^}]+?)\s*\}\s*$/;
 // The highlighted box of each zone in the 160 x 100 drawing: x, y, width, height.
 const AREAS = { address: [34, 3, 100, 10], top: [1, 1, 158, 14], side: [1, 16, 36, 83], main: [44, 24, 108, 68], dialog: [38, 28, 84, 46], terminal: [8, 52, 144, 16] };
 const BROWSER_FRAME = '<rect class="win" x=".5" y=".5" width="159" height="99" rx="6"/><rect class="bar" x="1" y="1" width="158" height="14" rx="5"/>' +
@@ -27,13 +24,13 @@ const BROWSER_FRAME = '<rect class="win" x=".5" y=".5" width="159" height="99" r
 const TERMINAL_FRAME = '<rect class="term" x=".5" y=".5" width="159" height="99" rx="6"/><rect class="tl" x="8" y="12" width="60" height="4" rx="2"/><rect class="tl" x="8" y="26" width="90" height="4" rx="2"/>' +
   '<rect class="tl" x="8" y="40" width="40" height="4" rx="2"/><rect class="tl" x="8" y="58" width="70" height="4" rx="2"/>';
 
-/** One small drawing per step: a schematic window with the step's zone marked and the step number on it. */
-function diagram(text, number) {
-  const [zone, label] = ZONES.find(([, , pattern]) => pattern.test(text)) ?? MAIN_ZONE;
+/** One small drawing: a schematic window with the named zone marked and the step number on it. */
+function diagram(name, number) {
+  const zone = ZONES[name];
   const [x, y, width, height] = AREAS[zone];
   const [cx, cy] = [x + width / 2, y + height / 2];
-  const name = `${number}단계 대략의 화면 위치: ${label}`;
-  return `<svg class="shot" viewBox="0 0 160 100" role="img" aria-label="${esc(name)}"><title>${esc(name)}</title>${zone === 'terminal' ? TERMINAL_FRAME : BROWSER_FRAME}` +
+  const label = `${number}단계 대략의 화면 위치: ${name}`;
+  return `<svg class="shot" viewBox="0 0 160 100" role="img" aria-label="${esc(label)}"><title>${esc(label)}</title>${zone === 'terminal' ? TERMINAL_FRAME : BROWSER_FRAME}` +
     `<rect class="hit" x="${x}" y="${y}" width="${width}" height="${height}" rx="4"/><circle class="badge" cx="${cx}" cy="${cy}" r="8"/>` +
     `<text class="num" x="${cx}" y="${cy + 3.5}" text-anchor="middle">${number}</text></svg>`;
 }
@@ -60,48 +57,67 @@ function blocksOf(text) {
   return blocks;
 }
 
-const stepList = ({ kind, start, items }) => `<${kind}${kind === 'ol' ? ` start="${start}"` : ''}>${items.map((item, index) =>
-  `<li><div class="step"><span class="say">${inline(item)}</span>${diagram(item, start + index)}</div></li>`).join('')}</${kind}>`;
+/** A numbered list keeps the author's numbers; a step carries a drawing only where it names a zone. Returns the markup and the drawings made. */
+function listHtml({ kind, start, items }) {
+  let drawings = 0;
+  const rows = items.map((item, index) => {
+    const tag = kind === 'ol' ? ZONE_TAG.exec(item) : null;
+    const text = item.replace(ZONE_TAG, '');
+    const picture = tag && ZONES[tag[1]] ? (drawings += 1, diagram(tag[1], start + index)) : '';
+    return picture ? `<li><div class="step"><span class="say">${inline(text)}</span>${picture}</div></li>` : `<li>${inline(text)}</li>`;
+  });
+  return { html: `<${kind}${kind === 'ol' ? ` start="${start}"` : ''}>${rows.join('')}</${kind}>`, drawings };
+}
 
 const runbookHtml = (runbook, level) => {
   const name = runbookEntry(runbook.id).item.split(' — ')[0];
-  const body = blocksOf(runbook.text).map(block => block.kind === 'pre' ? `<pre><code>${esc(block.items.join('\n'))}</code></pre>` :
-    block.kind === 'p' ? `<p>${inline(block.items[0])}</p>` : stepList(block)).join('');
+  let drawings = 0;
+  const body = blocksOf(runbook.text).map(block => {
+    if (block.kind === 'pre') return `<pre><code>${esc(block.items.join('\n'))}</code></pre>`;
+    if (block.kind === 'p') return `<p>${inline(block.items[0])}</p>`;
+    const list = listHtml(block);
+    drawings += list.drawings;
+    return list.html;
+  }).join('');
+  const note = drawings ? ' 그림은 화면 위치를 보여 주는 도식입니다. 실제 화면과 모양이 다를 수 있습니다.' : '';
   return `<details class="runbook" data-runbook="${esc(runbook.id)}" data-level="${esc(level)}"><summary>${esc(name)} · ${esc(LEVEL_NAMES[level])}</summary>` +
-    `<p class="note">그림은 화면 위치를 보여 주는 도식입니다. 실제 화면과 모양이 다를 수 있습니다. 확인일 ${esc(runbook.checked)}.</p>${body}</details>`;
+    `<p class="note">확인일 ${esc(runbook.checked)}.${note}</p>${body}</details>`;
 };
 
 const fixHtml = fix => {
-  const where = fix.change_paths.join('; ') || fix.remediation?.location_hint || LOCATION_NEEDED;
-  const chip = resolved(fix) ? '<span class="chip ok">이미 고침</span>' : fix.blocker ? '<span class="chip hot">가장 급함</span>' : `<span class="chip">${esc(fix.priority)}</span>`;
+  const chip = resolved(fix) ? '<span class="chip ok">이미 고침</span>' : fix.blocker ? '<span class="chip hot">가장 급함</span>' : `<span class="chip">${esc(fix.priority_label)}</span>`;
   const rows = [['근거', fix.sources.map(x => `${x.source_ref} ${x.evidence_ref}`).join('; ') || UNKNOWN],
     ['해결 방법', fix.remediation ? `${fix.remediation.mechanism} (${fix.remediation.source_url}, 확인일 ${fix.remediation.checked_date})` : UNKNOWN],
     ['비용 / 노력', fix.remediation ? `${fix.remediation.cost}; ${fix.remediation.effort}` : UNKNOWN],
-    ['확인 방법', fix.remediation?.validation ?? UNKNOWN], ['상태', fix.status]];
+    ['확인 방법', fix.remediation?.validation ?? UNKNOWN], ['상태', fix.status_label]];
   return `<li class="fix"><div class="head">${chip}<span class="msg">${esc(fix.message)}</span></div><p class="pages">${esc(pagesLabel(fix))}</p>` +
-    `<p class="where"><strong>고칠 곳</strong> ${esc(where)}</p><details><summary>자세히 보기</summary><dl>${rows.map(([term, value]) => `<dt>${term}</dt><dd>${esc(value)}</dd>`).join('')}</dl></details></li>`;
+    `<p class="where"><strong>고칠 곳</strong> ${esc(fix.where)}</p><details><summary>자세히 보기</summary><dl>${rows.map(([term, value]) => `<dt>${term}</dt><dd>${esc(value)}</dd>`).join('')}</dl></details></li>`;
 };
 
-const fixesSection = composed => {
-  const { fixes } = composed;
+const fixesSection = ({ fixes }) => {
   const shown = fixes.slice(0, FIXES_SHOWN), rest = fixes.slice(FIXES_SHOWN);
   const list = items => `<ol class="fixes">${items.map(fixHtml).join('')}</ol>`;
   return `<section id="fixes"><h2>${SECTION_TITLES.fixes}</h2>${fixes.length ? list(shown) : '<p>고칠 것이 없습니다. 확인한 범위에서는 실패한 검사가 없었습니다.</p>'}` +
     `${rest.length ? `<details><summary>나머지 ${rest.length}건 보기</summary>${list(rest)}</details>` : ''}</section>`;
 };
 
-const completenessSection = composed => {
-  const rows = composed.completeness.map(row => {
-    const phase = row.after ?? row.before;
-    const coverage = Number.isFinite(phase.coverage) ? phase.coverage : null;
-    return `<li class="profile">${coverage === null ? '' : `<meter min="0" max="100" value="${coverage}" aria-label="확인 범위 ${coverage}%">${coverage}%</meter>`}` +
-      `<p class="big">확인 범위 ${esc(coverage)}%</p><p>${esc(headlineLine(phase.headline))}</p>` +
-      `${row.after ? `<p>확인 범위 이전 ${esc(row.before.coverage)}% → 이후 ${esc(row.after.coverage)}%; 이전 → 이후 차이 ${esc(row.difference)}점${row.between_measured_subsets ? ' (확인한 범위끼리의 비교)' : ''}</p>` : ''}` +
-      `<p class="note">방문자 실측(CWV)을 뺀 확인 범위 ${esc(row.coverage_without_cwv)}%</p></li>`;
-  });
-  return `<section id="completeness"><h2>${SECTION_TITLES.completeness}</h2><p class="note">점수는 확인한 범위 안의 통과율입니다. 실제 검색 성과가 아닙니다.</p>` +
-    `${rows.length ? `<ul class="profiles">${rows.join('')}</ul>` : '<p>점수를 낼 영역이 없어 확인 범위를 알 수 없습니다.</p>'}</section>`;
+/** One short plain sentence for the verdict of a phase; the full line waits in the fold. */
+const sentenceOf = h => h.status === 'sufficient' ? `확인한 범위의 통과율은 ${h.headline_score}점입니다.` :
+  h.status === 'insufficient_coverage' ? `${h.coverage_threshold}% 이상 확인해야 점수를 냅니다. 지금 ${percent(coverageOf(h))}입니다.` :
+  h.status === 'insufficient_core' ? `접근·색인 검사 ${esc(h.unresolved_core)}건에 결과가 없어 점수를 내지 않습니다.` : '감사 기록이 없어 점수를 내지 않습니다.';
+
+const profileHtml = row => {
+  const phase = row.after ?? row.before, h = phase.headline, shown = coverageOf(h);
+  const difference = row.after ? `<p>확인 범위 이전 ${percent(coverageOf(row.before.headline))} → 이후 ${percent(coverageOf(row.after.headline))}; 이전 → 이후 차이 ${esc(row.difference)}점${row.between_measured_subsets ? ' (확인한 범위끼리의 비교)' : ''}</p>` : '';
+  return `<li class="profile"><div class="head"><strong>${esc(row.profile)}</strong><span class="chip">${esc(VERDICTS[h.status])}</span></div>` +
+    `${typeof shown === 'number' ? `<meter min="0" max="100" value="${shown}" aria-label="확인 범위 ${shown}%">${shown}%</meter>` : ''}` +
+    `<p class="big">확인 범위 ${percent(shown)}</p><p>${sentenceOf(h)}</p>` +
+    `<details><summary>자세히</summary><p>${esc(headlineLine(h))}</p>${difference}<p class="note">방문자 실측(CWV)을 뺀 확인 범위 ${percent(row.coverage_without_cwv)}</p></details></li>`;
 };
+
+const completenessSection = ({ completeness }) =>
+  `<section id="completeness"><h2>${SECTION_TITLES.completeness}</h2><p class="note">점수는 확인한 범위 안의 통과율입니다. 실제 검색 성과가 아닙니다.</p>` +
+  `${completeness.length ? `<ul class="profiles">${completeness.map(profileHtml).join('')}</ul>` : '<p>점수를 낼 영역이 없어 확인 범위를 알 수 없습니다.</p>'}</section>`;
 
 const blankSection = (composed, runbooks, level) => {
   const byId = new Map(runbooks.map(runbook => [runbook.id, runbook]));
@@ -114,23 +130,15 @@ const blankSection = (composed, runbooks, level) => {
   return `<section id="blank"><h2>${SECTION_TITLES.blank}</h2>${items.length ? `<ul class="blanks">${items.join('')}</ul>` : '<p>비어 있는 곳이 없습니다.</p>'}</section>`;
 };
 
-const conditionsSection = ({ conditions }) => {
-  const { probe, lab_cwv: lab, blockers } = conditions;
-  const listed = summary => `${summary.count}건 (${summary.items.join('; ') || '없음'})`;
-  const rows = [
-    ['실행 환경', `${probe.harness}; 전송 방식 ${probe.transport ?? UNKNOWN}`],
-    ['크롬', probe.chrome.found ? probe.chrome.kind : `찾지 못함 (${probe.chrome.reason ?? UNKNOWN})`],
-    ['Google 키', probe.google_key ? '있음' : '없음'],
-    ['분석 도구', probe.source_tools.join(', ') || '지정 없음'],
-    ['확인한 모델 판단', `${conditions.model_judgments.length}건`],
-    ['이전 막는 문제', listed(blockers.before)],
-    ['이후 막는 문제', blockers.after ? listed(blockers.after) : `${UNKNOWN} (이후 단계를 보지 않음)`],
-    ['실험실 Core Web Vitals (참고용, 점수에 넣지 않음)', lab ? `LCP ${lab.lcp ?? UNKNOWN} ms; CLS ${lab.cls ?? UNKNOWN}` : '측정하지 않음'],
-    ...(conditions.start_redirect ? [['시작 주소', `${conditions.start_redirect.from} → ${conditions.start_redirect.to}`]] : []),
-  ];
-  return `<section id="conditions"><details><summary>${SECTION_TITLES.conditions}</summary><dl>${rows.map(([term, value]) => `<dt>${esc(term)}</dt><dd>${esc(value)}</dd>`).join('')}</dl>` +
-    `${conditions.notes.map(note => `<p class="note">${esc(note)}</p>`).join('')}</details></section>`;
+const followUpsSection = ({ follow_ups: followUps }) => {
+  const rows = followUps.map(item => `<li class="blank"><p class="msg">${esc(item.problem)}</p><dl><dt>필요한 입력 / 권한</dt><dd>${esc(item.required_input_or_authority)}</dd><dt>다음 행동</dt><dd>${esc(item.next_action)}</dd><dt>다시 볼 때</dt><dd>${esc(item.reobserve_when)}</dd></dl></li>`);
+  return `<section id="remaining"><h2>${SECTION_TITLES.remaining}</h2><details><summary>${followUps.length}건 보기</summary>` +
+    `${rows.length ? `<ul class="blanks">${rows.join('')}</ul>` : '<p>남은 일이 없습니다.</p>'}</details></section>`;
 };
+
+const conditionsSection = ({ conditions }) =>
+  `<section id="conditions"><details><summary>${SECTION_TITLES.conditions}</summary><dl>${conditions.lines.map(({ label, value }) => `<dt>${esc(label)}</dt><dd>${esc(value)}</dd>`).join('')}</dl>` +
+  `${conditions.notes.map(note => `<p class="note">${esc(note)}</p>`).join('')}</details></section>`;
 
 const STYLE = `
 :root{color-scheme:light dark;--bg:#fff;--fg:#1d2430;--mut:#4d5868;--card:#f4f6f9;--line:#cfd6e0;--acc:#0b57d0;--on-acc:#fff;--hot:#a8201a;--ok:#146c2e;--chip:#e3ebfb;--hit:rgba(11,87,208,.18)}
@@ -141,6 +149,7 @@ main{max-width:46rem;margin:0 auto;padding:1.5rem 1rem 4rem}
 h1{font-size:1.5rem;margin:0 0 .25rem}h2{font-size:1.25rem;margin:2.25rem 0 .75rem}
 section{margin-top:1rem}p{margin:.4rem 0}ol,ul{padding-left:1.25rem;margin:.5rem 0}
 .target{color:var(--mut);margin:0 0 1rem}
+.banner{border:2px solid var(--hot);border-radius:10px;padding:.5rem .8rem;font-weight:700;margin:0 0 1rem}
 .hero{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:1.1rem 1.1rem 1.25rem}
 .hero .lead{font-size:1.25rem;font-weight:700;margin:0 0 .9rem}
 .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(8.5rem,1fr));gap:.6rem;margin:0;padding:0;list-style:none}
@@ -158,7 +167,7 @@ summary{cursor:pointer;font-weight:700;padding:.35rem 0}
 details details{margin-left:.25rem}
 dl{display:grid;grid-template-columns:minmax(6rem,max-content) 1fr;gap:.25rem .9rem;margin:.5rem 0}dt{color:var(--mut)}dd{margin:0}
 .runbook{border-top:1px solid var(--line);margin-top:.5rem}
-.runbook li{margin:.7rem 0}
+.runbook li{margin:.5rem 0}
 .step{display:flex;gap:.8rem;align-items:flex-start;flex-wrap:wrap}.say{flex:1 1 14rem}
 .shot{flex:0 0 9rem;width:9rem;max-width:100%;height:auto}
 .win{fill:var(--bg);stroke:var(--line)}.bar{fill:var(--card)}.dot{fill:var(--line)}.pill{fill:var(--line)}.pane{fill:var(--chip)}.ln{fill:var(--line)}
@@ -170,16 +179,18 @@ footer{margin-top:3rem;color:var(--mut);font-size:.9rem}
 
 /**
  * The picture report: one self-contained page from the composed report. Nothing here composes or decides; it only formats.
- * `runbooks` are the loaded runbooks the "still blank" items point to, at the guidance `level`; `target` is the audited address.
- * No script, no external file: the page opens offline, and a policy line refuses any outside request even if site text slipped in.
+ * `runbooks` are the loaded runbooks the "still blank" items point to, at the guidance `level`; `target` is the audited address;
+ * `synthetic` marks an example report. No script, no external file: the page opens offline, and a policy line refuses any
+ * outside request even if site text slipped in.
  */
-export function renderHtmlReport(composed, { runbooks, level, target }) {
+export function renderHtmlReport(composed, { runbooks, level, target, synthetic = false }) {
   const { headline } = composed;
   return `<!doctype html>\n<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">` +
     `<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'"><meta name="color-scheme" content="light dark">` +
     `<title>optbrew 보고서</title><style>${STYLE}</style></head><body><main><h1>사이트 점검 결과</h1><p class="target">${esc(target)}</p>` +
+    `${synthetic ? `<p class="banner">${SYNTHETIC_BANNER}</p>` : ''}` +
     `<section class="hero"><p class="lead">${esc(headline.text)}</p><ul class="tiles"><li><b>${esc(headline.open)}건</b>먼저 고칠 것</li>` +
     `<li><b>${esc(headline.blocking)}건</b>가장 급한 것</li><li><b>${esc(headline.already_fixed)}건</b>이미 고친 것</li></ul></section>` +
-    `${fixesSection(composed)}${completenessSection(composed)}${blankSection(composed, runbooks, level)}${conditionsSection(composed)}` +
-    `<footer>이 쪽은 report.md, report.json과 같은 내용을 그림으로 보여 줍니다. 점수 계산에 쓴 원본 값은 report.json에 있습니다.</footer></main></body></html>\n`;
+    `${fixesSection(composed)}${completenessSection(composed)}${blankSection(composed, runbooks, level)}${followUpsSection(composed)}${conditionsSection(composed)}` +
+    `<footer>실제 결과와 모델 판단의 표는 report.md와 report.json에 있습니다. 점수 계산에 쓴 원본 값은 report.json에 있습니다.</footer></main></body></html>\n`;
 }

@@ -239,7 +239,7 @@ test('the same problem on several pages is one fix row that says how many pages'
   const report = await readJson(second.reports.json);
   const rows = report.tables.remediation.filter(row => row[1].startsWith('Raw HTML has no title'));
   assert.equal(rows.length, 1);
-  assert.match(rows[0][1], /\(3 pages: /);
+  assert.match(rows[0][1], /\(3개 페이지: /);
   assert.equal(report.composed.fixes.filter(fix => fix.check_id === 'document-title').length, 1);
   const merged = mergeFindings([1, 2].map(i => ({ schema_version: '1.0.0', finding_id: `f${i}`, check_id: 'document-title', unit_key: `document-title|${SITE}/p`, unit_keys: [`document-title|${SITE}/p${i}`],
     priority: 'P2', blocker: false, message: 'm', source_ref: `s${i}`, evidence_ref: 'e', remediation_ids: [], status: 'confirmed' })));
@@ -447,7 +447,7 @@ test('remaining work names every page of a grouped finding', async () => {
   const site = memorySite(pages);
   const { report } = await twoCalls(site, answersFor(`${SITE}/`), { before: ws => preflightOf(site, `${SITE}/`, ws.out) });
   const row = report.follow_ups.find(item => item.problem.startsWith('Raw HTML has no title'));
-  assert.match(row.problem, /\(3 pages: /);
+  assert.match(row.problem, /\(3개 페이지: /);
 });
 
 test('a folder left by a first call that stopped before its first index save is rerun; one that only looks similar is refused', async () => {

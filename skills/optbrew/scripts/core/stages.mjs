@@ -569,7 +569,7 @@ const reportStage = {
       evidence_root: out, evidence_index, audit_snapshots: [{ phase: PHASE, audit_ref: store.indexRef, context_ref: context.evidence_ref }],
       source_ref: RUN_SOURCE, data_class: 'real', lab_cwv: state.lab_cwv ?? null, start_redirect: state.start_redirect ?? null };
     const level = state.answers.guidance_level;
-    const renderHtml = composed => renderHtmlReport(composed, { runbooks: runbooksOf(composed, level), level, target: context.target });
+    const renderHtml = composed => renderHtmlReport(composed, { runbooks: runbooksOf(composed, level), level, target: context.target, synthetic: packet.data_class === 'synthetic' });
     const { jsonPath, markdownPath, htmlPath } = await writeReport(packet, out, { renderHtml });
     return { state: { ...state, packet, reports: { json: jsonPath, md: markdownPath, html: htmlPath } } };
   },

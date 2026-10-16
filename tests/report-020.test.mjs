@@ -4,7 +4,7 @@ import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import path from 'node:path';
 import { buildReport, writeReport } from '../skills/optbrew/scripts/core/report.mjs';
 import { renderHtmlReport } from '../skills/optbrew/scripts/core/report-html.mjs';
-import { SECTION_TITLES, composeReport, renderReport } from '../skills/optbrew/scripts/core/report-compose.mjs';
+import { SECTION_TITLES, composeReport, coverageOf, renderReport } from '../skills/optbrew/scripts/core/report-compose.mjs';
 import { loadRunbook, runbookEntry } from '../skills/optbrew/scripts/core/runbooks.mjs';
 import { keySetRunbook } from '../skills/optbrew/scripts/core/probe.mjs';
 import { compileUnits } from '../skills/optbrew/scripts/core/weights.mjs';
@@ -60,7 +60,7 @@ test('open fixes come before resolved ones, and an unknown priority sorts last',
 test('findings come before scores in json and md', () => {
   const { json, markdown } = buildReport(fixturePacket());
   const text = JSON.stringify(json);
-  assert.deepEqual(Object.keys(json.composed), ['headline', 'fixes', 'completeness', 'remaining', 'conditions']);
+  assert.deepEqual(Object.keys(json.composed), ['headline', 'fixes', 'completeness', 'remaining', 'conditions', 'follow_ups']);
   assert.ok(text.indexOf('"fixes"') < text.indexOf('"completeness"'));
   for (const scoreField of ['"headline_score"', '"measured_subset_score"', '"pass_rate_in_measured"', '"score"'])
     assert.ok(text.indexOf('"fixes"') < text.indexOf(scoreField), scoreField);
@@ -105,7 +105,7 @@ test('lab CWV appears only under conditions', () => {
   const packet = fixturePacket(); packet.lab_cwv = lab;
   const { json } = buildReport(packet);
   assert.deepEqual(json.composed.conditions.lab_cwv, lab);
-  assert.equal(JSON.stringify(json).split('1234.5').length, 2, 'the value is written once, under conditions');
+  assert.doesNotMatch(JSON.stringify({ ...json, composed: { ...json.composed, conditions: null } }), /1234\.5/, 'the value is written only under conditions');
 });
 
 test('a malformed lab CWV or an unknown answered runbook is refused', () => {
@@ -312,25 +312,37 @@ const stepCount = runbooks => runbooks.reduce((sum, runbook) => sum + runbook.te
 
 test('the three formats carry the same numbers', () => {
   const verified = verifiedOf({ findings: [finding('a', { blocker: true, priority: 'P0' }), finding('b')],
-    after: { ...later(), scores: [result({ score: 95, coverage: 95 })] },
+    after: { ...later(), scores: [result({ score: 95, coverage: 95, A: 100, M: 95 })] },
     comparison: { status: 'comparable', score_deltas: [{ profile: 'SEO', percentage_point_delta: 3.5 }], reasons: [] } });
   const composed = composeReport(verified);
   const { markdown } = renderReport(composed, verified);
   const page = htmlOf(composed);
   const json = JSON.stringify(composed);
   const [row] = composed.completeness;
-  const numbers = [composed.headline.open, composed.headline.blocking, composed.headline.already_fixed, row.after.coverage, row.before.coverage,
-    row.after.headline.measured_subset_score, row.difference, row.coverage_without_cwv].filter(value => value !== null);
-  assert.ok(numbers.length >= 7 && numbers.includes(95) && numbers.includes(3.5), 'the scenario has both phases and a difference');
-  for (const number of numbers) {
-    const shown = String(number);
-    assert.ok(markdown.includes(shown), `report.md has ${shown}`);
-    assert.ok(page.includes(shown), `report.html has ${shown}`);
-    assert.ok(json.includes(shown), `report.json has ${shown}`);
-  }
+  const before = coverageOf(row.before.headline), after = coverageOf(row.after.headline);
+  assert.equal(after, 95);
+  assert.ok(typeof before === 'number' && before !== after && row.difference === 3.5, 'the scenario has two phases and a difference');
+  const { open, blocking, already_fixed: fixed } = composed.headline;
+  for (const fragment of [`<b>${open}건</b>먼저 고칠 것`, `<b>${blocking}건</b>가장 급한 것`, `<b>${fixed}건</b>이미 고친 것`,
+    `<meter min="0" max="100" value="${after}"`, `확인 범위 이전 ${before}% → 이후 ${after}%; 이전 → 이후 차이 3.5점`,
+    `방문자 실측(CWV)을 뺀 확인 범위 ${row.coverage_without_cwv}%`]) assert.ok(page.includes(fragment), `report.html has ${fragment}`);
+  for (const fragment of [`먼저 고칠 것이 ${open}건 있습니다`, `확인 범위 이전 → 이후 | `, `${before}% → ${after}%`, `| 3.5 (확인한 범위끼리의 비교) |`, `${row.coverage_without_cwv}%`])
+    assert.ok(markdown.includes(fragment), `report.md has ${fragment}`);
+  for (const key of [`"open":${open}`, `"blocking":${blocking}`, `"already_fixed":${fixed}`, `"difference":3.5`, `"coverage":95`]) assert.ok(json.includes(key), `report.json has ${key}`);
   assert.ok(page.includes(composed.headline.text.replace(/'/g, '&#39;')) && markdown.includes(composed.headline.text), 'one conclusion in both pages');
   for (const fix of composed.fixes) assert.ok(page.includes(fix.message) && markdown.includes(fix.message), fix.message);
   assert.ok(page.indexOf('id="fixes"') < page.indexOf('id="completeness"') && page.indexOf('id="completeness"') < page.indexOf('id="blank"'), 'fixes, completeness, blanks, in the design order');
+});
+
+test('one rounding rule shows every coverage', () => {
+  const verified = verifiedOf();
+  const changed = { ...verified, baseline: { ...verified.baseline, scores: [result({ A: 1000, M: 87.9, score: 50, coverage: 8.8 })] } };
+  const composed = composeReport(changed);
+  assert.equal(composed.completeness[0].coverage, 8.8, 'the JSON keeps the rounded coverage the score gives');
+  for (const text of [renderReport(composed, changed).markdown, htmlOf(composed)]) {
+    assert.ok(text.includes('8.7%'), 'both formats show the floor the threshold is judged on');
+    assert.ok(!text.includes('8.8%'), 'and never the rounded value');
+  }
 });
 
 test('html has no external script or stylesheet', () => {
@@ -344,10 +356,10 @@ test('html has no external script or stylesheet', () => {
   assert.match(page, /prefers-color-scheme:dark/);
   assert.match(page, /<meta name="viewport" content="width=device-width,initial-scale=1">/);
   assert.match(page, /<html lang="ko">/);
-  assert.ok(page.includes('<svg') && page.includes('<details'));
+  assert.ok(page.includes('<meter') && page.includes('<details'));
 });
 
-test('html opens each runbook in details', () => {
+test('html opens each runbook in details as a plain numbered list', () => {
   for (const level of ['beginner', 'brief']) {
     const composed = composeReport(withProbe({ google_key: false, chrome: { found: false, kind: null, reason: 'chrome_not_found' } }));
     const runbooks = runbooksOf(composed, level);
@@ -356,12 +368,44 @@ test('html opens each runbook in details', () => {
     assert.ok(ids.length >= 3, level);
     for (const id of ids) assert.match(page, new RegExp(`<details class="runbook" data-runbook="${id}" data-level="${level}"><summary>[^<]+</summary>`), `${level}: ${id}`);
     assert.equal(page.split('<details class="runbook"').length - 1, ids.length, 'one fold per runbook of each blank item');
-    assert.equal(page.split('<svg class="shot"').length - 1, stepCount(runbooks), `${level}: one drawing per step`);
+    assert.equal(page.split('<li>').length - 1 >= stepCount(runbooks), true, `${level}: every step is a list item`);
+    assert.ok(!page.includes('<svg'), 'no drawing where no runbook names a zone');
+    assert.ok(!page.includes('그림은 화면 위치'), 'and no note about drawings');
     assert.doesNotMatch(page, /\{\{skill_root\}\}/);
     assert.ok(page.includes('/skill/scripts/key.mjs'), 'the skill folder is filled in');
   }
   const composed = composeReport(withProbe({ google_key: false }));
   assert.throws(() => renderHtmlReport(composed, { runbooks: [], level: 'beginner', target: 'x' }), /runbook missing for the report: google-api-key/);
+});
+
+test('a step that names its screen zone gets one drawing, and a bullet never does', () => {
+  const composed = composeReport(withProbe({ google_key: false }));
+  const [first] = runbooksOf(composed);
+  const text = ['앞 문장입니다.', '1. 주소창에 주소를 적습니다. {화면: 주소창}', '2. 아무 표시가 없는 단계입니다.', '3. **터미널**에서 `node x`를 실행합니다. {화면: 터미널}',
+    '4. 모르는 구역입니다. {화면: 달나라}', '', '- 글머리표는 단계가 아닙니다. {화면: 주소창}', '', '```', '1. 코드 안의 줄 {화면: 주소창}', '```'].join('\n');
+  const runbooks = runbooksOf(composed).map(runbook => runbook.id === first.id ? { ...runbook, text } : runbook);
+  const page = htmlOf(composed, { runbooks });
+  assert.equal(page.split('<svg class="shot"').length - 1, 2, 'one drawing for each tagged step with a known zone');
+  assert.ok(page.includes('aria-label="1단계 대략의 화면 위치: 주소창"') && page.includes('aria-label="3단계 대략의 화면 위치: 터미널"'));
+  assert.ok(page.includes('<ol start="1"><li><div class="step"><span class="say">주소창에 주소를 적습니다.</span><svg'), 'the tag is not shown in the step');
+  assert.ok(page.includes('<li>아무 표시가 없는 단계입니다.</li>'));
+  assert.ok(page.includes('<span class="say"><strong>터미널</strong>에서 <code>node x</code>를 실행합니다.</span>'), 'bold and code do not cross');
+  assert.ok(page.includes('<ul><li>글머리표는 단계가 아닙니다.</li></ul>'));
+  assert.ok(page.includes('그림은 화면 위치를 보여 주는 도식입니다'), 'the note appears once something is drawn');
+  assert.ok(page.includes('<code>1. 코드 안의 줄 {화면: 주소창}</code>'), 'a code block is shown as written');
+});
+
+test('every shipped runbook is plain enough for the page', () => {
+  const zones = ['주소창', '화면 위쪽', '왼쪽 메뉴', '화면 가운데', '새 창', '터미널'];
+  const ids = JSON.parse(readFileSync('skills/optbrew/references/runbooks/index.json', 'utf8')).map(entry => entry.id);
+  for (const id of ids) for (const level of ['beginner', 'brief']) {
+    const { text } = loadRunbook(id, level, { skillRoot: '/skill' });
+    for (const line of text.split('\n')) {
+      assert.doesNotMatch(line, /^\s+(\d+\.|[-*])\s|^\s+```/, `${id}/${level}: no indented list or fence`);
+      const tag = /\{화면:\s*([^}]+?)\s*\}/.exec(line);
+      if (tag) assert.ok(zones.includes(tag[1]), `${id}/${level}: ${tag[1]} is a known zone`);
+    }
+  }
 });
 
 test('every value from the site or the user is escaped in html', () => {
@@ -402,4 +446,63 @@ test('writeReport writes report.html beside the others, all or none', async () =
   assert.equal(existsSync(path.join(dir, 'broken')), false, 'nothing is written when the page cannot be made');
   const plain = await writeReport(fixturePacket(), path.join(dir, 'plain'));
   assert.deepEqual(Object.keys(plain), ['jsonPath', 'markdownPath']);
+});
+
+test('a fix names its address, not the internal unit key', () => {
+  const verified = verifiedOf({ findings: [finding('one'), finding('site', { check_id: 'entity-identity', unit_key: 'entity-identity|site' })] });
+  const composed = composeReport(verified);
+  const { markdown } = renderReport(composed, verified);
+  const page = htmlOf(composed);
+  assert.ok(markdown.includes('problem one https://example.com/one') && !markdown.includes('index-policy|https'));
+  assert.ok(page.includes('<p class="pages">https://example.com/one</p>') && page.includes('<p class="pages">사이트 전체</p>'));
+  assert.doesNotMatch(page, /index-policy\|/);
+});
+
+test('fix rows carry plain labels and one place to fix, composed once', () => {
+  const change = { finding_ids: ['a'], path: 'site/page.html' };
+  const composed = composeReport(verifiedOf({ findings: [finding('a', { priority: 'P1', status: 'confirmed' }), finding('b', { priority: 'P2' })], changes: [change] }));
+  const [a, b] = composed.fixes;
+  assert.deepEqual([a.priority_label, a.status_label, a.where], ['중요', '확인됨', 'site/page.html']);
+  assert.deepEqual([b.priority_label, b.status_label, b.where], ['보통', '제안만 함', '고칠 위치는 사이트 담당자가 정해야 합니다']);
+  const page = htmlOf(composed);
+  assert.ok(page.includes('<span class="chip">중요</span>') && !page.includes('>P1<') && !page.includes('proposed_only'));
+});
+
+test('the run conditions have no unit without a number and no raw reason code', () => {
+  const composed = composeReport(withProbe({ chrome: { found: false, kind: null, reason: 'chrome_not_found' } }));
+  const lines = Object.fromEntries(composed.conditions.lines.map(({ label, value }) => [label, value]));
+  assert.equal(lines['이후 결과 없는 핵심 검사'], '알 수 없음');
+  assert.equal(lines['크롬'], '찾지 못함 (설치된 크롬을 찾지 못함)');
+  const { markdown } = renderReport(composed, verifiedOf());
+  assert.doesNotMatch(markdown, /알 수 없음건|알 수 없음%|chrome_not_found/);
+  const page = htmlOf(composed);
+  assert.ok(page.includes('<dt>크롬</dt><dd>찾지 못함 (설치된 크롬을 찾지 못함)</dd>') && !page.includes('chrome_not_found'));
+  assert.doesNotMatch(page, /알 수 없음건|알 수 없음%/);
+});
+
+test('a profile card gives a verdict word, a meter and one plain sentence, and folds the long line', () => {
+  const composed = composeReport(verifiedOf());
+  const page = htmlOf(composed);
+  const card = page.slice(page.indexOf('<li class="profile">'), page.indexOf('</li>', page.indexOf('<li class="profile">')));
+  assert.ok(card.includes('<span class="chip">확인 부족</span>') && card.includes('<meter') && card.includes('이상 확인해야 점수를 냅니다. 지금 '));
+  assert.ok(card.indexOf('<details><summary>자세히</summary>') > card.indexOf('<meter'), 'the long line waits in a fold');
+  const fold = card.slice(card.indexOf('<details>'));
+  assert.ok(fold.includes('적용 가중치') && !card.slice(0, card.indexOf('<details>')).includes('적용 가중치'));
+});
+
+test('follow-ups are composed, and the page folds them under 남은 일', () => {
+  const row = { problem: 'The export could not be used', reason: 'export_file_missing', required_input_or_authority: 'A new file', next_action: 'Export again', reobserve_when: 'next run' };
+  const verified = verifiedOf({ follow_ups: [row] });
+  const composed = composeReport(verified);
+  assert.deepEqual(composed.follow_ups, [row]);
+  assert.deepEqual(renderReport(composed, verified).tables.remaining_work, [[row.problem, row.reason, row.required_input_or_authority, row.next_action, row.reobserve_when]]);
+  const page = htmlOf(composed);
+  assert.ok(page.includes(`<section id="remaining"><h2>${SECTION_TITLES.remaining}</h2><details><summary>1건 보기</summary>`) && page.includes(row.problem));
+  assert.ok(page.indexOf('id="blank"') < page.indexOf('id="remaining"') && page.indexOf('id="remaining"') < page.indexOf('id="conditions"'));
+});
+
+test('a synthetic example says so in the html too', () => {
+  const composed = composeReport(verifiedOf());
+  assert.ok(htmlOf(composed, { synthetic: true }).includes('<p class="banner">예시 보고서 — 실제 사이트나 외부 서비스의 결과가 아닙니다.</p>'));
+  assert.ok(!htmlOf(composed).includes('class="banner"'));
 });
