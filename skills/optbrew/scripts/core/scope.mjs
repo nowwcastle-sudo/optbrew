@@ -40,9 +40,10 @@ export function assertUrlInScope(input, scope) {
   return url;
 }
 
-/** Check origin, path segment, and every resolved address before a request. */
-export function assertInScope(input, scope, resolvedAddresses) {
+/** Check origin, path segment, and every resolved address before a request. Through a proxy the proxy resolves names, so `addressVetting: 'proxy'` skips the address check. */
+export function assertInScope(input, scope, resolvedAddresses, { addressVetting = 'direct' } = {}) {
   const url = assertUrlInScope(input, scope);
+  if (addressVetting === 'proxy') return url;
   if (!Array.isArray(resolvedAddresses) || !resolvedAddresses.length) throw new Error('resolved addresses required');
   const host = url.hostname.replace(/^\[|\]$/g, '');
   const port = Number(url.port || (url.protocol === 'https:' ? 443 : 80));

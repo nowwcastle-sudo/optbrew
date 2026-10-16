@@ -688,7 +688,7 @@
     },
     {
       "path": "scripts/core/collector.mjs",
-      "sha256": "15d59e32fc339788f412c543a3ba723d06cade4bb1fa0abc825b36631bc32803"
+      "sha256": "fbea99752abf9846b53377f0ef3e977aa14d3c53256dc53466d9d2ea0315b017"
     },
     {
       "path": "scripts/core/compare.mjs",
@@ -748,11 +748,15 @@
     },
     {
       "path": "scripts/core/scope.mjs",
-      "sha256": "fc824ed721cccb27f654b8a92f15e679487e42151752155a1fd52393b3541641"
+      "sha256": "93ea2041d952ba12ac6337f7cc354b31f5dbb1bff3d584128742d0ce9ee43f74"
     },
     {
       "path": "scripts/core/score.mjs",
       "sha256": "1a0f7d0c7436584700a3096b367328a909833f9148b477fc46bc706a4030e0a1"
+    },
+    {
+      "path": "scripts/core/transport.mjs",
+      "sha256": "c8501e0e769cce46d72d0509ff938ebb2517dc36b1bfe4b68cad3a6a6e81fc51"
     },
     {
       "path": "scripts/core/weights.mjs",
@@ -763,5 +767,5 @@
       "sha256": "a53223b7eefab2204c026a62b1da04cfdb8a07be8d3749613e8241a81b027d9b"
     }
   ],
-  "bundle_hash": "cf62f3bcc477b64be511057176eb15958e9cddc2cc9528665d2a44be91afb2e9"
+  "bundle_hash": "4382a6f61b43f037ebd3f08892613b98595f6cf314a1be111f820800718e89ff"
 }

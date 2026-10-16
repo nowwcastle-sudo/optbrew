@@ -1,12 +1,11 @@
 import { lookup } from 'node:dns/promises';
 import { createHash } from 'node:crypto';
-import http from 'node:http';
-import https from 'node:https';
 import { isIP } from 'node:net';
 import { performance } from 'node:perf_hooks';
 import { assertInScope, assertUrlInScope } from './scope.mjs';
 import { anchorLinks, canonicalLink } from './html.mjs';
 import { limits } from './config.mjs';
+import { directTransport } from './transport.mjs';
 
 const HEADER_NAMES = ['content-type', 'content-length', 'content-range', 'content-encoding', 'location', 'x-robots-tag', 'last-modified', 'etag'];
 const REDIRECTS = new Set([301, 302, 303, 307, 308]);
@@ -48,36 +47,6 @@ function headerLines(response) {
   return lines;
 }
 
-/** Node's lookup callback pins the already-vetted address while TLS still verifies the URL hostname. */
-async function nodeTransport({ url, address, timeoutMs, maxBytes, headers = {}, signal }) {
-  const client = url.protocol === 'https:' ? https : http;
-  const hostname = url.hostname.replace(/^\[|\]$/g, '');
-  return new Promise((resolve, reject) => {
-    const req = client.request(url, {
-      method: 'GET', agent: false, signal, headers: { 'User-Agent': 'optbrew/0.1 (bounded public audit)', Accept: '*/*', 'Accept-Encoding': 'identity', ...headers },
-      lookup: (_hostname, options, callback) => options.all ?
-        callback(null, [{ address: address.address, family: address.family }]) : callback(null, address.address, address.family),
-      ...(url.protocol === 'https:' ? { rejectUnauthorized: true,
-        ...(!isIP(hostname) ? { servername: hostname } : {}) } : {}),
-    }, res => {
-      const chunks = []; let size = 0;
-      if (Number(res.headers['content-length']) > maxBytes) {
-        req.destroy(new Error('response byte limit exceeded')); return;
-      }
-      res.on('data', chunk => {
-        size += chunk.length;
-        if (size > maxBytes) { req.destroy(new Error('response byte limit exceeded')); return; }
-        chunks.push(chunk);
-      });
-      res.on('end', () => resolve({ status: res.statusCode, headers: res.headers, rawHeaders: res.rawHeaders, body: Buffer.concat(chunks) }));
-      res.on('error', reject);
-    });
-    req.setTimeout(timeoutMs, () => req.destroy(new Error('request timeout')));
-    req.on('error', reject);
-    req.end();
-  });
-}
-
 async function addressesFor(url, resolve) {
   const host = url.hostname.replace(/^\[|\]$/g, '');
   if (isIP(host)) return [{ address: host, family: isIP(host) }];
@@ -89,7 +58,7 @@ async function addressesFor(url, resolve) {
 }
 
 /** Fetch one URL with fresh DNS validation at every redirect and a pinned connection. */
-export async function fetchScoped(input, { context, transport = nodeTransport, resolve = host => lookup(host, { all: true, verbatim: true }), timeoutMs = limits().timeout_ms, maxBytes = limits().max_bytes, maxRedirects = limits().max_redirects, headers = {}, allowedAuxiliary = null, reserveRequest = null }) {
+export async function fetchScoped(input, { context, transport = directTransport, resolve = host => lookup(host, { all: true, verbatim: true }), timeoutMs = limits().timeout_ms, maxBytes = limits().max_bytes, maxRedirects = limits().max_redirects, headers = {}, allowedAuxiliary = null, reserveRequest = null, addressVetting = 'direct' }) {
   if (![timeoutMs, maxBytes, maxRedirects].every(Number.isInteger) || timeoutMs < 1 || timeoutMs > limits().timeout_ms || maxBytes < 1 || maxBytes > limits().max_bytes || maxRedirects < 0 || maxRedirects > limits().max_redirects)
     throw new Error('fetch limits exceed context ceiling');
   let url = assertUrlInScope(input, context.scope);
@@ -106,7 +75,7 @@ export async function fetchScoped(input, { context, transport = nodeTransport, r
   try {
     for (let hop = 0; hop <= maxRedirects; hop++) {
       const addresses = await withinDeadline(addressesFor(url, resolve));
-      try { assertInScope(url.href, context.scope, addresses); }
+      try { assertInScope(url.href, context.scope, addresses, { addressVetting }); }
       catch (error) { error.code = 'scope_rejected'; error.redirect_chain = redirect_chain; throw error; }
       // Pick only a vetted address. The transport must use this address, not resolve again.
       const remainingMs = Math.ceil(deadline - performance.now());
@@ -180,7 +149,7 @@ export function links(html, base) {
 }
 
 /** Bounded crawl of fixed protocol URLs and their in-scope links. */
-export async function collect(context, { transport, resolve } = {}) {
+export async function collect(context, { transport, resolve, addressVetting } = {}) {
   const scope = context?.scope;
   const limit = Math.min(scope?.max_urls ?? limits().max_urls_default, limits().max_urls_default);
   const depthLimit = Math.min(scope?.max_depth ?? limits().max_depth, limits().max_depth);
@@ -232,7 +201,7 @@ export async function collect(context, { transport, resolve } = {}) {
         return true;
       };
       let artifact;
-      try { artifact = await fetchScoped(item.url, { context, transport, resolve, allowedAuxiliary: allowedDocuments, reserveRequest }); }
+      try { artifact = await fetchScoped(item.url, { context, transport, resolve, addressVetting, allowedAuxiliary: allowedDocuments, reserveRequest }); }
       catch (error) {
         const reason = ['scope_rejected', 'redirect_outside_scope', 'auxiliary_undeclared', 'request_limit'].includes(error.code) ? error.code : 'fetch_failed';
         if (reason === 'request_limit' && !used) { skip(item.url, 'url_limit'); continue; }

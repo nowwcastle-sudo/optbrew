@@ -1,0 +1,251 @@
+import test, { after } from 'node:test';
+import assert from 'node:assert/strict';
+import { createServer } from 'node:http';
+import { connect } from 'node:net';
+import { inspect } from 'node:util';
+import { mkdtemp, readFile, readdir, rm } from 'node:fs/promises';
+import os from 'node:os';
+import path from 'node:path';
+import { collect, fetchScoped } from '../skills/optbrew/scripts/core/collector.mjs';
+import { directTransport, parseProxy, proxyTransport, selectTransport } from '../skills/optbrew/scripts/core/transport.mjs';
+import { assertInScope } from '../skills/optbrew/scripts/core/scope.mjs';
+import { runAudit } from '../skills/optbrew/scripts/audit.mjs';
+
+const servers = [];
+const sockets = new Set();
+const listen = server => new Promise(resolve => { servers.push(server); server.listen(0, '127.0.0.1', () => resolve(server.address().port)); });
+
+after(async () => {
+  for (const socket of sockets) socket.destroy();
+  await Promise.all(servers.map(server => new Promise(resolve => { server.close(resolve); server.closeAllConnections(); })));
+  assert.ok(servers.length > 0 && servers.every(server => !server.listening), 'every test server is closed');
+});
+
+const targetSeen = [];
+const targetPort = await listen(createServer((req, res) => {
+  targetSeen.push({ url: req.url, headers: req.headers });
+  if (req.url === '/owned/redir') { res.writeHead(302, { location: '/owned/page' }); res.end(); }
+  else if (req.url === '/owned/out') { res.writeHead(302, { location: 'http://elsewhere.test/x' }); res.end(); }
+  else if (req.url === '/owned/big') { res.writeHead(200, { 'content-type': 'text/html' }); res.end('x'.repeat(2000)); }
+  else if (req.url === '/owned/chunked') { res.writeHead(200, { 'content-type': 'text/html' }); res.write('x'.repeat(60)); setTimeout(() => res.end('y'.repeat(60)), 5); }
+  else { res.writeHead(200, { 'content-type': 'text/html' }); res.end('<html><head><title>ok</title></head><body>hello</body></html>'); }
+}));
+
+/** A CONNECT proxy that tunnels every requested name to the local target, like a proxy that has working DNS. */
+async function startProxy({ authorization = null } = {}) {
+  const connects = [];
+  const proxy = createServer();
+  proxy.on('connect', (req, client, head) => {
+    connects.push({ url: req.url, authorization: req.headers['proxy-authorization'] ?? null });
+    sockets.add(client);
+    if (authorization && req.headers['proxy-authorization'] !== authorization) {
+      client.end('HTTP/1.1 407 Proxy Authentication Required\r\nProxy-Authenticate: Basic realm="test"\r\nContent-Length: 0\r\n\r\n');
+      return;
+    }
+    const upstream = connect(targetPort, '127.0.0.1', () => {
+      client.write('HTTP/1.1 200 Connection Established\r\n\r\n');
+      upstream.write(head);
+      upstream.pipe(client); client.pipe(upstream);
+    });
+    sockets.add(upstream);
+    upstream.on('error', () => client.destroy());
+    client.on('error', () => upstream.destroy());
+  });
+  return { port: await listen(proxy), connects };
+}
+
+const origin = `http://example.test:${targetPort}`;
+const scope = { allowed: [{ origin, path_prefix: '/owned/' }] };
+const context = urls => ({ scope, protocol: { page_types: [{ id: 'main', urls: urls.map(url => ({ original: url, normalized: url })) }] } });
+const dnsDown = code => async host => { throw Object.assign(new Error(`getaddrinfo ${code} ${host}`), { code }); };
+const proxyEnv = (port, userinfo = '') => ({ HTTPS_PROXY: `http://${userinfo}127.0.0.1:${port}` });
+const viaProxy = chosen => ({ transport: chosen.transport, resolve: chosen.resolve, addressVetting: chosen.address_vetting });
+
+test('direct DNS success keeps direct', async () => {
+  const proxy = await startProxy();
+  const chosen = await selectTransport({ env: proxyEnv(proxy.port), resolve: async () => [{ address: '127.0.0.1', family: 4 }], probeHost: 'example.test' });
+  assert.equal(chosen.address_vetting, 'direct');
+  assert.equal(chosen.proxy, null);
+  assert.equal(chosen.transport, directTransport);
+  const local = { allowed: scope.allowed, local_targets: [{ host: 'example.test', port: targetPort }] };
+  const result = await fetchScoped(`${origin}/owned/page`, { context: { scope: local }, transport: chosen.transport, resolve: chosen.resolve });
+  assert.equal(result.status, 200);
+  assert.deepEqual(proxy.connects, []);
+});
+
+test('DNS failure with HTTPS_PROXY switches to proxy', async () => {
+  for (const code of ['ENOTFOUND', 'EAI_AGAIN']) {
+    const proxy = await startProxy();
+    const chosen = await selectTransport({ env: proxyEnv(proxy.port), resolve: dnsDown(code), probeHost: 'example.test' });
+    assert.equal(chosen.address_vetting, 'proxy');
+    assert.deepEqual(chosen.proxy, { host: '127.0.0.1', port: proxy.port });
+    assert.deepEqual(await chosen.resolve('example.test'), []);
+    const result = await fetchScoped(`${origin}/owned/page`, { context: context([]), ...viaProxy(chosen) });
+    assert.equal(result.status, 200);
+    assert.match(result.body.toString(), /hello/);
+    assert.deepEqual(proxy.connects.map(x => x.url), [`example.test:${targetPort}`]);
+  }
+});
+
+test('DNS failure without a proxy is a classified error', async () => {
+  for (const env of [{}, { HTTPS_PROXY: '' }, { HTTPS_PROXY: 'socks5://127.0.0.1:1080' }, { HTTPS_PROXY: 'https://127.0.0.1:3128' }]) {
+    await assert.rejects(selectTransport({ env, resolve: dnsDown('ENOTFOUND'), probeHost: 'example.test' }), error => {
+      assert.equal(error.code, 'dns_unresolvable');
+      assert.equal(error.dns_code, 'ENOTFOUND');
+      assert.match(error.message, /example\.test/);
+      return true;
+    });
+  }
+  const refused = Object.assign(new Error('connect refused'), { code: 'ECONNREFUSED' });
+  await assert.rejects(selectTransport({ env: proxyEnv(1), resolve: async () => { throw refused; }, probeHost: 'example.test' }), error => error === refused);
+});
+
+test('NO_PROXY host stays direct', async () => {
+  const proxy = await startProxy();
+  const base = proxyEnv(proxy.port);
+  const select = noProxy => selectTransport({ env: { ...base, NO_PROXY: noProxy }, resolve: dnsDown('ENOTFOUND'), probeHost: 'a.Example.test' });
+  for (const noProxy of ['*', 'a.example.test', 'EXAMPLE.TEST', '.example.test', 'other.test, example.test ', 'example.test:8080', '*.example.test'])
+    await assert.rejects(select(noProxy), /no usable HTTPS_PROXY/, noProxy);
+  for (const noProxy of ['', 'other.test', 'ample.test', 'b.example.test', 'test.example'])
+    assert.equal((await select(noProxy)).address_vetting, 'proxy', noProxy);
+  assert.equal((await selectTransport({ env: { ...base, no_proxy: 'example.test' }, resolve: dnsDown('ENOTFOUND'), probeHost: 'example.test' }).catch(error => error)).code, 'dns_unresolvable');
+  assert.equal((await selectTransport({ env: { ...base, NO_PROXY: '*' }, resolve: async () => [], probeHost: 'example.test' })).address_vetting, 'direct');
+  assert.deepEqual(proxy.connects, []);
+});
+
+test('parseProxy reads the environment without keeping the userinfo', () => {
+  assert.deepEqual(parseProxy({ HTTPS_PROXY: 'http://proxy.local:3128' }), { host: 'proxy.local', port: 3128 });
+  assert.deepEqual(parseProxy({ https_proxy: 'proxy.local:3128' }), { host: 'proxy.local', port: 3128 });
+  assert.deepEqual(parseProxy({ HTTPS_PROXY: 'http://proxy.local' }), { host: 'proxy.local', port: 80 });
+  assert.deepEqual(parseProxy({ HTTPS_PROXY: 'http://[::1]:8080' }), { host: '::1', port: 8080 });
+  assert.equal(parseProxy({ HTTPS_PROXY: 'http://proxy.local:3128' }).authorization, null);
+  const withUser = parseProxy({ HTTPS_PROXY: 'http://us%20er:p%40ss%2Fw%3Ard@proxy.local:3128' });
+  assert.equal(withUser.authorization, `Basic ${Buffer.from('us er:p@ss/w:rd').toString('base64')}`);
+  assert.equal(parseProxy({ HTTPS_PROXY: 'http://only@proxy.local' }).authorization, `Basic ${Buffer.from('only:').toString('base64')}`);
+  assert.equal(parseProxy({ HTTPS_PROXY: 'http://proxy.local', https_proxy: 'http://other.local' }).host, 'proxy.local');
+  for (const value of ['', '   ', 'http://', 'https://proxy.local:3128', 'socks5://proxy.local:1080', 'http://proxy.local:99999', 'http://:3128'])
+    assert.equal(parseProxy({ HTTPS_PROXY: value }), null, value);
+  assert.equal(parseProxy({}), null);
+});
+
+test('authenticating proxy gets Proxy-Authorization', async () => {
+  const user = 'audit user'; const password = ['pw', Date.now(), '@/:'].join('-');
+  const authorization = `Basic ${Buffer.from(`${user}:${password}`).toString('base64')}`;
+  const proxy = await startProxy({ authorization });
+  const userinfo = `${encodeURIComponent(user)}:${encodeURIComponent(password)}@`;
+  const chosen = await selectTransport({ env: proxyEnv(proxy.port, userinfo), resolve: dnsDown('ENOTFOUND'), probeHost: 'example.test' });
+  assert.equal(chosen.proxy.authorization, authorization);
+  targetSeen.length = 0;
+  const result = await fetchScoped(`${origin}/owned/page`, { context: context([]), ...viaProxy(chosen) });
+  assert.equal(result.status, 200);
+  assert.deepEqual(proxy.connects.map(x => x.authorization), [authorization]);
+  assert.ok(targetSeen.length === 1 && !('proxy-authorization' in targetSeen[0].headers), 'the target never sees the proxy credential');
+  const anonymous = await selectTransport({ env: proxyEnv(proxy.port), resolve: dnsDown('ENOTFOUND'), probeHost: 'example.test' });
+  await assert.rejects(fetchScoped(`${origin}/owned/page`, { context: context([]), ...viaProxy(anonymous) }), /status 407/);
+});
+
+test('proxy credentials never reach evidence or errors', async () => {
+  const user = 'canary-user'; const password = `canary-pw-${Date.now()}`;
+  const authorization = `Basic ${Buffer.from(`${user}:${password}`).toString('base64')}`;
+  const secrets = [password, `${user}:${password}`, authorization, authorization.slice('Basic '.length)];
+  const leaks = text => secrets.filter(secret => text.includes(secret));
+  const proxy = await startProxy({ authorization });
+  const env = proxyEnv(proxy.port, `${user}:${password}@`);
+  const chosen = await selectTransport({ env, resolve: dnsDown('ENOTFOUND'), probeHost: 'example.test' });
+  assert.deepEqual(leaks(JSON.stringify(chosen)), []);
+  assert.deepEqual(leaks(inspect(chosen, { depth: 6, showHidden: false })), []);
+  assert.deepEqual(leaks(JSON.stringify({ ...chosen.proxy })), []);
+
+  const collected = await collect(context([`${origin}/owned/redir`]), viaProxy(chosen));
+  assert.equal(collected.artifacts[0].status, 200);
+  assert.deepEqual(leaks(JSON.stringify(collected)), []);
+
+  const wrong = await selectTransport({ env: proxyEnv(proxy.port, `${user}:wrong@`), resolve: dnsDown('ENOTFOUND'), probeHost: 'example.test' });
+  const refused = await fetchScoped(`${origin}/owned/page`, { context: context([]), ...viaProxy(wrong) }).catch(error => error);
+  assert.equal(refused.code, 'proxy_connect_refused');
+  assert.match(refused.message, new RegExp(`status 407 via 127\\.0\\.0\\.1:${proxy.port}$`));
+  assert.deepEqual(leaks(`${refused.message}${inspect(refused, { depth: 6 })}`), []);
+  assert.equal(inspect(refused, { depth: 6 }).includes('wrong'), false);
+
+  const idle = createServer(); const closedPort = await listen(idle);
+  await new Promise(resolve => idle.close(resolve));
+  const down = await selectTransport({ env: proxyEnv(closedPort, `${user}:${password}@`), resolve: dnsDown('ENOTFOUND'), probeHost: 'example.test' });
+  const unreachable = await fetchScoped(`${origin}/owned/page`, { context: context([]), ...viaProxy(down) }).catch(error => error);
+  assert.equal(unreachable.code, 'proxy_unreachable');
+  assert.match(unreachable.message, new RegExp(`via 127\\.0\\.0\\.1:${closedPort}$`));
+  assert.deepEqual(leaks(`${unreachable.message}${inspect(unreachable, { depth: 6 })}`), []);
+
+  const page = `${origin}/owned/page`;
+  const run = { schema_version: '1.0.0', run_id: 'proxy-evidence', target: 'example.test', environment: 'local', goals: [], allowed_changes: [],
+    scope: { allowed: scope.allowed, local_targets: [{ host: 'example.test', port: targetPort }] },
+    protocol: { page_types: [{ id: 'main', urls: [{ original: page, normalized: page }] }], engines: ['naver'], families: [], locale: 'ko-KR', region: 'KR',
+      browser: 'Chrome', device: 'desktop', question_panel: [], surfaces: [], models: [], search_enabled: null },
+    evaluation_version: '0.3.0', protocol_version: '0.1.0', data_sources: [], cost_decision: {}, evidence_ref: 'test/context' };
+  const dir = await mkdtemp(path.join(os.tmpdir(), 'optbrew-proxy-evidence-'));
+  try {
+    const result = await runAudit({ context: run, modules: ['naver-searchadvisor'], outputDir: dir, transport: chosen.transport,
+      resolve: async () => [{ address: '127.0.0.1', family: 4 }] });
+    assert.equal(result.artifacts[0].status, 200);
+    const files = (await readdir(dir, { recursive: true, withFileTypes: true })).filter(entry => entry.isFile());
+    assert.ok(files.length > 3);
+    for (const file of files) assert.deepEqual(leaks(await readFile(path.join(file.parentPath, file.name), 'utf8')), [], file.name);
+    assert.deepEqual(leaks(JSON.stringify(result)), []);
+  } finally { await rm(dir, { recursive: true, force: true }); }
+});
+
+test('proxy mode still rejects an out-of-scope redirect', async () => {
+  const proxy = await startProxy();
+  const chosen = await selectTransport({ env: proxyEnv(proxy.port), resolve: dnsDown('ENOTFOUND'), probeHost: 'example.test' });
+  const error = await fetchScoped(`${origin}/owned/out`, { context: context([]), ...viaProxy(chosen) }).catch(failure => failure);
+  assert.equal(error.code, 'redirect_outside_scope');
+  assert.equal(error.redirect_chain.length, 1);
+  assert.deepEqual(proxy.connects.map(x => x.url), [`example.test:${targetPort}`], 'no tunnel is opened toward the blocked host');
+  const outside = await fetchScoped(`${origin}/elsewhere`, { context: context([]), ...viaProxy(chosen) }).catch(failure => failure);
+  assert.match(outside.message, /outside allowed/);
+  assert.equal(proxy.connects.length, 1);
+});
+
+test('proxy mode counts every hop', async () => {
+  const proxy = await startProxy();
+  const chosen = await selectTransport({ env: proxyEnv(proxy.port), resolve: dnsDown('ENOTFOUND'), probeHost: 'example.test' });
+  const result = await collect(context([`${origin}/owned/redir`]), viaProxy(chosen));
+  assert.equal(result.request_count, 2);
+  assert.equal(result.ledger[0].requests, 2);
+  assert.equal(result.artifacts[0].redirect_chain.length, 1);
+  assert.equal(result.artifacts[0].final_url, `${origin}/owned/page`);
+  assert.equal(proxy.connects.length, 2);
+  const budget = await collect({ ...context([`${origin}/owned/redir`]), scope: { ...scope, max_urls: 1 } }, viaProxy(chosen));
+  assert.equal(budget.request_count, 1, 'the redirect hop is stopped by the shared request budget');
+  assert.equal(budget.ledger[0].error, 'request_limit');
+  assert.equal(proxy.connects.length, 3);
+  assert.throws(() => assertInScope(`${origin}/owned/page`, scope, [], { addressVetting: 'direct' }), /resolved addresses required/);
+  assert.equal(assertInScope(`${origin}/owned/page`, scope, [], { addressVetting: 'proxy' }).pathname, '/owned/page');
+});
+
+test('HTTPS over the tunnel sets SNI to the host name and skips it for an IP literal', async () => {
+  const proxy = await startProxy();
+  const calls = [];
+  const connectTls = options => { calls.push(options); return options.socket; };
+  const transport = proxyTransport(parseProxy(proxyEnv(proxy.port)), { connectTls });
+  const send = href => transport({ url: new URL(href), timeoutMs: 5000, maxBytes: 1_000_000, signal: new AbortController().signal });
+  assert.equal((await send(`https://example.test:${targetPort}/owned/page`)).status, 200);
+  assert.equal(calls[0].servername, 'example.test');
+  assert.equal(calls[0].rejectUnauthorized, true);
+  assert.equal(typeof calls[0].socket.write, 'function');
+  assert.equal((await send(`https://127.0.0.1:${targetPort}/owned/page`)).status, 200);
+  assert.equal('servername' in calls[1], false);
+  assert.deepEqual(proxy.connects.map(x => x.url), [`example.test:${targetPort}`, `127.0.0.1:${targetPort}`]);
+});
+
+test('both transports enforce the byte limit through the shared parser', async () => {
+  const proxy = await startProxy();
+  const url = new URL(`${origin}/owned/big`);
+  const args = { url, timeoutMs: 5000, maxBytes: 100, signal: new AbortController().signal };
+  await assert.rejects(directTransport({ ...args, address: { address: '127.0.0.1', family: 4 } }), /byte limit/);
+  await assert.rejects(proxyTransport(parseProxy(proxyEnv(proxy.port)))(args), /byte limit/);
+  const chunked = { ...args, url: new URL(`${origin}/owned/chunked`) };
+  await assert.rejects(directTransport({ ...chunked, address: { address: '127.0.0.1', family: 4 } }), /byte limit/);
+  await assert.rejects(proxyTransport(parseProxy(proxyEnv(proxy.port)))(chunked), /byte limit/);
+  const whole = await proxyTransport(parseProxy(proxyEnv(proxy.port)))({ ...chunked, maxBytes: 1000 });
+  assert.equal(whole.body.length, 120);
+});
