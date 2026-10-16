@@ -50,6 +50,11 @@
       "surfaces": [],
       "models": [],
       "search_enabled": null,
+      "render": {
+        "enabled": false,
+        "pages": [],
+        "max_render_requests": 300
+      },
       "question_panel": [],
       "families": [
         {
@@ -266,6 +271,11 @@
           "surfaces": [],
           "models": [],
           "search_enabled": null,
+          "render": {
+            "enabled": false,
+            "pages": [],
+            "max_render_requests": 300
+          },
           "question_panel": [],
           "families": [
             {
@@ -764,13 +774,13 @@
   "evidence_index": [
     {
       "ref": "context.json",
-      "sha256": "c17e49a327f58e2c838609c0d4378fc22c98f1e68fd944fc3114a1595770d4eb",
+      "sha256": "9fd6197235a4d60ad560c50e2bbc55079e12128f7c5e2dfdbea23fb8c44776c6",
       "kind": "context",
       "run_id": "synthetic-report"
     },
     {
       "ref": "intake.json",
-      "sha256": "05cc2727e51813056ef6033f582ed16b500fad2cd7115910962c3d2b48f96f5a",
+      "sha256": "816315608aa5d13a0cb4a8a26bd3d19cb5d24f1eeb33d88af6a185a4611fabad",
       "kind": "intake",
       "run_id": "synthetic-report"
     },

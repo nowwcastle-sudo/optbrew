@@ -5,7 +5,7 @@ import { chromePaths, endpoints, limits, versions } from '../skills/optbrew/scri
 test('limits hold the collection bounds', () => {
   assert.deepEqual(limits(), { max_urls_default: 50, max_urls_cap: 200, max_depth: 3, concurrency: 2,
     timeout_ms: 20000, max_bytes: 5242880, max_redirects: 10, chrome_launch_timeout_ms: 30000, chrome_close_grace_ms: 5000,
-    cdp_command_timeout_ms: 30000 });
+    cdp_command_timeout_ms: 30000, render_pages: 10, max_render_requests: 300 });
 });
 
 test('versions hold today\'s release, evaluation, protocol and schema versions', () => {

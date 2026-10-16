@@ -49,18 +49,18 @@
   "protocol_sources": [
     {
       "path": "references/schemas/contract.schema.json",
-      "sha256": "d530eb89d7b6fcb1af83bf10c34ba4aeec188c260f91890128cdcd87b0df0aab"
+      "sha256": "413c66ec26c8c19dbdb1cdd398cc93b9a009a64e40be8651dc3192c6775291c1"
     },
     {
       "path": "references/limits.json",
-      "sha256": "baf31b8b0df82c4b56f2c036eb4966704aeeef032f38aaf80ac478c30b58a637"
+      "sha256": "73e29183214d89981102a60ae126b47bf7764c15852c758778ddf0eeb9de8ef0"
     },
     {
       "path": "scripts/core/protocol.mjs",
-      "sha256": "d9de1934372c7438b643224a57210846b213b720235d33d0f821d241da4b07bd"
+      "sha256": "c7f85f963abd125155fed1a3a4e707885e8d63fa6d146c1a00c431440dda0336"
     }
   ],
-  "protocol_hash": "9abadc0581a0cfad63aeb3b654690eaabf28c679f7536a30a658b424dbb2e458",
+  "protocol_hash": "f63e739d985a0089e5a7b059552fdc4cead3c80f61aafa7a3c0b1da2aab58c53",
   "files": [
     {
       "path": "LICENSE",
@@ -548,7 +548,7 @@
     },
     {
       "path": "references/api.md",
-      "sha256": "bf6b9ee1e337405712dbedf0c5fb0254fac99d25968e991ddf248805cb37b31a"
+      "sha256": "1e306233f8c834d5f3b497e16c70d13d13e57c3f2a2bf06d2c03070ec9dade2e"
     },
     {
       "path": "references/check-registry.json",
@@ -572,7 +572,7 @@
     },
     {
       "path": "references/limits.json",
-      "sha256": "baf31b8b0df82c4b56f2c036eb4966704aeeef032f38aaf80ac478c30b58a637"
+      "sha256": "73e29183214d89981102a60ae126b47bf7764c15852c758778ddf0eeb9de8ef0"
     },
     {
       "path": "references/measurement.md",
@@ -600,7 +600,7 @@
     },
     {
       "path": "references/schemas/contract.schema.json",
-      "sha256": "d530eb89d7b6fcb1af83bf10c34ba4aeec188c260f91890128cdcd87b0df0aab"
+      "sha256": "413c66ec26c8c19dbdb1cdd398cc93b9a009a64e40be8651dc3192c6775291c1"
     },
     {
       "path": "references/scoring.md",
@@ -752,11 +752,15 @@
     },
     {
       "path": "scripts/core/protocol.mjs",
-      "sha256": "d9de1934372c7438b643224a57210846b213b720235d33d0f821d241da4b07bd"
+      "sha256": "c7f85f963abd125155fed1a3a4e707885e8d63fa6d146c1a00c431440dda0336"
+    },
+    {
+      "path": "scripts/core/render.mjs",
+      "sha256": "3869cfd502f143ceffe67f3e2628f7bf9b2e48d06da2c96274d9c12af80f5849"
     },
     {
       "path": "scripts/core/report.mjs",
-      "sha256": "347f418e2f73a507f69809e6b21b853bab01518250b965bc324fed589627141b"
+      "sha256": "480f52d271085fad32443a77d69021e35b08cf4430ae2aec93998c76e62e2165"
     },
     {
       "path": "scripts/core/scope.mjs",
@@ -779,5 +783,5 @@
       "sha256": "a53223b7eefab2204c026a62b1da04cfdb8a07be8d3749613e8241a81b027d9b"
     }
   ],
-  "bundle_hash": "2b78683c4b96f97790de4a93336e78e56c7db9c651646b372c2816c198cdce66"
+  "bundle_hash": "ffac7e2992c5a1afe938abb9ad169a5b98d6feefe9e2c19d751ae24e14b7d9f8"
 }

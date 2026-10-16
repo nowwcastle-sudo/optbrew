@@ -375,7 +375,7 @@ function statusFor(finding, changes, afterInput, target, requireRef) {
  * the ledger and the hashed response records show, so a fetched page cannot be moved to skipped and a request limit
  * cannot be claimed without the requests that exhaust it.
  */
-function checkLedger(input, audit, collection, artifacts, requireRef) {
+export function checkLedger(input, audit, collection, artifacts, requireRef) {
   const ledger = JSON.parse(requireRef(audit.ledger_ref).text);
   const entries = ledger.entries;
   const fail = message => { throw new ContractError(`request ledger: ${message}`); };

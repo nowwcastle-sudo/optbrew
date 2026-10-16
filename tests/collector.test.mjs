@@ -107,7 +107,7 @@ test('declared robots with no page link reaches Naver audit without a scored res
       auxiliary_resources: [{ kind: 'robots', original: robots, normalized: robots }],
       engines: ['naver'], families: [{ family_id: 'fetch-response', applicable: true }, { family_id: 'search-crawl-policy', applicable: true }],
       locale: 'ko-KR', region: 'KR', browser: 'Chrome', device: 'desktop',
-      question_panel: [], surfaces: [], models: [], search_enabled: null }
+      question_panel: [], surfaces: [], models: [], search_enabled: null, render: { enabled: false, pages: [], max_render_requests: 300 } }
   };
   const dir = await mkdtemp(path.join(os.tmpdir(), 'optbrew-aux-audit-'));
   const requested = [];
@@ -138,7 +138,7 @@ test('a declared policy-kind robots file is retained but cannot drive crawl-poli
       auxiliary_resources: [{ kind: 'policy', original: robots, normalized: robots }],
       engines: ['naver'], families: [{ family_id: 'search-crawl-policy', applicable: true }],
       locale: 'ko-KR', region: 'KR', browser: 'Chrome', device: 'desktop',
-      question_panel: [], surfaces: [], models: [], search_enabled: null }
+      question_panel: [], surfaces: [], models: [], search_enabled: null, render: { enabled: false, pages: [], max_render_requests: 300 } }
   };
   const dir = await mkdtemp(path.join(os.tmpdir(), 'optbrew-policy-kind-'));
   try {
@@ -164,7 +164,7 @@ test('undeclared in-scope robots link is not contacted or used while ordinary pa
     protocol: { page_types: [{ id: 'main', urls: [{ original: page, normalized: page }] }], auxiliary_resources: [],
       engines: ['naver'], families: [{ family_id: 'fetch-response', applicable: true }, { family_id: 'search-crawl-policy', applicable: true }],
       locale: 'ko-KR', region: 'KR', browser: 'Chrome', device: 'desktop',
-      question_panel: [], surfaces: [], models: [], search_enabled: null }
+      question_panel: [], surfaces: [], models: [], search_enabled: null, render: { enabled: false, pages: [], max_render_requests: 300 } }
   };
   const dir = await mkdtemp(path.join(os.tmpdir(), 'optbrew-undeclared-'));
   const requested = [];

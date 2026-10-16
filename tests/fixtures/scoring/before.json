@@ -17,6 +17,7 @@
       ],
       "engines": ["google"], "locale": "ko-KR", "region": "KR", "browser": "Chrome",
       "device": "mobile", "surfaces": [], "models": [], "search_enabled": null,
+      "render": { "enabled": false, "pages": [], "max_render_requests": 300 },
       "question_panel": [],
       "families": [
         { "family_id": "fetch-response", "applicable": true },

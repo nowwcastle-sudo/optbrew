@@ -36,6 +36,12 @@ export function freezeProtocol(context) {
   const urls = p.page_types.flatMap(x => x.urls.map(u => u.normalized));
   unique(urls, 'normalized URLs');
   if (!urls.length) throw new ContractError('protocol requires selected public audit URLs');
+  const { render } = p;
+  unique(render.pages.map(x => x.normalized), 'render pages');
+  if (render.pages.length > limits().render_pages) throw new ContractError('render pages exceed the render page limit');
+  if (render.pages.some(x => !urls.includes(x.normalized))) throw new ContractError('render page is not a selected URL');
+  if (!Number.isInteger(render.max_render_requests) || render.max_render_requests > limits().max_render_requests)
+    throw new ContractError('render request limit is not a whole number within the render ceiling');
   const resources = p.auxiliary_resources ?? [];
   unique(resources.map(x => x.normalized), 'auxiliary resources');
   if (resources.some(x => urls.includes(x.normalized))) throw new ContractError('auxiliary resource duplicates a selected URL');
@@ -104,6 +110,7 @@ export function freezeProtocol(context) {
   }
   const sorted = { ...p,
     ...(p.auxiliary_resources ? { auxiliary_resources: [...resources].sort((a, b) => compare(a.normalized, b.normalized)) } : {}),
+    render: { ...render, pages: [...render.pages].sort((a, b) => compare(a.normalized, b.normalized)) },
     engines: [...p.engines].sort(),
     families: [...p.families].sort((a, b) => compare(a.family_id, b.family_id)).map(f => ({ ...f,
       ...(f.urls ? { urls: [...f.urls].sort() } : {}),
@@ -116,6 +123,7 @@ export function freezeProtocol(context) {
   const hashInput = structuredClone(protocol);
   for (const type of hashInput.page_types) for (const url of type.urls) if (url.indexing_decision)
     url.indexing_decision = { condition: url.indexing_decision.condition };
+  for (const url of hashInput.render.pages) if (url.indexing_decision) url.indexing_decision = { condition: url.indexing_decision.condition };
   for (const family of hashInput.families) if (family.applicability_decision)
     family.applicability_decision = { condition: family.applicability_decision.condition };
   if (hashInput.target_identity) {

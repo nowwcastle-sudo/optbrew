@@ -79,7 +79,7 @@ test('managed update of the published 0.1.2 install is refused with migration_re
   assert.match(err, /^migration_required: evaluation_version changed/);
 });
 
-test('managed update of the published 0.1.3 install is refused: score.mjs changed, evaluation version kept', { skip: skipUnreachable013, timeout: 540000 }, async t => {
+test('managed update of the published 0.1.3 install is refused: the contract schema changed, evaluation version kept', { skip: skipUnreachable013, timeout: 540000 }, async t => {
   const temp = await mkdtemp(path.join(os.tmpdir(), 'optbrew update from 0.1.3 '));
   t.after(() => rm(temp, { recursive: true, force: true }));
   const old = await extractPublished013(temp);
@@ -91,7 +91,8 @@ test('managed update of the published 0.1.3 install is refused: score.mjs change
 
   await assert.rejects(update({ bundleRoot: currentBundle, recordRoot: f.recordRoot }), error => {
     const text = error.message;
-    assert.match(text, /^migration_required: scripts\/core\/score\.mjs changed/);
+    // The first changed contract file in the order `compatible` checks; Task 6 added Protocol.render to the schema.
+    assert.match(text, /^migration_required: references\/schemas\/contract\.schema\.json changed/);
     assert.ok(text.includes('0.1.3') && text.includes('0.1.4'), text);
     assert.match(text, /optbrew reinstall-plan --scope user --home/);
     assert.match(text, /docs\/platforms\.md/);

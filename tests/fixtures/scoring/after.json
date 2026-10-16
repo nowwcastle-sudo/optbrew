@@ -50,6 +50,7 @@
       "surfaces": [],
       "models": [],
       "search_enabled": null,
+      "render": { "enabled": false, "pages": [], "max_render_requests": 300 },
       "question_panel": [],
       "families": [
         {

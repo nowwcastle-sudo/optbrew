@@ -11,7 +11,7 @@ const context = () => ({
     page_types: [{ id: 'primary', urls: [{ original: 'https://example.com/', normalized: 'https://example.com/' }] }],
     engines: ['google'], families: [{ family_id: 'fetch-response', applicable: true }],
     locale: 'ko-KR', region: 'KR', browser: 'Chrome', device: 'mobile',
-    question_panel: [], surfaces: [], models: [], search_enabled: null,
+    question_panel: [], surfaces: [], models: [], search_enabled: null, render: { enabled: false, pages: [], max_render_requests: 300 },
   },
 });
 
@@ -147,4 +147,49 @@ test('a fixed question panel cannot be called absent to remove question coverage
   changed.protocol.families.push({ family_id: 'question-coverage', applicable: false,
     applicability_decision: { condition: 'no_fixed_questions', reason: 'claimed absent', evidence_ref: 'e/panel' } });
   assert.throws(() => freezeProtocol(changed), ContractError);
+});
+
+test('the render plan is a fixed comparison input bounded by the selected pages and the render limits', () => {
+  const [page] = context().protocol.page_types[0].urls;
+  const about = { original: 'https://example.com/about', normalized: 'https://example.com/about' };
+  const planned = (pages, extra = {}) => {
+    const changed = context();
+    changed.protocol.page_types[0].urls.push(about);
+    changed.protocol.render = { enabled: true, pages, max_render_requests: 300, ...extra };
+    return changed;
+  };
+  const baseline = freezeProtocol(context()).protocol_hash;
+  const hash = freezeProtocol(planned([page, about])).protocol_hash;
+  assert.notEqual(hash, freezeProtocol(planned([])).protocol_hash, 'the pages are part of the protocol');
+  assert.equal(freezeProtocol(planned([about, page])).protocol_hash, hash, 'page order is immaterial');
+  assert.notEqual(freezeProtocol(planned([page], { max_render_requests: 200 })).protocol_hash, freezeProtocol(planned([page])).protocol_hash);
+  assert.notEqual(freezeProtocol(planned([], { enabled: false })).protocol_hash, freezeProtocol(planned([])).protocol_hash);
+  assert.equal(baseline.length, 64);
+  assert.throws(() => freezeProtocol(planned([{ original: 'https://example.com/other', normalized: 'https://example.com/other' }])), /not a selected URL/);
+  assert.throws(() => freezeProtocol(planned([page, page])), /duplicate/);
+  assert.throws(() => freezeProtocol(planned([page], { max_render_requests: 301 })), /render request limit/);
+  assert.throws(() => freezeProtocol(planned([page], { max_render_requests: 2.5 })), /render request limit/);
+  assert.throws(() => freezeProtocol(planned([page], { max_render_requests: 0 })), ContractError);
+  const missing = context();
+  delete missing.protocol.render;
+  assert.throws(() => validateEntity('RunContext', missing), /render/);
+  const extra = planned([page]);
+  extra.protocol.render.timeout = 1;
+  assert.throws(() => freezeProtocol(extra), /unexpected field/);
+  const tooMany = context();
+  tooMany.protocol.page_types[0].urls = Array.from({ length: 11 }, (_, i) => ({ original: `https://example.com/${i}`, normalized: `https://example.com/${i}` }));
+  tooMany.protocol.render = { enabled: true, pages: tooMany.protocol.page_types[0].urls, max_render_requests: 300 };
+  assert.throws(() => freezeProtocol(tooMany), /render page limit/);
+});
+
+test('indexing decision evidence paths on a render page do not change the protocol hash', () => {
+  const make = evidence => {
+    const changed = context();
+    const url = { ...changed.protocol.page_types[0].urls[0], public_indexing: false,
+      indexing_decision: { condition: 'not_public_index_target', reason: 'documented', evidence_ref: evidence } };
+    changed.protocol.page_types[0].urls[0] = url;
+    changed.protocol.render = { enabled: true, pages: [url], max_render_requests: 300 };
+    return changed;
+  };
+  assert.equal(freezeProtocol(make('e/one')).protocol_hash, freezeProtocol(make('e/two')).protocol_hash);
 });

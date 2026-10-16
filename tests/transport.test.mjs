@@ -181,7 +181,7 @@ test('proxy credentials never reach evidence or errors', async () => {
   const run = { schema_version: '1.0.0', run_id: 'proxy-evidence', target: 'example.test', environment: 'local', goals: [], allowed_changes: [],
     scope: { allowed: scope.allowed, local_targets: [{ host: 'example.test', port: targetPort }] },
     protocol: { page_types: [{ id: 'main', urls: [{ original: page, normalized: page }] }], engines: ['naver'], families: [], locale: 'ko-KR', region: 'KR',
-      browser: 'Chrome', device: 'desktop', question_panel: [], surfaces: [], models: [], search_enabled: null },
+      browser: 'Chrome', device: 'desktop', question_panel: [], surfaces: [], models: [], search_enabled: null, render: { enabled: false, pages: [], max_render_requests: 300 } },
     evaluation_version: '0.3.0', protocol_version: '0.1.0', data_sources: [], cost_decision: {}, evidence_ref: 'test/context' };
   const dir = await mkdtemp(path.join(os.tmpdir(), 'optbrew-proxy-evidence-'));
   try {
