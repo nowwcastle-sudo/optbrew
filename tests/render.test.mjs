@@ -1,6 +1,7 @@
 import test, { after, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
+import { existsSync } from 'node:fs';
 import { mkdir, readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
 import { chromeHandle, findChrome, launchChrome } from '../skills/optbrew/scripts/core/chrome.mjs';
@@ -133,11 +134,16 @@ describe('render stage', async () => {
       html(res, `<!doctype html><title>Rendered 한글</title><div id="app">empty</div>
 <a href="/b">b</a><a href="/a#x">a</a><a href="/a#y">a again</a><a href="/b">b again</a>
 <a href="http://127.0.0.1:${targetPort}/off">off</a><a href="mailto:x@example.test">mail</a>
-<img src="http://cdn.example.test:${targetPort}/i.png"><img src="/gone.png"><img src="/reset">
+<img src="http://cdn.example.test:${targetPort}/i.png">
 <script>
 document.getElementById('app').textContent = 'built by script';
 console.error('render-boom');
 fetch('http://cdn.example.test:${targetPort}/data.json').catch(() => {});
+fetch('/beacon', { method: 'POST' }).catch(() => {});
+</script>`);
+    } else if (req.url === '/outcomes') {
+      html(res, `<!doctype html><title>outcomes</title><img src="/gone.png"><img src="/reset">
+<script>
 fetch('/beacon', { method: 'POST' }).catch(() => {});
 fetch('/beacon').catch(() => {});
 fetch('/hop').catch(() => {});
@@ -146,6 +152,14 @@ fetch('/hop').catch(() => {});
       html(res, `<!doctype html><title>unstyled</title><div id="x">hi</div>
 <link rel="stylesheet" href="http://cdn.example.test:${targetPort}/s.css">
 <script>window.addEventListener('load', () => { document.title = getComputedStyle(document.getElementById('x')).color; });</script>`);
+    } else if (req.url === '/fonts') {
+      html(res, `<!doctype html><title>fonts</title>
+<style>@font-face { font-family: A; src: url(http://cdn.example.test:${targetPort}/with.ttf); }
+@font-face { font-family: B; src: url(http://cdn.example.test:${targetPort}/without.ttf); }</style>
+<script>
+const load = family => document.fonts.load('16px ' + family).then(list => list.length, () => 'error');
+Promise.all([load('A'), load('B')]).then(results => { document.title = 'fonts:' + results.join(','); });
+</script>`);
     } else if (req.url === '/hop') { res.writeHead(302, { location: '/plain' }); res.end(); }
     else if (req.url === '/gone.png') { res.writeHead(404, { 'content-type': 'text/plain' }); res.end('gone'); }
     else if (req.url === '/reset') req.socket.destroy();
@@ -188,7 +202,19 @@ fetch('/hop').catch(() => {});
     assert.deepEqual([beacon.action, beacon.blocked_reason], ['blocked', 'non_get_request']);
     assert.deepEqual(targetSeen, [], 'Chrome never contacted the third-party host');
 
-    // Outcomes come from the network events, never assumed.
+    const index = await store.index();
+    assert.equal(index.renders.length, 1);
+    assert.equal(index.renders[0].url, owner('/page'));
+    const saved = JSON.parse((await store.read(index.renders[0].evidence_ref, index.renders[0].sha256)).toString('utf8'));
+    assert.deepEqual(saved, record, 'the stored record is the returned record');
+    assert.equal(index.render_ledger.find(entry => entry.url.endsWith('/page')).error, null);
+  });
+
+  test('records the outcome of every request from the network events, never assumed', { skip }, async () => {
+    const { store } = await newStore();
+    const [record] = await renderWith({ context: contextFor(ownerScope, [owner('/outcomes')]), store });
+    assert.equal(record.blocked_reason, null);
+    const requests = byPath(record);
     assert.equal(requests.get('/gone.png').status, 404);
     assert.equal(requests.get('/gone.png').error, null);
     assert.equal(requests.get('/reset').status, null);
@@ -197,16 +223,11 @@ fetch('/hop').catch(() => {});
     assert.equal(requests.get('/plain').status, 200);
     assert.equal(requests.get('/plain').redirected, true);
 
-    const index = await store.index();
-    assert.equal(index.renders.length, 1);
-    assert.equal(index.renders[0].url, owner('/page'));
-    const saved = JSON.parse((await store.read(index.renders[0].evidence_ref, index.renders[0].sha256)).toString('utf8'));
-    assert.deepEqual(saved, record, 'the stored record is the returned record');
-    const entries = index.render_ledger.filter(entry => entry.page === owner('/page'));
+    const entries = (await store.index()).render_ledger.filter(entry => entry.page === owner('/outcomes'));
     const entry = (suffix, outcome) => entries.find(item => item.url.endsWith(suffix) && item.outcome === outcome);
     assert.equal(entry('/gone.png', 'response').requests, 1);
     assert.match(entry('/reset', 'error').error, /^net::ERR_/);
-    assert.equal(entry('/page', 'response').error, null);
+    assert.equal(entry('/outcomes', 'response').error, null);
     assert.deepEqual([entry('/beacon', 'response').requests, entry('/beacon', 'skipped').skipped_reason], [1, 'non_get_request'], 'a URL repeats only with distinct reasons');
   });
 
@@ -233,6 +254,38 @@ fetch('/hop').catch(() => {});
     assert.deepEqual([sheet.action, sheet.status], ['third_party_static', 200]);
     assert.deepEqual(transport.calls.map(call => call.address), [publicAddress]);
     assert.deepEqual(targetSeen, []);
+  });
+
+  test('a third-party redirect is not followed: it is recorded and fails the request', { skip }, async () => {
+    targetSeen.length = 0;
+    const { store } = await newStore();
+    const calls = [];
+    const transport = direct({ transport: async ({ url }) => {
+      calls.push(url.href);
+      return { status: 302, headers: { location: `http://cdn.example.test:${targetPort}/other.css` }, body: Buffer.alloc(0) };
+    } });
+    const [record] = await renderWith({ context: contextFor(ownerScope, [owner('/styled')]), transport, store });
+    const sheet = byPath(record).get('/s.css');
+    assert.deepEqual([sheet.action, sheet.blocked_reason, sheet.status], ['blocked', 'third_party_redirect', null]);
+    assert.deepEqual(calls, [`http://cdn.example.test:${targetPort}/s.css`], 'one intercepted request is one fetch');
+    assert.deepEqual(targetSeen, []);
+    const entry = (await store.index()).render_ledger.find(item => item.url.endsWith('/s.css'));
+    assert.deepEqual([entry.outcome, entry.skipped_reason, entry.requests], ['skipped', 'third_party_redirect', 0]);
+  });
+
+  const fontFile = ['C:/Windows/Fonts/arial.ttf', '/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf', '/System/Library/Fonts/Supplemental/Arial.ttf']
+    .find(candidate => existsSync(candidate));
+  test('a cross-origin font loads through the vetted fetch only with the CORS headers the host sent', { skip: skip || (fontFile ? false : 'no system font file found') }, async () => {
+    const font = await readFile(fontFile);
+    const { store } = await newStore();
+    const transport = direct({ transport: async ({ url }) => ({ status: 200, body: font, headers: { 'content-type': 'font/ttf',
+      ...(url.pathname === '/with.ttf' ? { 'access-control-allow-origin': '*', 'set-cookie': 'tracker=1' } : {}) } }) });
+    const [record] = await renderWith({ context: contextFor(ownerScope, [owner('/fonts')]), transport, store });
+    assert.equal(record.title, 'fonts:1,error', 'the font with CORS headers loaded, the one without them was refused by Chrome');
+    const served = byPath(record).get('/with.ttf');
+    assert.deepEqual([served.action, served.status, served.error], ['third_party_static', 200, null]);
+    const entry = (await store.index()).render_ledger.find(item => item.url.endsWith('/with.ttf'));
+    assert.deepEqual([entry.outcome, entry.requests, entry.error], ['response', 1, null]);
   });
 
   test('a third-party fetch that fails is recorded and fails the request', { skip }, async () => {
@@ -344,7 +397,7 @@ fetch('/hop').catch(() => {});
 
   test('render ledger entries replay with checkRenderLedger from the stored evidence', { skip }, async () => {
     const { store } = await newStore();
-    const page = owner('/page');
+    const page = owner('/outcomes');
     await renderWith({ context: contextFor(ownerScope, [page], { max_render_requests: 100 }), store });
 
     // Everything below is read back from the store, as report replay will do.

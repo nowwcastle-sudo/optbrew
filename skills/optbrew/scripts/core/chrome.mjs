@@ -273,7 +273,10 @@ function decide({ url, method }, resourceType, scope) {
   return { action: 'blocked', blocked_reason: 'out_of_scope' };
 }
 
-const consoleText = args => args.map(arg => arg.value ?? arg.description ?? '').join(' ');
+// What `fetchStatic` reports with `error.code`; any other failure is `third_party_failed`.
+const STATIC_FAILURES = { scope_rejected: 'third_party_refused', third_party_redirect: 'third_party_redirect' };
+
+const consoleText =args => args.map(arg => arg.value ?? arg.description ?? '').join(' ');
 
 const READ_PAGE = `JSON.stringify({ final_url: location.href, title: document.title, dom: document.documentElement.outerHTML,
   links: Array.from(document.querySelectorAll('a[href]'), anchor => anchor.href) })`;
@@ -319,13 +322,14 @@ function routerFor(cdp) {
  * `budget` intercepted requests every request fails with `render_budget`.
  * With `fetchStatic(url)` (direct mode) Chrome never touches a third-party static host: the bytes come from that function,
  * which vets the address, and are handed to Chrome with Fetch.fulfillRequest; a refusal or failure fails the request and is
- * recorded (`third_party_refused`, `third_party_failed`). Without it (proxy mode) the proxy carries the request.
+ * recorded (`third_party_refused`, `third_party_redirect`, `third_party_failed`); at most `staticConcurrency` of those fetches
+ * run at once, the rest wait their turn. Without it (proxy mode) the proxy carries the request.
  * Every record gets the `status` of its response or the `error` text of its failure from the Network events.
  * The rules cover every target the page owns, not only its main frame: iframes and dedicated workers (auto-attached from the
  * page session), popups, service workers and shared workers (auto-attached from the browser). Each is paused, gets the same
  * Fetch interception, and only then runs; the records say which kind of target made the request (`target_type`).
  */
-export async function scopedPage({ chrome, context, budget, fetchStatic = null }) {
+export async function scopedPage({ chrome, context, budget, fetchStatic = null, staticConcurrency = limits().render_static_concurrency }) {
   const { cdp } = chrome;
   const { claims, retired } = await routerFor(cdp);
   const { browserContextId } = await cdp.send('Target.createBrowserContext', { disposeOnDetach: true });
@@ -361,6 +365,16 @@ export async function scopedPage({ chrome, context, budget, fetchStatic = null }
     return { promise, off };
   };
 
+  // A slot is handed straight to the next waiter, so a fetch that starts meanwhile cannot take it and exceed the cap.
+  let staticRunning = 0;
+  const staticQueue = [];
+  const acquireStatic = () => staticRunning < staticConcurrency ? (staticRunning += 1, Promise.resolve()) : new Promise(resolve => staticQueue.push(resolve));
+  const releaseStatic = () => { const next = staticQueue.shift(); if (next) next(); else staticRunning -= 1; };
+  const limitedFetch = async url => {
+    await acquireStatic();
+    try { return await fetchStatic(url); } finally { releaseStatic(); }
+  };
+
   const unresolved = networkId => byNetwork.get(networkId)?.find(record => record.status === null && record.error === null);
 
   async function onPaused(session, { requestId, networkId, request, resourceType, redirectedRequestId, frameId }) {
@@ -374,15 +388,15 @@ export async function scopedPage({ chrome, context, budget, fetchStatic = null }
     if (verdict.action !== 'blocked' && networkId) byNetwork.set(networkId, [...(byNetwork.get(networkId) ?? []), record]);
     let served = null;
     if (verdict.action === 'third_party_static' && fetchStatic) {
-      try { served = await fetchStatic(request.url); }
+      try { served = await limitedFetch(request.url); }
       catch (error) {
-        verdict = { action: 'blocked', blocked_reason: error.code === 'scope_rejected' ? 'third_party_refused' : 'third_party_failed' };
+        verdict = { action: 'blocked', blocked_reason: STATIC_FAILURES[error.code] ?? 'third_party_failed' };
         Object.assign(record, verdict);
       }
     }
     if (served) {
-      record.status = served.status;
-      const responseHeaders = Object.entries(served.headers).filter(([name]) => name === 'content-type').map(([name, value]) => ({ name, value }));
+      // The caller chose which headers go to Chrome with the bytes; the status comes back from Chrome's own network events.
+      const responseHeaders = Object.entries(served.headers).map(([name, value]) => ({ name, value }));
       await cdp.send('Fetch.fulfillRequest', { requestId, responseCode: served.status, responseHeaders, body: served.body.toString('base64') }, session);
     } else if (verdict.action === 'blocked') {
       if (session === sessionId && resourceType === 'Document' && frameId === mainFrameId) {

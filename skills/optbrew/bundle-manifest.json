@@ -53,14 +53,14 @@
     },
     {
       "path": "references/limits.json",
-      "sha256": "73e29183214d89981102a60ae126b47bf7764c15852c758778ddf0eeb9de8ef0"
+      "sha256": "0bcbb6225f70536a4d33f576e2d1223611aeca29dbebe15983927e91c3be8fca"
     },
     {
       "path": "scripts/core/protocol.mjs",
       "sha256": "c7f85f963abd125155fed1a3a4e707885e8d63fa6d146c1a00c431440dda0336"
     }
   ],
-  "protocol_hash": "d47ffc55181fa66d53903551dc5e3498fdef753fa8170d99d6eb47b12f4602df",
+  "protocol_hash": "725fdc819398ff85bb86f3307635f980f5385d2036552b86558f85245ffcc2ab",
   "files": [
     {
       "path": "LICENSE",
@@ -548,7 +548,7 @@
     },
     {
       "path": "references/api.md",
-      "sha256": "f7b58e2780732f1d5d7e6804afb6babd3f8d559fcc19268d41ddaa2ea9161df3"
+      "sha256": "d99e4bd75cacf0b143a2a4e81fd029e8349a3ff17490251abe382b14fb49b1c7"
     },
     {
       "path": "references/check-registry.json",
@@ -572,7 +572,7 @@
     },
     {
       "path": "references/limits.json",
-      "sha256": "73e29183214d89981102a60ae126b47bf7764c15852c758778ddf0eeb9de8ef0"
+      "sha256": "0bcbb6225f70536a4d33f576e2d1223611aeca29dbebe15983927e91c3be8fca"
     },
     {
       "path": "references/measurement.md",
@@ -696,11 +696,11 @@
     },
     {
       "path": "scripts/core/chrome.mjs",
-      "sha256": "39ad61b8bb96269bd5d586f870d94239498dae0c268a8d179b638a79eb2d278c"
+      "sha256": "1cdac2990080085e6551aaa0ef9e9150adda526c09cf04f51a6a62a38ed83454"
     },
     {
       "path": "scripts/core/collector.mjs",
-      "sha256": "e4890cdfe7ba8b445a21c7845817737d5766ba526ed2423e93b31ebd84a93b9b"
+      "sha256": "10db81e9f18309070c4ab72214e3a2104dffe26e1a7125c0aaba6b4e25f25074"
     },
     {
       "path": "scripts/core/compare.mjs",
@@ -756,7 +756,7 @@
     },
     {
       "path": "scripts/core/render.mjs",
-      "sha256": "309751a51e604001e281234d46ed05a23a9990138aff9f675825c8785de76707"
+      "sha256": "1dc338c914a5c8a9925885cfa605e25b25a6fa743352af38ed5ecae3f3ec05bf"
     },
     {
       "path": "scripts/core/report.mjs",
@@ -783,5 +783,5 @@
       "sha256": "a53223b7eefab2204c026a62b1da04cfdb8a07be8d3749613e8241a81b027d9b"
     }
   ],
-  "bundle_hash": "9e0024410bab9572961cda71a6e6b2dc2ec711d2c9f53a9a748d846b302fd24e"
+  "bundle_hash": "3c9f52c7249541539f5ac868fd082e273922eeab02cd97a6f68df9f8ca357595"
 }

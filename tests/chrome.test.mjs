@@ -265,6 +265,9 @@ describe('chrome block', async () => {
   new SharedWorker('/shared.js');
   new Worker('/dedicated.js');
   </script>`);
+    } else if (req.url === '/statics') {
+      res.writeHead(200, { 'content-type': 'text/html' });
+      res.end(`<title>statics</title>${[1, 2, 3, 4].map(n => `<img src="http://cdn.example.test:${targetPort}/s${n}.png">`).join('')}`);
     } else if (/^\/(sw|shared|dedicated)\.js$/.test(req.url)) {
       const name = req.url.slice(1, -3);
       const start = name === 'sw' ? "self.addEventListener('activate', () => { run(); });" : 'run();';
@@ -489,6 +492,27 @@ describe('chrome block', async () => {
         assert.ok(!targetSeen.some(seen => /(popup|inner)-/.test(seen) || seen === 'GET /popup-out'), 'the out-of-scope host received nothing from the popup or the iframe');
       } finally { await page.close(); }
     });
+  });
+
+  test('third-party fetches run at most staticConcurrency at a time and the rest wait', { skip }, async () => {
+    const run = async staticConcurrency => {
+      let active = 0;
+      let most = 0;
+      const fetchStatic = async () => {
+        active += 1;
+        most = Math.max(most, active);
+        await sleep(150);
+        active -= 1;
+        return { status: 200, headers: { 'content-type': 'image/png' }, body: Buffer.from('iVBORw0KGgo=', 'base64') };
+      };
+      return withChrome({}, async chrome => {
+        const page = await scopedPage({ chrome, context: { scope: ownerScope }, budget: 100, fetchStatic, staticConcurrency });
+        try { await page.goto(owner('/statics')); } finally { await page.close(); }
+        return { most, served: page.requests.filter(request => request.action === 'third_party_static').length };
+      });
+    };
+    assert.deepEqual(await run(1), { most: 1, served: 4 }, 'with a cap of 1 two fetches never overlap, and all four are still served');
+    assert.ok((await run(4)).most > 1, 'without the cap they overlap, so the test can tell');
   });
 
   test('a proxy challenge gets the proxy credentials from memory, a server challenge never does', { skip }, async () => {

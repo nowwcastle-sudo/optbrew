@@ -10,5 +10,6 @@
   "chrome_close_grace_ms": 5000,
   "cdp_command_timeout_ms": 30000,
   "render_pages": 10,
+  "render_static_concurrency": 4,
   "max_render_requests": 300
 }

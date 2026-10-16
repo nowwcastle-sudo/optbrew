@@ -10,6 +10,11 @@ export function selectRenderPages(pageTypes, limit = limits().render_pages) {
   return pageTypes.flatMap(type => type.urls.slice(0, 1)).slice(0, limit);
 }
 
+// A third-party fetch follows no redirect: zero hops.
+const FOLLOW_NONE = 0;
+// Response headers that decide whether the page may use a cross-origin resource (fonts need them); never Set-Cookie.
+const CORS_HEADERS = ['access-control-allow-origin', 'access-control-allow-credentials', 'timing-allow-origin'];
+
 const addressOf = value => typeof value === 'string' ? value : value?.address;
 
 /**
@@ -46,14 +51,23 @@ async function hostRulesFor(scope, resolve) {
 /**
  * The bytes of a third-party static GET, fetched by Node with the collector's own vetted fetch: the address is resolved and
  * vetted (private, loopback, link-local and metadata addresses are refused, no local_targets), the connection is pinned to
- * it, the byte limit and deadline are the collection limits. Only that URL's own origin is in scope, so a redirect to
- * another host is refused too.
+ * it, the byte limit and deadline are the collection limits. No redirect is followed: one intercepted request is one fetch,
+ * so the render budget bounds the Node requests too, and a redirect answer is reported as `third_party_redirect`.
  */
 function staticFetcher(transport) {
   return async url => {
-    const { status, headers, body } = await fetchScoped(url, { context: { scope: { allowed: [{ origin: new URL(url).origin }] } },
-      transport: transport.transport, resolve: transport.resolve, addressVetting: 'direct' });
-    return { status, headers, body };
+    let result;
+    try {
+      result = await fetchScoped(url, { context: { scope: { allowed: [{ origin: new URL(url).origin }] } },
+        transport: transport.transport, resolve: transport.resolve, addressVetting: 'direct', maxRedirects: FOLLOW_NONE, extraHeaders: CORS_HEADERS });
+    } catch (error) {
+      // The answered hops are recorded on the error; with no redirect allowed, one hop means the host answered with a redirect.
+      if (error.redirect_chain?.length) error.code = 'third_party_redirect';
+      throw error;
+    }
+    // Only these go to Chrome with the bytes, so a cookie or any other header of the third party never reaches the browser.
+    const forwarded = Object.fromEntries(Object.entries(result.headers).filter(([name]) => name === 'content-type' || CORS_HEADERS.includes(name)));
+    return { status: result.status, headers: forwarded, body: result.body };
   };
 }
 

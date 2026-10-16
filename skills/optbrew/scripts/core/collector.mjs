@@ -24,9 +24,9 @@ function undeclaredAuxiliary(url, allowed) {
   throw error;
 }
 
-function safeHeaders(headers) {
+function safeHeaders(headers, extra = []) {
   const source = headers instanceof Headers ? Object.fromEntries(headers) : headers ?? {};
-  return Object.fromEntries(Object.entries(source).filter(([name]) => HEADER_NAMES.includes(name.toLowerCase()))
+  return Object.fromEntries(Object.entries(source).filter(([name]) => HEADER_NAMES.includes(name.toLowerCase()) || extra.includes(name.toLowerCase()))
     .map(([name, value]) => [name.toLowerCase(), String(value)]));
 }
 
@@ -58,7 +58,7 @@ async function addressesFor(url, resolve) {
 }
 
 /** Fetch one URL with fresh DNS validation at every redirect and a pinned connection. */
-export async function fetchScoped(input, { context, transport = directTransport, resolve = host => lookup(host, { all: true, verbatim: true }), timeoutMs = limits().timeout_ms, maxBytes = limits().max_bytes, maxRedirects = limits().max_redirects, headers = {}, allowedAuxiliary = null, reserveRequest = null, addressVetting = 'direct' }) {
+export async function fetchScoped(input, { context, transport = directTransport, resolve = host => lookup(host, { all: true, verbatim: true }), timeoutMs = limits().timeout_ms, maxBytes = limits().max_bytes, maxRedirects = limits().max_redirects, headers = {}, allowedAuxiliary = null, reserveRequest = null, addressVetting = 'direct', extraHeaders = [] }) {
   if (![timeoutMs, maxBytes, maxRedirects].every(Number.isInteger) || timeoutMs < 1 || timeoutMs > limits().timeout_ms || maxBytes < 1 || maxBytes > limits().max_bytes || maxRedirects < 0 || maxRedirects > limits().max_redirects)
     throw new Error('fetch limits exceed context ceiling');
   // Proxy vetting skips DNS-name checks, which is only safe when the proxy transport (not a direct connection) carries the request.
@@ -94,7 +94,7 @@ export async function fetchScoped(input, { context, transport = directTransport,
       if (!Number.isInteger(response?.status) || response.status < 100 || response.status > 599) throw new Error('invalid transport status');
       const body = text(response.body);
       if (body.length > maxBytes) throw new Error('response byte limit exceeded');
-      const savedHeaders = safeHeaders(response.headers);
+      const savedHeaders = safeHeaders(response.headers, extraHeaders);
       if (REDIRECTS.has(response.status) && savedHeaders.location) {
         if (hop === maxRedirects) {
           redirect_chain.push({ url: url.href, status: response.status, location: '[limit]' });
