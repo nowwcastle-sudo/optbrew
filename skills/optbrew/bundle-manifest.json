@@ -68,7 +68,7 @@
     },
     {
       "path": "SKILL.md",
-      "sha256": "292ef58ad55b7b7ab981eeb6be608bdc7a9672f1db4c3696efe2f974e5c25f96"
+      "sha256": "ad7525f0a327b2150fe4defa5a66536120ac8d0304cca9b9364da7cbb560c61c"
     },
     {
       "path": "THIRD_PARTY_NOTICES.md",
@@ -600,7 +600,7 @@
     },
     {
       "path": "references/report.md",
-      "sha256": "9cc715bfc001445c2fad95e2239ed41dedf90e698be71238ac51ac01d8d4cc6e"
+      "sha256": "3d5006ac1a8100f1c4f493e39f8f03ceef6d0e9566dcbee00322e99bf20dd4c1"
     },
     {
       "path": "references/routing.md",
@@ -864,15 +864,19 @@
     },
     {
       "path": "scripts/core/report-compose.mjs",
-      "sha256": "f791971b7c1ef3cdf8b238dfafa012b2e46571fb437ee0dbe56e9c71169750cb"
+      "sha256": "1a5cd6ba7371dfbfe8e7c7d764416a8adf047e563140f3ca65a348cdcd70935f"
+    },
+    {
+      "path": "scripts/core/report-html.mjs",
+      "sha256": "f89bb309a45bb703b5282aa7774ac2144d230fbf3df2c59d7cb87e7f29ace1b1"
     },
     {
       "path": "scripts/core/report.mjs",
-      "sha256": "1f5a524067836107b74756f0f0330a0e0901e4646dc1178924de903ca24b8d58"
+      "sha256": "ccb14c62d64fc63f706a0d029fcf5bff55ff9a7557223b29c98244d1691b82e5"
     },
     {
       "path": "scripts/core/runbooks.mjs",
-      "sha256": "f90ec899e254677d04341818617877b5838357deed2af02603013ca85772d7f9"
+      "sha256": "d833d3c820b1705521523353fa473ed354773455566e38d656b50548e6645185"
     },
     {
       "path": "scripts/core/scope.mjs",
@@ -888,7 +892,7 @@
     },
     {
       "path": "scripts/core/stages.mjs",
-      "sha256": "927c5f2ece6f095d82198d034cbf131350ba4e0665f7215cb00ac139da6efa20"
+      "sha256": "4e2008169ea0bbea177131f52e78d909eea30540b7366b87b4461aa296117f6e"
     },
     {
       "path": "scripts/core/transport.mjs",
@@ -915,5 +919,5 @@
       "sha256": "a53223b7eefab2204c026a62b1da04cfdb8a07be8d3749613e8241a81b027d9b"
     }
   ],
-  "bundle_hash": "eec199a42f450fa78dce49c3512d4b1cf241a1d7889e8b7d306bc12c7161582b"
+  "bundle_hash": "0bb1f92bc2f9b7ad1bcd7da57fb88801dba6769cdcbc1c958c5e7543f2ae3f1b"
 }

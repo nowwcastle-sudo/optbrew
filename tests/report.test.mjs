@@ -257,10 +257,10 @@ test('report recomputes raw scores and keeps remote-only, synthetic and missing 
   assert.equal(Math.round(1000 * seo.M / seo.A) / 10, 5.8);
   assert.deepEqual(seo.missing_bounds, [2.9, 97.1]);
   assert.equal(json.comparison.status, 'no_after');
-  assert.match(markdown, /Synthetic example/);
+  assert.match(markdown, /예시 보고서/);
   assert.match(markdown, /proposed_only/);
   assert.match(markdown, /not_connected/);
-  for (const header of ['Fix first', 'Completeness', 'Still blank', 'Remaining work', 'Actual outcomes', 'Run conditions']) assert.match(markdown, new RegExp(header));
+  for (const header of ['먼저 고칠 것', '얼마나 확인했나', '아직 비어 있는 곳', '남은 일', '실제 결과', '실행 조건']) assert.match(markdown, new RegExp(header));
   assert.match(markdown, /Unexpected \\\| noindex/);
 });
 
@@ -472,7 +472,7 @@ test('CLI writes both formats with readback', () => {
     const run = spawnSync(process.execPath, [cli, 'report', '--input', input, '--output-dir', out], { encoding: 'utf8' });
     assert.equal(run.status, 0, run.stderr);
     assert.deepEqual(JSON.parse(readFileSync(path.join(out, 'report.json'))).baseline.scores, score(fixture().baseline.input));
-    assert.match(readFileSync(path.join(out, 'report.md'), 'utf8'), /Synthetic example/);
+    assert.match(readFileSync(path.join(out, 'report.md'), 'utf8'), /예시 보고서/);
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
@@ -892,11 +892,11 @@ test('0.1.2 fix 2: a measured score is never the headline below 80% coverage', a
   assert.equal(headline.headline_score, null);
   assert.equal(headline.measured_subset_score, seo.score);
   assert.deepEqual(headline.missing_bounds, seo.missing_bounds);
-  assert.match(markdown, /Headline:/);
+  assert.match(markdown, /요약:/);
   const shown = Math.floor(headline.coverage_exact * 10 + 1e-9) / 10;
-  assert.match(markdown, new RegExp(`SEO: insufficient coverage \\(${shown}% of the applicable weight is measured; at least 80% is needed\\)`));
-  assert.match(markdown, new RegExp(`measured subset ${seo.score}`));
+  assert.match(markdown, new RegExp(`SEO: 확인 범위 부족 \\(적용 가중치의 ${shown}%만 확인했습니다. 점수를 내려면 80% 이상 필요합니다\\)`));
+  assert.match(markdown, new RegExp(`확인한 범위의 통과율 ${seo.score}`));
   const row = json.tables.score.find(x => x[0] === 'SEO');
-  assert.match(row[1], /^insufficient coverage \(measured subset/);
-  assert.match(row[1], new RegExp(`bounds ${seo.missing_bounds.join('–')}`));
+  assert.match(row[1], /^확인 범위 부족 \(확인한 범위의 통과율/);
+  assert.match(row[1], new RegExp(`점수 범위 ${seo.missing_bounds.join('–')}`));
 });

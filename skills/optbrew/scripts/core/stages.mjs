@@ -20,12 +20,16 @@ import { groupPages, readPreflight, sameSite, selectPages } from './page-select.
 import { pageNeutral, problemsOf } from './findings.mjs';
 import { freezeProtocol } from './protocol.mjs';
 import { renderPages, selectRenderPages } from './render.mjs';
+import { renderHtmlReport } from './report-html.mjs';
 import { writeReport } from './report.mjs';
+import { loadRunbook } from './runbooks.mjs';
 import { score } from './score.mjs';
 import { assertUrlInScope, urlTarget } from './scope.mjs';
 
 /** Fixed file names of the run documents the evidence index points at. */
 const DOCUMENTS = { collection: 'collection.json', ledger: 'ledger.json', modules: 'modules.json', observations: 'observations.json' };
+/** The skill folder; the runbooks name it where they run a script of the skill. */
+const SKILL_ROOT = path.resolve(fileURLToPath(new URL('../../', import.meta.url)));
 const magnusScript = fileURLToPath(new URL('../../modules/magnus-seo/scripts/aeo_audit.py', import.meta.url));
 const NAVER_MODULE = 'naver-searchadvisor';
 const MAGNUS_MODULE = 'magnus-seo';
@@ -546,7 +550,10 @@ async function ownerExportResults(state) {
   return { metrics, remaining };
 }
 
-/** Wrap the run's evidence in a replayable packet and write `report.json` and `report.md`; the report replays every verdict from it. */
+/** Each runbook the report's blank items point to, loaded once at the guidance level the start answers chose. */
+const runbooksOf = (composed, level) => [...new Set(composed.remaining.flatMap(row => row.runbook_ids))].map(id => loadRunbook(id, level, { skillRoot: SKILL_ROOT }));
+
+/** Wrap the run's evidence in a replayable packet and write `report.json`, `report.md` and `report.html`; the report replays every verdict from it. */
 const reportStage = {
   name: 'report',
   async run(state) {
@@ -561,8 +568,10 @@ const reportStage = {
       comparison: compare(input, null), metrics, findings: findingsOf(state.observations, evidence_index), changes: [], costs, remaining,
       evidence_root: out, evidence_index, audit_snapshots: [{ phase: PHASE, audit_ref: store.indexRef, context_ref: context.evidence_ref }],
       source_ref: RUN_SOURCE, data_class: 'real', lab_cwv: state.lab_cwv ?? null, start_redirect: state.start_redirect ?? null };
-    const { jsonPath, markdownPath } = await writeReport(packet, out);
-    return { state: { ...state, packet, reports: { json: jsonPath, md: markdownPath } } };
+    const level = state.answers.guidance_level;
+    const renderHtml = composed => renderHtmlReport(composed, { runbooks: runbooksOf(composed, level), level, target: context.target });
+    const { jsonPath, markdownPath, htmlPath } = await writeReport(packet, out, { renderHtml });
+    return { state: { ...state, packet, reports: { json: jsonPath, md: markdownPath, html: htmlPath } } };
   },
 };
 

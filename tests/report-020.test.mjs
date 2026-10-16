@@ -1,8 +1,10 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
-import { readFileSync } from 'node:fs';
-import { buildReport } from '../skills/optbrew/scripts/core/report.mjs';
-import { composeReport, renderReport } from '../skills/optbrew/scripts/core/report-compose.mjs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import path from 'node:path';
+import { buildReport, writeReport } from '../skills/optbrew/scripts/core/report.mjs';
+import { renderHtmlReport } from '../skills/optbrew/scripts/core/report-html.mjs';
+import { SECTION_TITLES, composeReport, renderReport } from '../skills/optbrew/scripts/core/report-compose.mjs';
 import { loadRunbook, runbookEntry } from '../skills/optbrew/scripts/core/runbooks.mjs';
 import { keySetRunbook } from '../skills/optbrew/scripts/core/probe.mjs';
 import { compileUnits } from '../skills/optbrew/scripts/core/weights.mjs';
@@ -11,7 +13,9 @@ import { compare } from '../skills/optbrew/scripts/core/compare.mjs';
 import { CONTENT_AFTER_RENDER } from '../skills/optbrew/scripts/core/checks/render-content.mjs';
 import { environmentProbe } from './support/probe.mjs';
 import { fixturePacket, headlineOf, verifiedOf } from './support/compose.mjs';
+import { tempDir } from './support/temp-dir.mjs';
 
+const THIN_TEXT = "확인한 범위에서는 실패한 것이 없지만 점검이 끝나지 않았습니다. '얼마나 확인했나' 구역에서 이유를 확인하세요.";
 const withProbe = (probe, over = {}) => {
   const verified = verifiedOf(over);
   const environment_probe = environmentProbe(probe);
@@ -50,7 +54,7 @@ test('open fixes come before resolved ones, and an unknown priority sorts last',
   const findings = [finding('done', { priority: 'P0', blocker: true, status: 'verified_production' }), finding('odd', { priority: 'P10' }),
     finding('low', { priority: 'P3' }), finding('lower', { priority: 'p1' }), finding('open', { priority: 'P2' })];
   assert.deepEqual(order(composeReport(verifiedOf({ findings }))), ['open', 'low', 'odd', 'lower', 'done']);
-  assert.deepEqual(composeReport(verifiedOf({ findings })).headline, { open: 4, blocking: 0, already_fixed: 1, text: '4 thing(s) to fix first.' });
+  assert.deepEqual(composeReport(verifiedOf({ findings })).headline, { open: 4, blocking: 0, already_fixed: 1, text: '먼저 고칠 것이 4건 있습니다.' });
 });
 
 test('findings come before scores in json and md', () => {
@@ -64,11 +68,11 @@ test('findings come before scores in json and md', () => {
   assert.equal(json.headline, undefined, 'the conclusion is composed.headline; the per-profile headlines are in completeness');
   assert.equal(json.composed.headline.open, 1);
   const at = value => { assert.ok(markdown.includes(value), value); return markdown.indexOf(value); };
-  assert.ok(at('Result:') < at('## Fix first'));
-  assert.ok(at('## Fix first') < at('## Completeness (pass rate within what was measured)'));
-  assert.ok(at('Headline:') > at('## Fix first'), 'no score before the fixes');
-  assert.doesNotMatch(markdown.slice(0, at('## Fix first')), /\bscore|coverage/i);
-  const sections = ['## Fix first', '## Completeness', '## Still blank', '## Run conditions', '## Remaining work', '## Actual outcomes'].map(at);
+  assert.ok(at('결론:') < at('## 먼저 고칠 것'));
+  assert.ok(at('## 먼저 고칠 것') < at('## 얼마나 확인했나 (확인한 범위 안의 통과율)'));
+  assert.ok(at('요약:') > at('## 먼저 고칠 것'), 'no score before the fixes');
+  assert.doesNotMatch(markdown.slice(0, at('## 먼저 고칠 것')), /점수|확인 범위|통과율/);
+  const sections = ['## 먼저 고칠 것', '## 얼마나 확인했나', '## 아직 비어 있는 곳', '## 실행 조건', '## 남은 일', '## 실제 결과'].map(at);
   assert.deepEqual(sections, [...sections].sort((a, b) => a - b), 'design order: fixes, completeness, blanks, conditions, then the rest');
 });
 
@@ -95,9 +99,9 @@ test('lab CWV appears only under conditions', () => {
   assert.deepEqual(composed.conditions.lab_cwv, lab);
   const { markdown, tables } = renderReport(composed, verified);
   assert.doesNotMatch(JSON.stringify({ ...composed, conditions: undefined, tables }), /1234\.5|0\.0421/);
-  const before = markdown.slice(0, markdown.indexOf('## Run conditions'));
-  assert.doesNotMatch(before, /1234\.5|0\.0421|Lab Core Web Vitals/);
-  assert.match(markdown.slice(markdown.indexOf('## Run conditions')), /Lab Core Web Vitals \(reference, not scored\): LCP 1234\.5 ms; CLS 0\.0421/);
+  const before = markdown.slice(0, markdown.indexOf('## 실행 조건'));
+  assert.doesNotMatch(before, /1234\.5|0\.0421|실험실 Core Web Vitals/);
+  assert.match(markdown.slice(markdown.indexOf('## 실행 조건')), /실험실 Core Web Vitals \(참고용, 점수에 넣지 않음\): LCP 1234\.5 ms; CLS 0\.0421/);
   const packet = fixturePacket(); packet.lab_cwv = lab;
   const { json } = buildReport(packet);
   assert.deepEqual(json.composed.conditions.lab_cwv, lab);
@@ -121,13 +125,13 @@ test('the JavaScript note shows only when a page showed its content after render
   assert.deepEqual(note(['unknown', 'chrome_missing']), []);
   assert.deepEqual(note(['pass', 'The raw HTML holds 400 body characters and the render is empty']), []);
   const [text] = note(['pass', `${CONTENT_AFTER_RENDER}: 900 body characters rendered, 40 in the raw HTML`]);
-  assert.match(text, /Naver and AI crawlers may not run JavaScript/);
-  assert.match(text, /not part of any score/);
+  assert.match(text, /네이버와 AI 크롤러는 자바스크립트를 실행하지 못할 수 있어서/);
+  assert.match(text, /어떤 점수에도 들어가지 않습니다/);
   const verified = verifiedOf({ after: unscored([observation('pass', `${CONTENT_AFTER_RENDER}: 900 body characters rendered`)]) });
   const composed = composeReport(verified);
   const { markdown, tables } = renderReport(composed, verified);
-  for (const part of [composed.fixes, composed.completeness, tables]) assert.ok(!JSON.stringify(part).includes('run JavaScript'));
-  assert.ok(markdown.indexOf('run JavaScript') > markdown.indexOf('## Run conditions'));
+  for (const part of [composed.fixes, composed.completeness, tables]) assert.ok(!JSON.stringify(part).includes('자바스크립트를 실행'));
+  assert.ok(markdown.indexOf('자바스크립트를 실행') > markdown.indexOf('## 실행 조건'));
 });
 
 test('conditions report the run: probe, model judgments and the key', () => {
@@ -221,9 +225,9 @@ test('a phase without an audit never reads as a sufficient score', () => {
   };
   const strong = render([result()]);
   assert.equal(strong.composed.completeness[0].before.headline.status, 'unaudited');
-  assert.match(strong.markdown, /SEO: not audited: 91\.2 is the pass rate within what was measured, and no audit backs it/);
-  assert.doesNotMatch(strong.markdown, /SEO: 91\.2/);
-  assert.match(render([result({ M: 50, coverage: 50 })]).markdown, /insufficient coverage .*this phase was not audited, so its verdicts could not be replayed/);
+  assert.match(strong.markdown, /SEO: 감사 안 됨 — 확인한 범위 안의 통과율은 91\.2이지만, 이를 뒷받침하는 감사가 없어 점수로 내지 않습니다/);
+  assert.doesNotMatch(strong.markdown, /SEO: 91\.2점/);
+  assert.match(render([result({ M: 50, coverage: 50 })]).markdown, /확인 범위 부족 .*이 단계는 감사되지 않아 판정을 다시 계산할 수 없었습니다/);
 });
 
 test('an unaudited report with 80% coverage shows no score and is never measured', () => {
@@ -246,21 +250,21 @@ test('an unaudited report with 80% coverage shows no score and is never measured
     assert.equal(row.before.headline.status, 'unaudited', row.profile);
     assert.equal(row.before.headline.headline_score, null, row.profile);
   }
-  assert.match(markdown, /SEO: not audited/);
-  assert.equal(json.composed.headline.text, 'Nothing failed in what was checked, but the check is incomplete; see Still blank.');
+  assert.match(markdown, /SEO: 감사 안 됨/);
+  assert.equal(json.composed.headline.text, THIN_TEXT);
 });
 
 test('the conclusion never reassures while the check is thin', () => {
   const thin = composeReport(verifiedOf({ findings: [] }));
   assert.ok(thin.completeness.every(row => row.before.headline.status === 'insufficient_coverage'));
   assert.equal(thin.headline.open, 0);
-  assert.equal(thin.headline.text, 'Nothing failed in what was checked, but the check is incomplete; see Still blank.');
+  assert.equal(thin.headline.text, THIN_TEXT);
   const verified = verifiedOf({ findings: [] });
   const input = { ...verified.baseline.input, run_context: { ...verified.baseline.input.run_context, audited: true } };
   const full = composeReport({ ...verified, baseline: { input, scores: [result()] } });
   assert.equal(full.completeness[0].before.headline.status, 'sufficient');
-  assert.equal(full.headline.text, 'Nothing is left to fix in what was checked.');
-  assert.match(composeReport(verifiedOf()).headline.text, /^1 thing\(s\) to fix first/, 'open fixes are stated first, whatever the coverage');
+  assert.equal(full.headline.text, '확인한 범위에서는 고칠 것이 남지 않았습니다.');
+  assert.match(composeReport(verifiedOf()).headline.text, /^먼저 고칠 것이 1건 있습니다/, 'open fixes are stated first, whatever the coverage');
 });
 
 test('change paths and blocker counts are composed, and the renderer only formats them', () => {
@@ -276,7 +280,7 @@ test('change paths and blocker counts are composed, and the renderer only format
   const both = composeReport({ ...verified, after: { ...later(), scores: [result()] } }).conditions.blockers.after;
   assert.deepEqual(both, { count: 0, items: [], core_unknown: 0 });
   const rendered = renderReport(composed, { ...verified, changes: [], baseline: { ...verified.baseline, scores: [] } }).markdown;
-  assert.match(rendered, /Baseline blockers: \d+ \(/, 'the line is formatted from composed.conditions.blockers alone');
+  assert.match(rendered, /이전 막는 문제: \d+건 \(/, 'the line is formatted from composed.conditions.blockers alone');
 });
 
 test('the blanks follow the probe of the latest phase', () => {
@@ -299,4 +303,103 @@ test('references/report.md describes the composed report and has no stale wordin
   assert.match(text, /bound to spans of the stored judge queue/);
   assert.match(text, /follow_ups/);
   assert.match(text, /latest phase/);
+});
+
+// The HTML report (Task 16): the same composed report in a third format.
+const runbooksOf = (composed, level = 'beginner') => [...new Set(composed.remaining.flatMap(row => row.runbook_ids))].map(id => loadRunbook(id, level, { skillRoot: '/skill' }));
+const htmlOf = (composed, over = {}) => renderHtmlReport(composed, { runbooks: runbooksOf(composed, over.level), level: 'beginner', target: 'https://example.com/', ...over });
+const stepCount = runbooks => runbooks.reduce((sum, runbook) => sum + runbook.text.split('\n').filter(line => /^(\d+\.|[-*])\s/.test(line)).length, 0);
+
+test('the three formats carry the same numbers', () => {
+  const verified = verifiedOf({ findings: [finding('a', { blocker: true, priority: 'P0' }), finding('b')],
+    after: { ...later(), scores: [result({ score: 95, coverage: 95 })] },
+    comparison: { status: 'comparable', score_deltas: [{ profile: 'SEO', percentage_point_delta: 3.5 }], reasons: [] } });
+  const composed = composeReport(verified);
+  const { markdown } = renderReport(composed, verified);
+  const page = htmlOf(composed);
+  const json = JSON.stringify(composed);
+  const [row] = composed.completeness;
+  const numbers = [composed.headline.open, composed.headline.blocking, composed.headline.already_fixed, row.after.coverage, row.before.coverage,
+    row.after.headline.measured_subset_score, row.difference, row.coverage_without_cwv].filter(value => value !== null);
+  assert.ok(numbers.length >= 7 && numbers.includes(95) && numbers.includes(3.5), 'the scenario has both phases and a difference');
+  for (const number of numbers) {
+    const shown = String(number);
+    assert.ok(markdown.includes(shown), `report.md has ${shown}`);
+    assert.ok(page.includes(shown), `report.html has ${shown}`);
+    assert.ok(json.includes(shown), `report.json has ${shown}`);
+  }
+  assert.ok(page.includes(composed.headline.text.replace(/'/g, '&#39;')) && markdown.includes(composed.headline.text), 'one conclusion in both pages');
+  for (const fix of composed.fixes) assert.ok(page.includes(fix.message) && markdown.includes(fix.message), fix.message);
+  assert.ok(page.indexOf('id="fixes"') < page.indexOf('id="completeness"') && page.indexOf('id="completeness"') < page.indexOf('id="blank"'), 'fixes, completeness, blanks, in the design order');
+});
+
+test('html has no external script or stylesheet', () => {
+  const composed = composeReport(withProbe({ google_key: false, chrome: { found: false, kind: null, reason: 'chrome_not_found' } }));
+  const page = htmlOf(composed);
+  assert.match(page, /^<!doctype html>/);
+  assert.doesNotMatch(page, /<script|<link|<img|<iframe|<object|<embed|@import|url\(/i);
+  assert.doesNotMatch(page, /\s(src|href|action|data|poster|srcset)\s*=/i, 'no attribute can load or open an outside address');
+  assert.doesNotMatch(page, /\son[a-z]+\s*=/i, 'no event handler');
+  assert.match(page, /<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'">/);
+  assert.match(page, /prefers-color-scheme:dark/);
+  assert.match(page, /<meta name="viewport" content="width=device-width,initial-scale=1">/);
+  assert.match(page, /<html lang="ko">/);
+  assert.ok(page.includes('<svg') && page.includes('<details'));
+});
+
+test('html opens each runbook in details', () => {
+  for (const level of ['beginner', 'brief']) {
+    const composed = composeReport(withProbe({ google_key: false, chrome: { found: false, kind: null, reason: 'chrome_not_found' } }));
+    const runbooks = runbooksOf(composed, level);
+    const page = htmlOf(composed, { level, runbooks });
+    const ids = composed.remaining.flatMap(row => row.runbook_ids);
+    assert.ok(ids.length >= 3, level);
+    for (const id of ids) assert.match(page, new RegExp(`<details class="runbook" data-runbook="${id}" data-level="${level}"><summary>[^<]+</summary>`), `${level}: ${id}`);
+    assert.equal(page.split('<details class="runbook"').length - 1, ids.length, 'one fold per runbook of each blank item');
+    assert.equal(page.split('<svg class="shot"').length - 1, stepCount(runbooks), `${level}: one drawing per step`);
+    assert.doesNotMatch(page, /\{\{skill_root\}\}/);
+    assert.ok(page.includes('/skill/scripts/key.mjs'), 'the skill folder is filled in');
+  }
+  const composed = composeReport(withProbe({ google_key: false }));
+  assert.throws(() => renderHtmlReport(composed, { runbooks: [], level: 'beginner', target: 'x' }), /runbook missing for the report: google-api-key/);
+});
+
+test('every value from the site or the user is escaped in html', () => {
+  const hostile = `<script>alert("x")</script> 'quote' & "double"`;
+  const unit = `index-policy|https://example.com/"><img src=x onerror=alert(1)>`;
+  const verified = verifiedOf({ findings: [finding('evil', { message: hostile, unit_key: unit, remediation: null })] });
+  const composed = composeReport(verified);
+  const page = htmlOf(composed, { target: `https://example.com/?t=${hostile}` });
+  assert.doesNotMatch(page, /<script|<img/i, 'no tag from the site survives');
+  assert.ok(page.includes('&lt;script&gt;alert(&quot;x&quot;)&lt;/script&gt; &#39;quote&#39; &amp; &quot;double&quot;'), 'the title shows as text');
+  assert.ok(page.includes('&quot;&gt;&lt;img src=x onerror=alert(1)&gt;'), 'the address cannot close its tag');
+  const { markdown } = renderReport(composed, verified);
+  assert.doesNotMatch(markdown, /<script/, 'report.md escapes it too');
+});
+
+test('an empty completeness never reads as nothing left', () => {
+  const verified = verifiedOf({ findings: [] });
+  const composed = composeReport({ ...verified, baseline: { ...verified.baseline, scores: [] } });
+  assert.deepEqual(composed.completeness, []);
+  assert.equal(composed.headline.text, THIN_TEXT);
+  assert.ok(THIN_TEXT.includes(`'${SECTION_TITLES.completeness}'`), 'the sentence names the section that shows the cause');
+  const { markdown } = renderReport(composed, { ...verified, baseline: { ...verified.baseline, scores: [] } });
+  assert.ok(markdown.includes(`## ${SECTION_TITLES.completeness}`));
+  const page = htmlOf(composed);
+  assert.ok(page.includes(`<h2>${SECTION_TITLES.completeness}</h2>`) && page.includes('확인 범위를 알 수 없습니다'));
+  assert.ok(!page.includes('남지 않았습니다'));
+});
+
+test('writeReport writes report.html beside the others, all or none', async () => {
+  const dir = await tempDir('optbrew report html ');
+  const first = await writeReport(fixturePacket(), path.join(dir, 'with'), { renderHtml: composed => htmlOf(composed) });
+  assert.deepEqual(Object.keys(first), ['jsonPath', 'markdownPath', 'htmlPath']);
+  assert.deepEqual(readdirSync(path.join(dir, 'with')).sort(), ['report.html', 'report.json', 'report.md']);
+  assert.match(readFileSync(first.htmlPath, 'utf8'), /^<!doctype html>/);
+  await assert.rejects(writeReport(fixturePacket(), path.join(dir, 'with'), { renderHtml: () => '<p>again</p>' }), /report output already exists/);
+  assert.equal(readFileSync(first.htmlPath, 'utf8').includes('again'), false);
+  await assert.rejects(writeReport(fixturePacket(), path.join(dir, 'broken'), { renderHtml: () => { throw new Error('render failed'); } }), /render failed/);
+  assert.equal(existsSync(path.join(dir, 'broken')), false, 'nothing is written when the page cannot be made');
+  const plain = await writeReport(fixturePacket(), path.join(dir, 'plain'));
+  assert.deepEqual(Object.keys(plain), ['jsonPath', 'markdownPath']);
 });

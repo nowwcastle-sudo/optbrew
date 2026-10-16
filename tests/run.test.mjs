@@ -154,11 +154,17 @@ test('one run produces report.json and report.md', async () => {
   assert.deepEqual(Object.keys(second), ['status', 'reports', 'score_input']);
   assert.equal(second.reports.json, path.join(call.ws.out, 'report.json'));
   assert.equal(second.reports.md, path.join(call.ws.out, 'report.md'));
+  assert.equal(second.reports.html, path.join(call.ws.out, 'report.html'));
   assert.equal(second.score_input, path.join(call.ws.out, 'score-input.json'));
   const report = await readJson(second.reports.json);
   assert.deepEqual(await readJson(second.score_input), report.baseline.input, 'the ScoreInput file is the one the report scored');
   const markdown = await readFile(second.reports.md, 'utf8');
-  assert.match(markdown, /^# optbrew report/);
+  assert.match(markdown, /^# optbrew 보고서/);
+  const html = await readFile(second.reports.html, 'utf8');
+  assert.match(html, /^<!doctype html>/);
+  assert.doesNotMatch(html, /<script|<link|\ssrc=|\shref=|url\(/, 'the page needs no outside file');
+  assert.ok(html.includes(report.composed.headline.text.replace(/'/g, '&#39;')), 'the page says the same conclusion');
+  for (const row of report.composed.remaining) for (const id of row.runbook_ids) assert.ok(html.includes(`data-runbook="${id}"`), `the page opens ${id}`);
   assert.equal(report.model_judgments.length, queuedUnits(queue).length);
   // Carry 2 and 17: the phase was audited, and its snapshot says so.
   assert.equal(report.run_context.audited, true);

@@ -823,25 +823,29 @@ export function buildReport(packet) {
     findings: composed.fixes, tables }, markdown };
 }
 
-/** Write both outputs after all validation; temporary files stay in the destination. */
-export async function writeReport(packet, outputDir) {
+/**
+ * Write the outputs after all validation; temporary files stay in the destination. `renderHtml`, when given, turns the composed
+ * report into the page written as `report.html` beside the other two. All files appear or none does.
+ */
+export async function writeReport(packet, outputDir, { renderHtml = null } = {}) {
   const built = buildReport(packet);
+  const html = renderHtml ? renderHtml(built.json.composed) : null;
   await mkdir(outputDir, { recursive: true });
   const jsonPath = path.resolve(outputDir, 'report.json'), markdownPath = path.resolve(outputDir, 'report.md');
-  for (const file of [jsonPath, markdownPath]) {
+  const htmlPath = html === null ? null : path.resolve(outputDir, 'report.html');
+  const outputs = [[jsonPath, `${JSON.stringify(built.json, null, 2)}\n`], [markdownPath, built.markdown], ...(html === null ? [] : [[htmlPath, html]])];
+  for (const [file] of outputs) {
     try { await access(file); throw new ContractError(`report output already exists: ${file}`); }
     catch (error) { if (error.code !== 'ENOENT') throw error; }
   }
-  const temporary = [`${jsonPath}.${process.pid}.tmp`, `${markdownPath}.${process.pid}.tmp`];
-  let jsonWritten = false;
+  const temporary = outputs.map(([file]) => `${file}.${process.pid}.tmp`);
+  const written = [];
   try {
-    await writeFile(temporary[0], `${JSON.stringify(built.json, null, 2)}\n`, { flag: 'wx' });
-    await writeFile(temporary[1], built.markdown, { flag: 'wx' });
-    await rename(temporary[0], jsonPath); jsonWritten = true;
-    await rename(temporary[1], markdownPath);
+    for (const [index, [, text]] of outputs.entries()) await writeFile(temporary[index], text, { flag: 'wx' });
+    for (const [index, [file]] of outputs.entries()) { await rename(temporary[index], file); written.push(file); }
   } catch (error) {
-    if (jsonWritten) await rm(jsonPath, { force: true });
+    await Promise.all(written.map(file => rm(file, { force: true })));
     throw error;
   } finally { await Promise.all(temporary.map(file => rm(file, { force: true }))); }
-  return { jsonPath, markdownPath };
+  return { jsonPath, markdownPath, ...(htmlPath ? { htmlPath } : {}) };
 }

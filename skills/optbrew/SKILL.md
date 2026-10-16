@@ -130,7 +130,7 @@ node "<SKILL_DIR>/scripts/preflight.mjs" --url "<주소>" --out "<OUT>" --source
 node "<SKILL_DIR>/scripts/run.mjs" --answers "<OUT>/intake-answers.json" --out "<OUT>"
 ```
 
-3. 종료 코드가 0이면 마지막 줄의 JSON에서 `status`를 읽는다. 이 JSON의 `judge_queue`, `reports`, `score_input`은 경로이거나 경로를 담은 값이다. 파일 이름을 짐작하지 말고 이 값에서 읽는다. `reports`는 `json`과 `md`(있으면 `html`) 경로를 담고, `queue_items`는 판정할 항목 수다. `lab_cwv`가 있으면 크롬으로 잰 참고 값이며 채점하지 않는다.
+3. 종료 코드가 0이면 마지막 줄의 JSON에서 `status`를 읽는다. 이 JSON의 `judge_queue`, `reports`, `score_input`은 경로이거나 경로를 담은 값이다. 파일 이름을 짐작하지 말고 이 값에서 읽는다. `reports`는 `json`, `md`, `html` 경로를 담고, `queue_items`는 판정할 항목 수다. `lab_cwv`가 있으면 크롬으로 잰 참고 값이며 채점하지 않는다.
    - `awaiting_judgments`이면 8단계로 간다. 판정 목록의 경로는 `judge_queue`에 있다.
    - `done`이면 9단계로 간다.
 4. 종료 코드가 0이 아니면 실패다. stderr의 마지막 줄은 사람이 읽는 한 문장이다. 그 문장을 사용자 말로 한 줄로 옮기고 멈춘다. 같은 명령을 되풀이하지 않는다.
@@ -153,13 +153,13 @@ node "<SKILL_DIR>/scripts/run.mjs" --answers "<OUT>/intake-answers.json" --out "
 
 ## 9단계. 결과를 알린다
 
-1. 마지막 줄 JSON의 `reports`에서 보고서 경로를 찾는다: `json`, `md`, 있으면 `html`. 이 경로를 7단계 JSON에서 읽은 그대로 쓴다.
+1. 마지막 줄 JSON의 `reports`에서 보고서 경로를 찾는다: `json`, `md`, `html`. 이 경로를 7단계 JSON에서 읽은 그대로 쓴다.
 2. 보고서 `md`의 위쪽에서 한 줄 결론과 고칠 것 표를 읽는다.
 3. 사용자에게 이 순서로 짧게 알린다.
    1. 한 줄 결론. 점수는 "측정한 범위 안의 통과율"이라고 부른다. 실제 검색 성과로 말하지 않는다.
    2. 고칠 것 위 세 건. 쪽 주소와 한 줄 설명을 붙인다.
    3. 남은 빈칸 수. 빈칸마다 방법이 보고서에 붙어 있다고 말한다.
-   4. 보고서 경로. `html`이 있으면 그것을 먼저 열라고 안내하고, 없으면 `md`를 안내한다.
+   4. 보고서 경로. `html`을 먼저 열라고 안내한다. 글만 볼 사용자에게는 `md`도 알려 준다.
 4. 마지막에 한 가지만 묻는다: 로컬 파일을 고치도록 도울지. 사용자가 답하기 전에는 아무 파일도 고치지 않는다.
 
 ## 10단계. 승인되면 로컬 파일을 고친다

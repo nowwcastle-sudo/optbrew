@@ -256,9 +256,9 @@ test('report marks model judgments', { timeout: 120000 }, async () => {
     assert.deepEqual(report.json.model_judgments, [{ phase: 'baseline', family_id: 'claim-support', unit_key: made.unit_key, state: 'pass',
       evidence_ref: made.evidence_ref, evidence_span: made.evidence_span, label: '근거 확인됨, 판정은 모델' }]);
     assert.equal(made.evidence_span.length, 2);
-    assert.ok(report.markdown.includes('## Model judgments'));
+    assert.ok(report.markdown.includes('## 모델 판단'));
     assert.ok(report.markdown.includes('근거 확인됨, 판정은 모델'));
-    assert.ok(report.markdown.includes(`bytes ${made.evidence_span.map(x => `${x.start}–${x.end}`).join(', ')}`));
+    assert.ok(report.markdown.includes(`바이트 ${made.evidence_span.map(x => `${x.start}–${x.end}`).join(', ')}`));
   } finally { await run.site.close(); }
 });
 
