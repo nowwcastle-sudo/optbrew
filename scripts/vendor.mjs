@@ -7,6 +7,8 @@ import { endpoints } from '../skills/optbrew/scripts/core/config.mjs';
 
 const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const defaultSources = path.resolve(repoRoot, '../../../work/seo-alternatives/sources');
+/** Notices for text borrowed into first-party files (not vendored code); appended to the generated third-party notices. */
+const borrowedNotices = new URL('./borrowed-notices.md', import.meta.url);
 const sha = (bytes, algorithm) => createHash(algorithm).update(bytes).digest('hex');
 const blobSha = bytes => sha(Buffer.concat([Buffer.from(`blob ${bytes.length}\0`), bytes]), 'sha1');
 const slash = name => name.replaceAll('\\', '/');
@@ -276,7 +278,8 @@ export async function vendor({ sourcesRoot = defaultSources, outputRoot = repoRo
   }
   const notice = ['# Third-party notices', '', 'The files below retain their upstream copyright and permission notices. Service accounts, API data and Naver guide article bodies are outside these code licenses.', ''];
   for (const module of lock.modules) notice.push(`- **${module.module_id}** — ${module.repo} at ${module.commit}; ${module.license}; Git license blob ${module.license_blob_sha}; exact notice: [licenses/${module.module_id}.txt](licenses/${module.module_id}.txt). Exclusions: ${module.excluded_files.join('; ')}.`);
-  outputs.push(['skills/optbrew/THIRD_PARTY_NOTICES.md', Buffer.from(notice.join('\n') + '\n')]);
+  notice.push('', (await readFile(borrowedNotices, 'utf8')).replaceAll('\r\n', '\n').trimEnd());
+  outputs.push(['skills/optbrew/THIRD_PARTY_NOTICES.md',Buffer.from(notice.join('\n') + '\n')]);
   outputs.push(['skills/optbrew/source-lock.json', Buffer.from(JSON.stringify(lock, null, 2) + '\n')]);
   await writeOutputs(outputRoot, outputs);
   return lock;

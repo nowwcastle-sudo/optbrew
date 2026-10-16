@@ -45,3 +45,37 @@ test('final review M5: the distributed Magnus guide does not instruct a pytest r
   }
   assert.equal(guide, patch);
 });
+
+const text = async name => (await readFile(path.join(skill, name), 'utf8')).replaceAll('\r\n', '\n');
+const json = async name => JSON.parse(await text(name));
+
+test('SKILL.md walks the one-call flow in order and links the new references', async () => {
+  const entry = await text('SKILL.md');
+  const order = ['scripts/preflight.mjs', 'start_runbooks.blocking', '## 6단계', 'scripts/run.mjs', 'judge-queue.json', '--judgments', 'report.html', 'ChangeRecord'];
+  const positions = order.map(marker => entry.indexOf(marker));
+  assert.ok(positions.every(position => position >= 0), `missing: ${order.filter((_, i) => positions[i] < 0)}`);
+  assert.deepEqual(positions, [...positions].sort((a, b) => a - b));
+  for (const link of ['references/intake.md', 'references/judging.md', 'references/source-analysis.md']) assert.ok(entry.includes(`](${link})`), link);
+});
+
+test('the docs quote the limits that code reads from limits.json', async () => {
+  const limit = await json('references/limits.json');
+  const entry = await text('SKILL.md');
+  assert.ok(entry.includes(`표본 ${limit.max_urls_default}쪽`) && entry.includes(`최대 ${limit.max_urls_cap}쪽`));
+  assert.ok(entry.includes(`${limit.max_urls_default}을 넘을 때만`));
+  const judging = await text('references/judging.md');
+  assert.ok(judging.includes(`\`judge_span_min_bytes\` ${limit.judge_span_min_bytes}, \`judge_spans_per_unit\` ${limit.judge_spans_per_unit}`));
+});
+
+test('judging.md covers exactly the families the judge queue offers, with the states the merge accepts', async () => {
+  const { isModelJudged } = await import('../skills/optbrew/scripts/core/judgments.mjs');
+  const { families } = await json('references/check-registry.json');
+  const offered = families.filter(family => isModelJudged(family.family_id));
+  const judging = await text('references/judging.md');
+  const rows = [...judging.matchAll(/^\| `([a-z-]+)` \|/gm)].map(match => match[1]);
+  assert.deepEqual(rows.sort(), offered.map(family => family.family_id).sort());
+  for (const family of offered) {
+    const row = judging.split('\n').find(line => line.startsWith(`| \`${family.family_id}\``));
+    assert.equal(row.includes('`partial`'), family.verdict_mode !== 'binary', `${family.family_id}: partial allowed only for non-binary families`);
+  }
+});
