@@ -604,7 +604,7 @@
     },
     {
       "path": "references/runbooks/chrome-install.md",
-      "sha256": "7241028a0b50838aa2d95acbf7b5aa3dc9f56b145afbf331ea25a37d58944805"
+      "sha256": "f5eaec01ba62aeebdbad4505ff2ebf20a1363d4d52db06c0d0fa1092419828e6"
     },
     {
       "path": "references/runbooks/cwv-site-collection.md",
@@ -612,15 +612,15 @@
     },
     {
       "path": "references/runbooks/google-api-key.md",
-      "sha256": "6b47df566ef25b53ef1ffec3f5aa3da53170e6f5fca23422985d6b1232fc7d71"
+      "sha256": "57dc31296a3dd8f45ef25b2a499a6fafa5d1c99293fea86b70f2ff298c8ea6e1"
     },
     {
       "path": "references/runbooks/gsc-export.md",
-      "sha256": "904ac42ada958754f8bfc7bf4f6c85ae92886e7988872bd67e3df3ef91fa8785"
+      "sha256": "74fb919ff30ca7157cbf1617f55e2e0e760ece440ec5b3a68d74a42bd08bece2"
     },
     {
       "path": "references/runbooks/index.json",
-      "sha256": "79c66cd516e3ff43e5875de3e60f698c29dd35a4b60108923c6e3c74d652eb85"
+      "sha256": "157bb1c64e36436e053a0bcc664325004cee6792dd12e399a86000434acfd68d"
     },
     {
       "path": "references/runbooks/key-set-claude-cloud.md",
@@ -628,7 +628,7 @@
     },
     {
       "path": "references/runbooks/key-set-codex.md",
-      "sha256": "0f070e7a0007bfa4d050e1f79bec1ab56c58b2e79e49142474214c4215d506bb"
+      "sha256": "7c06b95a10d237d69055c9f6dfc5b39c0c678951e1cf68bbb49d8a2c484bab2d"
     },
     {
       "path": "references/runbooks/key-set-local.md",
@@ -843,5 +843,5 @@
       "sha256": "a53223b7eefab2204c026a62b1da04cfdb8a07be8d3749613e8241a81b027d9b"
     }
   ],
-  "bundle_hash": "f04e4bf491501562bd2a3e423996a458631c69f3fc5313fb5a3b77476fa19b8a"
+  "bundle_hash": "a06a4e3c8e53f092b2a9d0af843ff9467dcb10c629f57a6925fe41e3f5b90cf4"
 }

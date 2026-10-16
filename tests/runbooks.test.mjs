@@ -128,10 +128,18 @@ test('improving items are one line each and only for what is missing', () => {
   assert.ok(!ids.some(id => ['network-codex-approval', 'network-claude-cloud-custom'].includes(id)));
 });
 
-test('a codex block also offers the optional config runbook as a one-line item', () => {
-  const { improving } = startRunbooks(probe({ block_reason: 'codex_sandbox' }), { level: 'brief', skillRoot });
-  assert.ok(improving.some(item => item.id === 'network-codex-config'));
-  assert.ok(!startRunbooks(probe({ block_reason: 'cloud_network_level' }), { level: 'brief', skillRoot }).improving.some(item => item.id === 'network-codex-config'));
+test('the start screen shows at most one blocking runbook and three one-liners', () => {
+  for (const reason of ['codex_sandbox', 'cloud_network_level', 'site_down', null]) {
+    const shown = startRunbooks(probe({ block_reason: reason, google_key: false, chrome: { found: false, kind: null } }), { level: 'beginner', skillRoot });
+    assert.ok(shown.blocking.length <= 1, reason);
+    assert.deepEqual(shown.improving.map(item => item.id), ['google-api-key', 'chrome-install', 'gsc-export'], reason);
+  }
+});
+
+test('runbooks reached only from another runbook never appear at start', () => {
+  const reached = ['network-codex-config', 'naver-searchadvisor-export', 'key-set-local', 'key-set-claude-cloud', 'key-set-codex', 'cwv-site-collection', 'anthropic-api-key', 'seranking'];
+  const { improving } = startRunbooks(probe({ block_reason: 'codex_sandbox', google_key: false, chrome: { found: false, kind: null } }), { level: 'brief', skillRoot });
+  assert.deepEqual(improving.filter(item => reached.includes(item.id)), []);
 });
 
 test('remainingRunbooks maps unknown reasons to ids', () => {

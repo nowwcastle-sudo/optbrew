@@ -20,9 +20,9 @@ node "{{skill_root}}/scripts/key.mjs" set google
 3. 키를 입력하라는 안내가 나오면 복사해 둔 키를 붙여 넣고 Enter를 누릅니다. 입력한 글자가 화면에 보이지 않는 것이 정상입니다.
 4. 터미널 창을 닫고 Codex로 돌아가 감사를 요청합니다. 저장 확인 명령은 `key-set-local` 런북 7번에 있습니다.
 5. 에이전트가 "Google 키 있음"이라고 알려 주면 끝입니다.
-6. "Google 키 없음"이라고 나오면 Codex sandbox가 키 파일을 읽지 못하는 것입니다. 에이전트에게 알리고 아래 대체 방법을 씁니다. (화면 확인 필요: sandbox가 사용자 폴더의 키 파일을 읽는지)
-7. 대체 방법 1: 운영체제에 `OPTBREW_GOOGLE_API_KEY` 환경 변수를 만듭니다. Windows는 시작 메뉴에서 `환경 변수`를 검색해 **계정에 대한 환경 변수 편집**을 열고, **새로 만들기**를 눌러 변수 이름에 `OPTBREW_GOOGLE_API_KEY`, 변수 값에 키를 붙여 넣고 **확인**을 누릅니다. (화면 확인 필요: 한글 이름)
-8. 대체 방법 2: Codex 설정 파일 `config.toml`(위치는 `network-codex-config` 런북 2번)에 `[shell_environment_policy]` 표를 만들고 `ignore_default_excludes = true`를 둡니다. 이 값이면 이름에 KEY가 든 변수도 명령에 넘어갑니다. 설정 문서의 기본값은 true이지만 Codex 버전에 따라 다를 수 있습니다. (화면 확인 필요)
+6. "Google 키 없음"이라고 나오면 에이전트에게 키 파일을 읽으려다 실패했는지 확인해 달라고 합니다. 실패가 확인된 경우에만 7번 이후를 합니다. 확인되지 않으면 3번의 저장을 다시 합니다. (화면 확인 필요: sandbox가 사용자 폴더의 키 파일을 읽는지)
+7. 최후 수단(화면 확인 필요): 6번에서 실패가 확인됐을 때만, 운영체제에 `OPTBREW_GOOGLE_API_KEY` 환경 변수를 만듭니다. 키가 사용자 계정의 모든 프로그램에 노출되므로 마지막에 씁니다. Windows는 시작 메뉴에서 `환경 변수`를 검색해 **계정에 대한 환경 변수 편집**을 열고, **새로 만들기**를 눌러 변수 이름에 `OPTBREW_GOOGLE_API_KEY`, 변수 값에 키를 붙여 넣고 **확인**을 누릅니다. (화면 확인 필요: 한글 이름)
+8. 7번의 환경 변수를 만든 뒤에도 Codex 명령에 변수가 안 보이면 Codex 설정 파일 `config.toml`(위치는 `network-codex-config` 런북 2번)에 `[shell_environment_policy]` 표를 만들고 `ignore_default_excludes = true`를 둡니다. 이 값이면 이름에 KEY가 든 변수도 명령에 넘어갑니다. 설정 문서의 기본값은 true이지만 Codex 버전에 따라 다를 수 있습니다. (화면 확인 필요)
 9. 설정 파일에는 키 값을 적지 않습니다.
 10. Codex를 다시 켜고 감사를 요청합니다.
 
