@@ -39,6 +39,10 @@ test('a proxy that refuses the site is a network block; a direct failure is the 
   assert.deepEqual([probe.block_reason, probe.transport, probe.address_vetting, probe.proxy], ['cloud_network_level', 'proxy', 'proxy', { host: 'proxy.local', port: 3128 }]);
   const down = await probeEnvironment(deps({ env: { CLAUDE_CODE_REMOTE: 'true' }, reach: async () => { throw Object.assign(new Error('connect refused'), { code: 'ECONNREFUSED' }); } }));
   assert.deepEqual([down.block_reason, down.transport], ['site_down', 'direct']);
+  for (const code of ['scope_rejected', 'redirect_outside_scope']) {
+    const rejected = await probeEnvironment(deps({ reach: async () => { throw Object.assign(new Error('refused'), { code }); } }));
+    assert.deepEqual([rejected.block_reason, rejected.transport], [null, 'direct'], code);
+  }
   const fine = await probeEnvironment(deps({ reach: async () => {} }));
   assert.equal(fine.block_reason, null);
 });
@@ -86,7 +90,7 @@ test('runbook harness mapping covers every probe harness and every runbook value
   const signals = JSON.parse(await readFile(path.join(references, 'harness-signals.json'), 'utf8'));
   const probeHarnesses = [...Object.keys(signals), 'other'];
   assert.deepEqual(probeHarnesses.toSorted(), ['claude-code', 'claude-code-cloud', 'codex', 'other']);
-  assert.deepEqual(runbookHarnesses('other'), ['any']);
+  assert.deepEqual(runbookHarnesses('other'), ['any', 'local']);
   for (const harness of probeHarnesses) assert.ok(runbookHarnesses(harness).includes('any'), harness);
   assert.deepEqual(runbookHarnesses('claude-code'), ['local', 'any']);
   assert.deepEqual(runbookHarnesses('codex'), ['local', 'codex', 'any']);

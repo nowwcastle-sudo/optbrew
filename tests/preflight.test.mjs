@@ -16,16 +16,22 @@ const page = (title, links = []) => `<!doctype html><html><head><title>${title}<
 const html = body => ({ status: 200, headers: { 'content-type': 'text/html' }, body: Buffer.from(body) });
 const xml = body => ({ status: 200, headers: { 'content-type': 'application/xml' }, body: Buffer.from(body) });
 
-/** A fake site: `routes` maps a path to a response; every request is counted. Anything else is a 404. */
+/**
+ * A fake site: `routes` maps a path, `host/path` or full URL to a response (most specific first); every request is
+ * counted by path in `requests` and by host in `hosts`. Anything else is a 404.
+ */
 function site(routes) {
   const requests = [];
+  const hosts = [];
   const transport = async ({ url }) => {
     requests.push(url.pathname);
-    return routes[url.pathname] ?? { status: 404, headers: { 'content-type': 'text/plain' }, body: Buffer.from('missing') };
+    hosts.push(url.host);
+    return routes[url.href] ?? routes[`${url.host}${url.pathname}`] ?? routes[url.pathname] ?? { status: 404, headers: { 'content-type': 'text/plain' }, body: Buffer.from('missing') };
   };
   const selectTransport = async () => ({ transport, resolve: async () => PUBLIC_ADDRESS, address_vetting: 'direct', proxy: null });
-  return { requests, selectTransport };
+  return { requests, hosts, selectTransport };
 }
+const redirect = location => ({ status: 301, headers: { location }, body: Buffer.alloc(0) });
 const run = async (fake, over = {}) => {
   const out = await tempDir('optbrew-preflight-');
   const result = await preflight({ url: `${origin}/`, out, skillRoot, env: { CLAUDECODE: '1' }, selectTransport: fake.selectTransport,
@@ -43,6 +49,7 @@ test('preflight never exceeds preflight_pages', async () => {
   assert.ok(fake.requests.length <= limits().preflight_pages, `${fake.requests.length} requests`);
   assert.equal(startJson.sitemap_pages, 40);
   assert.equal(startJson.probe.sitemap_pages, 40);
+  assert.equal(startJson.sitemap_pages_basis, 'exact');
 });
 
 test('redirect hops and the sitemap count against the same budget', async () => {
@@ -62,11 +69,53 @@ test('a sitemap index is read child by child within the budget', async () => {
   const { startJson } = await run(fake);
   assert.equal(fake.requests.length, limits().preflight_pages);
   assert.equal(startJson.sitemap_pages, 2 * (limits().preflight_pages - 2));
+  assert.equal(startJson.sitemap_pages_basis, 'lower_bound');
+});
+
+test('a sitemap index read in full is exact', async () => {
+  const routes = { '/': html(page('Home')), '/sitemap.xml': xml(`<sitemapindex><sitemap><loc>${origin}/s1.xml</loc></sitemap><sitemap><loc>${origin}/s2.xml</loc></sitemap></sitemapindex>`),
+    '/s1.xml': xml('<urlset><url><loc>https://example.test/a</loc></url></urlset>'), '/s2.xml': xml('<urlset><url><loc>https://example.test/b</loc></url><url><loc>https://example.test/c</loc></url></urlset>') };
+  const { startJson } = await run(site(routes));
+  assert.deepEqual([startJson.sitemap_pages, startJson.sitemap_pages_basis], [3, 'exact']);
+  const broken = await run(site({ ...routes, '/s2.xml': undefined }));
+  assert.deepEqual([broken.startJson.sitemap_pages, broken.startJson.sitemap_pages_basis], [1, 'lower_bound']);
 });
 
 test('a missing sitemap leaves sitemap_pages null', async () => {
   const { startJson } = await run(site({ '/': html(page('Home')) }));
-  assert.equal(startJson.sitemap_pages, null);
+  assert.deepEqual([startJson.sitemap_pages, startJson.sitemap_pages_basis], [null, null]);
+});
+
+test('an apex to www redirect is not a down site', async () => {
+  const fake = site({ 'example.test/': redirect('https://www.example.test/'), 'www.example.test/': html(page('Home', ['/about'])), '/about': html(page('About')),
+    '/sitemap.xml': xml('<urlset><url><loc>https://www.example.test/</loc></url></urlset>') });
+  const { startJson } = await run(fake);
+  assert.equal(startJson.probe.block_reason, null);
+  assert.deepEqual(startJson.question_candidates_input.map(item => item.url), ['https://www.example.test/', 'https://www.example.test/about']);
+  assert.deepEqual(fake.hosts, ['example.test', 'www.example.test', 'www.example.test', 'www.example.test']);
+  assert.equal(startJson.sitemap_pages, 1);
+  // The reverse direction works the same way.
+  const back = site({ 'www.example.test/': redirect('https://example.test/'), 'example.test/': html(page('Home')) });
+  const result = await run(back, { url: 'https://www.example.test/' });
+  assert.deepEqual([result.startJson.probe.block_reason, result.startJson.question_candidates_input.map(item => item.url)], [null, ['https://example.test/']]);
+});
+
+test('http to https redirect continues', async () => {
+  const fake = site({ 'http://example.test/': redirect('https://example.test/'), 'https://example.test/': html(page('Home', ['/about'])), '/about': html(page('About')) });
+  const { startJson } = await run(fake, { url: 'http://example.test/' });
+  assert.equal(startJson.probe.block_reason, null);
+  assert.deepEqual(startJson.question_candidates_input.map(item => item.url), ['https://example.test/', 'https://example.test/about']);
+});
+
+test('a redirect to another site is recorded, not site_down', async () => {
+  const fake = site({ '/': redirect('https://other.test/') });
+  const { out, startJson } = await run(fake);
+  assert.equal(startJson.probe.block_reason, null);
+  assert.equal(startJson.probe.transport, 'direct');
+  assert.deepEqual([startJson.question_candidates_input, startJson.sitemap_pages], [[], null]);
+  assert.deepEqual(fake.hosts, ['example.test']);
+  const index = JSON.parse(await readFile(path.join(out, 'preflight', 'evidence', 'evidence-index.json'), 'utf8'));
+  assert.deepEqual(index.failures.map(entry => entry.error), ['redirect_outside_scope']);
 });
 
 test('preflight evidence is separate from the audit evidence index', async () => {
@@ -103,13 +152,21 @@ test('a blocked network starts the one blocking runbook for the harness and fetc
   assert.deepEqual(fake.requests, []);
 });
 
-test('start runbooks follow the harness: cloud and unknown hosts get no local chrome line', async () => {
-  const idsFor = async env => (await run(site({ '/': html(page('Home')) }), { env, findChrome: () => null, readGoogleKey: () => null }))
-    .startJson.start_runbooks.improving.map(item => item.id);
-  assert.deepEqual(await idsFor({ CLAUDECODE: '1' }), ['google-api-key', 'chrome-install', 'gsc-export']);
-  assert.deepEqual(await idsFor({ CODEX_SANDBOX: 'seatbelt' }), ['google-api-key', 'chrome-install', 'gsc-export']);
-  assert.deepEqual(await idsFor({ CLAUDE_CODE_REMOTE: 'true' }), ['google-api-key', 'gsc-export']);
-  assert.deepEqual(await idsFor({}), ['google-api-key', 'gsc-export']);
+const improvingIds = async env => (await run(site({ '/': html(page('Home')) }), { env, findChrome: () => null, readGoogleKey: () => null }))
+  .startJson.start_runbooks.improving.map(item => item.id);
+
+test('local and unknown hosts get the chrome line', async () => {
+  for (const env of [{ CLAUDECODE: '1' }, { CODEX_SANDBOX: 'seatbelt' }, {}])
+    assert.deepEqual(await improvingIds(env), ['google-api-key', 'chrome-install', 'gsc-export'], JSON.stringify(env));
+});
+
+test('a cloud host gets no local chrome line', async () => {
+  assert.deepEqual(await improvingIds({ CLAUDE_CODE_REMOTE: 'true' }), ['google-api-key', 'gsc-export']);
+});
+
+test('start runbooks carry their harness without a reload', async () => {
+  const { startJson } = await run(site({ '/': html(page('Home')) }), { findChrome: () => null, readGoogleKey: () => null });
+  assert.deepEqual(startJson.start_runbooks.improving.map(item => [item.id, item.harness]), [['google-api-key', 'any'], ['chrome-install', 'local'], ['gsc-export', 'any']]);
 });
 
 test('question candidates and fact candidates come from the fetched pages', async () => {

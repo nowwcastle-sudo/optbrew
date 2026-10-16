@@ -5,13 +5,14 @@ const OTHER = 'other';
 
 /**
  * Which `harness:` values in the runbook front matter apply to each probe harness. This is the one place the two
- * vocabularies meet: `local` runbooks serve both local hosts, `any` serves everyone, and an unknown host gets only `any`.
+ * vocabularies meet: `local` runbooks serve both local hosts, `any` serves everyone, and an unknown host (which may be a
+ * local one that sets no signal, such as Codex with full network) gets `any` and `local` (R43).
  */
 const RUNBOOK_HARNESSES = {
   'claude-code': ['local', 'any'],
   codex: ['local', 'codex', 'any'],
   'claude-code-cloud': ['claude-code-cloud', 'any'],
-  [OTHER]: ['any'],
+  [OTHER]: ['any', 'local'],
 };
 
 export function runbookHarnesses(harness) {
@@ -36,12 +37,15 @@ function blockReason(harness, env) {
 }
 
 const proxyFailure = error => typeof error?.code === 'string' && error.code.startsWith('proxy_');
+/** The request was refused by the scope rules (another site, a private address): that says nothing about the site being down. */
+const scopeRejection = error => ['scope_rejected', 'redirect_outside_scope'].includes(error?.code);
 
 /**
  * The start probe: harness, how the site is reached, Chrome, key presence and source tools. Everything is injected so a
  * test needs no network or Chrome. `selectTransport` takes `{ env, probeHost }`. `reach(selected)`, when given, does a
- * real first request; a proxy that refuses it is a network block, any other failure is the site. The proxy is recorded
- * as host and port only, and the key is recorded as present or absent, never by value.
+ * real first request; a proxy that refuses it is a network block, a scope rejection is no block at all, any other
+ * failure is the site. A `selectTransport` error other than a DNS failure is thrown on purpose: the CLI then fails
+ * with exit 2. The proxy is recorded as host and port only, and the key is recorded as present or absent, never by value.
  */
 export async function probeEnvironment({ env = process.env, url, selectTransport, findChrome, readGoogleKey, home, sourceTools = [], reach = null }) {
   const harness = detectHarness(env);
@@ -50,7 +54,7 @@ export async function probeEnvironment({ env = process.env, url, selectTransport
   try { selected = await selectTransport({ env, probeHost: urlTarget(new URL(url)).host }); }
   catch (error) { if (error?.code !== 'dns_unresolvable') throw error; failure = error; }
   if (selected && reach) {
-    try { await reach(selected); } catch (error) { failure = error; }
+    try { await reach(selected); } catch (error) { if (!scopeRejection(error)) failure = error; }
   }
   let block = null;
   if (failure) block = !selected || proxyFailure(failure) ? blockReason(harness, env) : 'site_down';

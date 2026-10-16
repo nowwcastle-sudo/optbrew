@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 import { lookup } from 'node:dns/promises';
 import { realpathSync } from 'node:fs';
+import { isIP } from 'node:net';
 import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -12,8 +13,8 @@ import { pageFacts } from './core/facts.mjs';
 import { decodeEntities } from './core/html.mjs';
 import { readGoogleKey as realReadGoogleKey } from './core/keys.mjs';
 import { probeEnvironment, runbookHarnesses } from './core/probe.mjs';
-import { loadRunbook, startRunbooks } from './core/runbooks.mjs';
-import { assertUrlInScope } from './core/scope.mjs';
+import { startRunbooks } from './core/runbooks.mjs';
+import { assertUrlInScope, unbracket } from './core/scope.mjs';
 import { selectTransport as realSelectTransport } from './core/transport.mjs';
 
 const USAGE = 'usage: node skills/optbrew/scripts/preflight.mjs --url <URL> --out <dir> [--source-tools a,b] [--skill-root <path>] [--level beginner|brief]';
@@ -25,6 +26,13 @@ const defaultSkillRoot = path.resolve(fileURLToPath(new URL('..', import.meta.ur
 const locCount = text => (text.match(/<loc>/gi) ?? []).length;
 const locs = text => [...text.matchAll(/<loc>\s*([^<\s]+)\s*<\/loc>/gi)].map(match => decodeEntities(match[1]));
 const inner = (html, pattern) => { const found = pattern.exec(html)?.[1]; return found === undefined ? null : decodeEntities(found.replace(/<[^>]+>/g, ' ')).replace(/\s+/g, ' ').trim() || null; };
+
+/** The origins of the page's own site: itself, its apex/www twin and its http/https twin. A named port or an IP literal has no twin. */
+function sameSiteOrigins(start) {
+  if (start.port || isIP(unbracket(start.hostname))) return [start.origin];
+  const twin = start.hostname.startsWith('www.') ? start.hostname.slice(4) : `www.${start.hostname}`;
+  return ['http:', 'https:'].flatMap(protocol => [start.hostname, twin].map(host => `${protocol}//${host}`));
+}
 
 /** What an agent needs to propose the question list: where the page is, its title, description and first heading. */
 function questionInput(artifact, html) {
@@ -59,7 +67,9 @@ export async function preflight({ url, out, sourceTools = [], skillRoot = defaul
   resolve = host => lookup(host, { all: true, verbatim: true }), selectTransport = realSelectTransport, findChrome = realFindChrome, readGoogleKey = realReadGoogleKey }) {
   const start = new URL(url);
   if (!['http:', 'https:'].includes(start.protocol)) throw new Error('url must be http or https');
-  const scope = { allowed: [{ origin: start.origin, path_prefix: '/' }] };
+  // The first request may end on the same site under another name (apex and www, http and https); once it lands, scope narrows to where it landed.
+  const scopeOf = origins => ({ allowed: origins.map(origin => ({ origin, path_prefix: '/' })) });
+  let scope = scopeOf(sameSiteOrigins(start));
   const dir = path.join(out, 'preflight');
   const evidenceDir = path.join(dir, 'evidence');
   await mkdir(evidenceDir, { recursive: true });
@@ -86,26 +96,31 @@ export async function preflight({ url, out, sourceTools = [], skillRoot = defaul
   const reach = async selected => {
     route = { transport: selected.transport, resolve: selected.resolve, addressVetting: selected.address_vetting };
     first = await get(start.href);
+    scope = scopeOf([new URL(first.final_url).origin]);
   };
   const probe = await probeEnvironment({ env, url, selectTransport: input => selectTransport({ ...input, resolve }), findChrome, readGoogleKey, home, sourceTools, reach });
 
   const pages = [];
   const addPage = artifact => { if (artifact?.status === 200 && artifact.capability === 'raw_html') pages.push({ artifact, html: artifact.body.toString('utf8') }); };
   let sitemapPages = null;
+  let sitemapBasis = null;
   if (first && !probe.block_reason) {
     addPage(first);
-    const sitemapUrl = new URL(SITEMAP_PATH, start.origin).href;
+    const sitemapUrl = new URL(SITEMAP_PATH, new URL(first.final_url).origin).href;
     const sitemap = await tryGet(sitemapUrl);
     if (sitemap?.status === 200) {
       const text = sitemap.body.toString('utf8');
       if (/<sitemapindex/i.test(text)) {
+        const children = locs(text);
         let read = 0;
-        for (const child of locs(text)) {
+        let counted = 0;
+        for (const child of children) {
           if (used >= budget) break;
           const artifact = await tryGet(child);
-          if (artifact?.status === 200) { read += locCount(artifact.body.toString('utf8')); sitemapPages = read; }
+          if (artifact?.status === 200) { read += locCount(artifact.body.toString('utf8')); counted++; sitemapPages = read; }
         }
-      } else sitemapPages = locCount(text);
+        sitemapBasis = counted === children.length ? 'exact' : 'lower_bound';
+      } else { sitemapPages = locCount(text); sitemapBasis = 'exact'; }
     }
     const seen = new Set([start.href, first.normalized_url, sitemapUrl]);
     for (const href of pages.length ? links(pages[0].html, first.final_url) : []) {
@@ -118,17 +133,13 @@ export async function preflight({ url, out, sourceTools = [], skillRoot = defaul
     }
   }
 
-  const applicable = runbookHarnesses(probe.harness);
-  const runbooks = startRunbooks(probe, { level, skillRoot });
   const startJson = {
     probe: { ...probe, sitemap_pages: sitemapPages },
     sitemap_pages: sitemapPages,
+    sitemap_pages_basis: sitemapBasis,
     question_candidates_input: pages.map(({ artifact, html }) => questionInput(artifact, html)),
     fact_candidates: factCandidates(pages),
-    start_runbooks: {
-      blocking: runbooks.blocking.filter(runbook => applicable.includes(runbook.harness)),
-      improving: runbooks.improving.filter(({ id }) => applicable.includes(loadRunbook(id, level, { skillRoot }).harness)),
-    },
+    start_runbooks: startRunbooks(probe, { level, skillRoot, harnesses: runbookHarnesses(probe.harness) }),
   };
   const startPath = path.join(dir, 'start.json');
   await writeFile(startPath, `${JSON.stringify(startJson, null, 2)}\n`);
