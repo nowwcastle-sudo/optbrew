@@ -49,18 +49,18 @@
   "protocol_sources": [
     {
       "path": "references/schemas/contract.schema.json",
-      "sha256": "4a20a6602eaf45832281cbee27b75e023de932954db72ec837ee5d51c3e88528"
+      "sha256": "1ad87124a59af47add1a7f2b2ff361c5af675d6277696d808b269d20f473b6d7"
     },
     {
       "path": "references/limits.json",
-      "sha256": "6aa7e15d67c7daf1118932443009ed4fe3a7a3a32a9205fedc48a3d5dddadf78"
+      "sha256": "c6315e2860b89f6fc0aec9780dbacd51e8da79e1c61374f16a652d6a173002b1"
     },
     {
       "path": "scripts/core/protocol.mjs",
       "sha256": "c7f85f963abd125155fed1a3a4e707885e8d63fa6d146c1a00c431440dda0336"
     }
   ],
-  "protocol_hash": "d997c3f7a5f411374fdac844973cbcc9e341008c35aab233f06c4a484f112742",
+  "protocol_hash": "2cd3392933ccf381f775333e609035d3e34004c46fc7b27ed5822b8900c56c9a",
   "files": [
     {
       "path": "LICENSE",
@@ -567,12 +567,16 @@
       "sha256": "784cdfd5cdf8ad1cb096a4a321c81708c9ffce63a785c31839d42348c5f02879"
     },
     {
+      "path": "references/harness-signals.json",
+      "sha256": "1e753fc85a418fc08331a2958c3e89145f6c3f0384fc6825ad282e1b340f3067"
+    },
+    {
       "path": "references/intake.md",
       "sha256": "86b2d7d3fc900f32a6af805dc1f6997087272ebf125d424d352630ed5004779a"
     },
     {
       "path": "references/limits.json",
-      "sha256": "6aa7e15d67c7daf1118932443009ed4fe3a7a3a32a9205fedc48a3d5dddadf78"
+      "sha256": "c6315e2860b89f6fc0aec9780dbacd51e8da79e1c61374f16a652d6a173002b1"
     },
     {
       "path": "references/measurement.md",
@@ -656,7 +660,7 @@
     },
     {
       "path": "references/schemas/contract.schema.json",
-      "sha256": "4a20a6602eaf45832281cbee27b75e023de932954db72ec837ee5d51c3e88528"
+      "sha256": "1ad87124a59af47add1a7f2b2ff361c5af675d6277696d808b269d20f473b6d7"
     },
     {
       "path": "references/scoring.md",
@@ -780,7 +784,7 @@
     },
     {
       "path": "scripts/core/config.mjs",
-      "sha256": "41f717cbcb3184d77ba6d845538683c7bb46f4d14e4843232d2d1c2561ed7e1a"
+      "sha256": "027f77c75568c883fa3ea1b6ed6beae3718b7ed2cbdfdf0463034bc1b8cc4dde"
     },
     {
       "path": "scripts/core/contracts.mjs",
@@ -831,6 +835,10 @@
       "sha256": "78b74c079c03b5d8fda8be886e0a6ede4c6af357905dfe4d9d032cb112453869"
     },
     {
+      "path": "scripts/core/probe.mjs",
+      "sha256": "8b06e55af077d459bf3312cf26b352ffa38fc3f9e75596799fb08c6438822b9d"
+    },
+    {
       "path": "scripts/core/protocol.mjs",
       "sha256": "c7f85f963abd125155fed1a3a4e707885e8d63fa6d146c1a00c431440dda0336"
     },
@@ -844,7 +852,7 @@
     },
     {
       "path": "scripts/core/runbooks.mjs",
-      "sha256": "a77bbdc5ec3c0b21e4ed3cfb5ce2e3cb1998040f2d3b885a1a71d64f2829428b"
+      "sha256": "cc05ed484e278373feb552b86aa439f072fb7bd08688caaa9672dc66d0a423d6"
     },
     {
       "path": "scripts/core/scope.mjs",
@@ -867,9 +875,13 @@
       "sha256": "b800a478d601bddf461c6237295fd54279fcd1a14459261e938f0b5a342c6467"
     },
     {
+      "path": "scripts/preflight.mjs",
+      "sha256": "6d55970271824fcb875421ffc450b24e14291f0d728067fd71ec0679ed7837e7"
+    },
+    {
       "path": "source-lock.json",
       "sha256": "a53223b7eefab2204c026a62b1da04cfdb8a07be8d3749613e8241a81b027d9b"
     }
   ],
-  "bundle_hash": "cc0a6113e9ee8f2a4c04558bb75243921941794ce0b50d4b365049403fb01478"
+  "bundle_hash": "6338fa0a475d994aa9a95ab6246d5b59232f44afdea325cf81a95912c0536a60"
 }

@@ -1,0 +1,5 @@
+{
+  "claude-code-cloud": { "env_any": ["CLAUDE_CODE_REMOTE"] },
+  "claude-code": { "env_any": ["CLAUDECODE"] },
+  "codex": { "env_any": ["CODEX_SANDBOX", "CODEX_SANDBOX_NETWORK_DISABLED"], "network_blocked_env_any": ["CODEX_SANDBOX_NETWORK_DISABLED"] }
+}

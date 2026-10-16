@@ -7,6 +7,8 @@ const dir = new URL('../../references/runbooks/', import.meta.url);
 let cachedIndex;
 const index = () => cachedIndex ??= JSON.parse(readFileSync(new URL('index.json', dir), 'utf8'));
 const entryOf = id => index().find(entry => entry.id === id);
+/** The `harness:` value in a runbook's front matter. */
+const harnessOf = id => parse(id, readFileSync(new URL(`${id}.md`, dir), 'utf8')).head.harness;
 
 /** Split a runbook file into its front-matter fields and its `## <name>` sections. */
 function parse(id, raw) {
@@ -40,13 +42,15 @@ const matchesStart = (when, probe, missing) =>
 
 /**
  * The runbooks to show before the audit starts. A blocking runbook (at most one) comes whole at the chosen level;
- * an improving one comes as its single line. An entry with no `block_reason` or `missing` is never shown here.
+ * an improving one comes as its single line with its `harness`. An entry with no `block_reason` or `missing` is never shown here.
+ * `harnesses`, when given, lists the runbook `harness` values that apply; others are dropped before the one-blocking cap.
  */
-export function startRunbooks(probe, { level, skillRoot }) {
+export function startRunbooks(probe, { level, skillRoot, harnesses = null }) {
   const missing = missingOf(probe);
-  const hits = index().filter(entry => matchesStart(entry.when, probe, missing));
+  const hits = index().filter(entry => matchesStart(entry.when, probe, missing))
+    .map(entry => ({ ...entry, harness: harnessOf(entry.id) })).filter(entry => !harnesses || harnesses.includes(entry.harness));
   const blocking = hits.filter(entry => entry.kind === 'blocking').slice(0, 1).map(entry => loadRunbook(entry.id, level, { skillRoot }));
-  const improving = hits.filter(entry => entry.kind === 'improving').map(({ id, line }) => ({ id, line }));
+  const improving = hits.filter(entry => entry.kind === 'improving').map(({ id, line, harness }) => ({ id, line, harness }));
   return { blocking, improving };
 }
 

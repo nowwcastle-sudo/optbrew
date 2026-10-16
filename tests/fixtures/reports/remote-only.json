@@ -13,7 +13,7 @@
     "evaluation_version": "0.3.0",
     "protocol_version": "0.1.0",
     "data_sources": [],
-    "cost_decision": {},
+    "cost_decision": {}, "environment_probe": {"harness":"other","transport":"direct","address_vetting":"direct","proxy":null,"block_reason":null,"chrome":{"found":true,"kind":"chrome","reason":null},"google_key":false,"source_tools":[],"sitemap_pages":null},
     "evidence_ref": "context.json",
     "protocol": {
       "page_types": [
@@ -234,7 +234,7 @@
         "evaluation_version": "0.3.0",
         "protocol_version": "0.1.0",
         "data_sources": [],
-        "cost_decision": {},
+        "cost_decision": {}, "environment_probe": {"harness":"other","transport":"direct","address_vetting":"direct","proxy":null,"block_reason":null,"chrome":{"found":true,"kind":"chrome","reason":null},"google_key":false,"source_tools":[],"sitemap_pages":null},
         "evidence_ref": "context.json",
         "protocol": {
           "page_types": [
@@ -774,7 +774,7 @@
   "evidence_index": [
     {
       "ref": "context.json",
-      "sha256": "9fd6197235a4d60ad560c50e2bbc55079e12128f7c5e2dfdbea23fb8c44776c6",
+      "sha256": "c8108c90681e5a97672a9c7e50cc5f279a3e055b6a8b1757349b0b2f09834ea5",
       "kind": "context",
       "run_id": "synthetic-report"
     },

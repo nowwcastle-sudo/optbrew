@@ -15,6 +15,7 @@ export const limits = block('limits');
 export const versions = block('versions');
 export const endpoints = block('endpoints');
 export const chromePaths = block('chrome-paths');
+export const harnessSignals = block('harness-signals');
 
 const checkRegistry = block('check-registry');
 /** The judgment thresholds one family's check block reads from `check-registry.json`. */

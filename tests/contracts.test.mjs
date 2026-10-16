@@ -2,11 +2,12 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { validateEntity, ContractError } from '../skills/optbrew/scripts/core/contracts.mjs';
 import { freezeProtocol } from '../skills/optbrew/scripts/core/protocol.mjs';
+import { environmentProbe } from './support/probe.mjs';
 
 const context = () => ({
   schema_version: '1.0.0', run_id: 'run-a', target: 'example.com', environment: 'local',
   goals: ['SEO'], allowed_changes: [], scope: {}, evaluation_version: '0.3.0',
-  protocol_version: '0.1.0', data_sources: [], cost_decision: {}, evidence_ref: 'evidence/context.json',
+  protocol_version: '0.1.0', data_sources: [], cost_decision: {}, environment_probe: environmentProbe(), evidence_ref: 'evidence/context.json',
   protocol: {
     page_types: [{ id: 'primary', urls: [{ original: 'https://example.com/', normalized: 'https://example.com/' }] }],
     engines: ['google'], families: [{ family_id: 'fetch-response', applicable: true }],
