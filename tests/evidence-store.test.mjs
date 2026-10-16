@@ -35,7 +35,7 @@ test('a named document keeps its file name and refuses different content', async
     const saved = await store.write('collection', '{"artifacts":[]}\n', { name: 'collection.json' });
     assert.equal(saved.ref, path.join(dir, 'collection.json'));
     assert.deepEqual(await store.write('collection', '{"artifacts":[]}\n', { name: 'collection.json' }), saved);
-    await assert.rejects(store.write('collection', '{"artifacts":[1]}\n', { name: 'collection.json' }), { code: 'EEXIST' });
+    await assert.rejects(store.write('collection', '{"artifacts":[1]}\n', { name: 'collection.json' }), { message: 'evidence collection.json already exists with different content' });
     await assert.rejects(store.write('collection', 'a', { name: '../escape.json' }), /name/);
   });
 });
@@ -66,6 +66,31 @@ test('concurrent appends all land in the index', async () => {
     const store = openStore(dir, header);
     await Promise.all(Array.from({ length: 20 }, (_, i) => store.append('raw', { n: i })));
     assert.deepEqual((await store.index()).raw.map(x => x.n), Array.from({ length: 20 }, (_, i) => i));
+  });
+});
+
+test('two stores on one dir keep every append', async () => {
+  await withDir(async dir => {
+    const first = openStore(dir, header), second = openStore(dir, header);
+    await Promise.all(Array.from({ length: 30 }, (_, i) => (i % 2 ? first : second).append('raw', { n: i })));
+    assert.deepEqual((await first.index()).raw.map(x => x.n).sort((a, b) => a - b), Array.from({ length: 30 }, (_, i) => i));
+    assert.deepEqual(await readdir(dir), ['evidence-index.json']);
+  });
+});
+
+test('a relative ref reads the same through the store and readVerified', async () => {
+  await withDir(async dir => {
+    const store = openStore(dir, header);
+    const { ref, sha256 } = await store.write('html', '<p>x</p>');
+    const name = path.basename(ref);
+    assert.deepEqual(await store.read(name, sha256), readVerified(dir, name, sha256));
+    assert.deepEqual(await store.read(ref, sha256), readVerified(dir, ref, sha256));
+    const relativeDir = path.relative(process.cwd(), dir);
+    if (!path.isAbsolute(relativeDir)) {
+      const local = openStore(relativeDir, header);
+      const saved = await local.write('html', '<p>y</p>');
+      assert.equal((await local.read(saved.ref, saved.sha256)).toString('utf8'), '<p>y</p>');
+    }
   });
 });
 
