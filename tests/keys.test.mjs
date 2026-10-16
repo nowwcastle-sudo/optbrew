@@ -122,12 +122,32 @@ test('an empty line saves nothing', async () => {
   await assert.rejects(stat(path.join(home, '.optbrew', 'credentials.json')), { code: 'ENOENT' });
 });
 
-test('set replaces a corrupt file atomically and leaves no temp file', async () => {
+test('set and remove refuse a corrupt key file and leave its bytes alone', async () => {
   const home = await tempDir('optbrew-keys-');
-  await writeKeyFile(home, '{broken');
-  assert.equal((await run(['set', 'google'], { home, stdin: pipeStdin(`${KEY}\n`) })).code, 0);
-  assert.equal(readGoogleKey({ env: {}, home }), KEY);
-  assert.deepEqual(await readdir(path.join(home, '.optbrew')), ['credentials.json']);
+  const file = path.join(home, '.optbrew', 'credentials.json');
+  const typo = `{"other": "${OTHER}", "google": "${KEY}",}`;
+  for (const content of ['{broken', '', '[]', 'null', '"text"', typo]) {
+    await writeKeyFile(home, content);
+    for (const argv of [['set', 'google'], ['remove', 'google']]) {
+      const result = await run(argv, { home, stdin: pipeStdin(`${KEY}\n`) });
+      assert.equal(result.code, 1, `${argv[0]} on ${JSON.stringify(content)}`);
+      assert.ok(result.stderr.includes(file), result.stderr);
+      assert.match(result.stderr, /not a valid JSON object/);
+      for (const secret of [KEY, OTHER]) assert.equal((result.stdout + result.stderr).includes(secret), false);
+      assert.equal(await readFile(file, 'utf8'), content);
+      assert.deepEqual(await readdir(path.dirname(file)), ['credentials.json']);
+    }
+    assert.equal(readGoogleKey({ env: {}, home }), null, content);
+  }
+});
+
+test('set and remove refuse a key file that cannot be read as a file', async () => {
+  const home = await tempDir('optbrew-keys-');
+  await mkdir(path.join(home, '.optbrew', 'credentials.json'), { recursive: true });
+  for (const argv of [['set', 'google'], ['remove', 'google']]) {
+    assert.equal((await run(argv, { home, stdin: pipeStdin(`${KEY}\n`) })).code, 1, argv[0]);
+    assert.ok((await stat(path.join(home, '.optbrew', 'credentials.json'))).isDirectory());
+  }
 });
 
 test('the key file is owner-only on POSIX', { skip: process.platform === 'win32' && 'Windows has no POSIX modes' }, async () => {
@@ -152,8 +172,11 @@ test('remove deletes the file, tolerates a missing one, and names a still-set va
   await run(['set', 'google'], { home, stdin: pipeStdin(`${KEY}\n`) });
   const removed = await run(['remove', 'google'], { home });
   assert.equal(removed.code, 0);
+  assert.match(removed.stdout, /google key removed/);
   assert.equal(readGoogleKey({ env: {}, home }), null);
-  assert.equal((await run(['remove', 'google'], { home })).code, 0);
+  const nothing = await run(['remove', 'google'], { home });
+  assert.equal(nothing.code, 0);
+  assert.match(nothing.stdout, /nothing to remove/);
   const stillSet = await run(['remove', 'google'], { home, env: { OPTBREW_GOOGLE_API_KEY: KEY } });
   assert.equal(stillSet.code, 0);
   assert.match(stillSet.stderr, /OPTBREW_GOOGLE_API_KEY is still set/);

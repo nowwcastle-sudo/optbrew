@@ -744,7 +744,7 @@
     },
     {
       "path": "scripts/core/keys.mjs",
-      "sha256": "b0cd4de19c7c504c9460abd982f1a1e590dcfe69c01072326bbc00a9b36dac90"
+      "sha256": "9faec6c3049aee0e96140e60448680aa4eba06446073283da5263655b7664183"
     },
     {
       "path": "scripts/core/link-graph.mjs",
@@ -784,12 +784,12 @@
     },
     {
       "path": "scripts/key.mjs",
-      "sha256": "b1559ee9bc5d2338212a4ad889aa0b1c56be8b1a6ab1204a9f1c0250179ffd00"
+      "sha256": "b800a478d601bddf461c6237295fd54279fcd1a14459261e938f0b5a342c6467"
     },
     {
       "path": "source-lock.json",
       "sha256": "a53223b7eefab2204c026a62b1da04cfdb8a07be8d3749613e8241a81b027d9b"
     }
   ],
-  "bundle_hash": "fae00db02c853a1053d488cfbb6d35c3773d96dc38167527920a63fbf2a93bb7"
+  "bundle_hash": "c1994840b6438a13f0d506c5c8696c6adcc6c3dc21025fc3b69d89252f22d120"
 }

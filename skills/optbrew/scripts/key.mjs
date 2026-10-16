@@ -70,8 +70,7 @@ export async function runKeyCommand(argv, { stdin = process.stdin, stdout = proc
     if (action === 'status') {
       stdout.write(`${JSON.stringify(googleKeyStatus({ env, home }))}\n`);
     } else if (action === 'remove') {
-      await removeGoogleKey({ home });
-      stdout.write('google key removed\n');
+      stdout.write(await removeGoogleKey({ home }) ? 'google key removed\n' : 'no google key in the key file; nothing to remove\n');
       if (googleKeyStatus({ env, home }).google.present) stderr.write('OPTBREW_GOOGLE_API_KEY is still set in the environment\n');
     } else {
       const key = (stdin.isTTY ? await readHidden(stdin, stdout) : await readLine(stdin)).trim();

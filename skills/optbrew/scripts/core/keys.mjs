@@ -18,12 +18,23 @@ const credentialsPath = home => path.join(home, '.optbrew', 'credentials.json');
 
 const clean = value => typeof value === 'string' && value.trim() ? value.trim() : null;
 
-/** The key file as a plain object; a missing, unreadable or corrupt file counts as empty. */
+/**
+ * The key file as a plain object for code that rewrites it. A missing file is empty; an unreadable, corrupt or
+ * non-object file is refused, so a hand-edited file with a typo is never overwritten or deleted. The error names
+ * the path only, never the file's contents.
+ */
+function loadCredentials(file) {
+  let value;
+  try { value = JSON.parse(readFileSync(file, 'utf8')); }
+  catch (error) { if (error.code === 'ENOENT') return {}; value = null; }
+  if (!value || typeof value !== 'object' || Array.isArray(value))
+    throw new Error(`credentials file at ${file} is not a valid JSON object; fix it or delete it, then run the command again`);
+  return value;
+}
+
+/** The same file for readers: anything unusable means "no key". */
 function readCredentials(file) {
-  try {
-    const value = JSON.parse(readFileSync(file, 'utf8'));
-    return value && typeof value === 'object' && !Array.isArray(value) ? value : {};
-  } catch { return {}; }
+  try { return loadCredentials(file); } catch { return {}; }
 }
 
 /** Environment variable first, then the key file. An empty variable, a missing file or a corrupt file all mean "no key". */
@@ -55,13 +66,15 @@ async function writeCredentials(file, credentials) {
 /** Store the key and keep every other entry already in the file. */
 export async function saveGoogleKey({ home = keyHome(), key }) {
   const file = credentialsPath(home);
-  await writeCredentials(file, { ...readCredentials(file), google: key });
+  await writeCredentials(file, { ...loadCredentials(file), google: key });
 }
 
-/** Drop only the google entry; the file itself goes away once nothing else is left in it. */
+/** Drop only the google entry; the file itself goes away once nothing else is left in it. Returns whether an entry existed. */
 export async function removeGoogleKey({ home = keyHome() } = {}) {
   const file = credentialsPath(home);
-  const { google: _removed, ...rest } = readCredentials(file);
+  const { google, ...rest } = loadCredentials(file);
+  if (google === undefined) return false;
   if (Object.keys(rest).length) await writeCredentials(file, rest);
   else await rm(file, { force: true });
+  return true;
 }
