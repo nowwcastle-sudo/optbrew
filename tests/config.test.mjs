@@ -13,7 +13,7 @@ test('versions hold today\'s release, evaluation, protocol and schema versions',
 });
 
 test('endpoints hold every URL the product code uses', () => {
-  assert.deepEqual(endpoints(), { anthropic_messages: 'https://api.anthropic.com/v1/messages',
+  assert.deepEqual(endpoints(), { anthropic_messages: 'https://api.anthropic.com/v1/messages', anthropic_version: '2023-06-01',
     npm_registry: 'https://registry.npmjs.org/', naver_guide: 'https://searchadvisor.naver.com/guide/',
     plugin_schema: 'https://agent-plugins.org/schemas/1.0.0/plugin.schema.json', relative_url_base: 'http://path.invalid' });
 });

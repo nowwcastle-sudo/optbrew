@@ -556,7 +556,7 @@
     },
     {
       "path": "references/endpoints.json",
-      "sha256": "d2b2689986f985b90c06c5d92fd6b88bd9989086795d0ead31651c4769d18c84"
+      "sha256": "06ac6fa994fabbde0627d73e156b75bff461add6234bc3e433327409a6f27299"
     },
     {
       "path": "references/evidence.md",
@@ -608,7 +608,7 @@
     },
     {
       "path": "scripts/adapters/anthropic.mjs",
-      "sha256": "511523b0f1920570c4c25aa5669b092e7e5267d18d984eedde5ab08093b9dbf8"
+      "sha256": "c115ddbcd4730dc397498aaf8b0b94a28888295bc676a0013da3427ff444f2b1"
     },
     {
       "path": "scripts/adapters/imports.mjs",
@@ -628,7 +628,7 @@
     },
     {
       "path": "scripts/core/bundle.mjs",
-      "sha256": "71a685ee2844a1fb515b571ca93238a2ce84b60cb094e8478d2daadbeb436317"
+      "sha256": "02737ae0fdc66a5a7bd9e333abad3aef39462990ee578a5ed37a625cdfaedbaa"
     },
     {
       "path": "scripts/core/capabilities.mjs",
@@ -703,5 +703,5 @@
       "sha256": "a53223b7eefab2204c026a62b1da04cfdb8a07be8d3749613e8241a81b027d9b"
     }
   ],
-  "bundle_hash": "54378aa1d4f4af2c8795f1aa47ce0f2d27fa1d6e73d480e142d249e06c08fa49"
+  "bundle_hash": "bdf42339b6557921f32d379a746bc3be4eeb86a0601840b17860c2b88d92f7b4"
 }

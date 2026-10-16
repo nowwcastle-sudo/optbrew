@@ -8,7 +8,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { createBundleManifest, verifyBundle } from '../skills/optbrew/scripts/core/bundle.mjs';
+import { createBundleManifest, evaluationSourcePaths, protocolSourcePaths, verifyBundle } from '../skills/optbrew/scripts/core/bundle.mjs';
 import { install } from '../lib/install.mjs';
 import { resolveTargets } from '../lib/paths.mjs';
 import { readInstallRecord } from '../lib/records.mjs';
@@ -224,4 +224,21 @@ test('final review M3: the recovery hint uses literal single quotes for PowerShe
     assert.equal(error.message.includes(`"${managed}"`), false, 'double quotes would let a shell expand $ in the path');
     return true;
   });
+});
+
+test('verifyBundle accepts a bundle whose manifest lists fewer protocol sources than the current constant', async t => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'optbrew-older-bundle-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  for (const name of new Set([...evaluationSourcePaths, ...protocolSourcePaths])) {
+    await mkdir(path.dirname(path.join(root, name)), { recursive: true });
+    await fs.copyFile(path.join(repositoryRoot, 'skills/optbrew', name), path.join(root, name));
+  }
+  const older = protocolSourcePaths.filter(name => name !== 'references/limits.json');
+  assert.ok(older.length < protocolSourcePaths.length);
+  const manifest = await createBundleManifest({ bundleRoot: root, releaseVersion: '0.1.0', sources: { evaluation: evaluationSourcePaths, protocol: older } });
+  assert.equal(manifest.protocol_sources.length, older.length);
+  assert.equal((await verifyBundle({ bundleRoot: root, manifest })).status, 'valid');
+  await writeFile(path.join(root, 'scripts/core/protocol.mjs'), 'tampered');
+  assert.deepEqual((await verifyBundle({ bundleRoot: root, manifest })).errors.map(error => error.code).sort(),
+    ['bundle_hash_mismatch', 'hash_mismatch', 'protocol_hash_mismatch', 'protocol_sources_mismatch']);
 });

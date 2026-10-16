@@ -32,8 +32,8 @@ async function listFiles(root, relative = '') {
   return result.sort();
 }
 
-/** Hash every distributed file; the manifest never hashes itself. */
-export async function createBundleManifest({ bundleRoot, releaseVersion }) {
+/** Hash every distributed file; the manifest never hashes itself. `sources` names the identity files; verification passes the lists a manifest recorded. */
+export async function createBundleManifest({ bundleRoot, releaseVersion, sources = { evaluation: evaluationSourcePaths, protocol: protocolSourcePaths } }) {
   if (!/^\d+\.\d+\.\d+(?:[-+][\w.-]+)?$/.test(releaseVersion)) throw new Error('invalid release version');
   const files = [];
   for (const name of await listFiles(bundleRoot)) {
@@ -42,8 +42,8 @@ export async function createBundleManifest({ bundleRoot, releaseVersion }) {
   // Synthetic install fixtures contain only SKILL.md; production release checks completeness.
   const selected = paths => paths.every(name => files.some(file => file.path === name))
     ? paths.map(name => files.find(file => file.path === name)) : [];
-  const evaluation_sources = selected(evaluationSourcePaths);
-  const protocol_sources = selected(protocolSourcePaths);
+  const evaluation_sources = selected(sources.evaluation);
+  const protocol_sources = selected(sources.protocol);
   const identity = evaluation_sources.length && protocol_sources.length ? {
     evaluation_version: versions().evaluation, protocol_version: versions().protocol,
     evaluation_sources, evaluation_hash: digest(JSON.stringify(evaluation_sources)),
@@ -52,11 +52,14 @@ export async function createBundleManifest({ bundleRoot, releaseVersion }) {
     ...identity, files, bundle_hash: digest(JSON.stringify(files)) };
 }
 
-/** Verify the exact allowlist, byte hashes, and aggregate hash. */
+const recordedPaths = (list, fallback) => Array.isArray(list) ? list.map(file => file?.path) : fallback;
+
+/** Verify the exact allowlist, byte hashes, and aggregate hash. Identity is recomputed over the source lists the manifest recorded, so an older bundle with fewer sources still verifies. */
 export async function verifyBundle({ bundleRoot, manifest }) {
   const errors = [];
   let actual;
-  try { actual = await createBundleManifest({ bundleRoot, releaseVersion: manifest?.release_version }); }
+  try { actual = await createBundleManifest({ bundleRoot, releaseVersion: manifest?.release_version, sources: {
+    evaluation: recordedPaths(manifest?.evaluation_sources, evaluationSourcePaths), protocol: recordedPaths(manifest?.protocol_sources, protocolSourcePaths) } }); }
   catch (error) { return { status: 'invalid', checked_files: 0, errors: [{ path: '', code: error.message }], bundle_hash: null }; }
   if (!Array.isArray(manifest?.files) || manifest.schema_version !== versions().bundle_manifest_schema) errors.push({ path: manifestName, code: 'invalid_manifest' });
   const expected = new Map(Array.isArray(manifest?.files) ? manifest.files.map(f => [f.path, f.sha256]) : []);

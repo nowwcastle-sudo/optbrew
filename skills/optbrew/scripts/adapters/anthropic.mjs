@@ -6,7 +6,6 @@ import { reserveCost, settleCost } from '../core/cost-ledger.mjs';
 import { endpoints, limits } from '../core/config.mjs';
 
 const ENDPOINT = new URL(endpoints().anthropic_messages);
-const VERSION = '2023-06-01';
 // Official model overview, checked 2026-10-14. Accepted requests reserve the full context window plus max output.
 const MODELS = new Map(['claude-fable-5-1', 'claude-opus-5-5', 'claude-sonnet-5-5', 'claude-haiku-5-5']
   .map(id => [id, { contextTokens: 1_000_000, maxOutputTokens: 128_000 }]));
@@ -82,7 +81,7 @@ export async function requestAnthropic({ context, request, env = process.env, tr
     try {
       response = await Promise.race([
         transport({ url: ENDPOINT, headers: { 'content-type': 'application/json', 'x-api-key': env.ANTHROPIC_API_KEY,
-          'anthropic-version': VERSION }, body, timeoutMs: limits().timeout_ms, signal: controller.signal }),
+          'anthropic-version': endpoints().anthropic_version }, body, timeoutMs: limits().timeout_ms, signal: controller.signal }),
         new Promise((_, reject) => controller.signal.addEventListener('abort', () => reject(new Error('timeout')), { once: true })),
       ]);
     } catch {
