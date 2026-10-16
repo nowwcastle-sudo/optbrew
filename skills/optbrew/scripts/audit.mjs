@@ -1,8 +1,7 @@
 #!/usr/bin/env node
-import { createHash } from 'node:crypto';
 import { spawn } from 'node:child_process';
 import { realpathSync } from 'node:fs';
-import { access, mkdir, readFile, writeFile } from 'node:fs/promises';
+import { access, mkdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { validateEntity } from './core/contracts.mjs';
@@ -10,7 +9,10 @@ import { limits } from './core/config.mjs';
 import { collect, declaredRobotsIndex } from './core/collector.mjs';
 import { auditCollected } from '../modules/naver-searchadvisor/scripts/audit.mjs';
 import { deriveObservations } from './core/derive.mjs';
+import { openStore } from './core/evidence-store.mjs';
 
+/** Fixed file names of the run documents the evidence index points at. */
+const DOCUMENTS = { collection: 'collection.json', ledger: 'ledger.json', modules: 'modules.json', observations: 'observations.json' };
 const magnusScript = fileURLToPath(new URL('../modules/magnus-seo/scripts/aeo_audit.py', import.meta.url));
 const supported = new Set(['naver-searchadvisor', 'magnus-seo']);
 
@@ -37,53 +39,41 @@ export async function runAudit({ context, modules, outputDir, transport, resolve
   if (!Array.isArray(modules) || modules.some(x => !supported.has(x)) || !outputDir) throw new Error('unsupported modules or output directory');
   const evidenceDir = path.join(outputDir, 'evidence');
   await mkdir(evidenceDir, { recursive: true });
-  try { await access(path.join(evidenceDir, 'collection.json')); throw new Error('run evidence index already exists'); }
-  catch (error) { if (error.code !== 'ENOENT') throw error; }
+  const documentRef = name => path.join(evidenceDir, DOCUMENTS[name]);
+  const store = openStore(evidenceDir, { run_id: context.run_id, context_ref: context.evidence_ref,
+    collection_ref: documentRef('collection'), module_output_ref: documentRef('modules'),
+    observations_ref: documentRef('observations'), ledger_ref: documentRef('ledger'), modules });
+  for (const existing of [documentRef('collection'), store.indexRef]) {
+    try { await access(existing); } catch (error) { if (error.code === 'ENOENT') continue; throw error; }
+    throw new Error('run evidence index already exists');
+  }
   const collection = await collect(context, { transport, resolve });
   const artifacts = [];
-  const responses = [];
-  const failures = [];
   for (const artifact of collection.artifacts) {
     const { body, ...saved } = artifact;
     if (artifact.content_hash) {
-      const name = `${artifact.content_hash}.${artifact.capability === 'raw_html' ? 'html' : 'bin'}`;
-      const ref = path.join(evidenceDir, name);
-      try { await writeFile(ref, body, { flag: 'wx' }); }
-      catch (error) {
-        if (error.code !== 'EEXIST' || !Buffer.from(await readFile(ref)).equals(body)) throw error;
-      }
+      const { ref } = await store.write(artifact.capability === 'raw_html' ? 'html' : 'bin', body);
       saved.raw_html_ref = artifact.capability === 'raw_html' ? ref : null;
       saved.evidence_ref = ref;
-    } else saved.evidence_ref = path.join(evidenceDir, 'collection.json');
+    } else saved.evidence_ref = documentRef('collection');
+    await store.append('raw', { normalized_url: saved.normalized_url, evidence_ref: saved.evidence_ref, content_hash: saved.content_hash });
     if (Number.isInteger(artifact.status)) {
       // Hash the final URL, redirect chain and response header lines next to the raw body so the report replays from them.
-      const bytes = Buffer.from(`${JSON.stringify({ record_version: '1', requested_url: artifact.requested_url,
+      const { ref, sha256 } = await store.write('response', `${JSON.stringify({ record_version: '1', requested_url: artifact.requested_url,
         normalized_url: artifact.normalized_url, final_url: artifact.final_url, status: artifact.status,
         redirect_chain: artifact.redirect_chain, header_lines: artifact.header_lines,
         content_hash: artifact.content_hash, capability: artifact.capability }, null, 2)}\n`);
-      const content_hash = createHash('sha256').update(bytes).digest('hex');
-      const ref = path.join(evidenceDir, `${content_hash}.response.json`);
-      try { await writeFile(ref, bytes, { flag: 'wx' }); }
-      catch (error) {
-        if (error.code !== 'EEXIST' || !Buffer.from(await readFile(ref)).equals(bytes)) throw error;
-      }
       saved.response_ref = ref;
-      responses.push({ normalized_url: artifact.normalized_url, evidence_ref: ref, content_hash });
+      await store.append('responses', { normalized_url: artifact.normalized_url, evidence_ref: ref, content_hash: sha256 });
     }
     else {
       // A failed fetch has no response, but its answered redirect hops were real requests: hash them in a failure record
       // so the ledger can prove the count (answered hops plus at most one unanswered attempt).
-      const bytes = Buffer.from(`${JSON.stringify({ record_version: '1', kind: 'failure', requested_url: artifact.requested_url,
+      const { ref, sha256 } = await store.write('failure', `${JSON.stringify({ record_version: '1', kind: 'failure', requested_url: artifact.requested_url,
         normalized_url: artifact.normalized_url, redirect_chain: artifact.redirect_chain, unanswered: artifact.unanswered ?? 0,
         error: artifact.error }, null, 2)}\n`);
-      const content_hash = createHash('sha256').update(bytes).digest('hex');
-      const ref = path.join(evidenceDir, `${content_hash}.failure.json`);
-      try { await writeFile(ref, bytes, { flag: 'wx' }); }
-      catch (error) {
-        if (error.code !== 'EEXIST' || !Buffer.from(await readFile(ref)).equals(bytes)) throw error;
-      }
       saved.failure_ref = ref;
-      failures.push({ normalized_url: artifact.normalized_url, evidence_ref: ref, content_hash });
+      await store.append('failures', { normalized_url: artifact.normalized_url, evidence_ref: ref, content_hash: sha256 });
     }
     artifacts.push(saved);
   }
@@ -110,18 +100,15 @@ export async function runAudit({ context, modules, outputDir, transport, resolve
   const observations = deriveObservations({ context, artifacts, collection,
     textOf: x => bodies.get(x.normalized_url)?.toString('utf8') ?? null });
   const result = { context_ref: context.evidence_ref, artifacts, observations, module_outputs,
-    evidence_ref: path.join(evidenceDir, 'evidence-index.json'), discovered_count: collection.discovered_count,
+    evidence_ref: store.indexRef, discovered_count: collection.discovered_count,
     evaluated_count: collection.evaluated_count, request_count: collection.request_count, skipped: collection.skipped, limit_reached: collection.limit_reached };
-  await writeFile(path.join(evidenceDir, 'collection.json'), `${JSON.stringify({ artifacts, discovered_count: collection.discovered_count,
-    evaluated_count: collection.evaluated_count, request_count: collection.request_count, skipped: collection.skipped, limit_reached: collection.limit_reached }, null, 2)}\n`, { flag: 'wx' });
-  await writeFile(path.join(evidenceDir, 'ledger.json'), `${JSON.stringify({ entries: collection.ledger, limit: Math.min(context.scope?.max_urls ?? limits().max_urls_default, limits().max_urls_default) }, null, 2)}\n`, { flag: 'wx' });
-  await writeFile(path.join(evidenceDir, 'modules.json'), `${JSON.stringify(module_outputs, null, 2)}\n`, { flag: 'wx' });
-  await writeFile(path.join(evidenceDir, 'observations.json'), `${JSON.stringify(observations, null, 2)}\n`, { flag: 'wx' });
-  await writeFile(result.evidence_ref, `${JSON.stringify({ run_id: context.run_id, context_ref: context.evidence_ref,
-    collection_ref: path.join(evidenceDir, 'collection.json'), module_output_ref: path.join(evidenceDir, 'modules.json'),
-    observations_ref: path.join(evidenceDir, 'observations.json'), ledger_ref: path.join(evidenceDir, 'ledger.json'), modules,
-    raw: artifacts.map(x => ({ normalized_url: x.normalized_url, evidence_ref: x.evidence_ref, content_hash: x.content_hash })),
-    responses, failures }, null, 2)}\n`, { flag: 'wx' });
+  const document = (name, value) => store.write(name, `${JSON.stringify(value, null, 2)}\n`, { name: DOCUMENTS[name] });
+  await document('collection', { artifacts, discovered_count: collection.discovered_count,
+    evaluated_count: collection.evaluated_count, request_count: collection.request_count, skipped: collection.skipped, limit_reached: collection.limit_reached });
+  await document('ledger', { entries: collection.ledger, limit: Math.min(context.scope?.max_urls ?? limits().max_urls_default, limits().max_urls_default) });
+  await document('modules', module_outputs);
+  await document('observations', observations);
+  await store.index();
   return result;
 }
 

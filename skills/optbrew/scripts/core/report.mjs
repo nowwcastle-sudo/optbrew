@@ -1,4 +1,3 @@
-import { createHash } from 'node:crypto';
 import { readFileSync, realpathSync } from 'node:fs';
 import { access, mkdir, rename, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
@@ -12,6 +11,7 @@ import { normalizeImport } from '../adapters/imports.mjs';
 import { mergeFindings, selectRemediations } from './findings.mjs';
 import { auditCollected, indexingDirectives } from '../../modules/naver-searchadvisor/scripts/audit.mjs';
 import { deriveObservations } from './derive.mjs';
+import { readVerified } from './evidence-store.mjs';
 import { links } from './collector.mjs';
 import { assertUrlInScope } from './scope.mjs';
 import { parseRobots, robotsVerdict } from '../../modules/naver-searchadvisor/scripts/robots.mjs';
@@ -98,13 +98,10 @@ function indexedEvidence(packet) {
     if (!entry || typeof entry.ref !== 'string' || !entry.ref || !/^[a-f0-9]{64}$/.test(entry.sha256) ||
         typeof entry.kind !== 'string' || !entry.kind || entry.run_id !== packet.run_context.run_id || index.has(entry.ref))
       throw new ContractError('invalid or duplicate run evidence entry');
-    const file = path.resolve(root, entry.ref);
-    const actual = realpathSync(file);
-    if (actual !== root && !actual.startsWith(`${root}${path.sep}`)) throw new ContractError(`evidence path outside run directory: ${entry.ref}`);
-    const bytes = readFileSync(actual);
+    let bytes;
+    try { bytes = readVerified(root, entry.ref, entry.sha256); }
+    catch (error) { throw new ContractError(error.message); }
     if (sensitive.test(bytes.toString('utf8'))) throw new ContractError('private identifier or secret in report evidence');
-    if (createHash('sha256').update(bytes).digest('hex') !== entry.sha256)
-      throw new ContractError(`evidence hash mismatch: ${entry.ref}`);
     index.set(entry.ref, { ...entry, text: bytes.toString('utf8') });
   }
   const requireRef = (ref, sourceRef) => {

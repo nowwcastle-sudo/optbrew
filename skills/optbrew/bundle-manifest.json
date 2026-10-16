@@ -616,7 +616,7 @@
     },
     {
       "path": "scripts/audit.mjs",
-      "sha256": "e232b662db38332dd16b8d484d14cba84edb8b1ab2678928ac51c1163a05f1d5"
+      "sha256": "fd131f7f3aa60b1c5289cc49289f9925f21a5adcaccd19dab2fb1c6d80b68074"
     },
     {
       "path": "scripts/cli.mjs",
@@ -663,6 +663,10 @@
       "sha256": "78b668d3e3cb8cd0b73fe1818be0d1dff21a9c66687eb9ce23ebdae032b94715"
     },
     {
+      "path": "scripts/core/evidence-store.mjs",
+      "sha256": "c6ea68cecc988b172859db764b80604d7ca3f568a3cf3ae048a368527f3f7c3c"
+    },
+    {
       "path": "scripts/core/facts.mjs",
       "sha256": "ca590807bc42d6f2867ba2be6de33966751e0b4af63328392436fcd581034559"
     },
@@ -684,7 +688,7 @@
     },
     {
       "path": "scripts/core/report.mjs",
-      "sha256": "1b63d1ab7bb5906c287e9629f1cf4187c8794b43d2c4abe95a1bf864e1961464"
+      "sha256": "347f418e2f73a507f69809e6b21b853bab01518250b965bc324fed589627141b"
     },
     {
       "path": "scripts/core/scope.mjs",
@@ -703,5 +707,5 @@
       "sha256": "a53223b7eefab2204c026a62b1da04cfdb8a07be8d3749613e8241a81b027d9b"
     }
   ],
-  "bundle_hash": "bdf42339b6557921f32d379a746bc3be4eeb86a0601840b17860c2b88d92f7b4"
+  "bundle_hash": "3d426486848c351fd6bd905f1cbb89220eb349cc88a7148f64e9a72a830477c5"
 }
