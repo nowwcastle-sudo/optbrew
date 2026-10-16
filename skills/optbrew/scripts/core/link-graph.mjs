@@ -9,6 +9,19 @@ export function canonicalUrl(value) {
   } catch { return null; }
 }
 
+/** The distinct links of `hrefs` that stay on the origin of `base`, absolute and without fragments, sorted. */
+export function sameOriginLinks(hrefs, base) {
+  const { origin } = new URL(base);
+  const found = new Set();
+  for (const href of hrefs) {
+    let url;
+    try { url = new URL(href, base); } catch { continue; }
+    url.hash = '';
+    if (url.origin === origin) found.add(url.href);
+  }
+  return [...found].sort();
+}
+
 /**
  * The anchor links between collected HTML pages. `rows` are `{ url, artifact, html }` for every collected page with a 200
  * raw HTML body, selected or not. `edges` lists `{ from, to }` canonical urls (a page's link to itself is not an edge).

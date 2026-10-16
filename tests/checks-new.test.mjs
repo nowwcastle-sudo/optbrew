@@ -61,6 +61,14 @@ test('internal-navigation: empty and generic anchors above the ratio fail', () =
   assert.equal(fine['/'].state, 'pass', 'one generic anchor in four is at the ratio, not above it');
 });
 
+test('internal-navigation: a link counts as weak only when no anchor to its target on the page is descriptive', () => {
+  const nav = [link('/menu', '메뉴'), '<a href="/menu"><img src="/i.png"></a>', link('/news', '소식'), link('/news', '더보기'),
+    link('/about', '회사소개'), link('/contact', '문의'), '<a href="/contact"></a>'].join('');
+  const result = judge(internalNavigation, { '/': doc(nav), '/menu': doc(''), '/news': doc(''), '/about': doc(''), '/contact': doc('') });
+  assert.equal(result['/'].state, 'pass');
+  assert.match(result['/'].reason, /0 of 4/);
+});
+
 test('internal-navigation: an image-only link is labelled by its alt text and an aria-label', () => {
   const result = judge(internalNavigation, { '/': doc('<a href="/a"><img src="/x.png" alt="Home logo"></a><a href="/b" aria-label="Contact us"><svg></svg></a>'), '/a': doc(''), '/b': doc('') });
   assert.equal(result['/'].state, 'pass');
@@ -108,6 +116,13 @@ test('locale-links: no hreflang anywhere is a single-locale site', () => {
   assert.equal(result['/'].applicability_decision.condition, 'single_locale');
 });
 
+test('locale-links: a page whose only hreflang points at itself is a single-locale page', () => {
+  for (const head of [alternate('ko', '/'), alternate('ko', '/') + alternate('x-default', '/')]) {
+    const result = judge(localeLinks, { '/': doc('', head), '/about': doc('') });
+    assert.deepEqual([result['/'].state, result['/'].applicability_decision.condition], ['not_applicable', 'single_locale']);
+  }
+});
+
 test('locale-links: an alternate that was not collected cannot be checked and stays unknown', () => {
   const result = judge(localeLinks, { '/en': doc('', alternate('ko', '/ko') + alternate('x-default', '/en')) });
   assert.equal(result['/en'].state, 'unknown');
@@ -144,12 +159,28 @@ test('render-content: a challenge page is unknown, not fail', () => {
   assert.deepEqual([byMarker['/'].state, byMarker['/'].reason], ['unknown', 'render_blocked']);
 });
 
-test('render-content: missing chrome is unknown with chrome_missing', () => {
-  const shell = { '/': doc('<div id="app"></div>') };
+test('render-content: missing chrome is unknown with chrome_missing, for the pages of the render sample only', () => {
+  const shell = { '/': doc('<div id="app"></div>'), '/other': doc('<div id="app"></div>') };
   for (const chrome of [{ found: false, reason: 'chrome_not_found' }, undefined, null]) {
     const result = judge(renderContent, shell, chrome === undefined ? {} : { chrome });
     assert.deepEqual([result['/'].state, result['/'].reason], ['unknown', 'chrome_missing'], JSON.stringify(chrome));
+    assert.equal(result['/other'], undefined, 'the first URL of a page type is rendered, the others are not');
   }
+});
+
+test('render-content: a render matches its page by canonical URL, whether recorded under url or final_url', () => {
+  const pages = { '/': doc('<div id="app"></div>') };
+  const options = overrides => ({ renders: [record('/', overrides)], renderHtml: { [url('/')]: richDom, [url('/index.html')]: richDom, [url('/start')]: richDom }, chrome: { found: true, reason: null } });
+  assert.equal(judge(renderContent, pages, options({ url: url('/index.html'), final_url: url('/index.html') }))['/']?.state, 'pass');
+  assert.equal(judge(renderContent, pages, options({ url: `${ORIGIN}/start`, final_url: url('/') }))['/']?.state, 'pass');
+});
+
+test('render-content: a long page that mentions a challenge phrase is judged, a short one is blocked', () => {
+  const article = `<h1>Notes</h1><p>Attention required: renew the permit before May. ${'The brew house keeps its permits current. '.repeat(30)}</p>`;
+  const options = { renders: [record('/')], renderHtml: { [url('/')]: `<html><head><title>Page</title></head><body>${article}</body></html>` }, chrome: { found: true, reason: null } };
+  assert.equal(judge(renderContent, { '/': doc('<div id="app"></div>') }, options)['/'].state, 'pass');
+  const short = { ...options, renderHtml: { [url('/')]: '<html><head><title>Page</title></head><body><p>Attention required</p></body></html>' } };
+  assert.equal(judge(renderContent, { '/': doc('<div id="app"></div>') }, short)['/'].reason, 'render_blocked');
 });
 
 test('render-content: a page outside the render sample gets no verdict, and a failed render is unknown', () => {
@@ -163,7 +194,7 @@ test('the three new thresholds are pinned', () => {
   assert.deepEqual(thresholdsOf('internal-navigation'), { max_click_depth: 3, empty_anchor_ratio: 0.25,
     generic_anchor_terms: ['여기', '클릭', 'click here', 'more', '더보기'] });
   assert.deepEqual(thresholdsOf('locale-links'), {});
-  assert.deepEqual(thresholdsOf('render-content'), { min_body_ratio: 0.8, challenge_status: [403, 429, 503],
+  assert.deepEqual(thresholdsOf('render-content'), { min_body_ratio: 0.8, challenge_status: [403, 429, 503], challenge_max_body_chars: 600,
     challenge_markers: ['just a moment', 'checking your browser', 'attention required', 'verify you are human', 'enable javascript and cookies to continue'] });
 });
 

@@ -9,7 +9,7 @@ const points = (href, page) => page.urls.includes(canonicalUrl(href));
 /**
  * A page that declares hreflang alternates needs an x-default and a return link from every alternate it names; a page that
  * another page lists as its alternate must list that page in turn. An alternate that was not collected cannot be checked,
- * so the page is unknown rather than passed. A page with no hreflang that no page lists belongs to a single-locale site.
+ * so the page is unknown rather than passed. A page with no hreflang, or only one that names itself, that no page lists belongs to a single-locale site.
  */
 export const localeLinks = {
   family_id: FAMILY,
@@ -22,7 +22,7 @@ export const localeLinks = {
       const listedBy = [...pages].filter(other => other !== self && other.alternates.some(alternate => points(alternate.href, self)));
       const observe = (state, reason, extra = {}) => out.push(makeObservation({ family_id: FAMILY, unit_key: unitKey(FAMILY, url), state, reason,
         evidence_ref: artifact.evidence_ref, extra }));
-      if (!mine.length && !listedBy.length) {
+      if (mine.every(alternate => points(alternate.href, self)) && !listedBy.length) {
         const reason = 'No hreflang link on this page and no collected page lists it as an alternate';
         observe('not_applicable', reason, { applicability_decision: { condition: 'single_locale', reason, evidence_ref: artifact.evidence_ref } });
         continue;

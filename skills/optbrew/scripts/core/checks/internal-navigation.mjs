@@ -1,6 +1,6 @@
 import { thresholds } from '../config.mjs';
 import { anchorTexts } from '../html.mjs';
-import { canonicalUrl } from '../link-graph.mjs';
+import { canonicalUrl, sameOriginLinks } from '../link-graph.mjs';
 import { makeObservation, unitKey } from './observation.mjs';
 
 const FAMILY = 'internal-navigation';
@@ -8,17 +8,20 @@ const percent = ratio => `${Math.round(ratio * 100)}%`;
 
 /** Same-origin links of a page to other pages, each with its anchor label. */
 function internalAnchors({ artifact, html }) {
-  const { origin } = new URL(artifact.final_url);
-  return anchorTexts(html, artifact.final_url).filter(({ href }) => {
-    const target = new URL(href);
-    return /^https?:$/.test(target.protocol) && target.origin === origin && canonicalUrl(href) !== canonicalUrl(artifact.final_url);
+  const anchors = anchorTexts(html, artifact.final_url);
+  const internal = new Set(sameOriginLinks(anchors.map(({ href }) => href), artifact.final_url));
+  return anchors.filter(({ href }) => {
+    const target = new URL(href); target.hash = '';
+    return internal.has(target.href) && canonicalUrl(href) !== canonicalUrl(artifact.final_url);
   });
 }
 
 /**
- * A page that is too many clicks from the home page, or whose internal links are mostly empty or generic anchors, fails. A page
- * nothing links to has no click depth: it is left to `discovery`, so it is judged on its anchors only. A site whose pages carry
- * no internal link is not link based, unless a script that was not collected could be building the links.
+ * A page that is too many clicks from the home page, or whose linked pages mostly have no descriptive anchor, fails. A linked page
+ * counts as weak only when every anchor to it on the page is empty or generic: an icon or a "more" link beside a descriptive link
+ * to the same target is normal navigation. A page nothing links to has no click depth: it is left to `discovery`, so it is judged
+ * on its anchors only. A site whose pages carry no internal link is not link based, unless a script that was not collected could be
+ * building the links.
  */
 export const internalNavigation = {
   family_id: FAMILY,
@@ -39,15 +42,21 @@ export const internalNavigation = {
         }
         continue;
       }
+      const descriptive = new Map();
+      for (const { href, label } of anchors) {
+        const target = canonicalUrl(href);
+        descriptive.set(target, descriptive.get(target) || (Boolean(label) && !generic.has(label.toLowerCase())));
+      }
+      const weak = [...descriptive.values()].filter(ok => !ok).length;
       const depth = linkGraph.depthOf(url);
-      const weak = anchors.filter(({ label }) => !label || generic.has(label.toLowerCase())).length;
       const problems = [];
       if (depth !== null && depth > max_click_depth) problems.push(`The home page reaches this page in ${depth} clicks; the limit is ${max_click_depth}`);
-      if (anchors.length && weak / anchors.length > empty_anchor_ratio)
-        problems.push(`${weak} of ${anchors.length} internal links have an empty or generic anchor; at most ${percent(empty_anchor_ratio)} is allowed`);
+      if (descriptive.size && weak / descriptive.size > empty_anchor_ratio)
+        problems.push(`${weak} of ${descriptive.size} linked pages have only empty or generic anchors; at most ${percent(empty_anchor_ratio)} is allowed`);
       if (problems.length) observe('fail', problems.join('; '));
-      else if (depth !== null || anchors.length)
-        observe('pass', `${depth === null ? 'Click depth not measured (left to discovery)' : `Reached in ${depth} clicks (limit ${max_click_depth})`}; ${weak} of ${anchors.length} internal links have an empty or generic anchor`);
+      // A page with no click depth and no internal link has nothing to judge: it gets no observation on purpose (discovery covers it).
+      else if (depth !== null || descriptive.size)
+        observe('pass', `${depth === null ? 'Click depth not measured (left to discovery)' : `Reached in ${depth} clicks (limit ${max_click_depth})`}; ${weak} of ${descriptive.size} linked pages have only empty or generic anchors`);
     }
     return out;
   },

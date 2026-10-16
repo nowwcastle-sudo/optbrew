@@ -5,7 +5,7 @@ import { blocks } from '../skills/optbrew/scripts/core/checks/index.mjs';
 import { prepare } from '../skills/optbrew/scripts/core/checks/prepare.mjs';
 import { makeObservation, unitKey } from '../skills/optbrew/scripts/core/checks/observation.mjs';
 import { limits } from '../skills/optbrew/scripts/core/config.mjs';
-import { linkGraph } from '../skills/optbrew/scripts/core/link-graph.mjs';
+import { linkGraph, sameOriginLinks } from '../skills/optbrew/scripts/core/link-graph.mjs';
 
 const registry = JSON.parse(readFileSync(new URL('../skills/optbrew/references/check-registry.json', import.meta.url), 'utf8')).families;
 
@@ -77,4 +77,9 @@ test('linkGraph counts inbound links, measures click depth and ignores self link
   assert.deepEqual(['/', '/a', '/b', '/lost'].map(path => graph.depthOf(`https://example.test${path}`)), [0, 1, 2, null]);
   assert.deepEqual(['/', '/a', '/b'].map(path => graph.inbound(`https://example.test${path}`)), [0, 1, 2]);
   assert.equal(graph.scriptGap, false);
+});
+
+test('sameOriginLinks keeps each same-origin link once, without fragments, sorted', () => {
+  const found = sameOriginLinks(['https://example.test/b#x', '/a', 'https://example.test/b', 'https://other.test/c', 'mailto:me@example.test', 'http://[bad'], 'https://example.test/page');
+  assert.deepEqual(found, ['https://example.test/a', 'https://example.test/b']);
 });

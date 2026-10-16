@@ -3,6 +3,7 @@ import { chromeHandle, findChrome, launchChrome, scopedPage } from './chrome.mjs
 import { fetchScoped } from './collector.mjs';
 import { limits } from './config.mjs';
 import { ContractError } from './contracts.mjs';
+import { sameOriginLinks } from './link-graph.mjs';
 import { assertInScope, unbracket } from './scope.mjs';
 
 /** The first URL of every page type, in the order given, cut at `limit`. The same page types always give the same pages. */
@@ -86,20 +87,6 @@ export function renderChrome({ context, transport, find = findChrome, launch = l
     notFound: () => ({ found: false, reason: lookup?.reason ?? 'chrome_not_found' }) });
 }
 
-/** Absolute same-origin links of the final DOM without fragments, each once, sorted. */
-function sameOriginLinks({ final_url: finalUrl, links }) {
-  if (!finalUrl) return [];
-  const { origin } = new URL(finalUrl);
-  const found = new Set();
-  for (const link of links) {
-    let url;
-    try { url = new URL(link); } catch { continue; }
-    url.hash = '';
-    if (url.origin === origin) found.add(url.href);
-  }
-  return [...found].sort();
-}
-
 /**
  * The request list of one page in the entry shape of `ledger.json`: one entry per URL and outcome, `requests` counting what
  * went out. A request the render refused never reached the network, so it is `skipped` with no requests. A request that went
@@ -146,7 +133,7 @@ async function renderOne({ ref, chrome, browser, context, store }) {
   const written = result?.dom ? await store.write('render-dom', result.dom) : null;
   const record = { url: ref.normalized, final_url: result?.final_url ?? null, status: result?.status ?? null,
     dom_ref: written?.ref ?? null, dom_sha256: written?.sha256 ?? null, title: result?.title ?? null,
-    links: result ? sameOriginLinks(result) : [], console_errors: [...(result?.console_errors ?? [])], requests,
+    links: result?.final_url ? sameOriginLinks(result.links, result.final_url) : [], console_errors: [...(result?.console_errors ?? [])], requests,
     blocked_reason: result ? result.blocked_reason ?? result.error : 'render_failed', address_vetting: chrome.address_vetting };
   const { ref: evidenceRef, sha256 } = await store.write('render', `${JSON.stringify(record, null, 2)}\n`);
   await store.append('renders', { url: record.url, evidence_ref: evidenceRef, sha256 });

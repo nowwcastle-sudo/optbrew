@@ -6,7 +6,7 @@
   "evaluation_sources": [
     {
       "path": "references/check-registry.json",
-      "sha256": "448d5b4f8979830c59cde15d8d3e4b3726f333d586e300a718a286e27073d8b2"
+      "sha256": "6dbd6b9afca5f18f0cf57bd68f2473bb4ea1165da2a3e144a623cb8532b7217e"
     },
     {
       "path": "references/profiles.json",
@@ -45,7 +45,7 @@
       "sha256": "703d5c16878c526114afb540e4a6d54bd74831f35a824c03a839e2480097d279"
     }
   ],
-  "evaluation_hash": "87b1719104f08f9db39fd890c71503c1ba10dc9859840070948ebf7e8facff54",
+  "evaluation_hash": "1a70cabece1e2307e0650befed803cb7a894e799143ad42ff585c74a03794f99",
   "protocol_sources": [
     {
       "path": "references/schemas/contract.schema.json",
@@ -552,7 +552,7 @@
     },
     {
       "path": "references/check-registry.json",
-      "sha256": "448d5b4f8979830c59cde15d8d3e4b3726f333d586e300a718a286e27073d8b2"
+      "sha256": "6dbd6b9afca5f18f0cf57bd68f2473bb4ea1165da2a3e144a623cb8532b7217e"
     },
     {
       "path": "references/chrome-paths.json",
@@ -676,11 +676,11 @@
     },
     {
       "path": "scripts/core/checks/internal-navigation.mjs",
-      "sha256": "135010d931f42de7fd2e667c41d13f8bce5a299132342dbdc34dd53e2d2bb662"
+      "sha256": "a857117d553504738f1f682c51cbda21e45bee4d973cc8619feee6062a9769d8"
     },
     {
       "path": "scripts/core/checks/locale-links.mjs",
-      "sha256": "22626bbcfc4ac9d11bb8eae6a795f72ee3368bacb38c50014caa4cce3a191055"
+      "sha256": "ebf2d4866a64dcc730f7f4493a8bc399390b90a6fb4a4e35ab98d327755def91"
     },
     {
       "path": "scripts/core/checks/naver-markup.mjs",
@@ -692,11 +692,11 @@
     },
     {
       "path": "scripts/core/checks/prepare.mjs",
-      "sha256": "7811ee6dd4a525cee472c199a831fb222f5f4cee775806c28ba187e0bc2d01a7"
+      "sha256": "4045eafff1b39162cdbc346e1c8a2de0b7af738f0ed705140751c7e7f06997e1"
     },
     {
       "path": "scripts/core/checks/render-content.mjs",
-      "sha256": "402c5a5f230b09d3171f6e564dd9fa4dcd9b2fa8899be3f141a26a76fd80cf70"
+      "sha256": "e9d78ee318e4377b8349a5f07441baec657b844d82c764c6ba24cdf5545feee8"
     },
     {
       "path": "scripts/core/checks/search-crawl-policy.mjs",
@@ -756,7 +756,7 @@
     },
     {
       "path": "scripts/core/link-graph.mjs",
-      "sha256": "ffa5fa5a748e5ee4ee9c2df1fe5b84e2c89e115e156d1c9ba8cab68a405324cb"
+      "sha256": "5e9c9257c5c2e89485f48c3fdac300a35a8e5df8a29cf154d05beda3235dcc82"
     },
     {
       "path": "scripts/core/metrics.mjs",
@@ -768,7 +768,7 @@
     },
     {
       "path": "scripts/core/render.mjs",
-      "sha256": "1dc338c914a5c8a9925885cfa605e25b25a6fa743352af38ed5ecae3f3ec05bf"
+      "sha256": "afc803a7312caffa1d2d679d93519af1a4e44e8efa0aed903de7e290e9791e4b"
     },
     {
       "path": "scripts/core/report.mjs",
@@ -795,5 +795,5 @@
       "sha256": "a53223b7eefab2204c026a62b1da04cfdb8a07be8d3749613e8241a81b027d9b"
     }
   ],
-  "bundle_hash": "c51170f3b5c7a89e611ff891d0f0f8a02e45d04c5578ffe09954b7d297e6f8cc"
+  "bundle_hash": "157e3ae63bed414959d6af0f9e0d0580a36467d58588fd662141f1a7ea968d4e"
 }
