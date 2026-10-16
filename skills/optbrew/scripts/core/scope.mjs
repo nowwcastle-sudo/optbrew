@@ -40,14 +40,28 @@ export function assertUrlInScope(input, scope) {
   return url;
 }
 
-/** Check origin, path segment, and every resolved address before a request. Through a proxy the proxy resolves names, so `addressVetting: 'proxy'` skips the address check. */
+export const unbracket = host => host.replace(/^\[|\]$/g, '');
+
+/** Host without IPv6 brackets and the port the URL connects to. */
+export const urlTarget = url => ({ host: unbracket(url.hostname), port: Number(url.port || (url.protocol === 'https:' ? 443 : 80)) });
+
+/**
+ * Check origin, path segment, and every resolved address before a request.
+ * Through a proxy (`addressVetting: 'proxy'`) the proxy resolves names, so only DNS-name vetting is skipped:
+ * IP literals and localhost names are still checked here.
+ */
 export function assertInScope(input, scope, resolvedAddresses, { addressVetting = 'direct' } = {}) {
   const url = assertUrlInScope(input, scope);
-  if (addressVetting === 'proxy') return url;
-  if (!Array.isArray(resolvedAddresses) || !resolvedAddresses.length) throw new Error('resolved addresses required');
-  const host = url.hostname.replace(/^\[|\]$/g, '');
-  const port = Number(url.port || (url.protocol === 'https:' ? 443 : 80));
+  const { host, port } = urlTarget(url);
   const local = (scope.local_targets ?? []).some(x => x.host === host && Number(x.port) === port);
+  if (addressVetting === 'proxy') {
+    if (local) return url;
+    if (isIP(host)) {
+      if (privateAddress(host)) throw new Error('private or reserved address outside local target');
+    } else if (host === 'localhost' || host.endsWith('.localhost')) throw new Error('localhost outside local target');
+    return url;
+  }
+  if (!Array.isArray(resolvedAddresses) || !resolvedAddresses.length) throw new Error('resolved addresses required');
   for (const address of resolvedAddresses) if (privateAddress(address) && !local) throw new Error('private or reserved address outside local target');
   return url;
 }

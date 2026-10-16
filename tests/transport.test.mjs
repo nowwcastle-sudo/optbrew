@@ -26,6 +26,7 @@ const targetPort = await listen(createServer((req, res) => {
   targetSeen.push({ url: req.url, headers: req.headers });
   if (req.url === '/owned/redir') { res.writeHead(302, { location: '/owned/page' }); res.end(); }
   else if (req.url === '/owned/out') { res.writeHead(302, { location: 'http://elsewhere.test/x' }); res.end(); }
+  else if (req.url === '/owned/to-mapped') { res.writeHead(302, { location: `http://[::ffff:127.0.0.1]:${targetPort}/owned/page` }); res.end(); }
   else if (req.url === '/owned/big') { res.writeHead(200, { 'content-type': 'text/html' }); res.end('x'.repeat(2000)); }
   else if (req.url === '/owned/chunked') { res.writeHead(200, { 'content-type': 'text/html' }); res.write('x'.repeat(60)); setTimeout(() => res.end('y'.repeat(60)), 5); }
   else { res.writeHead(200, { 'content-type': 'text/html' }); res.end('<html><head><title>ok</title></head><body>hello</body></html>'); }
@@ -163,7 +164,8 @@ test('proxy credentials never reach evidence or errors', async () => {
   const wrong = await selectTransport({ env: proxyEnv(proxy.port, `${user}:wrong@`), resolve: dnsDown('ENOTFOUND'), probeHost: 'example.test' });
   const refused = await fetchScoped(`${origin}/owned/page`, { context: context([]), ...viaProxy(wrong) }).catch(error => error);
   assert.equal(refused.code, 'proxy_connect_refused');
-  assert.match(refused.message, new RegExp(`status 407 via 127\\.0\\.0\\.1:${proxy.port}$`));
+  assert.match(refused.message, new RegExp(`status 407 .*via 127\\.0\\.0\\.1:${proxy.port}$`));
+  assert.match(refused.message, new RegExp(`CONNECT to port 443 only; the target port is ${targetPort}\\)`));
   assert.deepEqual(leaks(`${refused.message}${inspect(refused, { depth: 6 })}`), []);
   assert.equal(inspect(refused, { depth: 6 }).includes('wrong'), false);
 
@@ -230,10 +232,12 @@ test('HTTPS over the tunnel sets SNI to the host name and skips it for an IP lit
   const send = href => transport({ url: new URL(href), timeoutMs: 5000, maxBytes: 1_000_000, signal: new AbortController().signal });
   assert.equal((await send(`https://example.test:${targetPort}/owned/page`)).status, 200);
   assert.equal(calls[0].servername, 'example.test');
+  assert.equal(calls[0].host, 'example.test');
   assert.equal(calls[0].rejectUnauthorized, true);
   assert.equal(typeof calls[0].socket.write, 'function');
   assert.equal((await send(`https://127.0.0.1:${targetPort}/owned/page`)).status, 200);
   assert.equal('servername' in calls[1], false);
+  assert.equal(calls[1].host, '127.0.0.1', 'the certificate is checked against the target IP, not the proxy host');
   assert.deepEqual(proxy.connects.map(x => x.url), [`example.test:${targetPort}`, `127.0.0.1:${targetPort}`]);
 });
 
@@ -248,4 +252,73 @@ test('both transports enforce the byte limit through the shared parser', async (
   await assert.rejects(proxyTransport(parseProxy(proxyEnv(proxy.port)))(chunked), /byte limit/);
   const whole = await proxyTransport(parseProxy(proxyEnv(proxy.port)))({ ...chunked, maxBytes: 1000 });
   assert.equal(whole.body.length, 120);
+});
+
+const proxied = async (port, urlOrigins, localTargets = []) => {
+  const chosen = await selectTransport({ env: proxyEnv(port), resolve: dnsDown('ENOTFOUND'), probeHost: 'example.test' });
+  const scoped = { allowed: urlOrigins.map(value => ({ origin: value, path_prefix: '/owned/' })), local_targets: localTargets };
+  return (href, extra = {}) => fetchScoped(href, { context: { scope: scoped }, ...viaProxy(chosen), ...extra });
+};
+
+test('proxy mode vets IP literals on the first hop and on every redirect hop', async () => {
+  const proxy = await startProxy();
+  const metadata = await proxied(proxy.port, ['http://169.254.169.254']);
+  const first = await metadata('http://169.254.169.254/owned/page').catch(error => error);
+  assert.equal(first.code, 'scope_rejected');
+  assert.match(first.message, /private or reserved/);
+  const mapped = await proxied(proxy.port, [origin, `http://[::ffff:127.0.0.1]:${targetPort}`]);
+  const hop = await mapped(`${origin}/owned/to-mapped`).catch(error => error);
+  assert.equal(hop.code, 'scope_rejected');
+  assert.equal(hop.redirect_chain.length, 1);
+  assert.deepEqual(proxy.connects.map(x => x.url), [`example.test:${targetPort}`], 'no tunnel is opened toward the blocked literal');
+  const ok = await proxied(proxy.port, [origin]);
+  assert.equal((await ok(`${origin}/owned/page`)).status, 200, 'names are not vetted locally in proxy mode');
+});
+
+test('proxy mode honors local_targets for literals and rejects localhost names otherwise', async () => {
+  const proxy = await startProxy();
+  const local = await proxied(proxy.port, [`http://127.0.0.1:${targetPort}`], [{ host: '127.0.0.1', port: targetPort }]);
+  assert.equal((await local(`http://127.0.0.1:${targetPort}/owned/page`)).status, 200);
+  for (const host of ['localhost', 'app.localhost', 'LOCALHOST']) {
+    const before = proxy.connects.length;
+    const fetchHost = await proxied(proxy.port, [`http://${host}:${targetPort}`]);
+    const error = await fetchHost(`http://${host}:${targetPort}/owned/page`).catch(failure => failure);
+    assert.equal(error.code, 'scope_rejected', host);
+    assert.match(error.message, /localhost outside local target/);
+    assert.equal(proxy.connects.length, before);
+  }
+  const allowed = await proxied(proxy.port, [`http://localhost:${targetPort}`], [{ host: 'localhost', port: targetPort }]);
+  assert.equal((await allowed(`http://localhost:${targetPort}/owned/page`)).status, 200);
+});
+
+test('proxy address vetting requires the proxy transport', async () => {
+  const resolve = async () => [{ address: '127.0.0.1', family: 4 }];
+  const local = { scope: { allowed: scope.allowed, local_targets: [{ host: 'example.test', port: targetPort }] } };
+  await assert.rejects(fetchScoped(`${origin}/owned/page`, { context: local, resolve, addressVetting: 'proxy' }), /requires the proxy transport/);
+  await assert.rejects(fetchScoped(`${origin}/owned/page`, { context: local, resolve, transport: directTransport, addressVetting: 'proxy' }), /requires the proxy transport/);
+  const collected = await collect(context([`${origin}/owned/page`]), { resolve, addressVetting: 'proxy' });
+  assert.equal(collected.artifacts[0].error, 'fetch_failed', 'collect records the refusal as a failed fetch');
+  assert.equal(collected.artifacts[0].status, null);
+  assert.equal(proxyTransport({ host: '127.0.0.1', port: 1, authorization: null }).addressVetting, 'proxy');
+});
+
+test('a TLS setup failure closes the tunnel socket', async () => {
+  const proxy = await startProxy();
+  let tunnel;
+  const connectTls = options => { tunnel = options.socket; throw new Error('tls setup failed'); };
+  const transport = proxyTransport(parseProxy(proxyEnv(proxy.port)), { connectTls });
+  await assert.rejects(transport({ url: new URL(`https://example.test:${targetPort}/owned/page`), timeoutMs: 5000, maxBytes: 1000, signal: new AbortController().signal }), /tls setup failed/);
+  assert.equal(tunnel.destroyed, true);
+});
+
+test('a silent proxy fails within one deadline as a classified timeout', async () => {
+  const silent = createServer();
+  silent.on('connect', (req, client) => { sockets.add(client); });
+  const port = await listen(silent);
+  const transport = proxyTransport(parseProxy(proxyEnv(port)));
+  const started = performance.now();
+  const error = await transport({ url: new URL(`${origin}/owned/page`), timeoutMs: 300, maxBytes: 1000, signal: new AbortController().signal }).catch(failure => failure);
+  assert.equal(error.code, 'proxy_timeout');
+  assert.match(error.message, new RegExp(`via 127\\.0\\.0\\.1:${port}$`));
+  assert.ok(performance.now() - started < 300 + 400, 'one deadline, not one per phase');
 });

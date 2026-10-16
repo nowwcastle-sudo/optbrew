@@ -2,7 +2,7 @@ import { lookup } from 'node:dns/promises';
 import { createHash } from 'node:crypto';
 import { isIP } from 'node:net';
 import { performance } from 'node:perf_hooks';
-import { assertInScope, assertUrlInScope } from './scope.mjs';
+import { assertInScope, assertUrlInScope, urlTarget } from './scope.mjs';
 import { anchorLinks, canonicalLink } from './html.mjs';
 import { limits } from './config.mjs';
 import { directTransport } from './transport.mjs';
@@ -48,7 +48,7 @@ function headerLines(response) {
 }
 
 async function addressesFor(url, resolve) {
-  const host = url.hostname.replace(/^\[|\]$/g, '');
+  const { host } = urlTarget(url);
   if (isIP(host)) return [{ address: host, family: isIP(host) }];
   const values = await resolve(host);
   return (Array.isArray(values) ? values : [values]).map(x => {
@@ -61,6 +61,8 @@ async function addressesFor(url, resolve) {
 export async function fetchScoped(input, { context, transport = directTransport, resolve = host => lookup(host, { all: true, verbatim: true }), timeoutMs = limits().timeout_ms, maxBytes = limits().max_bytes, maxRedirects = limits().max_redirects, headers = {}, allowedAuxiliary = null, reserveRequest = null, addressVetting = 'direct' }) {
   if (![timeoutMs, maxBytes, maxRedirects].every(Number.isInteger) || timeoutMs < 1 || timeoutMs > limits().timeout_ms || maxBytes < 1 || maxBytes > limits().max_bytes || maxRedirects < 0 || maxRedirects > limits().max_redirects)
     throw new Error('fetch limits exceed context ceiling');
+  // Proxy vetting skips DNS-name checks, which is only safe when the proxy transport (not a direct connection) carries the request.
+  if (addressVetting === 'proxy' && transport.addressVetting !== 'proxy') throw new Error('proxy address vetting requires the proxy transport');
   let url = assertUrlInScope(input, context.scope);
   if (allowedAuxiliary) undeclaredAuxiliary(url, allowedAuxiliary);
   const requested_url = String(input);

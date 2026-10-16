@@ -2,10 +2,10 @@ import http from 'node:http';
 import https from 'node:https';
 import tls from 'node:tls';
 import { isIP } from 'node:net';
+import { performance } from 'node:perf_hooks';
+import { unbracket, urlTarget } from './scope.mjs';
 
 const DNS_FAILURES = new Set(['ENOTFOUND', 'EAI_AGAIN']);
-const unbracket = host => host.replace(/^\[|\]$/g, '');
-const target = url => ({ hostname: url.hostname, port: Number(url.port || (url.protocol === 'https:' ? 443 : 80)) });
 
 /** Read one response into `{ status, headers, rawHeaders, body }`; both transports share this, byte limit included. */
 function exchange({ send, timeoutMs, maxBytes }) {
@@ -34,7 +34,7 @@ const requestHeaders = headers => ({ 'User-Agent': 'optbrew/0.1 (bounded public 
 /** Node's lookup callback pins the already-vetted address while TLS still verifies the URL hostname. */
 export function directTransport({ url, address, timeoutMs, maxBytes, headers = {}, signal }) {
   const client = url.protocol === 'https:' ? https : http;
-  const hostname = unbracket(url.hostname);
+  const { host: hostname } = urlTarget(url);
   return exchange({ timeoutMs, maxBytes, send: onResponse => client.request(url, {
     method: 'GET', agent: false, signal, headers: requestHeaders(headers),
     lookup: (_hostname, options, callback) => options.all ?
@@ -53,15 +53,17 @@ function proxyError(proxy, what, code) {
 
 /** Open a CONNECT tunnel to the target; resolves with the raw tunnel socket. */
 function openTunnel(proxy, url, { timeoutMs, signal }) {
-  const { hostname, port } = target(url);
+  const { port } = urlTarget(url);
+  const authority = `${url.hostname}:${port}`;
   return new Promise((resolve, reject) => {
-    const req = http.request({ host: proxy.host, port: proxy.port, method: 'CONNECT', path: `${hostname}:${port}`, agent: false, signal,
-      headers: { Host: `${hostname}:${port}`, ...(proxy.authorization ? { 'Proxy-Authorization': proxy.authorization } : {}) } });
-    req.setTimeout(timeoutMs, () => req.destroy(new Error('request timeout')));
+    const req = http.request({ host: proxy.host, port: proxy.port, method: 'CONNECT', path: authority, agent: false, signal,
+      headers: { Host: authority, ...(proxy.authorization ? { 'Proxy-Authorization': proxy.authorization } : {}) } });
+    req.setTimeout(timeoutMs, () => { reject(proxyError(proxy, 'proxy CONNECT timed out', 'proxy_timeout')); req.destroy(); });
     req.on('connect', (res, socket, head) => {
       if (res.statusCode < 200 || res.statusCode > 299) {
         socket.destroy();
-        reject(proxyError(proxy, `proxy CONNECT refused with status ${res.statusCode}`, 'proxy_connect_refused'));
+        const hint = port === 443 ? '' : ` (a proxy may allow CONNECT to port 443 only; the target port is ${port})`;
+        reject(proxyError(proxy, `proxy CONNECT refused with status ${res.statusCode}${hint}`, 'proxy_connect_refused'));
         return;
       }
       if (head.length) socket.unshift(head);
@@ -74,22 +76,29 @@ function openTunnel(proxy, url, { timeoutMs, signal }) {
 
 /**
  * Transport that sends every request, plain http included, through a CONNECT tunnel; the proxy resolves the target name.
- * HTTPS targets get TLS over the tunnel with SNI set (Node leaves SNI off when a socket is supplied).
+ * HTTPS targets get TLS over the tunnel: the certificate is checked against the target host (`host`), and SNI
+ * (`servername`, names only) is set because Node leaves it off when a socket is supplied.
+ * The CONNECT and the request share one deadline. The returned function is tagged for `fetchScoped`, which refuses
+ * proxy address vetting on any other transport.
  */
 export function proxyTransport(proxy, { connectTls = tls.connect } = {}) {
-  return async ({ url, timeoutMs, maxBytes, headers = {}, signal }) => {
+  const transport = async ({ url, timeoutMs, maxBytes, headers = {}, signal }) => {
+    const deadline = performance.now() + timeoutMs;
     const tunnel = await openTunnel(proxy, url, { timeoutMs, signal });
-    const { hostname, port } = target(url);
-    const bare = unbracket(hostname);
-    const stream = url.protocol === 'https:' ?
-      connectTls({ socket: tunnel, rejectUnauthorized: true, ...(!isIP(bare) ? { servername: bare } : {}) }) : tunnel;
+    let stream = tunnel;
     try {
+      const { host, port } = urlTarget(url);
+      if (url.protocol === 'https:')
+        stream = connectTls({ socket: tunnel, host, rejectUnauthorized: true, ...(!isIP(host) ? { servername: host } : {}) });
+      const remainingMs = Math.ceil(deadline - performance.now());
+      if (remainingMs <= 0) throw proxyError(proxy, 'proxy tunnel timed out', 'proxy_timeout');
       // No `agent` option: `agent: false` makes Node build an Agent that ignores createConnection and dials the name itself.
-      return await exchange({ timeoutMs, maxBytes, send: onResponse => http.request({
-        host: bare, port, path: `${url.pathname}${url.search}`, method: 'GET', signal,
+      return await exchange({ timeoutMs: remainingMs, maxBytes, send: onResponse => http.request({
+        host, port, path: `${url.pathname}${url.search}`, method: 'GET', signal,
         createConnection: () => stream, headers: { Host: url.host, ...requestHeaders(headers) } }, onResponse) });
     } finally { stream.destroy(); tunnel.destroy(); }
   };
+  return Object.assign(transport, { addressVetting: 'proxy' });
 }
 
 /** `HTTPS_PROXY` as `{ host, port, authorization }`. Only plain-HTTP proxies work (a missing scheme counts as plain HTTP); userinfo becomes a Basic header and is not kept. */
