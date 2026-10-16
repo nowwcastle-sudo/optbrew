@@ -748,7 +748,7 @@
     },
     {
       "path": "scripts/core/scope.mjs",
-      "sha256": "8a49ed3f70e733728b589b8b2317bb99064bf8dc956e69fc6362837267a51110"
+      "sha256": "c302fe0fd0711faafc39f5741e735ebd9921723b56f071134afe8ef1fc073053"
     },
     {
       "path": "scripts/core/score.mjs",
@@ -767,5 +767,5 @@
       "sha256": "a53223b7eefab2204c026a62b1da04cfdb8a07be8d3749613e8241a81b027d9b"
     }
   ],
-  "bundle_hash": "cdde4b8407d06b73c98222c9d6cfc90a34a0a48880514a36e1c2a8b65b165730"
+  "bundle_hash": "83b06370b86405f4be7f9375332bdf1d2b5abd03c0870844c628bfe3e5c8e844"
 }

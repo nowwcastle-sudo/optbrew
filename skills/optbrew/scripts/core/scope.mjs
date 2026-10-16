@@ -52,7 +52,10 @@ export const urlTarget = url => ({ host: unbracket(url.hostname), port: Number(u
  */
 export function assertInScope(input, scope, resolvedAddresses, { addressVetting = 'direct' } = {}) {
   const url = assertUrlInScope(input, scope);
-  const { host, port } = urlTarget(url);
+  const target = urlTarget(url);
+  const { port } = target;
+  // A trailing dot is the same name (`localhost.` resolves like `localhost`), so compare without it.
+  const host = target.host.replace(/\.$/, '');
   const local = (scope.local_targets ?? []).some(x => x.host === host && Number(x.port) === port);
   if (addressVetting === 'proxy') {
     if (local) return url;

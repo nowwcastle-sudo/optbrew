@@ -279,7 +279,7 @@ test('proxy mode honors local_targets for literals and rejects localhost names o
   const proxy = await startProxy();
   const local = await proxied(proxy.port, [`http://127.0.0.1:${targetPort}`], [{ host: '127.0.0.1', port: targetPort }]);
   assert.equal((await local(`http://127.0.0.1:${targetPort}/owned/page`)).status, 200);
-  for (const host of ['localhost', 'app.localhost', 'LOCALHOST']) {
+  for (const host of ['localhost', 'app.localhost', 'LOCALHOST', 'localhost.', 'app.localhost.']) {
     const before = proxy.connects.length;
     const fetchHost = await proxied(proxy.port, [`http://${host}:${targetPort}`]);
     const error = await fetchHost(`http://${host}:${targetPort}/owned/page`).catch(failure => failure);
@@ -289,6 +289,8 @@ test('proxy mode honors local_targets for literals and rejects localhost names o
   }
   const allowed = await proxied(proxy.port, [`http://localhost:${targetPort}`], [{ host: 'localhost', port: targetPort }]);
   assert.equal((await allowed(`http://localhost:${targetPort}/owned/page`)).status, 200);
+  const dotted = await proxied(proxy.port, [`http://localhost.:${targetPort}`], [{ host: 'localhost', port: targetPort }]);
+  assert.equal((await dotted(`http://localhost.:${targetPort}/owned/page`)).status, 200, 'a local target for localhost also allows localhost.');
 });
 
 test('proxy address vetting requires the proxy transport', async () => {
