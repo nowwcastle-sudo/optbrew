@@ -9,9 +9,9 @@ const siteRoot = new URL('../fixtures/sites/', import.meta.url);
 const template = new URL('../fixtures/scoring/before.json', import.meta.url);
 const VERSION_FIELDS = ['schema_version', 'evaluation_version', 'protocol_version'];
 
-/** The ten families whose verdicts come from collected evidence alone; each has its own check block. */
-export const CODE_FAMILIES = ['fetch-response', 'search-crawl-policy', 'index-policy', 'discovery', 'document-title',
-  'canonical-consistency', 'structured-data-truth', 'naver-markup', 'entity-identity', 'fact-consistency'];
+/** The thirteen families whose verdicts come from stored evidence alone; each has its own check block. */
+export const CODE_FAMILIES = ['fetch-response', 'search-crawl-policy', 'index-policy', 'render-content', 'discovery', 'document-title',
+  'canonical-consistency', 'internal-navigation', 'structured-data-truth', 'locale-links', 'naver-markup', 'entity-identity', 'fact-consistency'];
 
 /** Copy of the observations without version fields, so a version bump never breaks the golden comparison. */
 export function withoutVersions(observations) {
@@ -30,7 +30,7 @@ const page = (origin, route, { title, body = '', head = '', canonical = route, p
 const sitemap = (origin, paths) => ({ type: 'application/xml',
   body: `<urlset>${paths.map(p => `<url><loc>${origin}${p}</loc></url>`).join('')}</urlset>` });
 
-/** Routes served by a scenario; every scenario is judged with all ten code families applicable. */
+/** Routes served by a scenario; every scenario is judged with every code family applicable. */
 const scenarios = {
   // The seeded-defect and fixed single pages the workflow test audits.
   before: { files: { '/': 'index.before.html' }, urls: ['/'], aux: [] },
@@ -83,6 +83,8 @@ async function stable(o, port, root) {
     ? v.replaceAll(`127.0.0.1:${port}`, '127.0.0.1:PORT').replaceAll(root, '<out>').replaceAll(path.sep, '/') : v;
   const row = Object.fromEntries(Object.entries(rest).map(([k, v]) => [k, clean(v)]));
   row.evidence_ref = `<out>/${await stableRef(o.evidence_ref, port)}`;
+  if (o.applicability_decision) row.applicability_decision = { ...o.applicability_decision, reason: clean(o.applicability_decision.reason),
+    evidence_ref: `<out>/${await stableRef(o.applicability_decision.evidence_ref, port)}` };
   return row;
 }
 

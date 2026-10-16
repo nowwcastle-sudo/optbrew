@@ -1,5 +1,5 @@
 import { auditCollected } from '../../../modules/naver-searchadvisor/scripts/audit.mjs';
-import { decodeEntities } from '../html.mjs';
+import { alternateLinks, decodeEntities } from '../html.mjs';
 import { declaredRobotsIndex } from '../collector.mjs';
 import { compareFacts, pageFacts } from '../facts.mjs';
 import { canonicalUrl, findOrphans, linkGraph } from '../link-graph.mjs';
@@ -27,9 +27,12 @@ function readSitemaps(artifacts, declared, textOf) {
  * `pageRows` are the selected pages with a 200 raw HTML body, each with its module audit (`info`), its declared robots
  * artifact and its normalized title key. `titleCounts` maps a title key to the rows that carry it. `facts` and `comparison`
  * are the cross-page entity facts. `linkGraph` and `orphans` come from every collected HTML page, `sitemaps` from the
- * declared sitemaps. `renders` and `cwv` stay empty until the render and field-data stages exist.
+ * declared sitemaps. `alternates` maps a page url (as requested and as finally served) to `{ urls, alternates }`, the hreflang
+ * links of every collected HTML page. `renders` are the stored render records, `renderTextOf(record)` the final DOM of one, and
+ * `chrome` is `{ found, reason }` for the run's Chrome, or null when the run recorded none. `cwv` stays empty until the
+ * field-data stage exists.
  */
-export function prepare({ context, artifacts, collection = {}, textOf, renders = [], renderTextOf = () => '', cwv = [] }) {
+export function prepare({ context, artifacts, collection = {}, textOf, renders = [], renderTextOf = () => '', chrome = null, cwv = [] }) {
   const { protocol } = context;
   const planned = new Set(protocol.families.filter(x => x.applicable).map(x => x.family_id));
   const selected = new Map(protocol.page_types.flatMap(type => type.urls).map(url => [url.normalized, url]));
@@ -53,8 +56,13 @@ export function prepare({ context, artifacts, collection = {}, textOf, renders =
   const htmlRows = artifacts.filter(x => x.capability === 'raw_html' && x.status === 200)
     .map(artifact => ({ url: artifact.normalized_url, artifact, html: textOf(artifact) }));
   const graph = linkGraph(htmlRows, artifacts);
+  const alternates = new Map();
+  for (const { artifact, html } of htmlRows) {
+    const entry = { urls: [...new Set([artifact.normalized_url, artifact.final_url].map(canonicalUrl))], alternates: alternateLinks(html, artifact.final_url) };
+    for (const key of entry.urls) alternates.set(key, entry);
+  }
   const sitemaps = readSitemaps(artifacts, declared('sitemap'), textOf);
   const complete = !collection.limit_reached && !(collection.skipped ?? []).some(x => SKIP_REASONS.includes(x.reason));
   return { context, artifacts, textOf, planned, selected, pageRows, titleCounts, facts, comparison: compareFacts(facts), sitemaps,
-    linkGraph: graph, orphans: findOrphans({ pageRows, rows: htmlRows, graph, sitemaps, complete }), renders, renderTextOf, cwv };
+    linkGraph: graph, orphans: findOrphans({ pageRows, rows: htmlRows, graph, sitemaps, complete }), alternates, renders, renderTextOf, chrome, cwv };
 }

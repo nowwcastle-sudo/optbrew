@@ -4,6 +4,7 @@ import { readFileSync } from 'node:fs';
 import { blocks } from '../skills/optbrew/scripts/core/checks/index.mjs';
 import { prepare } from '../skills/optbrew/scripts/core/checks/prepare.mjs';
 import { makeObservation, unitKey } from '../skills/optbrew/scripts/core/checks/observation.mjs';
+import { limits } from '../skills/optbrew/scripts/core/config.mjs';
 import { linkGraph } from '../skills/optbrew/scripts/core/link-graph.mjs';
 
 const registry = JSON.parse(readFileSync(new URL('../skills/optbrew/references/check-registry.json', import.meta.url), 'utf8')).families;
@@ -21,12 +22,19 @@ test('no family is registered twice', () => {
   assert.deepEqual(names, [...new Set(names)]);
 });
 
-test('code-judged families equal the ten code-judged ids, in registry order', () => {
-  assert.deepEqual(blocks.map(block => block.family_id), ['fetch-response', 'search-crawl-policy', 'index-policy', 'discovery',
-    'document-title', 'canonical-consistency', 'structured-data-truth', 'naver-markup', 'entity-identity', 'fact-consistency']);
+test('code-judged families equal the thirteen code-judged ids, in registry order', () => {
+  assert.deepEqual(blocks.map(block => block.family_id), ['fetch-response', 'search-crawl-policy', 'index-policy', 'render-content',
+    'discovery', 'document-title', 'canonical-consistency', 'internal-navigation', 'structured-data-truth', 'locale-links', 'naver-markup',
+    'entity-identity', 'fact-consistency']);
   const order = registry.map(family => family.family_id);
   const positions = blocks.map(block => order.indexOf(block.family_id));
   assert.deepEqual(positions, [...positions].sort((a, b) => a - b));
+});
+
+test('max_click_depth never exceeds max_depth', () => {
+  const { max_click_depth } = registry.find(family => family.family_id === 'internal-navigation').thresholds;
+  assert.ok(Number.isInteger(max_click_depth) && max_click_depth > 0);
+  assert.ok(max_click_depth <= limits().max_depth, `max_click_depth ${max_click_depth} is deeper than the collector reaches (${limits().max_depth})`);
 });
 
 test('makeObservation keeps the 0.1.4 observation_id and fields', () => {
@@ -54,6 +62,7 @@ test('prepare defaults the render and field inputs so a caller without them stil
   const prepared = prepare({ context: { protocol: { families: [], page_types: [], engines: [] } }, artifacts: [], textOf: () => '' });
   assert.deepEqual([prepared.renders, prepared.cwv, prepared.pageRows, prepared.facts], [[], [], [], []]);
   assert.equal(prepared.renderTextOf({}), '');
+  assert.equal(prepared.chrome, null, 'no Chrome record means an older run');
 });
 
 test('linkGraph counts inbound links, measures click depth and ignores self links', () => {

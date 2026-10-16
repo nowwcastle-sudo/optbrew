@@ -22,11 +22,47 @@ export function anchorLinks(html, base) {
   return out;
 }
 
+/** The attributes of one tag's attribute text, names lowercased, values as written. */
+function attributes(text) {
+  const attrs = {};
+  for (const a of text.matchAll(/([a-zA-Z:_-]+)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'>]+))/g)) attrs[a[1].toLowerCase()] = a[2] ?? a[3] ?? a[4] ?? '';
+  return attrs;
+}
+
+const resolved = (value, base) => { try { return new URL(decodeEntities(value), base).href; } catch { return null; } };
+
+/**
+ * Every live anchor with an href: its absolute target and its label. The label is the link text; a link without text is
+ * labelled by its aria-label, then by the alt text of an image inside it, and is empty when it has none of them.
+ */
+export function anchorTexts(html, base) {
+  const out = [];
+  for (const match of stripInert(html).matchAll(/<a\b([^>]*)>([\s\S]*?)<\/a\s*>/gi)) {
+    const attrs = attributes(match[1]);
+    const href = attrs.href === undefined ? null : resolved(attrs.href, base);
+    if (!href) continue;
+    const text = decodeEntities(match[2].replace(/<[^>]*>/g, ' ')).replace(/\s+/g, ' ').trim();
+    const alt = /<img\b[^>]*\balt\s*=\s*(?:"([^"]*)"|'([^']*)')/i.exec(match[2]);
+    out.push({ href, label: text || decodeEntities(attrs['aria-label'] ?? '').trim() || decodeEntities(alt?.[1] ?? alt?.[2] ?? '').trim() });
+  }
+  return out;
+}
+
+/** `rel=alternate` links with an hreflang: the language code (lowercase) and the absolute target. */
+export function alternateLinks(html, base) {
+  const out = [];
+  for (const match of stripInert(html).matchAll(/<link\b([^>]*)>/gi)) {
+    const attrs = attributes(match[1]);
+    const href = attrs.href ? resolved(attrs.href, base) : null;
+    if (/(^|\s)alternate(\s|$)/i.test(attrs.rel ?? '') && attrs.hreflang?.trim() && href) out.push({ hreflang: attrs.hreflang.trim().toLowerCase(), href });
+  }
+  return out;
+}
+
 /** The raw href of the first rel=canonical link in live markup, or null. */
 export function canonicalLink(html) {
   for (const match of stripInert(html).matchAll(/<link\b([^>]*)>/gi)) {
-    const attrs = {};
-    for (const a of match[1].matchAll(/([a-zA-Z:_-]+)\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'>]+))/g)) attrs[a[1].toLowerCase()] = a[2] ?? a[3] ?? a[4] ?? '';
+    const attrs = attributes(match[1]);
     if (/(^|\s)canonical(\s|$)/i.test(attrs.rel ?? '') && attrs.href) return attrs.href;
   }
   return null;

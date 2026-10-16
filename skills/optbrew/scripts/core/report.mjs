@@ -13,6 +13,7 @@ import { auditCollected, indexingDirectives } from '../../modules/naver-searchad
 import { deriveObservations } from './derive.mjs';
 import { readVerified } from './evidence-store.mjs';
 import { links } from './collector.mjs';
+import { checkRenderLedger } from './render.mjs';
 import { assertUrlInScope } from './scope.mjs';
 import { parseRobots, robotsVerdict } from '../../modules/naver-searchadvisor/scripts/robots.mjs';
 
@@ -439,6 +440,33 @@ function checkLedger(input, audit, collection, artifacts, requireRef) {
       entries.some(x => x.requests > 0 && !planned.has(x.url))) fail('a selected page is skipped for the request limit although a discovered page was fetched');
 }
 
+/**
+ * The render records of an audit index, read through the run's evidence (hash and secret checked): every record against the
+ * hash the index lists, its DOM against the hash the record holds, and the render ledger against each record's own requests.
+ * An index from before rendering has none of these sections. `renderTextOf` returns the stored DOM of a record.
+ */
+function storedRenders(audit, renderBudget, requireRef) {
+  const fail = message => { throw new ContractError(message); };
+  const dom = new Map();
+  const records = (audit.renders ?? []).map(entry => {
+    const stored = requireRef(entry.evidence_ref);
+    if (stored.sha256 !== entry.sha256) fail('render record hash differs from the audit index');
+    let record;
+    try { record = JSON.parse(stored.text); } catch { fail('render record is not JSON'); }
+    if (typeof record.url !== 'string' || !Array.isArray(record.requests)) fail('render record is malformed');
+    if (record.dom_ref) {
+      const rendered = requireRef(record.dom_ref);
+      if (rendered.sha256 !== record.dom_sha256) fail('render DOM hash differs from its record');
+      dom.set(record, rendered.text);
+    }
+    return record;
+  });
+  const ledger = audit.render_ledger ?? [];
+  for (const record of records) checkRenderLedger(ledger, record, renderBudget);
+  if (ledger.some(entry => !records.some(record => record.url === entry.page))) fail('render ledger: an entry names a page that was not rendered');
+  return { records, renderTextOf: record => dom.get(record) ?? '' };
+}
+
 function checkAuditPhase(input, phase, snapshot, requireRef) {
   if (!input) return;
   const observations = input.observations.filter(x => x.source_ref === 'optbrew:collector');
@@ -531,8 +559,10 @@ function checkAuditPhase(input, phase, snapshot, requireRef) {
       throw new ContractError(`selected page missing from the collection and its skipped list: ${url}`);
   // Re-derive every collector verdict from the hashed raw evidence. Each derived observation must be present in the
   // packet and in the saved observation file, and no collector observation may lack a derivation.
+  const { records, renderTextOf } = storedRenders(audit, input.run_context.protocol.render?.max_render_requests, requireRef);
   const derived = deriveObservations({ context: input.run_context, artifacts, collection,
-    textOf: artifact => artifact.content_hash ? requireRef(artifact.evidence_ref).text : null });
+    textOf: artifact => artifact.content_hash ? requireRef(artifact.evidence_ref).text : null,
+    renders: records, renderTextOf, chrome: audit.chrome ?? null });
   const shape = x => [x.state, x.q, x.partial_basis, x.evidence_ref, x.reason, x.evaluator_type, x.source_ref];
   for (const expected of derived) {
     if (!observations.some(x => x.unit_key === expected.unit_key) || !savedObservations.some(x => x.unit_key === expected.unit_key))

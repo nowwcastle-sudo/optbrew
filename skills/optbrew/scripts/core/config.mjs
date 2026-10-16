@@ -15,3 +15,7 @@ export const limits = block('limits');
 export const versions = block('versions');
 export const endpoints = block('endpoints');
 export const chromePaths = block('chrome-paths');
+
+const checkRegistry = block('check-registry');
+/** The judgment thresholds one family's check block reads from `check-registry.json`. */
+export const thresholds = familyId => checkRegistry().families.find(family => family.family_id === familyId).thresholds;
