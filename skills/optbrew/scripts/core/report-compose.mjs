@@ -32,7 +32,8 @@ export const percent = value => typeof value === 'number' ? `${value}%` : UNKNOW
 const count = value => typeof value === 'number' ? `${value}건` : UNKNOWN;
 
 const PRIORITY_LABELS = { P0: '가장 급함', P1: '중요', P2: '보통' };
-const STATUS_LABELS = { confirmed: '확인됨', proposed_only: '제안만 함', verified_production: '해결 확인됨' };
+const STATUS_LABELS = { confirmed: '확인됨', unknown: '확인하지 못함', proposed_only: '제안만 함', modified_unverified: '고쳤지만 확인 전', verification_failed: '고친 뒤 확인에 실패함',
+  verified_local: '내 컴퓨터에서 해결 확인됨', verified_production: '해결 확인됨' };
 const CHROME_REASONS = { chrome_not_found: '설치된 크롬을 찾지 못함', optbrew_chrome_missing: '환경 변수 OPTBREW_CHROME가 가리키는 곳에 크롬이 없음' };
 const HARNESS_NAMES = { 'claude-code': 'Claude Code', codex: 'Codex', 'claude-code-cloud': 'Claude Code 클라우드', other: '기타' };
 const TRANSPORT_NAMES = { direct: '직접 연결', proxy: '프록시' };
@@ -70,7 +71,8 @@ const affectedKey = finding => `${finding.check_id}\0${messageKey(finding.messag
 const pagesOf = finding => finding.unit_keys ?? [finding.unit_key];
 const PAGES_SHOWN = 5;
 const SITE_UNIT = 'site';
-const addressOf = unit => { const last = unit.split('|').at(-1); return last === SITE_UNIT ? '사이트 전체' : last; };
+/** A unit key is `<check>|<address>`; the address may hold `|` itself, so it is everything after the first one. */
+const addressOf = unit => { const address = unit.slice(unit.indexOf('|') + 1); return address === SITE_UNIT ? '사이트 전체' : address; };
 /** How a fix row names its pages: the one address (a site-level check reads 「사이트 전체」), or the count and the first few addresses. */
 export const pagesLabel = finding => {
   const units = pagesOf(finding);
@@ -202,7 +204,7 @@ function tableRows(composed, verified) {
 function conditionLines(conditions, verified) {
   const { probe, lab_cwv: lab } = conditions;
   const { before, after } = conditions.blockers;
-  const listed = summary => `${count(summary.count)} (${summary.items.map(item => item.replace(/ [^ |]+\|/, ' ')).join('; ') || '없음'})`;
+  const listed = summary => `${count(summary.count)} (${summary.items.map(item => item.replace(/ [^ |]+\|/, ' ').replace(/ site$/, ' 사이트 전체')).join('; ') || '없음'})`;
   return [
     { label: '실행 환경', value: `${HARNESS_NAMES[probe.harness] ?? probe.harness}; 전송 방식 ${TRANSPORT_NAMES[probe.transport] ?? probe.transport ?? UNKNOWN}` },
     { label: '크롬', value: probe.chrome.found ? probe.chrome.kind : `찾지 못함 (${CHROME_REASONS[probe.chrome.reason] ?? probe.chrome.reason ?? UNKNOWN})` },

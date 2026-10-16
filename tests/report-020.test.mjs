@@ -506,3 +506,51 @@ test('a synthetic example says so in the html too', () => {
   assert.ok(htmlOf(composed, { synthetic: true }).includes('<p class="banner">예시 보고서 — 실제 사이트나 외부 서비스의 결과가 아닙니다.</p>'));
   assert.ok(!htmlOf(composed).includes('class="banner"'));
 });
+
+test('every status a fix can carry has a Korean label', () => {
+  // The statuses are the quoted words of statusFor in report.mjs, minus the words that are not statuses; a new status must get a label.
+  const source = readFileSync('skills/optbrew/scripts/core/report.mjs', 'utf8').replace(/\r\n/g, '\n');
+  const body = source.slice(source.indexOf('function statusFor'), source.indexOf('\n}\n', source.indexOf('function statusFor')));
+  const notStatuses = new Set(['after', 'failed', 'local', 'partial', 'pass', 'passed', 'production']);
+  const statuses = [...new Set([...body.matchAll(/'([a-z_]+)'/g)].map(match => match[1]).filter(word => !notStatuses.has(word)))];
+  assert.ok(statuses.length >= 7 && statuses.includes('verified_local') && statuses.includes('verification_failed'), statuses.join());
+  const findings = statuses.map(status => finding(status, { status }));
+  const composed = composeReport(verifiedOf({ findings }));
+  const page = htmlOf(composed);
+  const { markdown } = renderReport(composed, verifiedOf({ findings }));
+  for (const fix of composed.fixes) {
+    assert.match(fix.status_label, /[가-힣]/, `${fix.status} has a Korean label`);
+    assert.ok(page.includes(`<dt>상태</dt><dd>${fix.status_label}</dd>`));
+  }
+  assert.doesNotMatch(page, /<dd>(confirmed|unknown|proposed_only|modified_unverified|verification_failed|verified_local|verified_production)<\/dd>/);
+  for (const fix of composed.fixes) assert.ok(markdown.includes(`| ${fix.status_label} |`), fix.status);
+});
+
+test('a comparison that cannot be made says so in plain words', () => {
+  const verified = verifiedOf({ after: { ...later(), scores: [result({ score: 95, coverage: 90 })] },
+    comparison: { status: 'not_comparable', score_deltas: [], reasons: ['older_protocol'] } });
+  const composed = composeReport(verified);
+  assert.equal(composed.completeness[0].difference, null);
+  const page = htmlOf(composed);
+  assert.ok(page.includes('두 단계를 비교할 수 없어 차이는 알 수 없습니다'));
+  assert.doesNotMatch(page, /알 수 없음점|알 수 없음%/);
+});
+
+test('an unknown screen zone in a runbook tag is ignored, never a crash', () => {
+  const composed = composeReport(withProbe({ google_key: false }));
+  const [first] = runbooksOf(composed);
+  const text = ['1. 하나입니다. {화면: constructor}', '2. 둘입니다. {화면: __proto__}', '3. 셋입니다. {화면: toString}', '4. 넷입니다. {화면: hasOwnProperty}'].join('\n');
+  const runbooks = runbooksOf(composed).map(runbook => runbook.id === first.id ? { ...runbook, text } : runbook);
+  const page = htmlOf(composed, { runbooks });
+  assert.ok(!page.includes('<svg'));
+  assert.ok(page.includes('<li>하나입니다. {화면: constructor}</li>') === false, 'the tag is stripped from the step text');
+  assert.ok(page.includes('<li>하나입니다.</li>') && page.includes('<li>넷입니다.</li>'));
+});
+
+test('a fix address that holds a bar stays whole', () => {
+  const unit = 'index-policy|https://example.com/a|b?x=c|d';
+  const composed = composeReport(verifiedOf({ findings: [finding('bar', { unit_key: unit })] }));
+  assert.ok(htmlOf(composed).includes('<p class="pages">https://example.com/a|b?x=c|d</p>'));
+  const many = composeReport(verifiedOf({ findings: [finding('m', { unit_keys: [unit, 'index-policy|https://example.com/z'] })] }));
+  assert.ok(htmlOf(many).includes('(2개 페이지: https://example.com/a|b?x=c|d, https://example.com/z)'));
+});

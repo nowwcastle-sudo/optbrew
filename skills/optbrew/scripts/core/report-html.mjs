@@ -63,7 +63,7 @@ function listHtml({ kind, start, items }) {
   const rows = items.map((item, index) => {
     const tag = kind === 'ol' ? ZONE_TAG.exec(item) : null;
     const text = item.replace(ZONE_TAG, '');
-    const picture = tag && ZONES[tag[1]] ? (drawings += 1, diagram(tag[1], start + index)) : '';
+    const picture = tag && Object.hasOwn(ZONES, tag[1]) ? (drawings += 1, diagram(tag[1], start + index)) : '';
     return picture ? `<li><div class="step"><span class="say">${inline(text)}</span>${picture}</div></li>` : `<li>${inline(text)}</li>`;
   });
   return { html: `<${kind}${kind === 'ol' ? ` start="${start}"` : ''}>${rows.join('')}</${kind}>`, drawings };
@@ -108,7 +108,7 @@ const sentenceOf = h => h.status === 'sufficient' ? `확인한 범위의 통과�
 
 const profileHtml = row => {
   const phase = row.after ?? row.before, h = phase.headline, shown = coverageOf(h);
-  const difference = row.after ? `<p>확인 범위 이전 ${percent(coverageOf(row.before.headline))} → 이후 ${percent(coverageOf(row.after.headline))}; 이전 → 이후 차이 ${esc(row.difference)}점${row.between_measured_subsets ? ' (확인한 범위끼리의 비교)' : ''}</p>` : '';
+  const difference = row.after ? `<p>확인 범위 이전 ${percent(coverageOf(row.before.headline))} → 이후 ${percent(coverageOf(row.after.headline))}; ${typeof row.difference === 'number' ? `이전 → 이후 차이 ${row.difference}점${row.between_measured_subsets ? ' (확인한 범위끼리의 비교)' : ''}` : '두 단계를 비교할 수 없어 차이는 알 수 없습니다'}</p>` : '';
   return `<li class="profile"><div class="head"><strong>${esc(row.profile)}</strong><span class="chip">${esc(VERDICTS[h.status])}</span></div>` +
     `${typeof shown === 'number' ? `<meter min="0" max="100" value="${shown}" aria-label="확인 범위 ${shown}%">${shown}%</meter>` : ''}` +
     `<p class="big">확인 범위 ${percent(shown)}</p><p>${sentenceOf(h)}</p>` +

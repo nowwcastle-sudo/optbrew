@@ -864,11 +864,11 @@
     },
     {
       "path": "scripts/core/report-compose.mjs",
-      "sha256": "73a9baf35735f8f0c0b92d3d948536d126999be9962cfdcd7ad236234dfc169d"
+      "sha256": "98c50fe96689461c97848e88adf6f408833d90c63671ec63ae27edf4a7ffdafc"
     },
     {
       "path": "scripts/core/report-html.mjs",
-      "sha256": "4e4cc12a84875c0b98dfbceb4d98491d94714b8f8a030f4e0944275dff8de16a"
+      "sha256": "3f181e72d959443e316272a61af9e3205753baead9ba518eb1852d2de9c543cc"
     },
     {
       "path": "scripts/core/report.mjs",
@@ -919,5 +919,5 @@
       "sha256": "a53223b7eefab2204c026a62b1da04cfdb8a07be8d3749613e8241a81b027d9b"
     }
   ],
-  "bundle_hash": "5bef1cd2de2c22b13d6719f10126acc5db7a6621b2937af70631afbce55328c3"
+  "bundle_hash": "d92187d9e43ccb167550633fbaae2468adde0618db5131b29215177ddf044594"
 }
