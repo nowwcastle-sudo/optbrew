@@ -275,6 +275,15 @@ describe('chrome block', async () => {
     fetch('http://cdn.example.test:${targetPort}/${name}-get', { mode: 'no-cors' }).catch(() => {});
   }
   ${start}`);
+    } else if (req.url === '/script-redirect') { res.writeHead(200, { 'content-type': 'text/html' }); res.end('<title>first</title><script>location.replace("/redirect-target");</script>'); }
+    else if (req.url === '/meta-refresh') { res.writeHead(200, { 'content-type': 'text/html' }); res.end('<title>first</title><meta http-equiv="refresh" content="0; url=/redirect-target">'); }
+    else if (req.url === '/script-out') { res.writeHead(200, { 'content-type': 'text/html' }); res.end(`<title>first</title><script>location.replace("http://cdn.example.test:${targetPort}/script-landing");</script>`); }
+    else if (req.url === '/redirect-target') { res.writeHead(200, { 'content-type': 'text/html' }); res.end('<title>redirected</title>'); }
+    else if (req.url === '/nested-page') { res.writeHead(200, { 'content-type': 'text/html' }); res.end("<title>nested</title><script>new Worker('/outer.js');</script>"); }
+    else if (req.url === '/outer.js') { res.writeHead(200, { 'content-type': 'text/javascript' }); res.end("new Worker('/inner.js');"); }
+    else if (req.url === '/inner.js') {
+      res.writeHead(200, { 'content-type': 'text/javascript' });
+      res.end(`fetch('/nested-ran'); fetch('http://cdn.example.test:${targetPort}/nested-post', { method: 'POST', mode: 'no-cors' }).catch(() => {});`);
     } else if (req.url === '/opener') { res.writeHead(200, { 'content-type': 'text/html' }); res.end('<title>opener</title>'); }
     else if (req.url === '/popup-inside') {
       res.writeHead(200, { 'content-type': 'text/html' });
@@ -405,6 +414,55 @@ describe('chrome block', async () => {
         // A dedicated worker's requests are paused on its owner's session, so they are listed under the page.
         assert.deepEqual([typeOf('shared'), typeOf('dedicated')], ['shared_worker', 'page']);
         assert.ok(!targetSeen.some(seen => /-(post|get)$/.test(seen)), 'the out-of-scope host received nothing from the workers');
+      } finally { await page.close(); }
+    });
+  });
+
+  test('a worker nested under a dedicated worker runs and follows the same rule', { skip }, async () => {
+    targetSeen.length = 0;
+    ownerSeen.length = 0;
+    await withChrome({ hostRules }, async chrome => {
+      const page = await scopedPage({ chrome, context: { scope: ownerScope }, budget: 100 });
+      try {
+        await page.goto(owner('/nested-page'));
+        await until(() => ownerSeen.some(seen => seen.url === '/nested-ran'), 'the nested worker to run (it must not stay paused)');
+        await until(() => blockedPaths(page).includes('/nested-post'), 'the nested worker POST to be recorded');
+        assert.ok(!targetSeen.includes('POST /nested-post'), 'the out-of-scope host received nothing from the nested worker');
+      } finally { await page.close(); }
+    });
+  });
+
+  test('goto follows a script redirect within scope', { skip }, async () => {
+    await withChrome({ hostRules }, async chrome => {
+      const page = await scopedPage({ chrome, context: { scope: ownerScope }, budget: 100 });
+      try {
+        const result = await page.goto(owner('/script-redirect'));
+        assert.deepEqual([result.error, result.blocked_reason, result.title, result.final_url, result.status], [null, null, 'redirected', owner('/redirect-target'), 200]);
+      } finally { await page.close(); }
+    });
+  });
+
+  test('goto follows a meta refresh within scope', { skip }, async () => {
+    await withChrome({ hostRules }, async chrome => {
+      const page = await scopedPage({ chrome, context: { scope: ownerScope }, budget: 100 });
+      try {
+        const result = await page.goto(owner('/meta-refresh'));
+        assert.deepEqual([result.error, result.blocked_reason, result.title, result.final_url, result.status], [null, null, 'redirected', owner('/redirect-target'), 200]);
+      } finally { await page.close(); }
+    });
+  });
+
+  test('goto ends when a script redirect goes out of scope', { skip }, async () => {
+    targetSeen.length = 0;
+    await withChrome({ hostRules }, async chrome => {
+      const page = await scopedPage({ chrome, context: { scope: ownerScope }, budget: 100 });
+      try {
+        const started = Date.now();
+        const result = await page.goto(owner('/script-out'));
+        assert.deepEqual([result.error, result.blocked_reason, result.dom], [null, 'out_of_scope', null]);
+        assert.ok(Date.now() - started < 10000, 'it ended on the block, not on the navigation timeout');
+        assert.ok(!targetSeen.includes('GET /script-landing'));
+        assert.ok(blockedPaths(page).includes('/script-landing'));
       } finally { await page.close(); }
     });
   });
