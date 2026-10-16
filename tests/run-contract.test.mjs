@@ -43,8 +43,8 @@ test('the CLI prints one JSON line on success and one plain sentence on failure'
   assert.equal(second.code, 0, second.stderr);
   assert.equal(second.stdout.trim().split('\n').length, 1, 'stdout is one line');
   const done = JSON.parse(second.stdout);
-  assert.deepEqual(done, { status: 'done', reports: { json: path.join(ws.out, 'report.json'), md: path.join(ws.out, 'report.md') }, score_input: path.join(ws.out, 'score-input.json') });
-  for (const file of [done.reports.json, done.reports.md, done.score_input]) assert.ok((await readFile(file, 'utf8')).length > 0);
+  assert.deepEqual(done, { status: 'done', reports: { json: path.join(ws.out, 'report.json'), md: path.join(ws.out, 'report.md'), html: path.join(ws.out, 'report.html') }, score_input: path.join(ws.out, 'score-input.json') });
+  for (const file of [done.reports.json, done.reports.md, done.reports.html, done.score_input]) assert.ok((await readFile(file, 'utf8')).length > 0);
   const again = await cli(['--answers', ws.answersPath, '--out', ws.out, '--judgments', judgmentsPath], ws);
   assert.equal(again.code, 2);
   assert.equal(lastLine(again.stderr), 'This folder already holds a finished audit. Use a new --out folder for a new one.');

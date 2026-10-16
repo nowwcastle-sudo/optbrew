@@ -247,9 +247,9 @@ test('real local HTTP baseline, authorized edit and same-condition rescan clear 
   assert.equal(report.findings.find(x => x.check_id === 'document-title').status, 'modified_unverified');
   assert.equal(report.follow_ups.filter(x => x.reason === 'production_deployment_pending').length, 1);
   assert.equal(report.follow_ups.filter(x => x.reason === 'modified_unverified').length, 1);
-  assert.match(markdown, /Baseline blockers: 1 .*After blockers: 0/);
-  assert.match(markdown, /actual outcomes: not_connected \/ unknown/);
-  assert.match(markdown, /verified_local/);
+  assert.match(markdown, /이전 막는 문제: 1건 [\s\S]*이후 막는 문제: 0건/);
+  assert.match(markdown, /실제 결과: 연결 안 됨 \/ 알 수 없음/);
+  assert.match(markdown, /내 컴퓨터에서 해결 확인됨/);
   await t.test('stripping the after snapshot cannot upgrade a result', () => {
     const stripped = structuredClone(packet);
     stripped.audit_snapshots = stripped.audit_snapshots.filter(x => x.phase !== 'after');

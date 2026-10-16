@@ -68,7 +68,7 @@
     },
     {
       "path": "SKILL.md",
-      "sha256": "292ef58ad55b7b7ab981eeb6be608bdc7a9672f1db4c3696efe2f974e5c25f96"
+      "sha256": "ad7525f0a327b2150fe4defa5a66536120ac8d0304cca9b9364da7cbb560c61c"
     },
     {
       "path": "THIRD_PARTY_NOTICES.md",
@@ -600,7 +600,7 @@
     },
     {
       "path": "references/report.md",
-      "sha256": "6debb52406915853ca6c93086e92a349e035b04bf0015793a15e48ac799c40a9"
+      "sha256": "1a07634bd371c98da73c063500238d62d5e0e74a081c3e7447d298727e0367fa"
     },
     {
       "path": "references/routing.md",
@@ -868,15 +868,19 @@
     },
     {
       "path": "scripts/core/report-compose.mjs",
-      "sha256": "f791971b7c1ef3cdf8b238dfafa012b2e46571fb437ee0dbe56e9c71169750cb"
+      "sha256": "98c50fe96689461c97848e88adf6f408833d90c63671ec63ae27edf4a7ffdafc"
+    },
+    {
+      "path": "scripts/core/report-html.mjs",
+      "sha256": "3f181e72d959443e316272a61af9e3205753baead9ba518eb1852d2de9c543cc"
     },
     {
       "path": "scripts/core/report.mjs",
-      "sha256": "5873ceecfe34d29279782779ba4a609e83fe4811c95534ac8f6519db2814ff30"
+      "sha256": "e3f676e6ce89232bc1e276a4222fe5ec80c8d7213ca932538d760ae4c0750b71"
     },
     {
       "path": "scripts/core/runbooks.mjs",
-      "sha256": "f90ec899e254677d04341818617877b5838357deed2af02603013ca85772d7f9"
+      "sha256": "d833d3c820b1705521523353fa473ed354773455566e38d656b50548e6645185"
     },
     {
       "path": "scripts/core/scope.mjs",
@@ -892,7 +896,7 @@
     },
     {
       "path": "scripts/core/stages.mjs",
-      "sha256": "88603c8304675d8484ffb54babaeb74887d8d038bb6c005c60106f64c52fba71"
+      "sha256": "9f08049b702f39f0cf24afb1930ddcb8bee8d0bf35e9cca78ee8bfc2ceb04975"
     },
     {
       "path": "scripts/core/transport.mjs",
@@ -919,5 +923,5 @@
       "sha256": "a53223b7eefab2204c026a62b1da04cfdb8a07be8d3749613e8241a81b027d9b"
     }
   ],
-  "bundle_hash": "7c00593c8f4c46a1b197bae6907a15ee4fd4020536280f6d77cb73af9012103c"
+  "bundle_hash": "13cd4b33e9b88ebeffcd6a3cea416d88d655b25d3d87a63856e6851fdec07086"
 }

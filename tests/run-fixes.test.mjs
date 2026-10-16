@@ -239,7 +239,7 @@ test('the same problem on several pages is one fix row that says how many pages'
   const report = await readJson(second.reports.json);
   const rows = report.tables.remediation.filter(row => row[1].startsWith('Raw HTML has no title'));
   assert.equal(rows.length, 1);
-  assert.match(rows[0][1], /\(3 pages: /);
+  assert.match(rows[0][1], /\(3개 페이지: /);
   assert.equal(report.composed.fixes.filter(fix => fix.check_id === 'document-title').length, 1);
   const merged = mergeFindings([1, 2].map(i => ({ schema_version: '2.0.0', finding_id: `f${i}`, check_id: 'document-title', unit_key: `document-title|${SITE}/p`, unit_keys: [`document-title|${SITE}/p${i}`],
     priority: 'P2', blocker: false, message: 'm', source_ref: `s${i}`, evidence_ref: 'e', remediation_ids: [], status: 'confirmed' })));
@@ -285,7 +285,7 @@ test('an adopted start address is said in the run conditions and must match the 
   const { ws, second } = await twoCalls(site, answersFor(from), { before: ws => preflightOf(site, from, ws.out) });
   const report = await readJson(second.reports.json);
   assert.deepEqual(report.start_redirect, { from, to });
-  assert.match(await readFile(second.reports.md, 'utf8'), /Start address: https:\/\/brew\.test\/ leads to https:\/\/www\.brew\.test\/, so the audit ran on https:\/\/www\.brew\.test\//);
+  assert.match(await readFile(second.reports.md, 'utf8'), /시작 주소: https:\/\/brew\.test\/ → https:\/\/www\.brew\.test\/ \(이 주소로 연결되므로 감사는 https:\/\/www\.brew\.test\/에서 실행했습니다\)/);
   // A packet that names another address than the intake record is refused.
   const ws2 = await workspace(answersFor(from));
   await preflightOf(site, from, ws2.out);
@@ -350,10 +350,10 @@ test('the commands and result fields SKILL.md names are the ones run.mjs and pre
   const printed = { ...first, ...done };
   for (const field of ['judge_queue', 'reports', 'score_input', 'queue_items', 'lab_cwv']) assert.ok(skill.includes(`\`${field}\``), `SKILL.md names ${field}`);
   for (const field of ['judge_queue', 'queue_items', 'reports', 'score_input']) assert.ok(field in printed, `${field} is printed`);
-  assert.ok(done.reports.json && done.reports.md);
-  // Every field step 7.3 names is printed, whatever is added to that step later; html and lab_cwv exist only with the HTML report or a Chrome.
+  assert.ok(done.reports.json && done.reports.md && done.reports.html);
+  // Every field step 7.3 names is printed, whatever is added to that step later; lab_cwv exists only with a Chrome.
   const named = [...skill.split('\n').find(line => line.startsWith('3. 종료 코드가 0이면')).matchAll(/`([a-z_]+)`/g)].map(match => match[1]);
-  const printable = new Set([...Object.keys(printed), ...Object.keys(done.reports), 'html', 'lab_cwv', 'awaiting_judgments', 'done']);
+  const printable = new Set([...Object.keys(printed), ...Object.keys(done.reports), 'lab_cwv', 'awaiting_judgments', 'done']);
   assert.deepEqual(named.filter(name => !printable.has(name)), [], 'SKILL.md names a field run.mjs does not print');
   assert.ok(named.includes('status') && named.includes('queue_items'));
   assert.match(await readFile(new URL('../skills/optbrew/scripts/run.mjs', import.meta.url), 'utf8'), /lab_cwv/, 'lab_cwv is printed when Chrome measured it');
@@ -426,7 +426,7 @@ test('the shipped flow (answers hold the landed address) still says the typed ad
   const site = memorySite(redirectPages(from, to));
   const { report, ws, second } = await twoCalls(site, answersFor(to), { before: ws => preflightOf(site, from, ws.out) });
   assert.deepEqual(report.start_redirect, { from, to });
-  assert.match(await readFile(second.reports.md, 'utf8'), /Start address: https:\/\/brew\.test\/ leads to https:\/\/www\.brew\.test\//);
+  assert.match(await readFile(second.reports.md, 'utf8'), /시작 주소: https:\/\/brew\.test\/ → https:\/\/www\.brew\.test\//);
   // A packet that leaves the redirect out while the intake record has it is refused too.
   const again = await workspace(answersFor(to));
   await preflightOf(site, from, again.out);
@@ -447,7 +447,7 @@ test('remaining work names every page of a grouped finding', async () => {
   const site = memorySite(pages);
   const { report } = await twoCalls(site, answersFor(`${SITE}/`), { before: ws => preflightOf(site, `${SITE}/`, ws.out) });
   const row = report.follow_ups.find(item => item.problem.startsWith('Raw HTML has no title'));
-  assert.match(row.problem, /\(3 pages: /);
+  assert.match(row.problem, /\(3개 페이지: /);
 });
 
 test('a folder left by a first call that stopped before its first index save is rerun; one that only looks similar is refused', async () => {

@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { answeredRunbooks, loadRunbook, remainingRunbooks, startRunbooks } from '../skills/optbrew/scripts/core/runbooks.mjs';
+import { loadRunbook, remainingRunbooks, startRunbooks } from '../skills/optbrew/scripts/core/runbooks.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const dir = path.join(root, 'skills/optbrew/references/runbooks');
@@ -146,14 +146,9 @@ test('the start screen shows at most one blocking runbook and three one-liners',
   }
 });
 
-test('answering the owner-export line returns both export runbooks', () => {
-  for (const level of levels) {
-    const opened = answeredRunbooks('gsc-export', { level, skillRoot });
-    assert.deepEqual(opened.map(runbook => runbook.id), ['gsc-export', 'naver-searchadvisor-export']);
-    assert.deepEqual(opened.map(runbook => runbook.text), ['gsc-export', 'naver-searchadvisor-export'].map(id => loadRunbook(id, level, { skillRoot }).text));
-  }
-  assert.deepEqual(answeredRunbooks('google-api-key', { level: 'brief', skillRoot }).map(runbook => runbook.id), ['google-api-key']);
-  assert.throws(() => answeredRunbooks('nope', { level: 'brief', skillRoot }), /unknown runbook/);
+test('the owner-export line expands to both export runbooks', () => {
+  assert.deepEqual(index.find(item => item.id === 'gsc-export').expands_to, ['gsc-export', 'naver-searchadvisor-export']);
+  assert.equal(index.find(item => item.id === 'google-api-key').expands_to, undefined);
   const line = startRunbooks(probe({}), { level: 'brief', skillRoot }).improving.find(item => item.id === 'gsc-export').line;
   assert.ok(line.includes('Search Console') && line.includes('네이버 서치어드바이저') && line.includes('두 서비스'));
 });
@@ -163,7 +158,7 @@ test('a naver-only user reaches the naver runbook', async () => {
   assert.ok(entry.expands_to.every(id => index.some(item => item.id === id)));
   assert.ok(entry.expands_to.includes('naver-searchadvisor-export'));
   for (const level of levels) {
-    const naver = answeredRunbooks('gsc-export', { level, skillRoot }).find(runbook => runbook.id === 'naver-searchadvisor-export');
+    const naver = loadRunbook('naver-searchadvisor-export', level, { skillRoot });
     assert.match(naver.text.split('\n').find(line => line.trim()), /네이버 서치어드바이저.*이 서비스를 쓰지 않으면 이 절차는 건너뛰세요/);
   }
 });

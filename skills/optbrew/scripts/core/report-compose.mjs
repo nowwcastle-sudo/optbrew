@@ -10,12 +10,33 @@ const COVERAGE_THRESHOLD = 80;
 const KEY_RUNBOOK = 'google-api-key';
 
 /** Said under the run conditions only when a page showed its content after rendering; it never feeds a score (R36, R51). */
-const JAVASCRIPT_NOTE = 'Naver and AI crawlers may not run JavaScript, so a page that needs JavaScript to show its content can look empty to them. This note is not part of any score.';
+const JAVASCRIPT_NOTE = '네이버와 AI 크롤러는 자바스크립트를 실행하지 못할 수 있어서, 내용을 자바스크립트로 그리는 페이지는 이들에게 비어 보일 수 있습니다. 이 안내는 어떤 점수에도 들어가지 않습니다.';
 
-const html = value => String(value ?? 'unknown').replace(/\\/g, '\\\\').replace(/&/g, '&amp;').replace(/</g, '&lt;')
+/** Report text is Korean (R64); the ids and JSON keys around it stay English. */
+export const UNKNOWN = '알 수 없음';
+const LOCATION_NEEDED = '고칠 위치는 사이트 담당자가 정해야 합니다';
+/** Said at the top of a report built from a synthetic example, in report.md and report.html alike. */
+export const SYNTHETIC_BANNER = '예시 보고서 — 실제 사이트나 외부 서비스의 결과가 아닙니다.';
+/** The section names, shared by report.md, report.html and the sentences that point to a section. */
+export const SECTION_TITLES = { fixes: '먼저 고칠 것', completeness: '얼마나 확인했나', blank: '아직 비어 있는 곳', conditions: '실행 조건',
+  remaining: '남은 일', outcomes: '실제 결과', judgments: '모델 판단' };
+
+const html = value => String(value ?? UNKNOWN).replace(/\\/g, '\\\\').replace(/&/g, '&amp;').replace(/</g, '&lt;')
   .replace(/>/g, '&gt;').replace(/\|/g, '\\|').replace(/\r?\n/g, '<br>');
 const table = (columns, rows) => `| ${columns.join(' | ')} |\n| ${columns.map(() => '---').join(' | ')} |\n${rows.map(row => `| ${row.map(html).join(' | ')} |`).join('\n') || `| ${columns.map(() => '—').join(' | ')} |`}`;
-const floorTenth = value => value === null ? 'unknown' : Math.floor(value * 10 + 1e-9) / 10;
+/** One rounding rule for every coverage the report shows: the floor to a tenth, the value the 80% threshold is judged on. */
+const floorTenth = value => value === null ? null : Math.floor(value * 10 + 1e-9) / 10;
+export const coverageOf = headline => floorTenth(headline.coverage_exact);
+/** A percentage as text, or the unknown word when there is no number. */
+export const percent = value => typeof value === 'number' ? `${value}%` : UNKNOWN;
+const count = value => typeof value === 'number' ? `${value}건` : UNKNOWN;
+
+const PRIORITY_LABELS = { P0: '가장 급함', P1: '중요', P2: '보통' };
+const STATUS_LABELS = { confirmed: '확인됨', unknown: '확인하지 못함', proposed_only: '제안만 함', modified_unverified: '고쳤지만 확인 전', verification_failed: '고친 뒤 확인에 실패함',
+  verified_local: '내 컴퓨터에서 해결 확인됨', verified_production: '해결 확인됨' };
+const CHROME_REASONS = { chrome_not_found: '설치된 크롬을 찾지 못함', optbrew_chrome_missing: '환경 변수 OPTBREW_CHROME가 가리키는 곳에 크롬이 없음' };
+const HARNESS_NAMES = { 'claude-code': 'Claude Code', codex: 'Codex', 'claude-code-cloud': 'Claude Code 클라우드', other: '기타' };
+const TRANSPORT_NAMES = { direct: '직접 연결', proxy: '프록시' };
 
 /** One headline per profile. Below the coverage threshold the single number is withheld and only the measured subset is shown. */
 function scoreHeadline(result) {
@@ -37,42 +58,54 @@ const phaseOf = (result, input) => {
     coverage: result.coverage, missing_bounds: result.missing_bounds, readiness_status: result.readiness_status };
 };
 
-const withoutCwv = (input, profile) => scoreWeighted(compileUnits(input, profile).filter(unit => !CWV_FAMILIES.includes(unit.family_id))).coverage;
+const withoutCwv = (input, profile) => {
+  const { A, M } = scoreWeighted(compileUnits(input, profile).filter(unit => !CWV_FAMILIES.includes(unit.family_id)));
+  return A === 0 ? null : floorTenth(100 * M / A);
+};
 
-const resolved = finding => finding.status === 'verified_production';
+export const resolved = finding => finding.status === 'verified_production';
 const priorityRank = priority => /^P(\d+)$/.test(priority) ? Number(priority.slice(1)) : Infinity;
 const compareRank = (a, b) => a === b ? 0 : a < b ? -1 : 1;
 const affectedKey = finding => `${finding.check_id}\0${messageKey(finding.message)}`;
 /** The pages a finding affects: the ones it lists, or its own unit. */
 const pagesOf = finding => finding.unit_keys ?? [finding.unit_key];
 const PAGES_SHOWN = 5;
-/** How a fix row names its pages: the one unit, or the count and the first few addresses. */
+const SITE_UNIT = 'site';
+/** A unit key is `<check>|<address>`; the address may hold `|` itself, so it is everything after the first one. */
+const addressOf = unit => { const address = unit.slice(unit.indexOf('|') + 1); return address === SITE_UNIT ? '사이트 전체' : address; };
+/** How a fix row names its pages: the one address (a site-level check reads 「사이트 전체」), or the count and the first few addresses. */
 export const pagesLabel = finding => {
   const units = pagesOf(finding);
-  if (units.length === 1) return units[0];
-  const shown = units.slice(0, PAGES_SHOWN).map(unit => unit.split('|').at(-1)).join(', ');
-  return `(${units.length} pages: ${shown}${units.length > PAGES_SHOWN ? `, and ${units.length - PAGES_SHOWN} more` : ''})`;
+  if (units.length === 1) return addressOf(units[0]);
+  const shown = units.slice(0, PAGES_SHOWN).map(addressOf).join(', ');
+  return `(${units.length}개 페이지: ${shown}${units.length > PAGES_SHOWN ? `, 외 ${units.length - PAGES_SHOWN}개` : ''})`;
 };
 
 /** Open before resolved, then blocking, then priority (P0 first, an unknown one last), then the problem on the most pages, then the unit. */
 function sortedFixes(findings, changes) {
   const pages = new Map();
   for (const finding of findings) pages.set(affectedKey(finding), new Set([...(pages.get(affectedKey(finding)) ?? []), ...pagesOf(finding)]));
-  const withPaths = findings.map(finding => ({ ...finding,
-    change_paths: changes.filter(change => change.finding_ids.some(id => finding.finding_ids.includes(id))).map(change => change.path) }));
+  const withPaths = findings.map(finding => {
+    const change_paths = changes.filter(change => change.finding_ids.some(id => finding.finding_ids.includes(id))).map(change => change.path);
+    return { ...finding, change_paths, where: change_paths.join('; ') || finding.remediation?.location_hint || LOCATION_NEEDED,
+      priority_label: PRIORITY_LABELS[finding.priority] ?? finding.priority, status_label: STATUS_LABELS[finding.status] ?? finding.status };
+  });
   return withPaths.sort((a, b) => Number(resolved(a)) - Number(resolved(b)) || Number(b.blocker) - Number(a.blocker) ||
     compareRank(priorityRank(a.priority), priorityRank(b.priority)) || pages.get(affectedKey(b)).size - pages.get(affectedKey(a)).size ||
     a.unit_key.localeCompare(b.unit_key));
 }
 
-/** A clean result never hides a thin one (D4): with no open fix but an incomplete check, the line says so. */
+/**
+ * A clean result never hides a thin one (D4): with no open fix but an incomplete check, the line says so and points to the
+ * completeness section, where the cause is shown. A report with no completeness row at all is as thin as it gets.
+ */
 function conclusionOf(fixes, completeness) {
   const open = fixes.filter(finding => !resolved(finding));
   const blocking = open.filter(finding => finding.blocker).length;
-  const thin = completeness.some(row => (row.after ?? row.before).headline.status !== 'sufficient');
-  const none = thin ? 'Nothing failed in what was checked, but the check is incomplete; see Still blank.' : 'Nothing is left to fix in what was checked.';
+  const thin = completeness.length === 0 || completeness.some(row => (row.after ?? row.before).headline.status !== 'sufficient');
+  const none = thin ? `확인한 범위에서는 실패한 것이 없지만 점검이 끝나지 않았습니다. '${SECTION_TITLES.completeness}' 구역에서 이유를 확인하세요.` : '확인한 범위에서는 고칠 것이 남지 않았습니다.';
   return { open: open.length, blocking, already_fixed: fixes.length - open.length,
-    text: open.length ? `${open.length} thing(s) to fix first${blocking ? `, ${blocking} of them blocking` : ''}.` : none };
+    text: open.length ? `먼저 고칠 것이 ${open.length}건 있습니다${blocking ? ` (그중 ${blocking}건이 가장 급합니다)` : ''}.` : none };
 }
 
 const blockerSummary = scores => ({ count: scores[0]?.blockers.length ?? 0, items: scores[0]?.blockers.map(x => `${x.family_id} ${x.unit_key}`) ?? [],
@@ -121,65 +154,73 @@ export function composeReport(verified) {
   const fixes = sortedFixes(verified.findings, verified.changes);
   const completeness = completenessOf(verified);
   const afterRender = latest.observations.some(obs => obs.family_id === 'render-content' && obs.state === 'pass' && obs.reason.startsWith(CONTENT_AFTER_RENDER));
+  const conditions = { probe: latest.run_context.environment_probe, model_judgments: verified.model_judgments, lab_cwv: verified.lab_cwv, start_redirect: verified.start_redirect ?? null,
+    blockers: { before: blockerSummary(verified.baseline.scores), after: verified.after ? blockerSummary(verified.after.scores) : null },
+    notes: afterRender ? [JAVASCRIPT_NOTE] : [] };
+  conditions.lines = conditionLines(conditions, verified);
   return {
     headline: conclusionOf(fixes, completeness),
     fixes,
     completeness,
     remaining: remainingBlanks(verified, latest),
-    conditions: { probe: latest.run_context.environment_probe, model_judgments: verified.model_judgments, lab_cwv: verified.lab_cwv, start_redirect: verified.start_redirect ?? null,
-      blockers: { before: blockerSummary(verified.baseline.scores), after: verified.after ? blockerSummary(verified.after.scores) : null },
-      notes: afterRender ? [JAVASCRIPT_NOTE] : [] },
+    conditions,
+    follow_ups: verified.follow_ups,
   };
 }
 
-const headlineLine = h => (h.status === 'sufficient' ? `${h.profile}: ${h.headline_score} (coverage ${h.coverage}%)` :
-  h.status === 'unaudited' ? `${h.profile}: not audited: ${h.measured_subset_score ?? 'unknown'} is the pass rate within what was measured, and no audit backs it (coverage ${h.coverage}%)` :
-  h.status === 'insufficient_core' ? `${h.profile}: insufficient core checks (${h.unresolved_core} access or indexing check(s) have no verdict, although ${h.coverage}% is measured); measured subset ${h.measured_subset_score ?? 'unknown'}, bounds ${h.missing_bounds?.join('–') ?? 'unknown'}` :
-  `${h.profile}: insufficient coverage (${floorTenth(h.coverage_exact)}% of the applicable weight is measured; at least ${h.coverage_threshold}% is needed); measured subset ${h.measured_subset_score ?? 'unknown'}, bounds ${h.missing_bounds?.join('–') ?? 'unknown'}`) +
-  (h.audited || h.status === 'unaudited' ? '' : '; this phase was not audited, so its verdicts could not be replayed');
+/** Why a phase's single number is shown or withheld, in one sentence: the line under the summary, and the one the HTML report folds away. */
+export const headlineLine = h => (h.status === 'sufficient' ? `${h.profile}: ${h.headline_score}점 (확인 범위 ${percent(coverageOf(h))})` :
+  h.status === 'unaudited' ? `${h.profile}: 감사 안 됨 — 확인한 범위 안의 통과율은 ${h.measured_subset_score ?? UNKNOWN}이지만, 이를 뒷받침하는 감사가 없어 점수로 내지 않습니다 (확인 범위 ${percent(coverageOf(h))})` :
+  h.status === 'insufficient_core' ? `${h.profile}: 핵심 검사 부족 (접근·색인 검사 ${count(h.unresolved_core)}에 결과가 없습니다. 확인 범위는 ${percent(coverageOf(h))}입니다); 확인한 범위의 통과율 ${h.measured_subset_score ?? UNKNOWN}, 점수 범위 ${h.missing_bounds?.join('–') ?? UNKNOWN}` :
+  `${h.profile}: 확인 범위 부족 (적용 가중치의 ${percent(coverageOf(h))}만 확인했습니다. 점수를 내려면 ${h.coverage_threshold}% 이상 필요합니다); 확인한 범위의 통과율 ${h.measured_subset_score ?? UNKNOWN}, 점수 범위 ${h.missing_bounds?.join('–') ?? UNKNOWN}`) +
+  (h.audited || h.status === 'unaudited' ? '' : '; 이 단계는 감사되지 않아 판정을 다시 계산할 수 없었습니다');
 
-const headlineCell = h => (h.status === 'sufficient' ? `${h.headline_score} (coverage ${h.coverage}%)` :
-  h.status === 'unaudited' ? `not audited (measured subset ${h.measured_subset_score ?? 'unknown'}; coverage ${h.coverage ?? 'unknown'}%)` :
-  h.status === 'insufficient_core' ? `insufficient core checks (${h.unresolved_core} unresolved; measured subset ${h.measured_subset_score ?? 'unknown'}; coverage ${h.coverage ?? 'unknown'}%; bounds ${h.missing_bounds?.join('–') ?? 'unknown'})` :
-  `insufficient coverage (measured subset ${h.measured_subset_score ?? 'unknown'}; coverage ${h.coverage ?? 'unknown'}%; bounds ${h.missing_bounds?.join('–') ?? 'unknown'})`) +
-  (h.audited || h.status === 'unaudited' ? '' : ' (not audited)');
+const headlineCell = h => (h.status === 'sufficient' ? `${h.headline_score}점 (확인 범위 ${percent(coverageOf(h))})` :
+  h.status === 'unaudited' ? `감사 안 됨 (확인한 범위의 통과율 ${h.measured_subset_score ?? UNKNOWN}; 확인 범위 ${percent(coverageOf(h))})` :
+  h.status === 'insufficient_core' ? `핵심 검사 부족 (${count(h.unresolved_core)} 결과 없음; 확인한 범위의 통과율 ${h.measured_subset_score ?? UNKNOWN}; 확인 범위 ${percent(coverageOf(h))}; 점수 범위 ${h.missing_bounds?.join('–') ?? UNKNOWN})` :
+  `확인 범위 부족 (확인한 범위의 통과율 ${h.measured_subset_score ?? UNKNOWN}; 확인 범위 ${percent(coverageOf(h))}; 점수 범위 ${h.missing_bounds?.join('–') ?? UNKNOWN})`) +
+  (h.audited || h.status === 'unaudited' ? '' : ' (감사 안 됨)');
 
 /** The rows of every table, from the composed report and the checked data around it. */
 function tableRows(composed, verified) {
   const score = composed.completeness.map(({ profile, before, after, difference, between_measured_subsets: between, coverage_without_cwv: withoutField }) => [
-    profile, headlineCell(before.headline), after ? headlineCell(after.headline) : 'unknown',
-    `${difference ?? 'unknown'}${between ? ' (between measured subsets)' : ''}`,
-    `${before.coverage ?? 'unknown'} → ${after?.coverage ?? 'unknown'}`,
-    `${before.missing_bounds?.join('–') ?? 'unknown'} → ${after?.missing_bounds?.join('–') ?? 'unknown'}`,
-    `${before.readiness_status} → ${after?.readiness_status ?? 'unknown'}`, withoutField ?? 'unknown']);
-  const remediation = composed.fixes.map(f => [f.priority, `${f.message} ${pagesLabel(f)}`, f.sources.map(x => `${x.source_ref} ${x.evidence_ref}`).join('; '),
-    f.remediation ? `${f.remediation.mechanism} (${f.remediation.source_url}, checked ${f.remediation.checked_date})` : 'unknown',
-    f.change_paths.join('; ') || f.remediation?.location_hint || 'owner implementation location required',
-    f.remediation ? `${f.remediation.cost}; ${f.remediation.effort}` : 'unknown', f.remediation?.validation ?? 'unknown',
-    f.resolution ? `${f.status} (resolved by ${f.resolution.evaluator_type} observation from ${f.resolution.source_ref})` : f.status]);
+    profile, headlineCell(before.headline), after ? headlineCell(after.headline) : UNKNOWN,
+    `${difference ?? UNKNOWN}${between ? ' (확인한 범위끼리의 비교)' : ''}`,
+    `${percent(coverageOf(before.headline))} → ${after ? percent(coverageOf(after.headline)) : UNKNOWN}`,
+    `${before.missing_bounds?.join('–') ?? UNKNOWN} → ${after?.missing_bounds?.join('–') ?? UNKNOWN}`,
+    `${before.readiness_status} → ${after?.readiness_status ?? UNKNOWN}`, percent(withoutField)]);
+  const remediation = composed.fixes.map(f => [f.priority_label, `${f.message} ${pagesLabel(f)}`, f.sources.map(x => `${x.source_ref} ${x.evidence_ref}`).join('; '),
+    f.remediation ? `${f.remediation.mechanism} (${f.remediation.source_url}, 확인일 ${f.remediation.checked_date})` : UNKNOWN,
+    f.where, f.remediation ? `${f.remediation.cost}; ${f.remediation.effort}` : UNKNOWN, f.remediation?.validation ?? UNKNOWN,
+    f.resolution ? `${f.status_label} (${f.resolution.source_ref}의 ${f.resolution.evaluator_type} 관찰로 해결 확인)` : f.status_label]);
   return { score, remediation,
     actual_outcomes: verified.outcome_rows,
-    remaining_work: verified.follow_ups.map(x => [x.problem, x.reason, x.required_input_or_authority, x.next_action, x.reobserve_when]),
+    remaining_work: composed.follow_ups.map(x => [x.problem, x.reason, x.required_input_or_authority, x.next_action, x.reobserve_when]),
     model_judgments: composed.conditions.model_judgments.map(x => [x.phase, `${x.family_id} ${x.unit_key}`, x.state,
-      `${x.evidence_ref} bytes ${x.evidence_span.map(span => `${span.start}–${span.end}`).join(', ')}`, x.label]) };
+      `${x.evidence_ref} 바이트 ${x.evidence_span.map(span => `${span.start}–${span.end}`).join(', ')}`, x.label]) };
 }
 
-const conditionLines = (conditions, verified) => {
+/** The run conditions as label and value pairs, the one list both formats print. */
+function conditionLines(conditions, verified) {
   const { probe, lab_cwv: lab } = conditions;
   const { before, after } = conditions.blockers;
-  const listed = summary => `${summary.count} (${summary.items.join('; ') || 'none'})`;
+  const listed = summary => `${count(summary.count)} (${summary.items.map(item => item.replace(/ [^ |]+\|/, ' ').replace(/ site$/, ' 사이트 전체')).join('; ') || '없음'})`;
   return [
-    `Host: ${probe.harness}; transport: ${probe.transport ?? 'unknown'}; Chrome: ${probe.chrome.found ? probe.chrome.kind : `not found (${probe.chrome.reason ?? 'unknown'})`}; Google key: ${probe.google_key ? 'present' : 'absent'}`,
-    `Analysis tools: ${probe.source_tools.join(', ') || 'none named'}; model judgments checked: ${conditions.model_judgments.length}`,
-    `Baseline blockers: ${listed(before)} → After blockers: ${after ? listed(after) : 'unknown (after not observed)'}; ` +
-      `after core unknown: ${after?.core_unknown ?? 'unknown'}; actual outcomes: ${verified.metrics.length ? 'see measured and missing states below' : 'not_connected / unknown'}`,
-    `Cost and capability limitations: ${verified.cost_issues.join('; ') || 'none recorded'}`,
-    `Metric source limitations: ${verified.metric_origin_limitations.join('; ') || 'no measured provider input'}`,
-    `Lab Core Web Vitals (reference, not scored): ${lab ? `LCP ${lab.lcp ?? 'unknown'} ms; CLS ${lab.cls ?? 'unknown'}` : 'not measured'}`,
-    ...(conditions.start_redirect ? [`Start address: ${conditions.start_redirect.from} leads to ${conditions.start_redirect.to}, so the audit ran on ${conditions.start_redirect.to}`] : []),
-    ...conditions.notes,
+    { label: '실행 환경', value: `${HARNESS_NAMES[probe.harness] ?? probe.harness}; 전송 방식 ${TRANSPORT_NAMES[probe.transport] ?? probe.transport ?? UNKNOWN}` },
+    { label: '크롬', value: probe.chrome.found ? probe.chrome.kind : `찾지 못함 (${CHROME_REASONS[probe.chrome.reason] ?? probe.chrome.reason ?? UNKNOWN})` },
+    { label: 'Google 키', value: probe.google_key ? '있음' : '없음' },
+    { label: '분석 도구', value: probe.source_tools.join(', ') || '지정 없음' },
+    { label: '확인한 모델 판단', value: count(conditions.model_judgments.length) },
+    { label: '이전 막는 문제', value: listed(before) },
+    { label: '이후 막는 문제', value: after ? listed(after) : `${UNKNOWN} (이후 단계를 보지 않음)` },
+    { label: '이후 결과 없는 핵심 검사', value: count(after?.core_unknown ?? null) },
+    { label: '실제 결과', value: verified.metrics.length ? "아래 '실제 결과'의 측정·빈칸 상태 참고" : '연결 안 됨 / 알 수 없음' },
+    { label: '비용·기능 제한', value: verified.cost_issues.join('; ') || '기록 없음' },
+    { label: '지표 출처 제한', value: verified.metric_origin_limitations.join('; ') || '측정된 제공자 입력 없음' },
+    { label: '실험실 Core Web Vitals (참고용, 점수에 넣지 않음)', value: lab ? `LCP ${lab.lcp ?? UNKNOWN} ms; CLS ${lab.cls ?? UNKNOWN}` : '측정하지 않음' },
+    ...(conditions.start_redirect ? [{ label: '시작 주소', value: `${conditions.start_redirect.from} → ${conditions.start_redirect.to} (이 주소로 연결되므로 감사는 ${conditions.start_redirect.to}에서 실행했습니다)` }] : []),
   ];
-};
+}
 
 /** `report.md` and the table rows `report.json` carries, both rendered from the composed report. */
 export function renderReport(composed, verified) {
@@ -187,18 +228,18 @@ export function renderReport(composed, verified) {
   const { run_context: context } = verified;
   const blanks = composed.remaining.map(x => [x.item, x.runbook_ids.join(', ')]);
   const latest = composed.completeness.map(row => row.after ?? row.before);
-  const markdown = `# optbrew report\n\n${verified.data_class === 'synthetic' ? '**Synthetic example — no real site or provider outcome.**\n\n' : ''}` +
-    `Target: ${html(context.target)}  \nEnvironment: ${html(context.environment)}  \nGoals: ${html(context.goals.join(', '))}  \n` +
-    `Comparison: ${html(verified.comparison.status)} (${html(verified.comparison.reasons.join(', ') || 'none')})  \n` +
-    `Result: ${html(composed.headline.text)}\n\n` +
-    `## Fix first\n\n${table(['Priority', 'Problem / URL', 'Evidence', 'Selected remedy', 'Change path or owner location', 'Cost / effort', 'Verification', 'Status'], tables.remediation)}\n\n` +
-    `## Completeness (pass rate within what was measured)\n\nHeadline:  \n${latest.map(phase => `- ${html(headlineLine(phase.headline))}  \n`).join('')}\n` +
-    `${table(['Area', 'Before', 'After', 'Difference', 'Coverage before → after', 'Missing bounds', 'Status', 'Coverage without field CWV (latest)'], tables.score)}\n\n` +
-    `## Still blank\n\n${table(['Missing, and what it adds', 'Runbooks'], blanks)}\n\n` +
-    `## Run conditions\n\n${conditionLines(composed.conditions, verified).map(line => `- ${html(line)}\n`).join('')}\n` +
-    `## Remaining work\n\n${table(['Problem', 'Reason', 'Needed input / authority', 'Next action', 'Reobserve when'], tables.remaining_work)}\n\n` +
-    `## Actual outcomes\n\n${table(['Engine / property', 'Metric', 'Window / sample', 'Before raw', 'After raw', 'Difference', 'Completion', 'Limitations'], tables.actual_outcomes)}\n\n` +
-    (tables.model_judgments.length ? `## Model judgments\n\n${table(['Phase', 'Check / unit', 'State', 'Evidence span (UTF-8 bytes, end excluded)', 'Basis'], tables.model_judgments)}\n\n` : '') +
-    `Evidence root: ${html(verified.evidence_root)}; run ID: ${html(context.run_id)}. Read report.json to replay raw score inputs.\n`;
+  const markdown = `# optbrew 보고서\n\n${verified.data_class === 'synthetic' ? `**${SYNTHETIC_BANNER}**\n\n` : ''}` +
+    `대상: ${html(context.target)}  \n환경: ${html(context.environment)}  \n목표: ${html(context.goals.join(', '))}  \n` +
+    `비교: ${html(verified.comparison.status)} (${html(verified.comparison.reasons.join(', ') || '없음')})  \n` +
+    `결론: ${html(composed.headline.text)}\n\n` +
+    `## ${SECTION_TITLES.fixes}\n\n${table(['우선순위', '문제 / 주소', '근거', '고르는 해결 방법', '고칠 위치 또는 사이트 담당자', '비용 / 노력', '확인 방법', '상태'], tables.remediation)}\n\n` +
+    `## ${SECTION_TITLES.completeness} (확인한 범위 안의 통과율)\n\n요약:  \n${latest.map(phase => `- ${html(headlineLine(phase.headline))}  \n`).join('')}\n` +
+    `${table(['영역', '이전', '이후', '차이', '확인 범위 이전 → 이후', '점수 범위', '상태', '방문자 실측(CWV)을 뺀 확인 범위(최신)'], tables.score)}\n\n` +
+    `## ${SECTION_TITLES.blank}\n\n${table(['비어 있는 것과 채우면 알 수 있는 것', '런북'], blanks)}\n\n` +
+    `## ${SECTION_TITLES.conditions}\n\n${[...composed.conditions.lines.map(({ label, value }) => `${label}: ${value}`), ...composed.conditions.notes].map(line => `- ${html(line)}\n`).join('')}\n` +
+    `## ${SECTION_TITLES.remaining}\n\n${table(['문제', '이유', '필요한 입력 / 권한', '다음 행동', '다시 볼 때'], tables.remaining_work)}\n\n` +
+    `## ${SECTION_TITLES.outcomes}\n\n${table(['검색 엔진 / 속성', '지표', '기간 / 표본', '이전 원값', '이후 원값', '차이', '완료 여부', '한계'], tables.actual_outcomes)}\n\n` +
+    (tables.model_judgments.length ? `## ${SECTION_TITLES.judgments}\n\n${table(['단계', '검사 / 대상', '상태', '근거 구간 (UTF-8 바이트, 끝 제외)', '근거'], tables.model_judgments)}\n\n` : '') +
+    `증거 폴더: ${html(verified.evidence_root)}; 실행 ID: ${html(context.run_id)}. 점수 계산에 쓴 원본 값은 report.json에서 다시 계산할 수 있습니다.\n`;
   return { markdown, tables };
 }
