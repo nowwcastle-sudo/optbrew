@@ -1,4 +1,4 @@
-# Report packet and evidence contract (v0.1.0)
+# Report packet and evidence contract (contract 2.0.0)
 
 `node skills/optbrew/scripts/cli.mjs report --input <packet.json> --output-dir <new-directory>` writes `report.json` and `report.md`. It makes no network or paid calls. It refuses to replace an existing report. A report is a local audit artifact; a local passing verification does not establish deployment, indexing, traffic, ranking, citations, or business impact.
 

@@ -186,7 +186,7 @@ test('P3/P4: rewriting the reason or the evaluator of a collector observation is
 test('an audit index from an older release is refused with a message that says what to do', async t => {
   const s = await forge(t);
   await s.rewrite(s.evidence('evidence-index.json'), v => { delete v.ledger_ref; delete v.modules; });
-  assert.throws(() => buildReport(s.packet), /produced by an older optbrew release.*re-run the audit/i);
+  assert.throws(() => buildReport(s.packet), /migration_required.*older optbrew release.*run the audit again/i);
 });
 
 test('headline: unresolved core checks and 79.95% coverage never read as sufficient', () => {

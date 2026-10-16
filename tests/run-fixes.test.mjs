@@ -241,7 +241,7 @@ test('the same problem on several pages is one fix row that says how many pages'
   assert.equal(rows.length, 1);
   assert.match(rows[0][1], /\(3 pages: /);
   assert.equal(report.composed.fixes.filter(fix => fix.check_id === 'document-title').length, 1);
-  const merged = mergeFindings([1, 2].map(i => ({ schema_version: '1.0.0', finding_id: `f${i}`, check_id: 'document-title', unit_key: `document-title|${SITE}/p`, unit_keys: [`document-title|${SITE}/p${i}`],
+  const merged = mergeFindings([1, 2].map(i => ({ schema_version: '2.0.0', finding_id: `f${i}`, check_id: 'document-title', unit_key: `document-title|${SITE}/p`, unit_keys: [`document-title|${SITE}/p${i}`],
     priority: 'P2', blocker: false, message: 'm', source_ref: `s${i}`, evidence_ref: 'e', remediation_ids: [], status: 'confirmed' })));
   assert.deepEqual(merged[0].unit_keys.sort(), [`document-title|${SITE}/p1`, `document-title|${SITE}/p2`], 'two sources of one issue keep every page');
 });

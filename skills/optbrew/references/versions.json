@@ -1,8 +1,8 @@
 {
   "release": "0.1.4",
-  "evaluation": "0.3.0",
-  "protocol": "0.1.0",
-  "contract_schema": "1.0.0",
+  "evaluation": "0.4.0",
+  "protocol": "0.2.0",
+  "contract_schema": "2.0.0",
   "install_record_schema": "1.0.0",
   "bundle_manifest_schema": "1.0.0",
   "evidence_record": "1"

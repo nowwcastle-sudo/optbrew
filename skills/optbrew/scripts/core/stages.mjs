@@ -16,6 +16,7 @@ import { lcpField, inpField, clsField } from './checks/cwv-field.mjs';
 import { openStore } from './evidence-store.mjs';
 import { OBSERVATION_SOURCES, buildJudgeQueue, mergeJudgments } from './judgments.mjs';
 import { keyHome, readGoogleKey } from './keys.mjs';
+import { MigrationRequired, assertCurrentEvidence } from './migration.mjs';
 import { groupPages, readPreflight, sameSite, selectPages } from './page-select.mjs';
 import { pageNeutral, problemsOf } from './findings.mjs';
 import { freezeProtocol } from './protocol.mjs';
@@ -587,6 +588,9 @@ export async function prepareOutput(out) {
     catch { return 'resume'; }
   }
   if (await exists(path.join(out, 'report.json'))) throw new Error('This folder already holds a finished audit. Use a new --out folder for a new one.');
+  // A folder an older optbrew started is neither resumed nor cleared: its evidence is not this release's to judge or delete.
+  const earlier = await readFile(path.join(out, CONTEXT_FILE), 'utf8').then(JSON.parse, () => null);
+  assertCurrentEvidence(earlier, 'run folder');
   if (queued) return 'resume';
   const names = await readdir(out).catch(() => []);
   const owned = [...FIRST_CALL_FILES, 'evidence', ...names.filter(name => OWNER_EXPORT_FILE.test(name) || OWNER_MAPPING_FILE.test(name))];
@@ -620,10 +624,12 @@ export async function restoreState({ out, answers }) {
   const evidenceDir = path.join(out, 'evidence');
   const store = openStore(evidenceDir);
   // Whatever fails while the stored evidence is read back or re-derived is one condition with one message.
-  const changed = async job => { try { return await job(); } catch { throw new Error(INDEX_CHANGED); } };
+  // A folder an older optbrew made is the exception: it is one plain migration sentence, not a change.
+  const changed = async job => { try { return await job(); } catch (error) { throw error instanceof MigrationRequired ? error : new Error(INDEX_CHANGED); } };
   const recorded = await changed(async () => JSON.parse(await readFile(store.indexRef, 'utf8')));
   const { context, intake } = await changed(async () => {
     const value = JSON.parse(await readFile(path.resolve(out, recorded.context_ref), 'utf8'));
+    assertCurrentEvidence(value, 'run folder');
     validateEntity('RunContext', value);
     if (recorded.run_id !== value.run_id) throw new Error('another run');
     for (const [name, sha] of Object.entries(recorded.documents)) if (sha256Of(await readFile(path.join(out, name))) !== sha) throw new Error('edited document');

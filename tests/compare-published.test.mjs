@@ -35,21 +35,22 @@ test('0.1.2 baselines are not comparable with 0.1.3 inputs: real published outpu
   assert.equal(after.run_context.evaluation_version, current.evaluation_version);
   assert.notEqual(current.evaluation_version, '0.2.0');
   assert.ok(score(after).every(item => item.evaluation_version === current.evaluation_version));
-  // A 0.1.2 baseline has no environment_probe (nor protocol.render), so scoring it as a current input fails the schema ...
-  assert.throws(() => score(before), /environment_probe: required/, 'the current bundle must not score a 0.1.2 baseline');
-  // ... but comparing against it is answered in plain words, not with a schema error.
+  // The current bundle refuses to score a 0.1.2 baseline, in one plain sentence (its version labels are older) ...
+  assert.throws(() => score(before), /^ContractError: migration_required: this score input was made with audit protocol .+ run the audit again/);
+  // ... and comparing against it is answered in plain words, not with a schema error.
   const result = compare(before, after);
   assert.equal(result.status, 'not_comparable');
   assert.equal(result.reasons.length, 1);
   assert.match(result.reasons[0], /^the baseline was made with audit protocol .+, which is older than the current one; run a new audit to compare$/);
   assert.deepEqual(result.score_deltas, []);
+  assert.equal(compare(before, null).status, 'no_after');
 
-  // With only the render field and the probe added, the evaluation version is what makes the two incomparable.
+  // Adding the render field and the probe does not make an old input current: its version labels still say which release made it.
   const completed = structuredClone(before);
   completed.run_context.environment_probe = environmentProbe();
   completed.run_context.protocol.render = { enabled: false, pages: [], max_render_requests: 300 };
-  assert.throws(() => score(completed), /evaluation/i);
-  assert.ok(compare(completed, after).reasons.includes('evaluation_version_changed'));
+  assert.throws(() => score(completed), /migration_required/);
+  assert.equal(compare(completed, after).status, 'not_comparable');
 
   // The shipped CLI reports the same verdict for the real 0.1.2 file.
   const output = path.join(temp, 'compare.json');

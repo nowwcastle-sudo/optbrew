@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 import { validateEntity, cwvVerdict, ContractError } from './contracts.mjs';
 import { versions } from './config.mjs';
 import { compileUnits, scoreWeighted } from './weights.mjs';
+import { assertCurrentEvidence } from './migration.mjs';
 
 const registry = JSON.parse(readFileSync(new URL('../../references/check-registry.json', import.meta.url)));
 const profiles = JSON.parse(readFileSync(new URL('../../references/profiles.json', import.meta.url)));
@@ -38,6 +39,7 @@ function band(score) {
 
 /** Readiness scores are local audit status, never predicted search or AI outcomes. */
 export function score(input) {
+  assertCurrentEvidence(input, 'score input');
   validateEntity('ScoreInput', input);
   assertEvaluationIdentity(input.run_context);
   const units = compileUnits(input, 'SEO');
@@ -71,7 +73,7 @@ export function score(input) {
     const readiness_status = readiness === 'measured' && input.run_context.audited !== true ? 'unverified' : readiness;
     const result = { schema_version: versions().contract_schema, evaluation_version: input.run_context.evaluation_version,
       profile, ...weighted, band: band(weighted.M === 0 ? null : 100 * weighted.N / weighted.M), readiness_status,
-      blockers, unknown_core, source_ref: 'optbrew:scoring:0.1.0' };
+      blockers, unknown_core, source_ref: `optbrew:scoring:${versions().evaluation}` };
     return validateEntity('ScoreResult', result);
   });
 }

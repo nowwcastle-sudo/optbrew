@@ -5,9 +5,9 @@ import { freezeProtocol } from '../skills/optbrew/scripts/core/protocol.mjs';
 import { environmentProbe } from './support/probe.mjs';
 
 const context = () => ({
-  schema_version: '1.0.0', run_id: 'run-a', target: 'example.com', environment: 'local',
-  goals: ['SEO'], allowed_changes: [], scope: {}, evaluation_version: '0.3.0',
-  protocol_version: '0.1.0', data_sources: [], cost_decision: {}, environment_probe: environmentProbe(), evidence_ref: 'evidence/context.json',
+  schema_version: '2.0.0', run_id: 'run-a', target: 'example.com', environment: 'local',
+  goals: ['SEO'], allowed_changes: [], scope: {}, evaluation_version: '0.4.0',
+  protocol_version: '0.2.0', data_sources: [], cost_decision: {}, environment_probe: environmentProbe(), evidence_ref: 'evidence/context.json',
   protocol: {
     page_types: [{ id: 'primary', urls: [{ original: 'https://example.com/', normalized: 'https://example.com/' }] }],
     engines: ['google'], families: [{ family_id: 'fetch-response', applicable: true }],
@@ -49,7 +49,7 @@ test('robots and sitemap documents cannot be scored page URLs', () => {
 });
 
 test('invalid q, ratio, duplicate URL and nonfinite JSON values are rejected', () => {
-  const observation = { schema_version: '1.0.0', observation_id: 'o1', check_id: 'fetch-response',
+  const observation = { schema_version: '2.0.0', observation_id: 'o1', check_id: 'fetch-response',
     family_id: 'fetch-response', unit_key: 'fetch-response|google|https://example.com/',
     state: 'unknown', q: 0.7, partial_basis: null, reason: 'timeout',
     evaluator_type: 'code', source_ref: 'local', evidence_ref: 'e1' };
@@ -57,7 +57,7 @@ test('invalid q, ratio, duplicate URL and nonfinite JSON values are rejected', (
   assert.throws(() => validateEntity('CheckObservation', { ...observation, state: 'fail', q: null }), ContractError);
   assert.throws(() => validateEntity('CheckObservation', { ...observation, state: 'partial', q: 0.3,
     partial_basis: { kind: 'ratio', numerator: 1, denominator: 3 } }), ContractError);
-  assert.throws(() => validateEntity('ScoreInput', { schema_version: '1.0.0', run_context: context(),
+  assert.throws(() => validateEntity('ScoreInput', { schema_version: '2.0.0', run_context: context(),
     observations: [], extra: Infinity }), ContractError);
   const invalidContext = context();
   invalidContext.scope = new Date('2026-10-14T00:00:00Z');
@@ -106,7 +106,7 @@ test('selected URLs cannot opt out of fetch or public index policy with bare fla
 });
 
 test('family-specific verdict modes reject partial core policy and invented ratios', () => {
-  const base = { schema_version: '1.0.0', observation_id: 'policy', check_id: 'index-policy',
+  const base = { schema_version: '2.0.0', observation_id: 'policy', check_id: 'index-policy',
     family_id: 'index-policy', unit_key: 'index-policy|https://example.com/',
     state: 'partial', q: 0.5, partial_basis: { kind: 'threshold_half' },
     reason: 'confirmed noindex', evaluator_type: 'code', source_ref: 'synthetic', evidence_ref: 'e/policy' };

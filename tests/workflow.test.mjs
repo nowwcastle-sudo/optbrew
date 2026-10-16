@@ -65,7 +65,7 @@ test('installed junction and physical entrypoints both audit and score; imports 
     const observations = JSON.parse(await readFile(path.join(outputDir, 'evidence/observations.json'), 'utf8'));
     assert.ok(observations.some(x => x.check_id === 'index-policy' && x.state === 'fail'));
     const input = path.join(root, `input-${index}.json`), result = path.join(root, `score-${index}.json`);
-    await writeFile(input, JSON.stringify({ schema_version: '1.0.0', run_context: context, observations }));
+    await writeFile(input, JSON.stringify({ schema_version: '2.0.0', run_context: context, observations }));
     const scored = await runNode([path.join(skillRoot, 'scripts/cli.mjs'), 'score', '--input', input, '--output', result], projectRoot);
     assert.equal(scored.code, 0, scored.stderr);
     const scores = JSON.parse(await readFile(result, 'utf8'));
@@ -151,7 +151,7 @@ test('real local HTTP baseline, authorized edit and same-condition rescan clear 
   await writeFile(siteFile, after);
   assert.deepEqual(await readFile(backupFile), before);
   const followup = await scan('after');
-  const input = result => ({ schema_version: '1.0.0', run_context: context, observations: result.observations });
+  const input = result => ({ schema_version: '2.0.0', run_context: context, observations: result.observations });
   const beforeInput = input(baseline), afterInput = input(followup);
   const mislabeled = structuredClone(beforeInput);
   mislabeled.run_context.evaluation_version = '9.9.9';
@@ -195,7 +195,7 @@ test('real local HTTP baseline, authorized edit and same-condition rescan clear 
     }
   }
   const beforeRaw = baseline.artifacts[0].evidence_ref, afterRaw = followup.artifacts[0].evidence_ref;
-  const costs = { schema_version: '1.0.0', run_id: context.run_id, budgets: [], reservations: [], settlements: [],
+  const costs = { schema_version: '2.0.0', run_id: context.run_id, budgets: [], reservations: [], settlements: [],
     approval_ref: null, source_ref: 'local-fixture', evidence_ref: 'costs.json' };
   await record('costs.json', costs, 'record');
   const resolved = afterInput.observations.find(x => x.check_id === 'index-policy');
@@ -205,14 +205,14 @@ test('real local HTTP baseline, authorized edit and same-condition rescan clear 
     checks: [{ id: 'raw-response', status: 'passed', observed: 'Same URL served changed local HTML',
       evidence_ref: afterRaw, after_hash: followup.artifacts[0].content_hash }] };
   await record('verification.json', verification, 'verification');
-  const packet = { schema_version: '1.0.0', run_context: context,
+  const packet = { schema_version: '2.0.0', run_context: context,
     baseline: { input: beforeInput, scores: score(beforeInput) },
     after: { input: afterInput, scores: score(afterInput) }, comparison: delta, metrics: [],
-    findings: ['index-policy', 'document-title'].map(family => ({ schema_version: '1.0.0', finding_id: family,
+    findings: ['index-policy', 'document-title'].map(family => ({ schema_version: '2.0.0', finding_id: family,
       check_id: family, unit_key: `${family}|${url}`, priority: family === 'index-policy' ? 'P0' : 'P1',
       blocker: family === 'index-policy', message: family === 'index-policy' ? 'Unexpected noindex' : 'Missing title',
       source_ref: 'optbrew:collector', evidence_ref: beforeRaw, remediation_ids: [], status: 'confirmed' })),
-    changes: [{ schema_version: '1.0.0', change_id: 'local-html-edit', finding_ids: ['index-policy', 'document-title'], analysis: { tools: [], queries: [], self_analysis: true },
+    changes: [{ schema_version: '2.0.0', change_id: 'local-html-edit', finding_ids: ['index-policy', 'document-title'], analysis: { tools: [], queries: [], self_analysis: true },
       environment: 'local', path: 'site.html', before_hash: baseline.artifacts[0].content_hash,
       after_hash: followup.artifacts[0].content_hash, backup_ref: beforeRaw,
       evidence_ref: afterRaw, verification: { status: 'passed', deployed: false, evidence_ref: 'verification.json',

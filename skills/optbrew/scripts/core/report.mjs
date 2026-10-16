@@ -4,6 +4,8 @@ import path from 'node:path';
 import { ContractError, validateEntity } from './contracts.mjs';
 import { endpoints, requestLimit, versions } from './config.mjs';
 import { score } from './score.mjs';
+import { assertCurrentEvidence, MigrationRequired } from './migration.mjs';
+import { CWV_FAMILIES } from './checks/cwv-field.mjs';
 import { compare } from './compare.mjs';
 import { freezeProtocol } from './protocol.mjs';
 import { measurePanel } from './metrics.mjs';
@@ -475,6 +477,16 @@ function storedCwv(audit, requireRef) {
   });
 }
 
+/**
+ * A planned collector observation the packet lacks. A field Core Web Vitals unit is one only an older optbrew left out of the
+ * plan, which is a migration; any other missing unit is a packet that does not match its evidence.
+ */
+function missingPlanned(expected) {
+  return CWV_FAMILIES.includes(expected.family_id)
+    ? new MigrationRequired('report packet', `lacks the planned ${expected.family_id} reading, which an older optbrew did not collect`)
+    : new ContractError(`planned collector observation missing: ${expected.unit_key}`);
+}
+
 function checkAuditPhase(input, phase, snapshot, requireRef) {
   if (!input) return;
   const observations = input.observations.filter(x => x.source_ref === 'optbrew:collector');
@@ -490,7 +502,7 @@ function checkAuditPhase(input, phase, snapshot, requireRef) {
   if (!Array.isArray(collection.artifacts) || !Array.isArray(audit.raw) || !Array.isArray(savedObservations))
     throw new ContractError('audit snapshot files incomplete');
   if (!Array.isArray(audit.modules) || !audit.ledger_ref || !Array.isArray(audit.responses) || !Array.isArray(audit.failures))
-    throw new ContractError('audit evidence was produced by an older optbrew release (it lacks the request ledger, module list or failure records); re-run the audit with optbrew 0.1.3 and build a new packet');
+    throw new MigrationRequired('report packet', 'was made by an older optbrew release (it lacks the request ledger, module list or failure records)');
   for (const name of audit.modules) if (!Array.isArray(moduleOutputs[name])) throw new ContractError(`planned module output missing: ${name}`);
   const naverPlanned = audit.modules.includes('naver-searchadvisor');
   const rawRefs = new Set();
@@ -576,7 +588,7 @@ function checkAuditPhase(input, phase, snapshot, requireRef) {
   const shape = x => [x.state, x.q, x.partial_basis, x.evidence_ref, x.reason, x.evaluator_type, x.source_ref, x.applicability_decision ?? null, x.measurement ?? null];
   for (const expected of derived) {
     if (!observations.some(x => x.unit_key === expected.unit_key) || !savedObservations.some(x => x.unit_key === expected.unit_key))
-      throw new ContractError(`planned collector observation missing: ${expected.unit_key}`);
+      throw missingPlanned(expected);
     const have = observations.find(x => x.unit_key === expected.unit_key);
     if (!same(shape(have), shape(expected)))
       throw new ContractError(expected.family_id === 'search-crawl-policy' ? 'crawl verdict differs from bound robots evidence and module output' :
@@ -638,6 +650,7 @@ function modelJudgmentRows(phase, input, snapshot, requireRef) {
 
 /** Recompute scores and metrics from contained run evidence; render four design tables. */
 export function buildReport(packet) {
+  assertCurrentEvidence(packet, 'report packet');
   validateEntity('ReportPacket', packet);
   if (sensitive.test(JSON.stringify(packet))) throw new ContractError('private identifier or secret in report packet');
   for (const id of packet.answered_runbooks ?? []) if (!runbookEntry(id)) throw new ContractError(`answered_runbooks names an unknown runbook: ${id}`);
@@ -805,7 +818,7 @@ export function buildReport(packet) {
   ];
   if (packet.costs.reservations.some(x => x.provider === 'anthropic') ||
       (packet.capabilities?.selected ?? []).some(x => x.provider === 'anthropic'))
-    costIssues.push('Anthropic direct v0.1.0: text-only; claude-fable-5-1, claude-opus-5-5, claude-sonnet-5-5, claude-haiku-5-5; max output 128000; one token reserve >=1000000+max_tokens per attempt; tools/search and currency-only or mixed bounds unsupported; reservation is capacity, not actual billing');
+    costIssues.push(`Anthropic direct v${versions().release}: text-only; claude-fable-5-1, claude-opus-5-5, claude-sonnet-5-5, claude-haiku-5-5; max output 128000; one token reserve >=1000000+max_tokens per attempt; tools/search and currency-only or mixed bounds unsupported; reservation is capacity, not actual billing`);
   const verified = { schema_version: versions().contract_schema, run_context: packet.run_context,
     data_class: packet.data_class ?? 'unknown', baseline: { input: packet.baseline.input, scores: baselineScores },
     after: packet.after ? { input: packet.after.input, scores: afterScores } : null, comparison,

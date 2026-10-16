@@ -73,7 +73,7 @@ export async function buildScenario(site, paths, { engines = ['google'], robots 
   await record('intake.json', { run_id: context.run_id, target: context.target, protocol_hash: freezeProtocol(context).protocol_hash,
     approved_by: 'final review fixture', decisions: context.protocol.families.filter(f => f.applicability_decision).map(f => ({
       scope: 'family', family_id: f.family_id, condition: f.applicability_decision.condition, reason: f.applicability_decision.reason })) }, 'intake');
-  const costs = { schema_version: '1.0.0', run_id: context.run_id, budgets: [], reservations: [], settlements: [],
+  const costs = { schema_version: '2.0.0', run_id: context.run_id, budgets: [], reservations: [], settlements: [],
     approval_ref: null, source_ref: 'review-fixture', evidence_ref: 'costs.json' };
   await record('costs.json', costs);
   for (const file of ['collection.json', 'modules.json', 'observations.json', 'evidence-index.json'])
@@ -84,8 +84,8 @@ export async function buildScenario(site, paths, { engines = ['google'], robots 
     if (artifact.response_ref) await add(artifact.response_ref, 'response_record', 'optbrew:collector');
     if (artifact.failure_ref) await add(artifact.failure_ref, 'failure_record', 'optbrew:collector');
   }
-  const input = { schema_version: '1.0.0', run_context: context, observations: audit.observations };
-  const packet = { schema_version: '1.0.0', run_context: context, baseline: { input, scores: score(input) }, after: null,
+  const input = { schema_version: '2.0.0', run_context: context, observations: audit.observations };
+  const packet = { schema_version: '2.0.0', run_context: context, baseline: { input, scores: score(input) }, after: null,
     comparison: compare(input, null), metrics: [], findings: [], changes: [], costs, remaining: [],
     evidence_root: dir, evidence_index: index, audit_ref: audit.evidence_ref, source_ref: 'review-fixture', data_class: 'synthetic' };
   const evidence = name => path.join(dir, 'evidence', name);
@@ -108,7 +108,7 @@ export async function buildScenario(site, paths, { engines = ['google'], robots 
     },
     observation: (check, urlPath) => packet.baseline.input.observations.find(x => x.check_id === check && x.unit_key.endsWith(origin + urlPath)),
     finding(observation, overrides = {}) {
-      return { schema_version: '1.0.0', finding_id: `finding-${observation.check_id}`, check_id: observation.check_id,
+      return { schema_version: '2.0.0', finding_id: `finding-${observation.check_id}`, check_id: observation.check_id,
         unit_key: observation.unit_key, priority: 'P0', blocker: true, message: 'Unexpected noindex',
         source_ref: observation.source_ref, evidence_ref: observation.evidence_ref, remediation_ids: [], status: 'confirmed', ...overrides };
     } };

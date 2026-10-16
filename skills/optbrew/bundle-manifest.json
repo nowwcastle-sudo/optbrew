@@ -1,8 +1,8 @@
 {
   "schema_version": "1.0.0",
   "release_version": "0.1.4",
-  "evaluation_version": "0.3.0",
-  "protocol_version": "0.1.0",
+  "evaluation_version": "0.4.0",
+  "protocol_version": "0.2.0",
   "evaluation_sources": [
     {
       "path": "references/check-registry.json",
@@ -14,15 +14,15 @@
     },
     {
       "path": "references/scoring.md",
-      "sha256": "c6991e2a982c2f04b400a3d378fe4613c0da3148979311aac87b441ead2169b4"
+      "sha256": "a4c5c7ee3aff1af9c58047d7f7939cf1dc9b2db63d8894db85a405b824d90bd5"
     },
     {
       "path": "references/measurement.md",
-      "sha256": "8879fc0e24bff3f9a691ce8e0c5c4c35733e78f854acc973d0b43bd9b076be1d"
+      "sha256": "5a44d32026516b19685c96a55b234a9c6fc981fbcd2ce6ef73504c748fb07e9d"
     },
     {
       "path": "scripts/core/score.mjs",
-      "sha256": "32a4d5d4e727d910447a5b116a3caa99aa2f8bf0a92bf7c45ca31db43d398d5a"
+      "sha256": "7388e9d8762783896b3647d52b200c28c49ff449e4679bd29e8e6a055884384a"
     },
     {
       "path": "scripts/core/weights.mjs",
@@ -30,26 +30,26 @@
     },
     {
       "path": "scripts/core/contracts.mjs",
-      "sha256": "f85eb8e8d73d10dd0c1cfcf047df40d6194c22f8c9e54c8f177f716f0de97fd8"
+      "sha256": "162f2531d72e286c0b98f58c6e6d1ec0d68de6aacb12903d00c19bf25c7dfb70"
     },
     {
       "path": "scripts/core/compare.mjs",
-      "sha256": "aa42fc630227eea62aba7bd63370436ff1bafc57523044f6f0d597bff6d144f7"
+      "sha256": "d79feaeba431ef7f78a9c10de9f14c88bcb31904dafe5db30460048174b5b3e4"
     },
     {
       "path": "scripts/core/metrics.mjs",
-      "sha256": "78b74c079c03b5d8fda8be886e0a6ede4c6af357905dfe4d9d032cb112453869"
+      "sha256": "0ae1b690472ea3e6e8c7a2d7f10fdaf37a7918e4fd2dff4bdffee263d5553c0a"
     },
     {
       "path": "scripts/core/bootstrap.mjs",
       "sha256": "703d5c16878c526114afb540e4a6d54bd74831f35a824c03a839e2480097d279"
     }
   ],
-  "evaluation_hash": "505836da4ad0df1430b1051ccb3e223c3b1d23161bf0045c5c1f0deac51fc99b",
+  "evaluation_hash": "5aba23662cf1a193e1b2e4b278813d5e79df23cd0aa049d09600476c5b7e63e4",
   "protocol_sources": [
     {
       "path": "references/schemas/contract.schema.json",
-      "sha256": "c3af6306091df4d8ae084b69c0724a7af8988c8bdaa53eb09d60fd877a3952d5"
+      "sha256": "fc66086b52bc5200a1562203aa683a613592d0179d6735ec0ec19f2a5b376618"
     },
     {
       "path": "references/limits.json",
@@ -60,7 +60,7 @@
       "sha256": "2c7beef888e5df3df84f0a0d4d2e06ed4124bde70c01da7ae740dc75c2380bda"
     }
   ],
-  "protocol_hash": "751c4fd0a18deae56a8ee4cbf41db0ebd014657ac57c978ea4963c9f8fb6ff92",
+  "protocol_hash": "632e17b469982fbb21b064b2422e884ee280e8ea4f315ffea1cdafda46d045af",
   "files": [
     {
       "path": "LICENSE",
@@ -584,7 +584,7 @@
     },
     {
       "path": "references/measurement.md",
-      "sha256": "8879fc0e24bff3f9a691ce8e0c5c4c35733e78f854acc973d0b43bd9b076be1d"
+      "sha256": "5a44d32026516b19685c96a55b234a9c6fc981fbcd2ce6ef73504c748fb07e9d"
     },
     {
       "path": "references/policies.md",
@@ -600,7 +600,7 @@
     },
     {
       "path": "references/report.md",
-      "sha256": "9cc715bfc001445c2fad95e2239ed41dedf90e698be71238ac51ac01d8d4cc6e"
+      "sha256": "6debb52406915853ca6c93086e92a349e035b04bf0015793a15e48ac799c40a9"
     },
     {
       "path": "references/routing.md",
@@ -664,11 +664,11 @@
     },
     {
       "path": "references/schemas/contract.schema.json",
-      "sha256": "c3af6306091df4d8ae084b69c0724a7af8988c8bdaa53eb09d60fd877a3952d5"
+      "sha256": "fc66086b52bc5200a1562203aa683a613592d0179d6735ec0ec19f2a5b376618"
     },
     {
       "path": "references/scoring.md",
-      "sha256": "c6991e2a982c2f04b400a3d378fe4613c0da3148979311aac87b441ead2169b4"
+      "sha256": "a4c5c7ee3aff1af9c58047d7f7939cf1dc9b2db63d8894db85a405b824d90bd5"
     },
     {
       "path": "references/source-analysis.md",
@@ -676,7 +676,7 @@
     },
     {
       "path": "references/versions.json",
-      "sha256": "4e7456d8dd426a2d202ba69197147b6a88b3851e6494f97902a81769ec003631"
+      "sha256": "bc3b8da4b02d25e869a9945b867195eabde4c87f61184ce6fc908a9ec3efc16e"
     },
     {
       "path": "scripts/adapters/anthropic.mjs",
@@ -788,7 +788,7 @@
     },
     {
       "path": "scripts/core/compare.mjs",
-      "sha256": "aa42fc630227eea62aba7bd63370436ff1bafc57523044f6f0d597bff6d144f7"
+      "sha256": "d79feaeba431ef7f78a9c10de9f14c88bcb31904dafe5db30460048174b5b3e4"
     },
     {
       "path": "scripts/core/config.mjs",
@@ -796,7 +796,7 @@
     },
     {
       "path": "scripts/core/contracts.mjs",
-      "sha256": "f85eb8e8d73d10dd0c1cfcf047df40d6194c22f8c9e54c8f177f716f0de97fd8"
+      "sha256": "162f2531d72e286c0b98f58c6e6d1ec0d68de6aacb12903d00c19bf25c7dfb70"
     },
     {
       "path": "scripts/core/cost-ledger.mjs",
@@ -844,7 +844,11 @@
     },
     {
       "path": "scripts/core/metrics.mjs",
-      "sha256": "78b74c079c03b5d8fda8be886e0a6ede4c6af357905dfe4d9d032cb112453869"
+      "sha256": "0ae1b690472ea3e6e8c7a2d7f10fdaf37a7918e4fd2dff4bdffee263d5553c0a"
+    },
+    {
+      "path": "scripts/core/migration.mjs",
+      "sha256": "a48421a8cda8efbf30c97397f1cc4145e2779df58543a399a91c35d61a73a3ec"
     },
     {
       "path": "scripts/core/page-select.mjs",
@@ -868,7 +872,7 @@
     },
     {
       "path": "scripts/core/report.mjs",
-      "sha256": "1f5a524067836107b74756f0f0330a0e0901e4646dc1178924de903ca24b8d58"
+      "sha256": "7832efbd682962470636437dfd0be880466211c571b33f5ab1f9b931efb9411c"
     },
     {
       "path": "scripts/core/runbooks.mjs",
@@ -880,7 +884,7 @@
     },
     {
       "path": "scripts/core/score.mjs",
-      "sha256": "32a4d5d4e727d910447a5b116a3caa99aa2f8bf0a92bf7c45ca31db43d398d5a"
+      "sha256": "7388e9d8762783896b3647d52b200c28c49ff449e4679bd29e8e6a055884384a"
     },
     {
       "path": "scripts/core/secrets.mjs",
@@ -888,7 +892,7 @@
     },
     {
       "path": "scripts/core/stages.mjs",
-      "sha256": "927c5f2ece6f095d82198d034cbf131350ba4e0665f7215cb00ac139da6efa20"
+      "sha256": "1512316fd8a57b908db802b8829ed6a0720ddf3fb0523fbc9e7e3b72e3bdefa8"
     },
     {
       "path": "scripts/core/transport.mjs",
@@ -915,5 +919,5 @@
       "sha256": "a53223b7eefab2204c026a62b1da04cfdb8a07be8d3749613e8241a81b027d9b"
     }
   ],
-  "bundle_hash": "eec199a42f450fa78dce49c3512d4b1cf241a1d7889e8b7d306bc12c7161582b"
+  "bundle_hash": "a67bbb7ffb2ebac9a6e5ba33bafe609f077b290740280770c6712fe43891a8c7"
 }

@@ -3,6 +3,7 @@ import os from 'node:os';
 import path from 'node:path';
 import { deflateRawSync } from 'node:zlib';
 import { preflight } from '../../skills/optbrew/scripts/preflight.mjs';
+import { versions } from '../../skills/optbrew/scripts/core/config.mjs';
 import { environmentProbe } from './probe.mjs';
 import { tempDir } from './temp-dir.mjs';
 
@@ -59,7 +60,7 @@ export function bigSite(count) {
 export const questions = [{ id: 'q1', question: 'What does Brew Cafe sell?', category: 'brand' }];
 
 /** Valid start answers for `url`; `over` replaces top-level fields. */
-export const answersFor = (url, over = {}) => ({ schema_version: '1.0.0', guidance_level: 'brief', url, goals: ['SEO'], questions,
+export const answersFor = (url, over = {}) => ({ schema_version: versions().contract_schema, guidance_level: 'brief', url, goals: ['SEO'], questions,
   facts: [], sample_mode: 'sample', max_urls: 50, source_tools: [],
   probe: environmentProbe({ chrome: { found: false, kind: null, reason: 'chrome_not_found' } }), ...over });
 

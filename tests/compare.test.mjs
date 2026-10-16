@@ -8,7 +8,7 @@ import os from 'node:os';
 import path from 'node:path';
 
 const fixture = () => JSON.parse(readFileSync(new URL('./fixtures/scoring/partial.json', import.meta.url)));
-const pass = (unit, id = unit) => ({ schema_version: '1.0.0', observation_id: id,
+const pass = (unit, id = unit) => ({ schema_version: '2.0.0', observation_id: id,
   check_id: unit.split('|')[0], family_id: unit.split('|')[0], unit_key: unit,
   state: 'pass', q: 1, partial_basis: null, reason: 'synthetic evidence',
   evaluator_type: 'code', source_ref: 'synthetic', evidence_ref: `synthetic/${id}` });
@@ -39,7 +39,7 @@ test('target, URLs, page type, conditions, questions, surface, model, environmen
     x => { x.run_context.protocol.surfaces = ['claude_web']; },
     x => { x.run_context.protocol.models = ['model-v2']; },
     x => { x.run_context.environment = 'production'; },
-    x => { x.run_context.evaluation_version = '0.4.0'; },
+    x => { x.run_context.evaluation_version = '0.5.0'; },
   ];
   for (const change of mutate) {
     const before = fixture(), after = fixture(); change(after);
@@ -97,10 +97,10 @@ test('compare CLI rejects changed conditions without writing a misleading score 
   assert.ok(result.reasons.includes('environment_changed'));
 });
 
-test('an input from before the render stage is not comparable, in plain words, instead of a schema error', () => {
+test('an input made by an older release is not comparable, in plain words, found by its version labels', () => {
   const current = fixture();
   const older = structuredClone(current);
-  delete older.run_context.protocol.render;
+  Object.assign(older.run_context, { schema_version: '1.0.0', evaluation_version: '0.3.0', protocol_version: '0.1.0' });
   for (const [before, after, who] of [[older, current, 'baseline'], [current, older, 'follow-up']]) {
     const result = compare(before, after);
     assert.equal(result.status, 'not_comparable');
@@ -108,7 +108,10 @@ test('an input from before the render stage is not comparable, in plain words, i
     assert.equal(result.reasons.length, 1);
     assert.ok(result.reasons[0].startsWith(`the ${who} was made with audit protocol 0.1.0, which is older than the current one`), result.reasons[0]);
   }
-  assert.equal(compare(older, null).status, 'not_comparable');
+  assert.equal(compare(older, null).status, 'no_after');
+  const shapeOnly = structuredClone(current);
+  delete shapeOnly.run_context.protocol.render;
+  assert.throws(() => compare(shapeOnly, current), /render/, 'a current file that lacks render is a broken file, not an old one');
   const broken = structuredClone(current);
   delete broken.run_context.target;
   assert.throws(() => compare(broken, current), /target/);

@@ -45,7 +45,7 @@ function addChange(run, id, { environment = 'local', status = 'passed', deployed
     path: 'site/page.html', after_hash: receiptHash, environment, target: 'example.com',
     checks: [{ id: 'raw-response', status: 'passed', observed: 'file hash checked',
       evidence_ref: `${id}-after.txt`, after_hash: sha(after) }], ...(deployment ? { deployment } : {}) }, 'verification');
-  run.packet.changes.push({ schema_version: '1.0.0', change_id: id, finding_ids: ['module:a'], analysis: { tools: [], queries: [], self_analysis: true },
+  run.packet.changes.push({ schema_version: '2.0.0', change_id: id, finding_ids: ['module:a'], analysis: { tools: [], queries: [], self_analysis: true },
     environment, path: 'site/page.html', before_hash: sha(before), after_hash: sha(after),
     backup_ref: `${id}-before.txt`, evidence_ref: `${id}-after.txt`,
     verification: { status, deployed, evidence_ref: `${id}-verify.json` } });
@@ -64,7 +64,7 @@ function collectedArtifact(run, prefix, ref, extra = {}) {
 }
 /** The collector also plans a document-title unit for a selected HTML page; a present title replays as unknown. */
 function titleObservation(ref) {
-  return { schema_version: '1.0.0', observation_id: 'collector-title', check_id: 'document-title', family_id: 'document-title',
+  return { schema_version: '2.0.0', observation_id: 'collector-title', check_id: 'document-title', family_id: 'document-title',
     unit_key: 'document-title|https://example.com/', state: 'unknown', q: null, partial_basis: null,
     reason: 'Raw HTML has a title; uniqueness and descriptiveness are not established', evaluator_type: 'code',
     source_ref: 'optbrew:collector', evidence_ref: ref };
@@ -101,7 +101,7 @@ function handAudit(run, { prefix, collectionRef, ref = null, homeError = 'fetch_
       evidence_ref: collectionRef, headers: {}, header_lines: [], redirect_chain: [], unanswered: 1, failure_ref: failureRef, capability: 'none', raw_html_ref: null });
     entries.push({ url, requests: 1, outcome: 'error', skipped_reason: null, error });
     raw.push({ normalized_url: url, evidence_ref: collectionRef, content_hash: null });
-    observations.push({ schema_version: '1.0.0', observation_id: `failed-${index}`, check_id: 'fetch-response', family_id: 'fetch-response',
+    observations.push({ schema_version: '2.0.0', observation_id: `failed-${index}`, check_id: 'fetch-response', family_id: 'fetch-response',
       unit_key: `fetch-response|${url}`, state: 'unknown', q: null, partial_basis: null, reason: 'Request did not finish',
       evaluator_type: 'code', source_ref: 'optbrew:collector', evidence_ref: collectionRef });
   }
@@ -109,7 +109,7 @@ function handAudit(run, { prefix, collectionRef, ref = null, homeError = 'fetch_
   const planned = run.packet.run_context.protocol.families.filter(x => x.applicable).map(x => x.family_id);
   for (const origin of new Set(urls.map(url => new URL(url).origin)))
     for (const family_id of ['lcp-field', 'inp-field', 'cls-field'].filter(id => planned.includes(id)))
-      observations.push({ schema_version: '1.0.0', observation_id: `cwv-${family_id}`, check_id: family_id, family_id, unit_key: `${family_id}|${origin}`,
+      observations.push({ schema_version: '2.0.0', observation_id: `cwv-${family_id}`, check_id: family_id, family_id, unit_key: `${family_id}|${origin}`,
         state: 'unknown', q: null, partial_basis: null, reason: 'field_data_unavailable', evaluator_type: 'code', source_ref: 'optbrew:collector',
         evidence_ref: artifacts.find(artifact => new URL(artifact.normalized_url).origin === origin).evidence_ref });
   addEvidence(run, prefix + '-ledger.json', { entries, limit: 50 }, 'record', 'optbrew:collector');
@@ -652,7 +652,7 @@ test('review P1-5: URL and unit exclusions require matching approved decision re
   try {
     const unit_key = 'document-title|https://example.com/about';
     const decision = { condition: 'not_html', reason: 'synthetic non-HTML response', evidence_ref: 'unit-decision.json' };
-    unitRun.packet.baseline.input.observations.push({ schema_version: '1.0.0', observation_id: 'unit-na',
+    unitRun.packet.baseline.input.observations.push({ schema_version: '2.0.0', observation_id: 'unit-na',
       check_id: 'document-title', family_id: 'document-title', unit_key, state: 'not_applicable', q: null,
       partial_basis: null, reason: 'not HTML', evaluator_type: 'human', source_ref: 'synthetic',
       evidence_ref: 'unit-decision.json', applicability_decision: decision });
@@ -793,7 +793,7 @@ test('final review I9: a verified duplicate-title verdict over a present title i
   const run = copyRun();
   try {
     const unit_key = 'document-title|https://example.com/about';
-    run.packet.baseline.input.observations.push({ schema_version: '1.0.0', observation_id: 'duplicate-title',
+    run.packet.baseline.input.observations.push({ schema_version: '2.0.0', observation_id: 'duplicate-title',
       check_id: 'document-title', family_id: 'document-title', unit_key, state: 'fail', q: 0, partial_basis: null,
       reason: 'Title duplicates https://example.com/ (reviewed uniqueness evidence)', evaluator_type: 'human',
       source_ref: 'synthetic', evidence_ref: 'raw.html' });

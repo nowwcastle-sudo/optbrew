@@ -195,7 +195,7 @@ test('evidence that no longer matches its hash fails the queue', async () => {
 });
 
 test('ChangeRecord without analysis is rejected', () => {
-  const record = { schema_version: '1.0.0', change_id: 'c1', finding_ids: ['f'], environment: 'local', path: 'p', before_hash: 'a', after_hash: 'b',
+  const record = { schema_version: '2.0.0', change_id: 'c1', finding_ids: ['f'], environment: 'local', path: 'p', before_hash: 'a', after_hash: 'b',
     backup_ref: 'x', verification: { status: 'passed' }, evidence_ref: 'e' };
   assert.throws(() => validateEntity('ChangeRecord', record), /analysis: required/);
   const analysis = { tools: ['optbrew'], queries: ['index-policy 점검'], self_analysis: false };
@@ -205,7 +205,7 @@ test('ChangeRecord without analysis is rejected', () => {
 });
 
 test('a host-model verdict needs evidence spans unless it is unknown', () => {
-  const base = { schema_version: '1.0.0', observation_id: 'o', check_id: 'claim-support', family_id: 'claim-support', unit_key: 'claim-support|u',
+  const base = { schema_version: '2.0.0', observation_id: 'o', check_id: 'claim-support', family_id: 'claim-support', unit_key: 'claim-support|u',
     state: 'pass', q: 1, partial_basis: null, reason: 'x', evaluator_type: 'host_model', source_ref: 's', evidence_ref: 'e' };
   const span = { evidence_sha256: 'h', start: 0, end: 3 };
   assert.throws(() => validateEntity('CheckObservation', base), /evidence_span: required/);

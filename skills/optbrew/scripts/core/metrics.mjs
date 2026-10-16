@@ -10,7 +10,7 @@ function ratio(id, numerator, denominator, definition, panel, selection, evaluab
       search_enabled: panel.search_enabled, locale: panel.locale, region: panel.region,
       ...(panel.collected_at ? { collected_at: panel.collected_at } : {}),
       ...(panel.last_complete_date ? { last_complete_date: panel.last_complete_date } : {}) },
-    window: panel.window, panel_hash: panel.panel_hash, provider_definition: 'optbrew fixed AI response panel v0.1.0',
+    window: panel.window, panel_hash: panel.panel_hash, provider_definition: `optbrew fixed AI response panel v${versions().evaluation}`,
     sample_selection: selection, source_ref: panel.source_ref, evidence_ref: panel.evidence_ref };
   return validateEntity('MetricObservation', observation);
 }

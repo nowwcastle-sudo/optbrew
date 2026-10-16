@@ -18,7 +18,7 @@ const withProbe = (probe, over = {}) => {
   const phase = value => value && { ...value, input: { ...value.input, run_context: { ...value.input.run_context, environment_probe } } };
   return { ...verified, run_context: { ...verified.run_context, environment_probe }, baseline: phase(verified.baseline), after: phase(verified.after) };
 };
-const finding = (id, over) => ({ schema_version: '1.0.0', finding_id: id, check_id: 'index-policy', unit_key: `index-policy|https://example.com/${id}`,
+const finding = (id, over) => ({ schema_version: '2.0.0', finding_id: id, check_id: 'index-policy', unit_key: `index-policy|https://example.com/${id}`,
   priority: 'P1', blocker: false, message: `problem ${id}`, source_ref: 'module:a', evidence_ref: 'module-a.html', remediation_ids: [],
   status: 'proposed_only', finding_ids: [id], sources: [], remediation: null, resolution: null, ...over });
 const order = composed => composed.fixes.map(item => item.finding_id);
@@ -230,7 +230,7 @@ test('an unaudited report with 80% coverage shows no score and is never measured
   const packet = fixturePacket();
   const input = packet.baseline.input;
   const fieldValues = { 'lcp-field': [2000, 'ms'], 'inp-field': [150, 'ms'], 'cls-field': [0.05, 'unitless'] };
-  const observations = compileUnits(input, 'SEO').map((unit, index) => ({ schema_version: '1.0.0', observation_id: `pass-${index}`,
+  const observations = compileUnits(input, 'SEO').map((unit, index) => ({ schema_version: '2.0.0', observation_id: `pass-${index}`,
     check_id: unit.family_id, family_id: unit.family_id, unit_key: unit.key, state: 'pass', q: 1, partial_basis: null, reason: 'fixture',
     evaluator_type: 'code', source_ref: 'synthetic', evidence_ref: 'raw.html',
     ...(fieldValues[unit.family_id] ? { measurement: { value: fieldValues[unit.family_id][0], percentile: 75, source_type: 'field', unit: fieldValues[unit.family_id][1] } } : {}) }));

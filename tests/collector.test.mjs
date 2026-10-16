@@ -101,8 +101,8 @@ test('declared robots with no page link reaches Naver audit without a scored res
   const page = 'https://example.test/owned/page';
   const robots = 'https://example.test/robots.txt';
   const run = {
-    schema_version: '1.0.0', run_id: 'aux-audit', target: 'example.test', environment: 'local', goals: ['naver'],
-    allowed_changes: [], scope: { allowed: [...scope.allowed, { origin: 'https://example.test', path_prefix: '/robots.txt' }] }, evaluation_version: '0.3.0', protocol_version: '0.1.0',
+    schema_version: '2.0.0', run_id: 'aux-audit', target: 'example.test', environment: 'local', goals: ['naver'],
+    allowed_changes: [], scope: { allowed: [...scope.allowed, { origin: 'https://example.test', path_prefix: '/robots.txt' }] }, evaluation_version: '0.4.0', protocol_version: '0.2.0',
     data_sources: [], cost_decision: {}, environment_probe: environmentProbe(), evidence_ref: 'evidence/context.json',
     protocol: { page_types: [{ id: 'main', urls: [{ original: page, normalized: page }] }],
       auxiliary_resources: [{ kind: 'robots', original: robots, normalized: robots }],
@@ -132,9 +132,9 @@ test('a declared policy-kind robots file is retained but cannot drive crawl-poli
   const page = `${origin}/owned/page`;
   const robots = `${origin}/robots.txt`;
   const run = {
-    schema_version: '1.0.0', run_id: 'policy-not-robots', target: 'example.test', environment: 'local', goals: ['naver'],
+    schema_version: '2.0.0', run_id: 'policy-not-robots', target: 'example.test', environment: 'local', goals: ['naver'],
     allowed_changes: [], scope: { allowed: [{ origin, path_prefix: '/' }] },
-    evaluation_version: '0.3.0', protocol_version: '0.1.0', data_sources: [], cost_decision: {}, environment_probe: environmentProbe(), evidence_ref: 'evidence/context.json',
+    evaluation_version: '0.4.0', protocol_version: '0.2.0', data_sources: [], cost_decision: {}, environment_probe: environmentProbe(), evidence_ref: 'evidence/context.json',
     protocol: { page_types: [{ id: 'main', urls: [{ original: page, normalized: page }] }],
       auxiliary_resources: [{ kind: 'policy', original: robots, normalized: robots }],
       engines: ['naver'], families: [{ family_id: 'search-crawl-policy', applicable: true }],
@@ -159,9 +159,9 @@ test('undeclared in-scope robots link is not contacted or used while ordinary pa
   const child = `${origin}/owned/child`;
   const robots = `${origin}/robots.txt`;
   const run = {
-    schema_version: '1.0.0', run_id: 'no-aux-policy', target: 'example.test', environment: 'local', goals: ['naver'],
+    schema_version: '2.0.0', run_id: 'no-aux-policy', target: 'example.test', environment: 'local', goals: ['naver'],
     allowed_changes: [], scope: { allowed: [{ origin, path_prefix: '/' }] },
-    evaluation_version: '0.3.0', protocol_version: '0.1.0', data_sources: [], cost_decision: {}, environment_probe: environmentProbe(), evidence_ref: 'evidence/context.json',
+    evaluation_version: '0.4.0', protocol_version: '0.2.0', data_sources: [], cost_decision: {}, environment_probe: environmentProbe(), evidence_ref: 'evidence/context.json',
     protocol: { page_types: [{ id: 'main', urls: [{ original: page, normalized: page }] }], auxiliary_resources: [],
       engines: ['naver'], families: [{ family_id: 'fetch-response', applicable: true }, { family_id: 'search-crawl-policy', applicable: true }],
       locale: 'ko-KR', region: 'KR', browser: 'Chrome', device: 'desktop',
