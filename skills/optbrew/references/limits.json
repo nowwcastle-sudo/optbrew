@@ -11,5 +11,9 @@
   "cdp_command_timeout_ms": 30000,
   "render_pages": 10,
   "render_static_concurrency": 4,
-  "max_render_requests": 300
+  "max_render_requests": 300,
+  "psi_attempts": 1,
+  "cwv_timeout_ms": 60000,
+  "cwv_max_bytes": 10485760,
+  "preflight_pages": 10
 }

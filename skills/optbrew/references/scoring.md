@@ -60,3 +60,22 @@ The 14 binary families do not accept partial; their applicable units use pass, f
 `score(input)` returns ordered `ScoreResult[]` for SEO, optional NEO, AEO, GEO and LLMO. SEO is the default aggregate and is calculated directly, never from the mean of profile scores. Each result includes `{schema_version,evaluation_version,profile,A,M,N,score,coverage,missing_bounds,band,readiness_status,blockers,unknown_core,source_ref}`. Bands are `focus_improvement` (0–59), `major_improvement` (60–79), `additional_improvement` (80–94), and `remaining_review` (95–100). Status precedence is `not_applicable` for `A=0`, then `blocked` for confirmed access/crawl/noindex failures or an explicit severe-fact blocker, then `unverified` for unknown applicable access/index core units, then `provisional` below 80% measured coverage, else `measured`. `measured` means only that this optbrew readiness audit has enough measured coverage by its own rule.
 
 Run a stored input without service access: `node skills/optbrew/scripts/cli.mjs score --input input.json --output score.json`. The output is the same JSON `ScoreResult[]` as the library call. The CLI validates before writing.
+
+## Field Core Web Vitals: thresholds and sources
+
+The `good` and `poor` bounds of `lcp-field`, `inp-field` and `cls-field` sit in `check-registry.json` (`thresholds`), so `evaluation_hash` covers them. Each is judged at the 75th percentile of real page loads: at or below `good` is pass, above `poor` is fail, between them is partial (`q=0.5`, an optbrew rule). Confirmed against the primary pages on 2026-10-17:
+
+| Family | Good | Poor | Unit | Source |
+|---|---|---|---|---|
+| lcp-field | 2500 | above 4000 | ms | https://web.dev/articles/lcp |
+| inp-field | 200 | above 500 | ms | https://web.dev/articles/inp |
+| cls-field | 0.1 | above 0.25 | unitless | https://web.dev/articles/cls |
+
+The 75th percentile as the measuring point: https://web.dev/articles/vitals. PageSpeed Insights states the same CLS bands: https://developers.google.com/speed/docs/insights/v5/about.
+
+Field data comes from the user's own Google key and nowhere else. `endpoints.json` holds the two endpoints without a key, and the key is added to a request only at request time, in the `X-Goog-Api-Key` header (Google documents the header as the primary way to send an API key, and warns that a `key` query parameter exposes it in URLs: https://docs.cloud.google.com/docs/authentication/api-keys-use). A value that is not shaped like a Google key (letters, digits, `.`, `_`, `-`, at least 20; AI Studio's AQ. keys have a dot) is not used: the run goes keyless and the stored record says `key_ignored_malformed`. Stored answers and error messages have the key removed. Requests go through the run's transport (direct, or the CONNECT proxy when DNS fails), limited by `cwv_timeout_ms` and `cwv_max_bytes` in `limits.json`: a PSI Lighthouse run can take longer than a page fetch, and its answer is far larger than the page limit allows for.
+
+- CrUX API `records:queryRecord` (POST, `origin` and `formFactor` in the body, p75 at `record.metrics.<name>.percentiles.p75`; a 404 with `chrome ux report data not found` means the origin has no data): https://developer.chrome.com/docs/crux/api and https://developer.chrome.com/docs/crux/guides/crux-api. optbrew asks CrUX for `formFactor: "PHONE"` (valid values `DESKTOP`, `PHONE`, `TABLET`) so that it matches PSI `strategy=mobile`; an origin with no phone data is a CrUX 404 and falls back to PSI.
+- PageSpeed Insights API `runPagespeed` (GET, `url`, `strategy`, `category`, `key`): https://developers.google.com/speed/docs/insights/v5/reference/pagespeedapi/runpagespeed. optbrew reads `originLoadingExperience`. Google does not document how PSI scales the CLS percentile, so optbrew divides it by 100 (`PSI_CLS_PERCENTILE_SCALE`) and trusts that only while the first distribution bucket ends at 10; any other first bucket, or none, makes the CLS unknown.
+
+Lab Core Web Vitals (measured by `labCwv` with PerformanceObserver in the page optbrew rendered) are reference only: they are stored in `RunState.lab_cwv`, shown under the run conditions as "reference (not scored)", and never become an observation.

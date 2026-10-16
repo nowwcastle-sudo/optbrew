@@ -1,5 +1,18 @@
 [
   {
+    "check_id": "cls-field",
+    "family_id": "cls-field",
+    "unit_key": "cls-field|http://127.0.0.1:PORT",
+    "state": "unknown",
+    "q": null,
+    "partial_basis": null,
+    "reason": "field_data_unavailable",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/239b66f2f58e6d41d966cb7da2240e8415189925030bd5b8a3ed957fb3717d77.html",
+    "site": "after"
+  },
+  {
     "check_id": "document-title",
     "family_id": "document-title",
     "unit_key": "document-title|http://127.0.0.1:PORT/",
@@ -39,6 +52,19 @@
     "site": "after"
   },
   {
+    "check_id": "inp-field",
+    "family_id": "inp-field",
+    "unit_key": "inp-field|http://127.0.0.1:PORT",
+    "state": "unknown",
+    "q": null,
+    "partial_basis": null,
+    "reason": "field_data_unavailable",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/239b66f2f58e6d41d966cb7da2240e8415189925030bd5b8a3ed957fb3717d77.html",
+    "site": "after"
+  },
+  {
     "check_id": "internal-navigation",
     "family_id": "internal-navigation",
     "unit_key": "internal-navigation|http://127.0.0.1:PORT/",
@@ -54,6 +80,19 @@
       "reason": "No collected page links to another page of the site",
       "evidence_ref": "<out>/evidence/239b66f2f58e6d41d966cb7da2240e8415189925030bd5b8a3ed957fb3717d77.html"
     },
+    "site": "after"
+  },
+  {
+    "check_id": "lcp-field",
+    "family_id": "lcp-field",
+    "unit_key": "lcp-field|http://127.0.0.1:PORT",
+    "state": "unknown",
+    "q": null,
+    "partial_basis": null,
+    "reason": "field_data_unavailable",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/239b66f2f58e6d41d966cb7da2240e8415189925030bd5b8a3ed957fb3717d77.html",
     "site": "after"
   },
   {
@@ -101,6 +140,19 @@
     "site": "after"
   },
   {
+    "check_id": "cls-field",
+    "family_id": "cls-field",
+    "unit_key": "cls-field|http://127.0.0.1:PORT",
+    "state": "unknown",
+    "q": null,
+    "partial_basis": null,
+    "reason": "field_data_unavailable",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/c79271fb4d98447734a702cd72feb167ec5dd825e82817cfc672f24045e1d7a0.html",
+    "site": "before"
+  },
+  {
     "check_id": "document-title",
     "family_id": "document-title",
     "unit_key": "document-title|http://127.0.0.1:PORT/",
@@ -140,6 +192,19 @@
     "site": "before"
   },
   {
+    "check_id": "inp-field",
+    "family_id": "inp-field",
+    "unit_key": "inp-field|http://127.0.0.1:PORT",
+    "state": "unknown",
+    "q": null,
+    "partial_basis": null,
+    "reason": "field_data_unavailable",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/c79271fb4d98447734a702cd72feb167ec5dd825e82817cfc672f24045e1d7a0.html",
+    "site": "before"
+  },
+  {
     "check_id": "internal-navigation",
     "family_id": "internal-navigation",
     "unit_key": "internal-navigation|http://127.0.0.1:PORT/",
@@ -155,6 +220,19 @@
       "reason": "No collected page links to another page of the site",
       "evidence_ref": "<out>/evidence/c79271fb4d98447734a702cd72feb167ec5dd825e82817cfc672f24045e1d7a0.html"
     },
+    "site": "before"
+  },
+  {
+    "check_id": "lcp-field",
+    "family_id": "lcp-field",
+    "unit_key": "lcp-field|http://127.0.0.1:PORT",
+    "state": "unknown",
+    "q": null,
+    "partial_basis": null,
+    "reason": "field_data_unavailable",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/c79271fb4d98447734a702cd72feb167ec5dd825e82817cfc672f24045e1d7a0.html",
     "site": "before"
   },
   {
@@ -238,6 +316,19 @@
     "evaluator_type": "code",
     "source_ref": "optbrew:collector",
     "evidence_ref": "<out>/evidence/36b1b6008d0e08d619c7ce921fc87f9b0ac6261ab05b914ae7468aa5738f2b4d.html",
+    "site": "clean"
+  },
+  {
+    "check_id": "cls-field",
+    "family_id": "cls-field",
+    "unit_key": "cls-field|http://127.0.0.1:PORT",
+    "state": "unknown",
+    "q": null,
+    "partial_basis": null,
+    "reason": "field_data_unavailable",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/947ad3ecd2d39c1fb45e87fb89ecf4e871b1ff74aaa4d4af9a7acb14a216fc5e.html",
     "site": "clean"
   },
   {
@@ -449,6 +540,19 @@
     "site": "clean"
   },
   {
+    "check_id": "inp-field",
+    "family_id": "inp-field",
+    "unit_key": "inp-field|http://127.0.0.1:PORT",
+    "state": "unknown",
+    "q": null,
+    "partial_basis": null,
+    "reason": "field_data_unavailable",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/947ad3ecd2d39c1fb45e87fb89ecf4e871b1ff74aaa4d4af9a7acb14a216fc5e.html",
+    "site": "clean"
+  },
+  {
     "check_id": "internal-navigation",
     "family_id": "internal-navigation",
     "unit_key": "internal-navigation|http://127.0.0.1:PORT/",
@@ -485,6 +589,19 @@
     "evaluator_type": "code",
     "source_ref": "optbrew:collector",
     "evidence_ref": "<out>/evidence/36b1b6008d0e08d619c7ce921fc87f9b0ac6261ab05b914ae7468aa5738f2b4d.html",
+    "site": "clean"
+  },
+  {
+    "check_id": "lcp-field",
+    "family_id": "lcp-field",
+    "unit_key": "lcp-field|http://127.0.0.1:PORT",
+    "state": "unknown",
+    "q": null,
+    "partial_basis": null,
+    "reason": "field_data_unavailable",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/947ad3ecd2d39c1fb45e87fb89ecf4e871b1ff74aaa4d4af9a7acb14a216fc5e.html",
     "site": "clean"
   },
   {
@@ -786,6 +903,19 @@
     "evaluator_type": "code",
     "source_ref": "optbrew:collector",
     "evidence_ref": "<out>/evidence/2831a310a8db81bfd44e92641d41ce673a0ba8f7f7151a777a7bafb421a1c63b.html",
+    "site": "defect"
+  },
+  {
+    "check_id": "cls-field",
+    "family_id": "cls-field",
+    "unit_key": "cls-field|http://127.0.0.1:PORT",
+    "state": "unknown",
+    "q": null,
+    "partial_basis": null,
+    "reason": "field_data_unavailable",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/260ba0e7e892c57fcef46111d4a877daff635a4cf6df79c757ffdc076ee0cedc.html",
     "site": "defect"
   },
   {
@@ -1465,6 +1595,19 @@
     "site": "defect"
   },
   {
+    "check_id": "inp-field",
+    "family_id": "inp-field",
+    "unit_key": "inp-field|http://127.0.0.1:PORT",
+    "state": "unknown",
+    "q": null,
+    "partial_basis": null,
+    "reason": "field_data_unavailable",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/260ba0e7e892c57fcef46111d4a877daff635a4cf6df79c757ffdc076ee0cedc.html",
+    "site": "defect"
+  },
+  {
     "check_id": "internal-navigation",
     "family_id": "internal-navigation",
     "unit_key": "internal-navigation|http://127.0.0.1:PORT/",
@@ -1579,6 +1722,19 @@
     "evaluator_type": "code",
     "source_ref": "optbrew:collector",
     "evidence_ref": "<out>/evidence/2831a310a8db81bfd44e92641d41ce673a0ba8f7f7151a777a7bafb421a1c63b.html",
+    "site": "defect"
+  },
+  {
+    "check_id": "lcp-field",
+    "family_id": "lcp-field",
+    "unit_key": "lcp-field|http://127.0.0.1:PORT",
+    "state": "unknown",
+    "q": null,
+    "partial_basis": null,
+    "reason": "field_data_unavailable",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/260ba0e7e892c57fcef46111d4a877daff635a4cf6df79c757ffdc076ee0cedc.html",
     "site": "defect"
   },
   {

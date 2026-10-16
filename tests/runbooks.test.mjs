@@ -105,6 +105,16 @@ test('startRunbooks shows at most one blocking runbook', () => {
   for (const reason of [null, 'site_down']) assert.deepEqual(startRunbooks(probe({ block_reason: reason }), { level: 'brief', skillRoot }).blocking, []);
 });
 
+test('a harness list filters start runbooks before the blocking cap', () => {
+  const missing = probe({ block_reason: 'codex_sandbox', google_key: false, chrome: { found: false, kind: null } });
+  const shown = harnesses => startRunbooks(missing, { level: 'brief', skillRoot, harnesses });
+  assert.deepEqual(shown(['any', 'claude-code-cloud']).blocking, []);
+  assert.deepEqual(shown(['any', 'codex']).blocking.map(runbook => runbook.id), ['network-codex-approval']);
+  assert.ok(!shown(['any']).improving.some(item => item.id === 'chrome-install'));
+  assert.ok(shown(['any', 'local']).improving.some(item => item.id === 'chrome-install'));
+  assert.deepEqual(shown(null).improving.map(item => item.id), ['google-api-key', 'chrome-install', 'gsc-export']);
+});
+
 test('the blocking runbook follows the chosen level', () => {
   const beginner = startRunbooks(probe({ block_reason: 'codex_sandbox' }), { level: 'beginner', skillRoot }).blocking[0];
   const brief = startRunbooks(probe({ block_reason: 'codex_sandbox' }), { level: 'brief', skillRoot }).blocking[0];
@@ -119,7 +129,7 @@ test('improving items are one line each and only for what is missing', () => {
   const missing = startRunbooks(probe({ google_key: false, chrome: { found: false, kind: null } }), { level: 'beginner', skillRoot }).improving;
   assert.ok(missing.some(item => item.id === 'google-api-key') && missing.some(item => item.id === 'chrome-install'));
   for (const item of missing) {
-    assert.deepEqual(Object.keys(item).sort(), ['id', 'line']);
+    assert.deepEqual(Object.keys(item).sort(), ['harness', 'id', 'line']);
     assert.ok(item.line.length > 0 && !item.line.includes('\n'), item.id);
     assert.equal(index.find(entry => entry.id === item.id).kind, 'improving');
   }

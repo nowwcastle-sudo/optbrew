@@ -7,8 +7,8 @@ import { unbracket, urlTarget } from './scope.mjs';
 
 const DNS_FAILURES = new Set(['ENOTFOUND', 'EAI_AGAIN']);
 
-/** Read one response into `{ status, headers, rawHeaders, body }`; both transports share this, byte limit included. */
-function exchange({ send, timeoutMs, maxBytes }) {
+/** Send one request (`body`, when there is one, is its whole payload) and read the response into `{ status, headers, rawHeaders, body }`; both transports share this, byte limit included. */
+function exchange({ send, timeoutMs, maxBytes, body = null }) {
   return new Promise((resolve, reject) => {
     // Reject first: once a response has started, destroying the request ends it quietly and would resolve a truncated body.
     const overLimit = () => { reject(new Error('response byte limit exceeded')); req.destroy(); };
@@ -25,18 +25,20 @@ function exchange({ send, timeoutMs, maxBytes }) {
     });
     req.setTimeout(timeoutMs, () => req.destroy(new Error('request timeout')));
     req.on('error', reject);
-    req.end();
+    req.end(body ?? undefined);
   });
 }
 
-const requestHeaders = headers => ({ 'User-Agent': 'optbrew/0.1 (bounded public audit)', Accept: '*/*', 'Accept-Encoding': 'identity', ...headers });
+/** Request headers; a body brings its Content-Length. */
+const requestHeaders = (headers, body = null) => ({ 'User-Agent': 'optbrew/0.1 (bounded public audit)', Accept: '*/*', 'Accept-Encoding': 'identity',
+  ...(body === null ? {} : { 'Content-Length': Buffer.byteLength(body) }), ...headers });
 
 /** Node's lookup callback pins the already-vetted address while TLS still verifies the URL hostname. */
-export function directTransport({ url, address, timeoutMs, maxBytes, headers = {}, signal }) {
+export function directTransport({ url, address, timeoutMs, maxBytes, headers = {}, signal, method = 'GET', body = null }) {
   const client = url.protocol === 'https:' ? https : http;
   const { host: hostname } = urlTarget(url);
-  return exchange({ timeoutMs, maxBytes, send: onResponse => client.request(url, {
-    method: 'GET', agent: false, signal, headers: requestHeaders(headers),
+  return exchange({ timeoutMs, maxBytes, body, send: onResponse => client.request(url, {
+    method, agent: false, signal, headers: requestHeaders(headers, body),
     lookup: (_hostname, options, callback) => options.all ?
       callback(null, [{ address: address.address, family: address.family }]) : callback(null, address.address, address.family),
     ...(url.protocol === 'https:' ? { rejectUnauthorized: true,
@@ -82,7 +84,7 @@ function openTunnel(proxy, url, { timeoutMs, signal }) {
  * proxy address vetting on any other transport.
  */
 export function proxyTransport(proxy, { connectTls = tls.connect } = {}) {
-  const transport = async ({ url, timeoutMs, maxBytes, headers = {}, signal }) => {
+  const transport = async ({ url, timeoutMs, maxBytes, headers = {}, signal, method = 'GET', body = null }) => {
     const deadline = performance.now() + timeoutMs;
     const tunnel = await openTunnel(proxy, url, { timeoutMs, signal });
     let stream = tunnel;
@@ -93,9 +95,9 @@ export function proxyTransport(proxy, { connectTls = tls.connect } = {}) {
       const remainingMs = Math.ceil(deadline - performance.now());
       if (remainingMs <= 0) throw proxyError(proxy, 'proxy tunnel timed out', 'proxy_timeout');
       // No `agent` option: `agent: false` makes Node build an Agent that ignores createConnection and dials the name itself.
-      return await exchange({ timeoutMs: remainingMs, maxBytes, send: onResponse => http.request({
-        host, port, path: `${url.pathname}${url.search}`, method: 'GET', signal,
-        createConnection: () => stream, headers: { Host: url.host, ...requestHeaders(headers) } }, onResponse) });
+      return await exchange({ timeoutMs: remainingMs, maxBytes, body, send: onResponse => http.request({
+        host, port, path: `${url.pathname}${url.search}`, method, signal,
+        createConnection: () => stream, headers: { Host: url.host, ...requestHeaders(headers, body) } }, onResponse) });
     } finally { stream.destroy(); tunnel.destroy(); }
   };
   return Object.assign(transport, { addressVetting: 'proxy' });

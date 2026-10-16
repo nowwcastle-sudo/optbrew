@@ -20,7 +20,7 @@ import { parseRobots, robotsVerdict } from '../../modules/naver-searchadvisor/sc
 const catalog = JSON.parse(readFileSync(new URL('../../references/remediations.json', import.meta.url))).items;
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 const named = value => typeof value === 'string' && value.trim().length > 0;
-const sensitive = /(?:sk-ant-api03-[A-Za-z0-9_-]{32,}|sk-proj-[A-Za-z0-9_-]{32,}|ghp_[A-Za-z0-9]{36,}|AKIA[A-Z0-9]{16}|\b\d{6}-[1-8]\d{6}\b)/;
+const sensitive = /(?:sk-ant-api03-[A-Za-z0-9_-]{32,}|sk-proj-[A-Za-z0-9_-]{32,}|ghp_[A-Za-z0-9]{36,}|AKIA[A-Z0-9]{16}|AIza[0-9A-Za-z_-]{35}|\b\d{6}-[1-8]\d{6}\b)/;
 const html = value => String(value ?? 'unknown').replace(/\\/g, '\\\\').replace(/&/g, '&amp;').replace(/</g, '&lt;')
   .replace(/>/g, '&gt;').replace(/\|/g, '\\|').replace(/\r?\n/g, '<br>');
 const table = (columns, rows) => `| ${columns.join(' | ')} |\n| ${columns.map(() => '---').join(' | ')} |\n${rows.map(row => `| ${row.map(html).join(' | ')} |`).join('\n') || `| ${columns.map(() => '—').join(' | ')} |`}`;
@@ -467,6 +467,21 @@ function storedRenders(audit, renderBudget, requireRef) {
   return { records, renderTextOf: record => dom.get(record) ?? '' };
 }
 
+/**
+ * The field CWV answers of an audit index, read through the run's evidence (hash and secret checked), each one with the ref
+ * it was read from. An index from before field data has no `cwv` section.
+ */
+function storedCwv(audit, requireRef) {
+  return (audit.cwv ?? []).map(entry => {
+    const stored = requireRef(entry.evidence_ref);
+    if (stored.sha256 !== entry.sha256) throw new ContractError('CWV record hash differs from the audit index');
+    let record;
+    try { record = JSON.parse(stored.text); } catch { throw new ContractError('CWV record is not JSON'); }
+    if (record.source !== entry.source || typeof record.origin !== 'string') throw new ContractError('CWV record is malformed');
+    return { ...record, evidence_ref: entry.evidence_ref };
+  });
+}
+
 function checkAuditPhase(input, phase, snapshot, requireRef) {
   if (!input) return;
   const observations = input.observations.filter(x => x.source_ref === 'optbrew:collector');
@@ -497,6 +512,8 @@ function checkAuditPhase(input, phase, snapshot, requireRef) {
       throw new ContractError('audit raw content hash mismatch');
     rawRefs.add(raw.evidence_ref);
   }
+  // Field CWV answers are collected evidence too; their hashes are checked where the verdicts are re-derived below.
+  for (const entry of audit.cwv ?? []) rawRefs.add(entry.evidence_ref);
   // Final URL, redirect chain and header lines come from the hashed response records, not from collection.json alone.
   const artifacts = collection.artifacts.map(x => boundArtifact(x, audit, requireRef));
   checkLedger(input, audit, collection, artifacts, requireRef);
@@ -562,7 +579,7 @@ function checkAuditPhase(input, phase, snapshot, requireRef) {
   const { records, renderTextOf } = storedRenders(audit, input.run_context.protocol.render?.max_render_requests, requireRef);
   const derived = deriveObservations({ context: input.run_context, artifacts, collection,
     textOf: artifact => artifact.content_hash ? requireRef(artifact.evidence_ref).text : null,
-    renders: records, renderTextOf, chrome: audit.chrome ?? null });
+    renders: records, renderTextOf, chrome: audit.chrome ?? null, cwv: storedCwv(audit, requireRef) });
   const shape = x => [x.state, x.q, x.partial_basis, x.evidence_ref, x.reason, x.evaluator_type, x.source_ref];
   for (const expected of derived) {
     if (!observations.some(x => x.unit_key === expected.unit_key) || !savedObservations.some(x => x.unit_key === expected.unit_key))

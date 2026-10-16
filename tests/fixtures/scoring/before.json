@@ -4,7 +4,7 @@
     "schema_version": "1.0.0", "run_id": "synthetic-partial", "target": "example.com",
     "environment": "local", "goals": ["SEO"], "allowed_changes": [], "scope": {},
     "evaluation_version": "0.3.0", "protocol_version": "0.1.0",
-    "data_sources": [], "cost_decision": {}, "evidence_ref": "synthetic/context",
+    "data_sources": [], "cost_decision": {}, "environment_probe": {"harness":"other","transport":"direct","address_vetting":"direct","proxy":null,"block_reason":null,"chrome":{"found":true,"kind":"chrome","reason":null},"google_key":false,"source_tools":[],"sitemap_pages":null}, "evidence_ref": "synthetic/context",
     "protocol": {
       "page_types": [
         { "id": "primary", "urls": [

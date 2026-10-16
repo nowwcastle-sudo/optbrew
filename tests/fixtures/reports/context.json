@@ -11,7 +11,7 @@
   "evaluation_version": "0.3.0",
   "protocol_version": "0.1.0",
   "data_sources": [],
-  "cost_decision": {},
+  "cost_decision": {}, "environment_probe": {"harness":"other","transport":"direct","address_vetting":"direct","proxy":null,"block_reason":null,"chrome":{"found":true,"kind":"chrome","reason":null},"google_key":false,"source_tools":[],"sitemap_pages":null},
   "evidence_ref": "context.json",
   "protocol": {
     "page_types": [

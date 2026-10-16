@@ -22,10 +22,10 @@ test('no family is registered twice', () => {
   assert.deepEqual(names, [...new Set(names)]);
 });
 
-test('code-judged families equal the thirteen code-judged ids, in registry order', () => {
+test('code-judged families equal the sixteen code-judged ids, in registry order', () => {
   assert.deepEqual(blocks.map(block => block.family_id), ['fetch-response', 'search-crawl-policy', 'index-policy', 'render-content',
     'discovery', 'document-title', 'canonical-consistency', 'internal-navigation', 'structured-data-truth', 'locale-links', 'naver-markup',
-    'entity-identity', 'fact-consistency']);
+    'lcp-field', 'inp-field', 'cls-field', 'entity-identity', 'fact-consistency']);
   const order = registry.map(family => family.family_id);
   const positions = blocks.map(block => order.indexOf(block.family_id));
   assert.deepEqual(positions, [...positions].sort((a, b) => a - b));

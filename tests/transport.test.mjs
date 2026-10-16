@@ -6,10 +6,15 @@ import { inspect } from 'node:util';
 import { mkdtemp, readFile, readdir, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
-import { collect, fetchScoped } from '../skills/optbrew/scripts/core/collector.mjs';
+import { collect, fetchScoped, transportFetch } from '../skills/optbrew/scripts/core/collector.mjs';
 import { directTransport, parseProxy, proxyTransport, selectTransport } from '../skills/optbrew/scripts/core/transport.mjs';
+import { collectCwv } from '../skills/optbrew/scripts/core/cwv.mjs';
+import { endpoints, limits } from '../skills/optbrew/scripts/core/config.mjs';
+import { openStore } from '../skills/optbrew/scripts/core/evidence-store.mjs';
+import { tempDir } from './support/temp-dir.mjs';
 import { assertInScope } from '../skills/optbrew/scripts/core/scope.mjs';
 import { runAudit } from '../skills/optbrew/scripts/audit.mjs';
+import { environmentProbe } from './support/probe.mjs';
 
 const servers = [];
 const sockets = new Set();
@@ -24,6 +29,20 @@ after(async () => {
 const targetSeen = [];
 const targetPort = await listen(createServer((req, res) => {
   targetSeen.push({ url: req.url, headers: req.headers });
+  if (req.method === 'POST') {
+    // Echo what arrived; /owned/crux answers like the CrUX API, which needs the key header.
+    const chunks = [];
+    req.on('data', chunk => chunks.push(chunk));
+    req.on('end', () => {
+      const body = Buffer.concat(chunks).toString('utf8');
+      const answer = req.url === '/owned/crux' ?
+        (req.headers['x-goog-api-key'] ? { record: { metrics: { largest_contentful_paint: { percentiles: { p75: 2100 } } } } } : { error: { code: 403 } }) :
+        { method: req.method, length: req.headers['content-length'], type: req.headers['content-type'], body };
+      res.writeHead(req.url === '/owned/crux' && !req.headers['x-goog-api-key'] ? 403 : 200, { 'content-type': 'application/json' });
+      res.end(JSON.stringify(answer));
+    });
+    return;
+  }
   if (req.url === '/owned/redir') { res.writeHead(302, { location: '/owned/page' }); res.end(); }
   else if (req.url === '/owned/out') { res.writeHead(302, { location: 'http://elsewhere.test/x' }); res.end(); }
   else if (req.url === '/owned/to-mapped') { res.writeHead(302, { location: `http://[::ffff:127.0.0.1]:${targetPort}/owned/page` }); res.end(); }
@@ -182,7 +201,7 @@ test('proxy credentials never reach evidence or errors', async () => {
     scope: { allowed: scope.allowed, local_targets: [{ host: 'example.test', port: targetPort }] },
     protocol: { page_types: [{ id: 'main', urls: [{ original: page, normalized: page }] }], engines: ['naver'], families: [], locale: 'ko-KR', region: 'KR',
       browser: 'Chrome', device: 'desktop', question_panel: [], surfaces: [], models: [], search_enabled: null, render: { enabled: false, pages: [], max_render_requests: 300 } },
-    evaluation_version: '0.3.0', protocol_version: '0.1.0', data_sources: [], cost_decision: {}, evidence_ref: 'test/context' };
+    evaluation_version: '0.3.0', protocol_version: '0.1.0', data_sources: [], cost_decision: {}, environment_probe: environmentProbe(), evidence_ref: 'test/context' };
   const dir = await mkdtemp(path.join(os.tmpdir(), 'optbrew-proxy-evidence-'));
   try {
     const result = await runAudit({ context: run, modules: ['naver-searchadvisor'], outputDir: dir, transport: chosen.transport,
@@ -323,4 +342,47 @@ test('a silent proxy fails within one deadline as a classified timeout', async (
   assert.equal(error.code, 'proxy_timeout');
   assert.match(error.message, new RegExp(`via 127\\.0\\.0\\.1:${port}$`));
   assert.ok(performance.now() - started < 300 + 400, 'one deadline, not one per phase');
+});
+
+test('a POST with a body works on both transports', async () => {
+  const payload = JSON.stringify({ name: '한글', origin });
+  const post = { method: 'POST', body: payload, headers: { 'content-type': 'application/json' } };
+  const local = { allowed: scope.allowed, local_targets: [{ host: 'example.test', port: targetPort }] };
+  const direct = await fetchScoped(`${origin}/owned/echo`, { context: { scope: local }, transport: directTransport,
+    resolve: async () => [{ address: '127.0.0.1', family: 4 }], ...post });
+  const proxy = await startProxy();
+  const chosen = await selectTransport({ env: proxyEnv(proxy.port), resolve: dnsDown('ENOTFOUND'), probeHost: 'example.test' });
+  const tunnelled = await fetchScoped(`${origin}/owned/echo`, { context: { scope }, ...viaProxy(chosen), ...post });
+  for (const result of [direct, tunnelled]) {
+    assert.equal(result.status, 200);
+    assert.deepEqual(JSON.parse(result.body.toString('utf8')), { method: 'POST', length: String(Buffer.byteLength(payload)), type: 'application/json', body: payload });
+  }
+  assert.equal(proxy.connects.length, 1);
+});
+
+test('collectCwv over the proxy transport gets CrUX data through CONNECT', async () => {
+  const proxy = await startProxy();
+  const chosen = await selectTransport({ env: proxyEnv(proxy.port), resolve: dnsDown('ENOTFOUND'), probeHost: 'example.test' });
+  const send = transportFetch(chosen, { timeoutMs: limits().cwv_timeout_ms, maxBytes: limits().cwv_max_bytes });
+  // The proxy tunnels every name to the local target, so the Google endpoint is redirected to a route of that target.
+  const fetchFn = (url, init) => send(url === endpoints().crux ? `${origin}/owned/crux` : url, init);
+  const dir = await tempDir('optbrew-cwv-proxy-');
+  const store = openStore(dir, { run_id: 'cwv-proxy' });
+  const key = ['AI', 'za', 'Sy', 'Proxy', 'Key', '0123456789', 'abcdefghij', 'KLMN'].join('');
+  await collectCwv({ origin: 'https://example.test', key, fetchFn, store });
+  assert.deepEqual(proxy.connects.map(x => x.url), [`example.test:${targetPort}`]);
+  const { cwv } = await store.index();
+  assert.equal(cwv.length, 1);
+  const record = JSON.parse(await store.read(cwv[0].evidence_ref, cwv[0].sha256));
+  assert.equal(record.status, 200);
+  assert.equal(record.body.record.metrics.largest_contentful_paint.percentiles.p75, 2100);
+  assert.equal((await readFile(cwv[0].evidence_ref, 'utf8')).includes(key), false);
+});
+
+test('transportFetch refuses an out-of-scope literal address in proxy mode and never follows a redirect', async () => {
+  const proxy = await startProxy();
+  const chosen = await selectTransport({ env: proxyEnv(proxy.port), resolve: dnsDown('ENOTFOUND'), probeHost: 'example.test' });
+  const send = transportFetch(chosen, { timeoutMs: 5000, maxBytes: 100000 });
+  await assert.rejects(send('http://169.254.169.254/latest', { method: 'POST', body: '{}' }), /scope|address|private|link/i);
+  await assert.rejects(send(`${origin}/owned/redir`), /redirect/i);
 });
