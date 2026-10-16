@@ -1,9 +1,10 @@
 import { thresholds } from '../config.mjs';
 import { anchorLinks, visibleText } from '../html.mjs';
 import { canonicalUrl, sameOriginLinks } from '../link-graph.mjs';
-import { makeObservation, unitKey } from './observation.mjs';
+import { makeObservation, problem, unitKey } from './observation.mjs';
 
 const FAMILY = 'render-content';
+const NO_BODY_TEXT = 'render-content.no-body-text';
 const CHROME_MISSING = 'chrome_missing';
 const RENDER_BLOCKED = 'render_blocked';
 const RENDER_FAILED = 'render_failed';
@@ -23,6 +24,7 @@ const bodyLength = html => visibleText(/<body\b[^>]*>([\s\S]*)/i.exec(String(htm
  */
 export const renderContent = {
   family_id: FAMILY,
+  message_keys: [NO_BODY_TEXT],
   derive({ pageRows, renders, renderTextOf, chrome, renderSample }) {
     const { min_body_ratio, challenge_status, challenge_markers, challenge_max_body_chars } = thresholds(FAMILY);
     const out = [];
@@ -51,7 +53,8 @@ export const renderContent = {
         observe('not_applicable', reason, { measurement, applicability_decision: { condition: 'not_render_dependent', reason, evidence_ref: artifact.evidence_ref } });
       } else if (renderedLength > 0) observe('pass', CONTENT_AFTER_RENDER, { measurement });
       else if (rawLength > 0) observe('pass', 'The raw HTML holds body text and the render is empty', { measurement });
-      else observe('fail', 'Neither the raw HTML nor the rendered page has any body text');
+      else out.push(makeObservation({ family_id: FAMILY, unit_key: unitKey(FAMILY, url), state: 'fail', evidence_ref: artifact.evidence_ref,
+        problems: [problem('Neither the raw HTML nor the rendered page has any body text', NO_BODY_TEXT)] }));
     }
     return out;
   },

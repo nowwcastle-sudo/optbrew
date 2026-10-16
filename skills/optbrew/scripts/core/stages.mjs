@@ -494,7 +494,8 @@ async function evidenceList(state) {
  * The fix list: one finding for each distinct problem, not for each page it appears on. Failed verdicts with the same check and
  * the same message (the page's own address left out of it) are one finding that lists every page it affects in `unit_keys`; its
  * own unit is the first of them. A verdict that states several problems (`problemsOf`) joins one group per problem; a finding
- * that is not its first unit's first problem gets that problem's position in its id. A model's finding is marked with the model
+ * that is not its first unit's first problem gets that problem's position in its id. A finding keeps the catalog key and values
+ * of its problem beside the English message, so the report can say it in Korean. A model's finding is marked with the model
  * source and cites the page evidence the collector stored.
  */
 function findingsOf(observations, evidence) {
@@ -506,13 +507,14 @@ function findingsOf(observations, evidence) {
     const blocker = observation.blocker === true || blocking.has(observation.family_id);
     for (const [position, problem] of problemsOf(observation).entries()) {
       const key = JSON.stringify([observation.check_id, pageNeutral(problem, observation.unit_key), model, blocker]);
-      if (!groups.has(key)) groups.set(key, { observation, problem, position, model, blocker, unit_keys: [] });
+      if (!groups.has(key)) groups.set(key, { observation, problem, position, model, blocker, stated: observation.problem_messages?.[position], unit_keys: [] });
       groups.get(key).unit_keys.push(observation.unit_key);
     }
   }
-  return [...groups.values()].map(({ observation, problem, position, model, blocker, unit_keys }) => ({ schema_version: versions().contract_schema,
+  return [...groups.values()].map(({ observation, problem, position, model, blocker, stated, unit_keys }) => ({ schema_version: versions().contract_schema,
     finding_id: `finding-${observation.observation_id}${position ? `-${position}` : ''}`, check_id: observation.check_id, unit_key: observation.unit_key, unit_keys,
     priority: blocker ? 'P0' : core.has(observation.family_id) ? 'P1' : 'P2', blocker, message: problem,
+    ...(stated ? { message_key: stated.message_key, message_values: stated.message_values } : {}),
     source_ref: model ? OBSERVATION_SOURCES.host_model : evidence.find(x => x.ref === observation.evidence_ref)?.source_ref ?? observation.source_ref,
     evidence_ref: observation.evidence_ref, remediation_ids: [], status: 'confirmed' }));
 }
@@ -539,14 +541,14 @@ async function ownerExportResults(state) {
   const selection = JSON.parse(await readFile(path.join(state.out, INTAKE_FILE), 'utf8')).selection;
   if (selection?.sources?.preflight === 'unreadable') remaining.push({ problem: 'The read of the site made before the start questions could not be used, so only the start page and the pages with confirmed facts were audited',
     reason: 'preflight_unreadable', required_input_or_authority: 'A new read of the site', next_action: 'Run the start read again, then start the audit again in a new --out folder',
-    reobserve_when: 'on the next run that starts from a readable start read' });
+    reobserve_when: 'on the next run that starts from a readable start read', message_key: 'follow-up.preflight-unreadable', message_values: {} });
   for (const entry of (await state.store.index()).owner_exports ?? []) {
     if (entry.status === 'read') {
       const stored = JSON.parse(await readFile(path.join(state.out, entry.ref), 'utf8'));
       metrics.push(...normalizeImport(stored.provider, stored.rows, stored.metadata));
     } else remaining.push({ problem: `The ${entry.kind} export file could not be used: ${EXPORT_PROBLEMS[entry.reason] ?? entry.reason}`, reason: entry.reason,
       required_input_or_authority: 'A new export file from the site owner', next_action: 'Export the report again as the runbook describes and give its path in the start answers',
-      reobserve_when: 'on the next run that includes the new file' });
+      reobserve_when: 'on the next run that includes the new file', message_key: 'follow-up.export-unusable', message_values: { kind: entry.kind, reason: entry.reason } });
   }
   return { metrics, remaining };
 }

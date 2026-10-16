@@ -1,8 +1,11 @@
 import { canonicalUrl } from '../link-graph.mjs';
-import { makeObservation, unitKey } from './observation.mjs';
+import { makeObservation, problem, unitKey } from './observation.mjs';
 
 const FAMILY = 'locale-links';
 const X_DEFAULT = 'x-default';
+const NO_X_DEFAULT = problem('No x-default alternate is declared', 'locale-links.no-x-default');
+const NO_RETURN = problem('An alternate page does not link back to this page', 'locale-links.no-return');
+const NOT_LISTED_BACK = problem('A page that lists this page as an alternate is not listed back', 'locale-links.not-listed-back');
 
 const points = (href, page) => page.urls.includes(canonicalUrl(href));
 
@@ -13,6 +16,7 @@ const points = (href, page) => page.urls.includes(canonicalUrl(href));
  */
 export const localeLinks = {
   family_id: FAMILY,
+  message_keys: [NO_X_DEFAULT, NO_RETURN, NOT_LISTED_BACK].map(item => item.message_key),
   derive({ pageRows, alternates }) {
     const pages = new Set(alternates.values());
     const out = [];
@@ -28,19 +32,21 @@ export const localeLinks = {
         continue;
       }
       // Fixed sentences; which pages are meant travels in the measurement.
-      const problems = new Set();
+      const problems = new Map();
+      const add = item => problems.set(item.text, item);
       const noReturn = [], listedWithoutReturn = [];
-      if (mine.length && !mine.some(alternate => alternate.hreflang === X_DEFAULT)) problems.add('No x-default alternate is declared');
+      if (mine.length && !mine.some(alternate => alternate.hreflang === X_DEFAULT)) add(NO_X_DEFAULT);
       let unchecked = 0;
       for (const alternate of mine) {
         if (points(alternate.href, self)) continue;
         const target = alternates.get(canonicalUrl(alternate.href));
         if (!target) unchecked += 1;
-        else if (!target.alternates.some(back => points(back.href, self))) { problems.add('An alternate page does not link back to this page'); noReturn.push(target.urls[0]); }
+        else if (!target.alternates.some(back => points(back.href, self))) { add(NO_RETURN); noReturn.push(target.urls[0]); }
       }
-      for (const other of listedBy) if (!mine.some(alternate => points(alternate.href, other))) { problems.add('A page that lists this page as an alternate is not listed back'); listedWithoutReturn.push(other.urls[0]); }
+      for (const other of listedBy) if (!mine.some(alternate => points(alternate.href, other))) { add(NOT_LISTED_BACK); listedWithoutReturn.push(other.urls[0]); }
       const measurement = { alternates_without_return_link: noReturn, pages_listing_this_page_without_return: listedWithoutReturn, unchecked_alternates: unchecked };
-      if (problems.size) observe('fail', [...problems].join('; '), { measurement: { ...measurement, problems: [...problems] } });
+      if (problems.size) out.push(makeObservation({ family_id: FAMILY, unit_key: unitKey(FAMILY, url), state: 'fail', evidence_ref: artifact.evidence_ref, problems: [...problems.values()],
+        extra: { measurement: { ...measurement, problems: [...problems.keys()] } } }));
       else if (unchecked) observe('unknown', 'Some alternate pages were not collected, so their return links are unchecked', { measurement });
       else observe('pass', 'An x-default alternate is declared and every alternate links back', { measurement });
     }

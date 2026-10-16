@@ -494,7 +494,8 @@ test('follow-ups are composed, and the page folds them under 남은 일', () => 
   const row = { problem: 'The export could not be used', reason: 'export_file_missing', required_input_or_authority: 'A new file', next_action: 'Export again', reobserve_when: 'next run' };
   const verified = verifiedOf({ follow_ups: [row] });
   const composed = composeReport(verified);
-  assert.deepEqual(composed.follow_ups, [row]);
+  // A row without a catalog key keeps its own words as its text.
+  assert.deepEqual(composed.follow_ups, [{ ...row, text_ko: { problem: row.problem, reason: row.reason, required_input_or_authority: row.required_input_or_authority, next_action: row.next_action, reobserve_when: row.reobserve_when } }]);
   assert.deepEqual(renderReport(composed, verified).tables.remaining_work, [[row.problem, row.reason, row.required_input_or_authority, row.next_action, row.reobserve_when]]);
   const page = htmlOf(composed);
   assert.ok(page.includes(`<section id="remaining"><h2>${SECTION_TITLES.remaining}</h2><details><summary>1건 보기</summary>`) && page.includes(row.problem));

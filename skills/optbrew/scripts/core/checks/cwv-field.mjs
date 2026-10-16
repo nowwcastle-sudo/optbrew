@@ -1,7 +1,7 @@
 import { cwvVerdict } from '../contracts.mjs';
 import { thresholds } from '../config.mjs';
 import { HTTP_OK } from '../cwv.mjs';
-import { makeObservation, unitKey } from './observation.mjs';
+import { makeObservation, problem, unitKey } from './observation.mjs';
 
 const UNAVAILABLE = 'field_data_unavailable';
 const P75 = 75;
@@ -47,6 +47,7 @@ const anchorOf = (artifacts, origin) => artifacts.find(artifact => artifact.norm
  */
 const fieldBlock = familyId => ({
   family_id: familyId,
+  message_keys: [`${familyId}.slow`],
   derive({ context, artifacts, selected, cwv }) {
     const { unit } = thresholds(familyId);
     return [...new Set([...selected.keys()].map(url => new URL(url).origin))].map(origin => {
@@ -58,8 +59,9 @@ const fieldBlock = familyId => ({
       const value = p75Of(source, familyId);
       const measurement = { value, percentile: P75, source_type: 'field', unit };
       const { state, q, partial_basis } = cwvVerdict(familyId, value, measurement);
-      return makeObservation({ ...observation, state, q, partial_basis, evidence_ref: source.evidence_ref,
-        reason: `p75 ${value} ${unit} from ${source.source}`, extra: { measurement } });
+      const reason = `p75 ${value} ${unit} from ${source.source}`;
+      return makeObservation({ ...observation, state, q, partial_basis, evidence_ref: source.evidence_ref, extra: { measurement },
+        ...(state === 'fail' ? { problems: [problem(reason, `${familyId}.slow`, { value, source: source.source })] } : { reason }) });
     });
   },
 });

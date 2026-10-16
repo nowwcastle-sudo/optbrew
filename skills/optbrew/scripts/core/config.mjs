@@ -16,6 +16,7 @@ export const versions = block('versions');
 export const endpoints = block('endpoints');
 export const chromePaths = block('chrome-paths');
 export const harnessSignals = block('harness-signals');
+export const messagesKo = block('messages.ko');
 
 /** The request ceiling of one run: the start question's `max_urls` (default 50), never above the cap (200). */
 export const requestLimit = scope => Math.min(scope?.max_urls ?? limits().max_urls_default, limits().max_urls_cap);

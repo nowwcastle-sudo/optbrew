@@ -188,6 +188,10 @@ test('a failed check becomes a finding and the report still replays', async () =
   assert.equal(finding.blocker, true);
   assert.equal(finding.priority, 'P0');
   assert.equal(finding.unit_key, `index-policy|${SITE}/about`);
+  // The Korean sentence travels beside the English message, which stays the grouping text (R65).
+  assert.equal(finding.message_key, 'index-policy.noindex');
+  assert.match(finding.text_ko.message, /^이 페이지가 noindex로 색인을 막고 있습니다/);
+  for (const file of [second.reports.md, second.reports.html]) assert.match(await readFile(file, 'utf8'), /이 페이지가 noindex로 색인을 막고 있습니다/);
 });
 
 test('field CWV uses the key only in the request header and is replayed from stored evidence', async () => {

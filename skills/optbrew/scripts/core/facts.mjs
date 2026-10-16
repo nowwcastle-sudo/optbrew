@@ -1,5 +1,6 @@
 import { decodeEntities, jsonLdBlocks, stripComments, stripInert, visibleText } from './html.mjs';
 import { endpoints } from './config.mjs';
+import { messageOf } from './messages.mjs';
 
 /**
  * Cross-page entity fact extraction and comparison, pure functions of the raw HTML of the selected pages.
@@ -8,6 +9,8 @@ import { endpoints } from './config.mjs';
  * result is unknown, not a failure.
  */
 const FACT_TYPES = ['name', 'phone', 'year', 'address'];
+/** The catalog keys of the two ways a page's fact can conflict; the check that states them lists them as its own. */
+export const FACT_MESSAGE_KEYS = { differs: 'fact-consistency.differs', jsonld: 'fact-consistency.jsonld-differs' };
 const ORG_TYPES = /^(?:Organization|Corporation|LocalBusiness|Store|Restaurant|CafeOrCoffeeShop|OnlineStore|NGO|[A-Za-z]*Business)$/;
 const squash = value => String(value).toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '');
 const BRANCH = /\b(?:branch)\b|지점|지사/i;
@@ -181,6 +184,8 @@ export function compareFacts(allPages) {
   const pages = allPages.filter(page => !separate(page));
   const references = {};
   const deviations = new Map(allPages.map(page => [page.url, []]));
+  // What `deviations` says, in the form the report's Korean text fills: one entry for each text, in the same order.
+  const deviation_messages = new Map(allPages.map(page => [page.url, []]));
   for (const type of FACT_TYPES) {
     const counts = new Map();
     const carrying = pages.filter(page => keysOf(page, type).size);
@@ -202,15 +207,19 @@ export function compareFacts(allPages) {
         if (![...keysOf(page, type)].some(agrees)) {
           const found = [...evidenceOf(page, type).values()].join(' / ');
           deviations.get(page.url).push(`${type} "${found}" differs from "${label}" on ${count} pages`);
+          deviation_messages.get(page.url).push(messageOf(FACT_MESSAGE_KEYS.differs, { type, found, label, count }));
         }
       }
     }
     for (const page of pages) {
       const v = [...page.facts.visible[type].keys()], l = [...page.facts.linked[type].keys()];
       const same = type === 'address' ? v.some(a => l.some(b => sameAddress(a, b))) : v.some(key => l.includes(key));
-      if (v.length && l.length && !same && !deviations.get(page.url).some(x => x.startsWith(`${type} `)))
-        deviations.get(page.url).push(`${type} in JSON-LD "${[...page.facts.linked[type].values()].join(' / ')}" differs from visible "${[...page.facts.visible[type].values()].join(' / ')}"`);
+      if (v.length && l.length && !same && !deviations.get(page.url).some(x => x.startsWith(`${type} `))) {
+        const linked = [...page.facts.linked[type].values()].join(' / '), visible = [...page.facts.visible[type].values()].join(' / ');
+        deviations.get(page.url).push(`${type} in JSON-LD "${linked}" differs from visible "${visible}"`);
+        deviation_messages.get(page.url).push(messageOf(FACT_MESSAGE_KEYS.jsonld, { type, linked, visible }));
+      }
     }
   }
-  return { references, deviations, separate: new Set(allPages.filter(separate).map(page => page.url)) };
+  return { references, deviations, deviation_messages, separate: new Set(allPages.filter(separate).map(page => page.url)) };
 }

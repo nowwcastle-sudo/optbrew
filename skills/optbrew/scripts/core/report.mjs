@@ -17,6 +17,7 @@ import { links } from './collector.mjs';
 import { checkRenderLedger } from './render.mjs';
 import { assertUrlInScope } from './scope.mjs';
 import { composeReport, pagesLabel, renderReport } from './report-compose.mjs';
+import { messageOf } from './messages.mjs';
 import { runbookEntry } from './runbooks.mjs';
 import { sensitive } from './secrets.mjs';
 import { OBSERVATION_SOURCES, QUEUE_KIND, candidateSpans, checkSpan, isCodeJudged, isModelJudged, queuedSpan } from './judgments.mjs';
@@ -791,30 +792,35 @@ export function buildReport(packet) {
         problem: `Production application and observation pending for ${finding.unit_key}`,
         reason: 'production_deployment_pending', required_input_or_authority: 'site owner deployment authority and production target',
         next_action: 'Deploy the locally verified change, then fetch the production response',
-        reobserve_when: 'after authorized production deployment and a new raw response' });
+        reobserve_when: 'after authorized production deployment and a new raw response', ...messageOf('follow-up.production-pending', { pages: pagesLabel(finding) }) });
     } else remaining.push({ finding_id: finding.finding_id, problem: `${finding.message} ${pagesLabel(finding)}`,
       reason: finding.status, required_input_or_authority: finding.remediation?.required_authority ?? 'source evidence and owner review',
       next_action: finding.remediation?.mechanism ?? 'Confirm the issue from raw evidence',
-      reobserve_when: finding.remediation?.validation ?? 'after new evidence is collected' });
+      reobserve_when: finding.remediation?.validation ?? 'after new evidence is collected', ...messageOf('follow-up.finding') });
   }
-  const costIssues = [
+  // Each cost note keeps its English text beside the catalog key and values of its Korean sentence.
+  const costNote = (text, message) => ({ text, ...message });
+  const costNotes = [
     ...packet.costs.reservations.filter(x => ['unknown', 'overrun'].includes(x.status)).map(x => {
       const settlement = packet.costs.settlements.find(item => item.reservation_id === x.reservation_id);
-      const format = amounts => amounts?.map(item => `${item.amount} ${item.currency ?? item.unit}`).join(', ') ?? 'unknown';
-      return `${x.provider}: ${x.status} (reserved ${format(x.upperBounds)}; actual ${format(settlement?.actual)})`;
+      const format = amounts => amounts?.map(item => `${item.amount} ${item.currency ?? item.unit}`).join(', ');
+      return costNote(`${x.provider}: ${x.status} (reserved ${format(x.upperBounds) ?? 'unknown'}; actual ${format(settlement?.actual) ?? 'unknown'})`,
+        messageOf('cost.reservation', { provider: x.provider, status: x.status, reserved: format(x.upperBounds), actual: format(settlement?.actual) }));
     }),
-    ...(packet.capabilities?.selected ?? []).filter(x => x.cost_enforcement === 'host_policy').map(x => `${x.provider}: host_policy`),
-    ...(packet.capabilities?.limitations ?? []),
+    ...(packet.capabilities?.selected ?? []).filter(x => x.cost_enforcement === 'host_policy').map(x => costNote(`${x.provider}: host_policy`, messageOf('cost.host-policy', { provider: x.provider }))),
+    ...(packet.capabilities?.limitations ?? []).map((text, index) => costNote(text, packet.capabilities.limitation_messages?.[index] ?? messageOf(null))),
   ];
   if (packet.costs.reservations.some(x => x.provider === 'anthropic') ||
       (packet.capabilities?.selected ?? []).some(x => x.provider === 'anthropic'))
     // The direct adapter ships with the release, so this label is the release version (the panel label in metrics.mjs is the evaluation version).
-    costIssues.push(`Anthropic direct v${versions().release}: text-only; claude-fable-5-1, claude-opus-5-5, claude-sonnet-5-5, claude-haiku-5-5; max output 128000; one token reserve >=1000000+max_tokens per attempt; tools/search and currency-only or mixed bounds unsupported; reservation is capacity, not actual billing`);
+    costNotes.push(costNote(`Anthropic direct v${versions().release}: text-only; claude-fable-5-1, claude-opus-5-5, claude-sonnet-5-5, claude-haiku-5-5; max output 128000; one token reserve >=1000000+max_tokens per attempt; tools/search and currency-only or mixed bounds unsupported; reservation is capacity, not actual billing`,
+      messageOf('cost.anthropic', { version: versions().release })));
   const verified = { schema_version: versions().contract_schema, run_context: packet.run_context,
     data_class: packet.data_class ?? 'unknown', baseline: { input: packet.baseline.input, scores: baselineScores },
     after: packet.after ? { input: packet.after.input, scores: afterScores } : null, comparison,
     metrics: packet.metrics, findings, changes: packet.changes, costs: packet.costs,
-    capabilities: packet.capabilities ?? null, cost_issues: costIssues, metric_origin_limitations: metricOriginLimitations, follow_ups: remaining,
+    capabilities: packet.capabilities ?? null, cost_issues: costNotes.map(item => item.text),
+    cost_issue_messages: costNotes.map(({ message_key, message_values }) => ({ message_key, message_values })), metric_origin_limitations: metricOriginLimitations, follow_ups: remaining,
     evidence_root: packet.evidence_root, evidence_index: packet.evidence_index,
     audit_ref: packet.audit_ref ?? null, audit_snapshots: snapshots, model_judgments: modelRows, source_ref: packet.source_ref,
     outcome_rows: metricRows(packet.metrics), lab_cwv: packet.lab_cwv ?? null, start_redirect: startRedirect, answered_runbooks: packet.answered_runbooks ?? [] };

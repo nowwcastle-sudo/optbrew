@@ -237,7 +237,7 @@ test('the same problem on several pages is one fix row that says how many pages'
   const site = memorySite(pages);
   const { second } = await twoCalls(site, answersFor(`${SITE}/`), { before: ws => preflightOf(site, `${SITE}/`, ws.out) });
   const report = await readJson(second.reports.json);
-  const rows = report.tables.remediation.filter(row => row[1].startsWith('Raw HTML has no title'));
+  const rows = report.tables.remediation.filter(row => row[1].startsWith('원본 HTML에 <title>이 없습니다'));
   assert.equal(rows.length, 1);
   assert.match(rows[0][1], /\(3개 페이지: /);
   assert.equal(report.composed.fixes.filter(fix => fix.check_id === 'document-title').length, 1);

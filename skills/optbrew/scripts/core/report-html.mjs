@@ -87,10 +87,10 @@ const runbookHtml = (runbook, level) => {
 const fixHtml = fix => {
   const chip = resolved(fix) ? '<span class="chip ok">이미 고침</span>' : fix.blocker ? '<span class="chip hot">가장 급함</span>' : `<span class="chip">${esc(fix.priority_label)}</span>`;
   const rows = [['근거', fix.sources.map(x => `${x.source_ref} ${x.evidence_ref}`).join('; ') || UNKNOWN],
-    ['해결 방법', fix.remediation ? `${fix.remediation.mechanism} (${fix.remediation.source_url}, 확인일 ${fix.remediation.checked_date})` : UNKNOWN],
-    ['비용 / 노력', fix.remediation ? `${fix.remediation.cost}; ${fix.remediation.effort}` : UNKNOWN],
-    ['확인 방법', fix.remediation?.validation ?? UNKNOWN], ['상태', fix.status_label]];
-  return `<li class="fix"><div class="head">${chip}<span class="msg">${esc(fix.message)}</span></div><p class="pages">${esc(pagesLabel(fix))}</p>` +
+    ['해결 방법', fix.remediation ? `${fix.text_ko.remediation.mechanism} (${fix.remediation.source_url}, 확인일 ${fix.remediation.checked_date})` : UNKNOWN],
+    ['비용 / 노력', fix.remediation ? `${fix.text_ko.remediation.cost}; ${fix.text_ko.remediation.effort}` : UNKNOWN],
+    ['확인 방법', fix.text_ko.remediation?.validation ?? UNKNOWN], ['상태', fix.status_label]];
+  return `<li class="fix"><div class="head">${chip}<span class="msg">${esc(fix.text_ko.message)}</span></div><p class="pages">${esc(pagesLabel(fix))}</p>` +
     `<p class="where"><strong>고칠 곳</strong> ${esc(fix.where)}</p><details><summary>자세히 보기</summary><dl>${rows.map(([term, value]) => `<dt>${term}</dt><dd>${esc(value)}</dd>`).join('')}</dl></details></li>`;
 };
 
@@ -131,7 +131,7 @@ const blankSection = (composed, runbooks, level) => {
 };
 
 const followUpsSection = ({ follow_ups: followUps }) => {
-  const rows = followUps.map(item => `<li class="blank"><p class="msg">${esc(item.problem)}</p><dl><dt>필요한 입력 / 권한</dt><dd>${esc(item.required_input_or_authority)}</dd><dt>다음 행동</dt><dd>${esc(item.next_action)}</dd><dt>다시 볼 때</dt><dd>${esc(item.reobserve_when)}</dd></dl></li>`);
+  const rows = followUps.map(({ text_ko: item }) => `<li class="blank"><p class="msg">${esc(item.problem)}</p><dl><dt>필요한 입력 / 권한</dt><dd>${esc(item.required_input_or_authority)}</dd><dt>다음 행동</dt><dd>${esc(item.next_action)}</dd><dt>다시 볼 때</dt><dd>${esc(item.reobserve_when)}</dd></dl></li>`);
   return `<section id="remaining"><h2>${SECTION_TITLES.remaining}</h2><details><summary>${followUps.length}건 보기</summary>` +
     `${rows.length ? `<ul class="blanks">${rows.join('')}</ul>` : '<p>남은 일이 없습니다.</p>'}</details></section>`;
 };

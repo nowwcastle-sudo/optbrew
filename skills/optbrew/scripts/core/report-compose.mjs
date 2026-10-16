@@ -2,6 +2,7 @@ import { compileUnits, scoreWeighted } from './weights.mjs';
 import { CWV_FAMILIES } from './checks/cwv-field.mjs';
 import { CONTENT_AFTER_RENDER } from './checks/render-content.mjs';
 import { messageKey } from './findings.mjs';
+import { koText } from './messages.mjs';
 import { keySetRunbook, runbookHarnesses } from './probe.mjs';
 import { remainingRunbooks, runbookEntry, startRunbooks } from './runbooks.mjs';
 
@@ -81,13 +82,23 @@ export const pagesLabel = finding => {
   return `(${units.length}개 페이지: ${shown}${units.length > PAGES_SHOWN ? `, 외 ${units.length - PAGES_SHOWN}개` : ''})`;
 };
 
+const REMEDIATION_FIELDS = ['mechanism', 'validation', 'effort', 'cost', 'location_hint'];
+/**
+ * The Korean text of one fix: the sentence for its message key and, when a remediation was chosen, the sentence for each of that
+ * remediation's fields. Anything the catalog has no entry for (a model's finding, a remediation of someone's own catalog) keeps its own words.
+ */
+const fixTextKo = finding => ({ message: koText(finding.message_key, finding.message_values, finding.message),
+  remediation: finding.remediation ? Object.fromEntries(REMEDIATION_FIELDS.map(field =>
+    [field, koText(`remediation.${finding.remediation.remediation_id}.${field}`, {}, finding.remediation[field])])) : null });
+
 /** Open before resolved, then blocking, then priority (P0 first, an unknown one last), then the problem on the most pages, then the unit. */
 function sortedFixes(findings, changes) {
   const pages = new Map();
   for (const finding of findings) pages.set(affectedKey(finding), new Set([...(pages.get(affectedKey(finding)) ?? []), ...pagesOf(finding)]));
   const withPaths = findings.map(finding => {
     const change_paths = changes.filter(change => change.finding_ids.some(id => finding.finding_ids.includes(id))).map(change => change.path);
-    return { ...finding, change_paths, where: change_paths.join('; ') || finding.remediation?.location_hint || LOCATION_NEEDED,
+    const text_ko = fixTextKo(finding);
+    return { ...finding, change_paths, text_ko, where: change_paths.join('; ') || text_ko.remediation?.location_hint || LOCATION_NEEDED,
       priority_label: PRIORITY_LABELS[finding.priority] ?? finding.priority, status_label: STATUS_LABELS[finding.status] ?? finding.status };
   });
   return withPaths.sort((a, b) => Number(resolved(a)) - Number(resolved(b)) || Number(b.blocker) - Number(a.blocker) ||
@@ -107,6 +118,32 @@ function conclusionOf(fixes, completeness) {
   return { open: open.length, blocking, already_fixed: fixes.length - open.length,
     text: open.length ? `먼저 고칠 것이 ${open.length}건 있습니다${blocking ? ` (그중 ${blocking}건이 가장 급합니다)` : ''}.` : none };
 }
+
+const FINDING_ROW = 'follow-up.finding';
+const FOLLOW_UP_LINES = { problem: 'problem', reason: 'reason', required_input_or_authority: 'input', next_action: 'next', reobserve_when: 'when' };
+/**
+ * The Korean text of one remaining-work row. A row about a fix is told from the fix: its Korean message, its status word, the chosen
+ * remediation's sentences. Any other row that names a catalog key fills that key's lines with its values. A row with no key keeps its own words.
+ */
+function followUpText(row, fixes) {
+  const fix = row.message_key === FINDING_ROW ? fixes.find(item => item.finding_ids.includes(row.finding_id)) : null;
+  if (fix) {
+    const { remediation } = fix.text_ko;
+    const authority = fix.remediation && koText(`authority.${fix.remediation.required_authority}`, {}, row.required_input_or_authority);
+    return { problem: `${fix.text_ko.message} ${pagesLabel(fix)}`, reason: fix.status_label,
+      required_input_or_authority: authority ?? koText(`${FINDING_ROW}.input`, {}, row.required_input_or_authority),
+      next_action: remediation?.mechanism ?? koText(`${FINDING_ROW}.next`, {}, row.next_action),
+      reobserve_when: remediation?.validation ?? koText(`${FINDING_ROW}.when`, {}, row.reobserve_when) };
+  }
+  return Object.fromEntries(Object.entries(FOLLOW_UP_LINES).map(([field, line]) =>
+    [field, koText(row.message_key && `${row.message_key}.${line}`, row.message_values, row[field])]));
+}
+
+/** The cost and feature limits, one Korean sentence each; a note without a catalog key keeps its English text. */
+const costIssuesKo = verified => verified.cost_issues.map((text, index) => {
+  const message = verified.cost_issue_messages?.[index];
+  return koText(message?.message_key, message?.message_values, text);
+});
 
 const blockerSummary = scores => ({ count: scores[0]?.blockers.length ?? 0, items: scores[0]?.blockers.map(x => `${x.family_id} ${x.unit_key}`) ?? [],
   core_unknown: scores[0]?.unknown_core.length ?? 0 });
@@ -164,7 +201,7 @@ export function composeReport(verified) {
     completeness,
     remaining: remainingBlanks(verified, latest),
     conditions,
-    follow_ups: verified.follow_ups,
+    follow_ups: verified.follow_ups.map(row => ({ ...row, text_ko: followUpText(row, fixes) })),
   };
 }
 
@@ -189,13 +226,13 @@ function tableRows(composed, verified) {
     `${percent(coverageOf(before.headline))} → ${after ? percent(coverageOf(after.headline)) : UNKNOWN}`,
     `${before.missing_bounds?.join('–') ?? UNKNOWN} → ${after?.missing_bounds?.join('–') ?? UNKNOWN}`,
     `${before.readiness_status} → ${after?.readiness_status ?? UNKNOWN}`, percent(withoutField)]);
-  const remediation = composed.fixes.map(f => [f.priority_label, `${f.message} ${pagesLabel(f)}`, f.sources.map(x => `${x.source_ref} ${x.evidence_ref}`).join('; '),
-    f.remediation ? `${f.remediation.mechanism} (${f.remediation.source_url}, 확인일 ${f.remediation.checked_date})` : UNKNOWN,
-    f.where, f.remediation ? `${f.remediation.cost}; ${f.remediation.effort}` : UNKNOWN, f.remediation?.validation ?? UNKNOWN,
+  const remediation = composed.fixes.map(f => [f.priority_label, `${f.text_ko.message} ${pagesLabel(f)}`, f.sources.map(x => `${x.source_ref} ${x.evidence_ref}`).join('; '),
+    f.remediation ? `${f.text_ko.remediation.mechanism} (${f.remediation.source_url}, 확인일 ${f.remediation.checked_date})` : UNKNOWN,
+    f.where, f.remediation ? `${f.text_ko.remediation.cost}; ${f.text_ko.remediation.effort}` : UNKNOWN, f.text_ko.remediation?.validation ?? UNKNOWN,
     f.resolution ? `${f.status_label} (${f.resolution.source_ref}의 ${f.resolution.evaluator_type} 관찰로 해결 확인)` : f.status_label]);
   return { score, remediation,
     actual_outcomes: verified.outcome_rows,
-    remaining_work: composed.follow_ups.map(x => [x.problem, x.reason, x.required_input_or_authority, x.next_action, x.reobserve_when]),
+    remaining_work: composed.follow_ups.map(({ text_ko: x }) => [x.problem, x.reason, x.required_input_or_authority, x.next_action, x.reobserve_when]),
     model_judgments: composed.conditions.model_judgments.map(x => [x.phase, `${x.family_id} ${x.unit_key}`, x.state,
       `${x.evidence_ref} 바이트 ${x.evidence_span.map(span => `${span.start}–${span.end}`).join(', ')}`, x.label]) };
 }
@@ -215,7 +252,7 @@ function conditionLines(conditions, verified) {
     { label: '이후 막는 문제', value: after ? listed(after) : `${UNKNOWN} (이후 단계를 보지 않음)` },
     { label: '이후 결과 없는 핵심 검사', value: count(after?.core_unknown ?? null) },
     { label: '실제 결과', value: verified.metrics.length ? "아래 '실제 결과'의 측정·빈칸 상태 참고" : '연결 안 됨 / 알 수 없음' },
-    { label: '비용·기능 제한', value: verified.cost_issues.join('; ') || '기록 없음' },
+    { label: '비용·기능 제한', value: costIssuesKo(verified).join('; ') || '기록 없음' },
     { label: '지표 출처 제한', value: verified.metric_origin_limitations.join('; ') || '측정된 제공자 입력 없음' },
     { label: '실험실 Core Web Vitals (참고용, 점수에 넣지 않음)', value: lab ? `LCP ${lab.lcp ?? UNKNOWN} ms; CLS ${lab.cls ?? UNKNOWN}` : '측정하지 않음' },
     ...(conditions.start_redirect ? [{ label: '시작 주소', value: `${conditions.start_redirect.from} → ${conditions.start_redirect.to} (이 주소로 연결되므로 감사는 ${conditions.start_redirect.to}에서 실행했습니다)` }] : []),

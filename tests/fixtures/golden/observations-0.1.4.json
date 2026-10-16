@@ -124,6 +124,62 @@
     "evaluator_type": "code",
     "source_ref": "optbrew:collector",
     "evidence_ref": "<out>/evidence/239b66f2f58e6d41d966cb7da2240e8415189925030bd5b8a3ed957fb3717d77.html",
+    "measurement": {
+      "problems": [
+        "og:title is missing",
+        "og:description is missing",
+        "og:image is missing",
+        "og:url is missing",
+        "og:type is missing",
+        "meta description is missing",
+        "canonical link is missing",
+        "meta viewport is missing"
+      ]
+    },
+    "problem_messages": [
+      {
+        "message_key": "naver-markup.no-og",
+        "message_values": {
+          "name": "title"
+        }
+      },
+      {
+        "message_key": "naver-markup.no-og",
+        "message_values": {
+          "name": "description"
+        }
+      },
+      {
+        "message_key": "naver-markup.no-og",
+        "message_values": {
+          "name": "image"
+        }
+      },
+      {
+        "message_key": "naver-markup.no-og",
+        "message_values": {
+          "name": "url"
+        }
+      },
+      {
+        "message_key": "naver-markup.no-og",
+        "message_values": {
+          "name": "type"
+        }
+      },
+      {
+        "message_key": "naver-markup.no-description",
+        "message_values": {}
+      },
+      {
+        "message_key": "naver-markup.no-canonical",
+        "message_values": {}
+      },
+      {
+        "message_key": "naver-markup.no-viewport",
+        "message_values": {}
+      }
+    ],
     "site": "after"
   },
   {
@@ -163,6 +219,12 @@
     "evaluator_type": "code",
     "source_ref": "optbrew:collector",
     "evidence_ref": "<out>/evidence/c79271fb4d98447734a702cd72feb167ec5dd825e82817cfc672f24045e1d7a0.html",
+    "problem_messages": [
+      {
+        "message_key": "document-title.missing",
+        "message_values": {}
+      }
+    ],
     "site": "before"
   },
   {
@@ -189,6 +251,12 @@
     "evaluator_type": "code",
     "source_ref": "optbrew:collector",
     "evidence_ref": "<out>/evidence/c79271fb4d98447734a702cd72feb167ec5dd825e82817cfc672f24045e1d7a0.html",
+    "problem_messages": [
+      {
+        "message_key": "index-policy.noindex",
+        "message_values": {}
+      }
+    ],
     "site": "before"
   },
   {
@@ -264,6 +332,62 @@
     "evaluator_type": "code",
     "source_ref": "optbrew:collector",
     "evidence_ref": "<out>/evidence/c79271fb4d98447734a702cd72feb167ec5dd825e82817cfc672f24045e1d7a0.html",
+    "measurement": {
+      "problems": [
+        "og:title is missing",
+        "og:description is missing",
+        "og:image is missing",
+        "og:url is missing",
+        "og:type is missing",
+        "meta description is missing",
+        "canonical link is missing",
+        "meta viewport is missing"
+      ]
+    },
+    "problem_messages": [
+      {
+        "message_key": "naver-markup.no-og",
+        "message_values": {
+          "name": "title"
+        }
+      },
+      {
+        "message_key": "naver-markup.no-og",
+        "message_values": {
+          "name": "description"
+        }
+      },
+      {
+        "message_key": "naver-markup.no-og",
+        "message_values": {
+          "name": "image"
+        }
+      },
+      {
+        "message_key": "naver-markup.no-og",
+        "message_values": {
+          "name": "url"
+        }
+      },
+      {
+        "message_key": "naver-markup.no-og",
+        "message_values": {
+          "name": "type"
+        }
+      },
+      {
+        "message_key": "naver-markup.no-description",
+        "message_values": {}
+      },
+      {
+        "message_key": "naver-markup.no-canonical",
+        "message_values": {}
+      },
+      {
+        "message_key": "naver-markup.no-viewport",
+        "message_values": {}
+      }
+    ],
     "site": "before"
   },
   {
@@ -885,6 +1009,12 @@
         "canonical target does not return a successful status"
       ]
     },
+    "problem_messages": [
+      {
+        "message_key": "canonical-consistency.target-status",
+        "message_values": {}
+      }
+    ],
     "site": "defect"
   },
   {
@@ -1123,6 +1253,12 @@
     "evaluator_type": "code",
     "source_ref": "optbrew:collector",
     "evidence_ref": "<out>/evidence/82bcec8a591ef5b7f23889ddf176dae98dd988bbccd850fa0b5d3ef67f0b05fb.html",
+    "problem_messages": [
+      {
+        "message_key": "discovery.orphan",
+        "message_values": {}
+      }
+    ],
     "site": "defect"
   },
   {
@@ -1154,6 +1290,12 @@
         "http://127.0.0.1:PORT/dup"
       ]
     },
+    "problem_messages": [
+      {
+        "message_key": "document-title.duplicate",
+        "message_values": {}
+      }
+    ],
     "site": "defect"
   },
   {
@@ -1237,6 +1379,12 @@
         "http://127.0.0.1:PORT/"
       ]
     },
+    "problem_messages": [
+      {
+        "message_key": "document-title.duplicate",
+        "message_values": {}
+      }
+    ],
     "site": "defect"
   },
   {
@@ -1297,6 +1445,12 @@
       ],
       "home_page": "http://127.0.0.1:PORT/"
     },
+    "problem_messages": [
+      {
+        "message_key": "entity-identity.no-same-as",
+        "message_values": {}
+      }
+    ],
     "site": "defect"
   },
   {
@@ -1375,6 +1529,17 @@
     "evaluator_type": "code",
     "source_ref": "optbrew:collector",
     "evidence_ref": "<out>/evidence/ef4dac027a5e1aee55546f8c0b8147593896af72526a71b4e88c87654ba835e4.html",
+    "problem_messages": [
+      {
+        "message_key": "fact-consistency.differs",
+        "message_values": {
+          "type": "phone",
+          "found": "02-555-0199",
+          "label": "02-555-0142",
+          "count": 9
+        }
+      }
+    ],
     "site": "defect"
   },
   {
@@ -1531,6 +1696,14 @@
     "evaluator_type": "code",
     "source_ref": "optbrew:collector",
     "evidence_ref": "<out>/evidence/907ba78b4545338d3539683e63ecb51cf51c10adc9dabd86e92bd52339f298b9.bin",
+    "problem_messages": [
+      {
+        "message_key": "fetch-response.http-error",
+        "message_values": {
+          "status": 404
+        }
+      }
+    ],
     "site": "defect"
   },
   {
@@ -1674,6 +1847,12 @@
     "evaluator_type": "code",
     "source_ref": "optbrew:collector",
     "evidence_ref": "<out>/evidence/445743d8f42f88657af42c0a2d15eb71a92d473be906952a39a4396dc8755fb8.html",
+    "problem_messages": [
+      {
+        "message_key": "index-policy.noindex",
+        "message_values": {}
+      }
+    ],
     "site": "defect"
   },
   {
@@ -2151,6 +2330,62 @@
     "evaluator_type": "code",
     "source_ref": "optbrew:collector",
     "evidence_ref": "<out>/evidence/02cb3482406e7d0256280bbdf6f300ca959146a425c1729a7615e3017e147e91.html",
+    "measurement": {
+      "problems": [
+        "og:title is missing",
+        "og:description is missing",
+        "og:image is missing",
+        "og:url is missing",
+        "og:type is missing",
+        "meta description is missing",
+        "canonical link is missing",
+        "meta viewport is missing"
+      ]
+    },
+    "problem_messages": [
+      {
+        "message_key": "naver-markup.no-og",
+        "message_values": {
+          "name": "title"
+        }
+      },
+      {
+        "message_key": "naver-markup.no-og",
+        "message_values": {
+          "name": "description"
+        }
+      },
+      {
+        "message_key": "naver-markup.no-og",
+        "message_values": {
+          "name": "image"
+        }
+      },
+      {
+        "message_key": "naver-markup.no-og",
+        "message_values": {
+          "name": "url"
+        }
+      },
+      {
+        "message_key": "naver-markup.no-og",
+        "message_values": {
+          "name": "type"
+        }
+      },
+      {
+        "message_key": "naver-markup.no-description",
+        "message_values": {}
+      },
+      {
+        "message_key": "naver-markup.no-canonical",
+        "message_values": {}
+      },
+      {
+        "message_key": "naver-markup.no-viewport",
+        "message_values": {}
+      }
+    ],
     "site": "defect"
   },
   {
@@ -2359,6 +2594,14 @@
     "evaluator_type": "code",
     "source_ref": "optbrew:collector",
     "evidence_ref": "<out>/evidence/4708097df35ceea31e915b04f525da91678bfe5906b9780bf1ebd270178d5656.bin",
+    "problem_messages": [
+      {
+        "message_key": "search-crawl-policy.disallowed",
+        "message_values": {
+          "agent": "Googlebot"
+        }
+      }
+    ],
     "site": "defect"
   },
   {
@@ -2489,6 +2732,14 @@
     "evaluator_type": "code",
     "source_ref": "optbrew:collector",
     "evidence_ref": "<out>/evidence/4708097df35ceea31e915b04f525da91678bfe5906b9780bf1ebd270178d5656.bin",
+    "problem_messages": [
+      {
+        "message_key": "search-crawl-policy.disallowed",
+        "message_values": {
+          "agent": "Yeti"
+        }
+      }
+    ],
     "site": "defect"
   },
   {
@@ -2505,6 +2756,12 @@
     "measurement": {
       "parse_errors": 1
     },
+    "problem_messages": [
+      {
+        "message_key": "structured-data-truth.parse-error",
+        "message_values": {}
+      }
+    ],
     "site": "defect"
   }
 ]

@@ -258,7 +258,7 @@ test('report recomputes raw scores and keeps remote-only, synthetic and missing 
   assert.deepEqual(seo.missing_bounds, [2.9, 97.1]);
   assert.equal(json.comparison.status, 'no_after');
   assert.match(markdown, /예시 보고서/);
-  assert.match(markdown, /proposed_only/);
+  assert.match(markdown, /제안만 함/);
   assert.match(markdown, /not_connected/);
   for (const header of ['먼저 고칠 것', '얼마나 확인했나', '아직 비어 있는 곳', '남은 일', '실제 결과', '실행 조건']) assert.match(markdown, new RegExp(header));
   assert.match(markdown, /Unexpected \\\| noindex/);
@@ -316,10 +316,15 @@ test('unknown billing and observed overrun remain visible alongside host policy'
     run.rewrite('cost-ledger.json', `${JSON.stringify(run.packet.costs, null, 2)}\n`);
     const { json, markdown } = buildReport(run.packet);
     assert.deepEqual(json.costs.settlements[1].actual, [{ unit: 'tokens', amount: 1000200 }]);
-    assert.match(markdown, /anthropic: unknown/);
-    assert.match(markdown, /anthropic: overrun/);
-    assert.match(markdown, /host_policy/);
-    assert.match(markdown, /text-only/);
+    assert.match(markdown, /anthropic: 비용 상태가 '알 수 없음'입니다/);
+    assert.match(markdown, /anthropic: 비용 상태가 '한도 초과'입니다/);
+    assert.match(markdown, /호스트의 정책/);
+    assert.match(markdown, /글자만 처리합니다/);
+    // The English sentences stay in the checked data.
+    assert.match(json.cost_issues.join('\n'), /anthropic: unknown/);
+    assert.match(json.cost_issues.join('\n'), /anthropic: overrun/);
+    assert.match(json.cost_issues.join('\n'), /host_policy/);
+    assert.match(json.cost_issues.join('\n'), /text-only/);
   } finally { rmSync(run.dir, { recursive: true, force: true }); }
 });
 
