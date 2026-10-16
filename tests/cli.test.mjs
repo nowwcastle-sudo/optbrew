@@ -1,13 +1,14 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, mkdir, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, writeFile, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
 import { createBundleManifest } from '../skills/optbrew/scripts/core/bundle.mjs';
 import { main } from '../lib/cli.mjs';
 
-test('CLI validates arguments and reports JSON dry-run without writes', async () => {
+test('CLI validates arguments and reports JSON dry-run without writes', async t => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'optbrew-cli-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
   const bundleRoot = path.join(root, 'bundle');
   await mkdir(bundleRoot);
   await writeFile(path.join(bundleRoot, 'SKILL.md'), 'skill');

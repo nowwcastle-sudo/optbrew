@@ -1,9 +1,9 @@
 import { createServer } from 'node:http';
 import { createHash } from 'node:crypto';
 import { existsSync } from 'node:fs';
-import { mkdtemp, readFile, writeFile } from 'node:fs/promises';
-import os from 'node:os';
+import { readFile, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { tempDir } from './temp-dir.mjs';
 import { runAudit } from '../../skills/optbrew/scripts/audit.mjs';
 import { score } from '../../skills/optbrew/scripts/core/score.mjs';
 import { compare } from '../../skills/optbrew/scripts/core/compare.mjs';
@@ -34,7 +34,7 @@ export async function startSite(routes) {
 
 /** Audit local pages and wrap the preserved run evidence in a replayable report packet. */
 export async function buildScenario(site, paths, { engines = ['google'], robots = false, sitemap = false, enable = [], modules = ['naver-searchadvisor'], maxUrls = 50, name = 'scenario' } = {}) {
-  const dir = await mkdtemp(path.join(os.tmpdir(), `optbrew-final-review-${name}-`));
+  const dir = await tempDir(`optbrew-final-review-${name}-`);
   const { origin, port } = site;
   const context = structuredClone(JSON.parse(await readFile(template, 'utf8')).run_context);
   context.run_id = `final-review-${name}`;

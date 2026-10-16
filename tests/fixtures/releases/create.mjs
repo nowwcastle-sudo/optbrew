@@ -1,6 +1,6 @@
-import { mkdtemp, mkdir, writeFile } from 'node:fs/promises';
-import os from 'node:os';
+import { mkdir, writeFile } from 'node:fs/promises';
 import path from 'node:path';
+import { tempDir } from '../../support/temp-dir.mjs';
 import { createBundleManifest } from '../../../skills/optbrew/scripts/core/bundle.mjs';
 import { install } from '../../../lib/install.mjs';
 
@@ -18,7 +18,7 @@ export async function seal(bundleRoot, version) {
   await writeFile(path.join(bundleRoot, 'bundle-manifest.json'), JSON.stringify(await createBundleManifest({ bundleRoot, releaseVersion: version })));
 }
 export async function fixture(strategy = 'copy') {
-  const root = await mkdtemp(path.join(os.tmpdir(), 'optbrew update 한글 (9) '));
+  const root = await tempDir('optbrew update 한글 (9) ');
   const home = path.join(root, 'home');
   const old = await release(root, '0.1.0');
   const next = await release(root, '0.1.1');

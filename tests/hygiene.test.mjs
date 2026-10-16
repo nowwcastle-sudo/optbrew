@@ -147,3 +147,19 @@ test('commented-out code check flags code and passes prose', () => {
   assert.deepEqual(commentedCode('// A note on the order (see above), written in prose\n// and spread over\n// three lines.'), []);
   assert.deepEqual(commentedCode('// const a = 1;\n// run(a);'), []);
 });
+
+test('every test file that creates a temp dir also removes it', async () => {
+  const found = [];
+  const walk = async dir => {
+    for (const entry of await readdir(path.join(root, dir), { withFileTypes: true })) {
+      const relative = `${dir}/${entry.name}`;
+      if (entry.isDirectory()) await walk(relative);
+      else if (entry.name.endsWith('.mjs')) {
+        const text = await readFile(path.join(root, relative), 'utf8');
+        if (/\bmkdtemp(?:Sync)?\(/.test(text) && !/\b(?:rm|rmSync)\(/.test(text)) found.push(relative);
+      }
+    }
+  };
+  await walk('tests');
+  noViolations(found, 'pair mkdtemp with rm/rmSync, or create the dir through tests/support/temp-dir.mjs');
+});

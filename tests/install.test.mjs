@@ -13,6 +13,7 @@ import { install } from '../lib/install.mjs';
 import { resolveTargets } from '../lib/paths.mjs';
 import { readInstallRecord } from '../lib/records.mjs';
 import { fixture as updateFixture } from './fixtures/releases/create.mjs';
+import { tempDir } from './support/temp-dir.mjs';
 import { update } from '../lib/update.mjs';
 import { recoverTransaction } from '../lib/transaction.mjs';
 
@@ -20,7 +21,7 @@ const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url))
 
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 async function fixture() {
-  const root = await mkdtemp(path.join(os.tmpdir(), 'optbrew 한글 (8) '));
+  const root = await tempDir('optbrew 한글 (8) ');
   const home = path.join(root, 'home (테스트)');
   const bundleRoot = path.join(root, 'bundle');
   await mkdir(bundleRoot, { recursive: true });

@@ -1,12 +1,12 @@
 import assert from 'node:assert/strict';
-import { readFile, writeFile, mkdtemp, mkdir, cp, access } from 'node:fs/promises';
+import { readFile, writeFile, mkdir, cp, access } from 'node:fs/promises';
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { test } from 'node:test';
 import { fixture } from './fixtures/releases/create.mjs';
+import { tempDir } from './support/temp-dir.mjs';
 import { main } from '../lib/cli.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -38,7 +38,7 @@ test('documented local commands parse and operate in isolated project', async ()
   const withoutReinstallBlocks = text.replace(/```(?:powershell|bash) (?:user|project)\n[\s\S]*?```/g, '');
   const documented = [...new Set([...withoutReinstallBlocks.matchAll(/^node bin\/optbrew\.mjs (.+)$/gm)].map(match => match[1]))].sort();
   assert.deepEqual(documented, [...required].sort(), 'every checkout CLI example must have an isolated execution case');
-  const temp = await mkdtemp(path.join(os.tmpdir(), 'optbrew-docs-'));
+  const temp = await tempDir('optbrew-docs-');
   await mkdir(path.join(temp, 'site'));
   await cp(path.join(root, 'tests/fixtures/scoring/before.json'), path.join(temp, 'before.json'));
   await cp(path.join(root, 'tests/fixtures/scoring/after.json'), path.join(temp, 'after.json'));
@@ -88,7 +88,7 @@ test('README install routes pin the release that carries them', async () => {
 });
 
 test('documented user scope and backup policy parse in isolated locations', async () => {
-  const temp = await mkdtemp(path.join(os.tmpdir(), 'optbrew-docs-scope-'));
+  const temp = await tempDir('optbrew-docs-scope-');
   const args = ['install', '--agents', 'codex', '--scope', 'user', '--home', './home', '--strategy', 'copy', '--dry-run', '--json'];
   const dryRun = run(args, temp);
   assert.equal(dryRun.code, 0, dryRun.stderr);

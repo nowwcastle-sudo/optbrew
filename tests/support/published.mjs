@@ -1,10 +1,10 @@
 import assert from 'node:assert/strict';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { rmSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
-import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 import { fileURLToPath, pathToFileURL } from 'node:url';
+import { tempDir } from './temp-dir.mjs';
 
 export const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../..');
 // The published 0.1.2 release (tag v0.1.2, bundle_hash 780e3eb5..., evaluation 0.2.0).
@@ -25,7 +25,7 @@ export function releasePublished() {
  */
 export async function extractPublished() {
   if (shared) return shared;
-  const checkout = mkdtempSync(path.join(os.tmpdir(), 'optbrew published 0.1.2 '));
+  const checkout = await tempDir('optbrew published 0.1.2 ');
   const archive = path.join(checkout, 'published.zip');
   const made = spawnSync('git', ['archive', '--format=zip', '-o', archive, published, 'skills/optbrew', 'lib', 'bin', 'package.json', 'tests/fixtures/scoring'], { cwd: root });
   assert.equal(made.status, 0, String(made.stderr));
