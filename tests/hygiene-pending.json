@@ -4,6 +4,7 @@
   "skills/optbrew/scripts/core/bootstrap.mjs": "Task 13",
   "skills/optbrew/scripts/core/bundle.mjs": "Task 22",
   "skills/optbrew/scripts/core/capabilities.mjs": "Task 13",
+  "skills/optbrew/scripts/core/chrome.mjs": "Task 6",
   "skills/optbrew/scripts/core/collector.mjs": "Task 13",
   "skills/optbrew/scripts/core/facts.mjs": "Task 22",
   "skills/optbrew/scripts/core/report.mjs": "Task 13",

@@ -14,3 +14,4 @@ const block = name => () => {
 export const limits = block('limits');
 export const versions = block('versions');
 export const endpoints = block('endpoints');
+export const chromePaths = block('chrome-paths');

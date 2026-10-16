@@ -5,5 +5,8 @@
   "concurrency": 2,
   "timeout_ms": 20000,
   "max_bytes": 5242880,
-  "max_redirects": 10
+  "max_redirects": 10,
+  "chrome_launch_timeout_ms": 30000,
+  "chrome_close_grace_ms": 5000,
+  "cdp_command_timeout_ms": 30000
 }

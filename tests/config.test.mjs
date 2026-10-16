@@ -1,10 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { endpoints, limits, versions } from '../skills/optbrew/scripts/core/config.mjs';
+import { chromePaths, endpoints, limits, versions } from '../skills/optbrew/scripts/core/config.mjs';
 
 test('limits hold the collection bounds', () => {
   assert.deepEqual(limits(), { max_urls_default: 50, max_urls_cap: 200, max_depth: 3, concurrency: 2,
-    timeout_ms: 20000, max_bytes: 5242880, max_redirects: 10 });
+    timeout_ms: 20000, max_bytes: 5242880, max_redirects: 10, chrome_launch_timeout_ms: 30000, chrome_close_grace_ms: 5000,
+    cdp_command_timeout_ms: 30000 });
 });
 
 test('versions hold today\'s release, evaluation, protocol and schema versions', () => {
@@ -18,8 +19,15 @@ test('endpoints hold every URL the product code uses', () => {
     plugin_schema: 'https://agent-plugins.org/schemas/1.0.0/plugin.schema.json', relative_url_base: 'http://path.invalid' });
 });
 
+test('chrome paths list the platforms, PATH names and the Playwright layout', () => {
+  const paths = chromePaths();
+  assert.deepEqual(Object.keys(paths), ['win32', 'darwin', 'linux', 'path_names', 'playwright_chromium']);
+  assert.ok(paths.win32.every(entry => entry.path.startsWith('%') && ['chrome', 'edge'].includes(entry.kind)));
+  assert.ok(paths.path_names.some(entry => entry.name === 'msedge' && entry.kind === 'edge'));
+});
+
 test('blocks are frozen and cached', () => {
-  for (const block of [limits, versions, endpoints]) {
+  for (const block of [limits, versions, endpoints, chromePaths]) {
     assert.equal(block(), block());
     assert.ok(Object.isFrozen(block()));
     assert.throws(() => { block().extra = 1; }, TypeError);

@@ -53,14 +53,14 @@
     },
     {
       "path": "references/limits.json",
-      "sha256": "e8d31a793a5f26b22c6b2fbe4c934b449c83fe90f25532b9a2ccd16ce7c52127"
+      "sha256": "baf31b8b0df82c4b56f2c036eb4966704aeeef032f38aaf80ac478c30b58a637"
     },
     {
       "path": "scripts/core/protocol.mjs",
       "sha256": "d9de1934372c7438b643224a57210846b213b720235d33d0f821d241da4b07bd"
     }
   ],
-  "protocol_hash": "c47edd10c029f7ce0515aa7e477cd3b657b860644f561df20754a384a95c2b4c",
+  "protocol_hash": "9abadc0581a0cfad63aeb3b654690eaabf28c679f7536a30a658b424dbb2e458",
   "files": [
     {
       "path": "LICENSE",
@@ -555,6 +555,10 @@
       "sha256": "c792c7fc291aaddf0774e55aebaed998364ce067df1ec9aaa4ad43ab86790fc4"
     },
     {
+      "path": "references/chrome-paths.json",
+      "sha256": "fb3c0ef60b1bcf8257b908ce30259e10373f94d13383fa656e91107166edeac5"
+    },
+    {
       "path": "references/endpoints.json",
       "sha256": "06ac6fa994fabbde0627d73e156b75bff461add6234bc3e433327409a6f27299"
     },
@@ -568,7 +572,7 @@
     },
     {
       "path": "references/limits.json",
-      "sha256": "e8d31a793a5f26b22c6b2fbe4c934b449c83fe90f25532b9a2ccd16ce7c52127"
+      "sha256": "baf31b8b0df82c4b56f2c036eb4966704aeeef032f38aaf80ac478c30b58a637"
     },
     {
       "path": "references/measurement.md",
@@ -635,6 +639,10 @@
       "sha256": "4c1d894f34556a2b72371b9534222ae4e4a0653d3c9a196dd4722fcb7fdba3d9"
     },
     {
+      "path": "scripts/core/cdp.mjs",
+      "sha256": "e871bb4ea38bae719c3ec38566644f5c21bf8f9265951a0270de4a5656f7c336"
+    },
+    {
       "path": "scripts/core/checks/canonical-consistency.mjs",
       "sha256": "dbfc8d493fe80cd882fe3544b2ad0fcc9b05d947424d488d897daabbef4248ff"
     },
@@ -687,6 +695,10 @@
       "sha256": "d1a0a966fb191d4ac107be288f149f4975d970e486552e2b6b9ac9639dd2346f"
     },
     {
+      "path": "scripts/core/chrome.mjs",
+      "sha256": "b4ca297c4e6808c1d441d4dadd5b4a173824269368cd833e9a82ff6a6e91df23"
+    },
+    {
       "path": "scripts/core/collector.mjs",
       "sha256": "e4890cdfe7ba8b445a21c7845817737d5766ba526ed2423e93b31ebd84a93b9b"
     },
@@ -696,7 +708,7 @@
     },
     {
       "path": "scripts/core/config.mjs",
-      "sha256": "d2aa3fd8ab6fd8bbcf4ed9c56733becdef13b4c166343000899b254d52d550c9"
+      "sha256": "4e12786e30d5deb6f2b01ccad7242f4ab5fd91ecae6242d1cf09e34f788edd7f"
     },
     {
       "path": "scripts/core/contracts.mjs",
@@ -767,5 +779,5 @@
       "sha256": "a53223b7eefab2204c026a62b1da04cfdb8a07be8d3749613e8241a81b027d9b"
     }
   ],
-  "bundle_hash": "83b06370b86405f4be7f9375332bdf1d2b5abd03c0870844c628bfe3e5c8e844"
+  "bundle_hash": "b2cdabf83ccbffb0ac89712d1ed3fc2fb5741776175e1f515bca37073fad7f82"
 }
