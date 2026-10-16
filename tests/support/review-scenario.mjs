@@ -41,6 +41,7 @@ export async function buildScenario(site, paths, { engines = ['google'], robots 
   context.target = origin + paths[0];
   context.environment = 'local';
   context.evidence_ref = 'context.json';
+  context.audited = true;
   context.scope = { allowed: [{ origin, path_prefix: '/' }], local_targets: [{ host: '127.0.0.1', port }], max_urls: maxUrls };
   context.protocol.page_types = [{ id: 'primary', urls: paths.map(p => ({ original: origin + p, normalized: origin + p })) }];
   context.protocol.engines = engines;

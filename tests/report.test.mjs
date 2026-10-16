@@ -68,12 +68,18 @@ function titleObservation(ref) {
     reason: 'Raw HTML has a title; uniqueness and descriptiveness are not established', evaluator_type: 'code',
     source_ref: 'optbrew:collector', evidence_ref: ref };
 }
+/** Record in the hashed run context that the phase was audited, as the audit flow does; the packet then needs its snapshot. */
+function markAudited(run) {
+  for (const context of [run.packet.run_context, run.packet.baseline.input.run_context]) context.audited = true;
+  run.rewrite('context.json', `${JSON.stringify(run.packet.run_context, null, 2)}\n`);
+}
 /**
  * Hand-built audit evidence for the fixture's three selected pages: the home page is fetched (when `ref` is given) and
  * every other selected page is a recorded failed fetch, so the request ledger, the response records and the planned
  * observations all agree the way the audit writes them.
  */
 function handAudit(run, { prefix, collectionRef, ref = null, homeError = 'fetch_failed' }) {
+  markAudited(run);
   const urls = run.packet.run_context.protocol.page_types.flatMap(type => type.urls).map(x => x.normalized);
   const artifacts = [], entries = [], raw = [], responses = [], failures = [], observations = [];
   for (const [index, url] of urls.entries()) {
@@ -474,7 +480,7 @@ test('review P1-1: production status requires same changed bytes, target and aft
   const run = productionRun();
   try {
     const receipt = JSON.parse(readFileSync(path.join(run.dir, 'c1-verify.json'), 'utf8'));
-    assert.equal(buildReport(run.packet).json.findings[0].status, 'verified_production');
+    assert.equal(buildReport(run.packet).json.findings[0].status, 'modified_unverified', 'no audit snapshot: capped');
     receipt.observation_evidence_ref = 'raw.html';
     run.rewrite('c1-verify.json', `${JSON.stringify(receipt)}\n`);
     assert.throws(() => buildReport(run.packet), /after observation evidence/);
@@ -487,7 +493,7 @@ test('review fix2: after target must match deployed target while same-target pro
     retargetAfter(sameTarget, { browser: 'Firefox' });
     const report = buildReport(sameTarget.packet).json;
     assert.equal(report.comparison.status, 'not_comparable');
-    assert.equal(report.findings[0].status, 'verified_production');
+    assert.equal(report.findings[0].status, 'modified_unverified', 'no audit snapshot: capped');
   } finally { rmSync(sameTarget.dir, { recursive: true, force: true }); }
   const otherTarget = productionRun();
   try {
@@ -799,21 +805,43 @@ test('final review M2: the CLI refuses an invalid packet before creating any out
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
-test('final review round 3: a production resolution shows the evaluator type of its resolving observation', () => {
-  for (const evaluator of ['code']) {
+test('a no-audit packet is never verified', () => {
+  for (const evaluator of ['code', 'human']) {
     const run = productionRun();
     try {
-      const observation = run.packet.after.input.observations.find(x => x.check_id === 'index-policy');
-      observation.evaluator_type = evaluator;
+      run.packet.after.input.observations.find(x => x.check_id === 'index-policy').evaluator_type = evaluator;
       run.packet.after.scores = score(run.packet.after.input);
       const report = buildReport(run.packet);
-      assert.equal(report.json.findings[0].status, 'verified_production');
-      assert.deepEqual(report.json.findings[0].resolution, { observation_id: observation.observation_id,
-        evaluator_type: evaluator, source_ref: observation.source_ref });
-      assert.ok(report.json.tables.remediation[0].at(-1).startsWith(`verified_production (resolved by ${evaluator} observation`));
-      assert.ok(report.markdown.includes(`resolved by ${evaluator} observation`));
+      assert.equal(report.json.findings[0].status, 'modified_unverified');
+      assert.equal(report.json.findings[0].resolution, null);
+      for (const result of [...report.json.baseline.scores, ...report.json.after.scores]) assert.notEqual(result.readiness_status, 'measured', 'unaudited data is never measured');
     } finally { rmSync(run.dir, { recursive: true, force: true }); }
   }
+  const claimed = productionRun();
+  try {
+    // Claiming the collector's source without an audit snapshot is refused, not accepted as unverified input.
+    const observation = claimed.packet.after.input.observations.find(x => x.check_id === 'index-policy');
+    observation.source_ref = 'optbrew:collector';
+    claimed.packet.evidence_index.find(x => x.ref === observation.evidence_ref).source_ref = 'optbrew:collector';
+    claimed.packet.after.scores = score(claimed.packet.after.input);
+    assert.throws(() => buildReport(claimed.packet), /needs the after audit snapshot|require their own audit snapshot/);
+  } finally { rmSync(claimed.dir, { recursive: true, force: true }); }
+});
+
+test('a packet whose snapshots differ from the recorded audit phases is refused', () => {
+  const extra = productionRun();
+  try {
+    extra.packet.audit_snapshots = [{ phase: 'after', audit_ref: 'after-response.html', context_ref: 'after-context.json' }];
+    assert.throws(() => buildReport(extra.packet), /after audit snapshot differs from the audit recorded in its run context/);
+  } finally { rmSync(extra.dir, { recursive: true, force: true }); }
+  const marked = copyRun();
+  try {
+    markAudited(marked);
+    assert.throws(() => buildReport(marked.packet), /baseline audit snapshot differs from the audit recorded in its run context/, 'audited context without a snapshot');
+  } finally { rmSync(marked.dir, { recursive: true, force: true }); }
+});
+
+test('final review round 3: a model cannot stand in for a code-judged family', () => {
   const forged = productionRun();
   try {
     const observation = forged.packet.after.input.observations.find(x => x.check_id === 'index-policy');

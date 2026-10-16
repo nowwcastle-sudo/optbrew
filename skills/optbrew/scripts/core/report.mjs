@@ -343,6 +343,12 @@ function checkMetricEvidence(metric, packet, requireRef) {
     'provider response origin and semantic evaluations are attributed to indexed receipts, not independently authenticated';
 }
 
+/**
+ * A verdict that replay re-derived against its phase's audit snapshot: the collector's own pair, in a phase whose context
+ * records an audit (the report refuses a packet whose snapshots differ from that record). Only such a verdict can verify a change.
+ */
+const replayed = (obs, input) => input.run_context.audited === true && obs.evaluator_type === 'code' && obs.source_ref === OBSERVATION_SOURCES.code;
+
 function statusFor(finding, changes, afterInput, target, requireRef) {
   const linked = changes.filter(change => change.finding_ids.some(id => finding.finding_ids.includes(id)));
   if (!linked.length) return finding.remediation_ids.length ? 'proposed_only' :
@@ -353,7 +359,7 @@ function statusFor(finding, changes, afterInput, target, requireRef) {
     afterInput?.run_context.environment === 'production' && linked.every(change => afterInput.observations.some(obs => {
       if (obs.check_id !== finding.check_id || obs.unit_key !== finding.unit_key ||
           !['pass', 'partial'].includes(obs.state) || obs.observation_id !== change.verification.observation_id ||
-          obs.evidence_ref !== change.verification.observation_evidence_ref) return false;
+          obs.evidence_ref !== change.verification.observation_evidence_ref || !replayed(obs, afterInput)) return false;
       const source = requireRef(obs.evidence_ref, obs.source_ref);
       return source.phase === 'after' && source.environment === 'production' && same(source.target, target);
     }));
@@ -366,7 +372,7 @@ function statusFor(finding, changes, afterInput, target, requireRef) {
     linked.every(change => change.environment === 'local' && change.verification.observation_id &&
       change.verification.observation_evidence_ref && afterInput.observations.some(obs => {
         if (obs.check_id !== finding.check_id || obs.unit_key !== finding.unit_key || !['pass', 'partial'].includes(obs.state) ||
-            obs.source_ref !== 'optbrew:collector' || obs.observation_id !== change.verification.observation_id ||
+            !replayed(obs, afterInput) || obs.observation_id !== change.verification.observation_id ||
             obs.evidence_ref !== change.verification.observation_evidence_ref) return false;
         const source = requireRef(obs.evidence_ref, obs.source_ref);
         return source.phase === 'after' && source.environment === 'local' && same(source.target, target);
@@ -600,6 +606,9 @@ function modelJudgmentRows(phase, input, snapshot, requireRef) {
     if (isModelJudged(obs.family_id) && (type !== 'host_model' || obs.source_ref !== OBSERVATION_SOURCES.host_model))
       fail(obs, `${obs.family_id} is judged by a model through the judge queue; evaluator_type ${type} with source_ref ${obs.source_ref} is not allowed`);
     if (type === 'host_model' && obs.source_ref !== OBSERVATION_SOURCES.host_model) fail(obs, `source_ref must be ${OBSERVATION_SOURCES.host_model}`);
+    // The collector's and the model's source stand for replayed work; without the phase's audit there is nothing to replay against.
+    if (!snapshot && Object.values(OBSERVATION_SOURCES).includes(obs.source_ref))
+      fail(obs, `source_ref ${obs.source_ref} needs the ${phase} audit snapshot; without an audit only outside inputs are accepted, and they stay unverified`);
   }
   const judgments = (input?.observations ?? []).filter(obs => obs.evaluator_type === 'host_model');
   if (!judgments.length) return [];
@@ -640,9 +649,12 @@ export function buildReport(packet) {
       snapshots.some(x => !['baseline', 'after'].includes(x.phase) || !x.audit_ref || !x.context_ref))
     throw new ContractError('audit snapshot phase or reference invalid');
   const snapshotFor = phase => snapshots.find(x => x.phase === phase);
-  // Dropping the audit reference must not downgrade collector evidence to an unaudited packet.
-  if (!snapshotFor('baseline') && packet.evidence_index.some(x => x.source_ref === 'optbrew:collector'))
-    throw new ContractError('collector evidence is indexed but the baseline audit snapshot is missing');
+  // Each phase's run context, hashed as run evidence, records whether the phase was audited. A packet cannot add or drop a
+  // snapshot to change how its phase is judged: the snapshot must exist exactly when the context says the phase was audited.
+  for (const [phase, input] of [['baseline', packet.baseline.input], ['after', packet.after?.input]]) {
+    if (input && (input.run_context.audited === true) !== Boolean(snapshotFor(phase)))
+      throw new ContractError(`${phase} audit snapshot differs from the audit recorded in its run context`);
+  }
   const baselineScores = score(packet.baseline.input);
   if (!same(packet.baseline.scores, baselineScores)) throw new ContractError('baseline score differs from raw observations');
   const collectedIn = phase => collectedResponses(snapshotFor(phase) ? [snapshotFor(phase)] : [], requireRef);

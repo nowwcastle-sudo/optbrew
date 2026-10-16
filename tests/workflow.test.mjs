@@ -140,6 +140,7 @@ test('real local HTTP baseline, authorized edit and same-condition rescan clear 
   context.scope = { allowed: [{ origin: `http://127.0.0.1:${port}`, path_prefix: '/' }],
     local_targets: [{ host: '127.0.0.1', port }] };
   context.evidence_ref = 'context.json';
+  context.audited = true;
   context.protocol.page_types = [{ id: 'primary', urls: [{ original: url, normalized: url }] }];
   context.protocol.engines = ['google'];
   for (const family of context.protocol.families)
@@ -249,6 +250,17 @@ test('real local HTTP baseline, authorized edit and same-condition rescan clear 
   assert.match(markdown, /Baseline blockers: 1 .*After blockers: 0/);
   assert.match(markdown, /actual outcomes: not_connected \/ unknown/);
   assert.match(markdown, /verified_local/);
+  await t.test('stripping the after snapshot cannot upgrade a result', () => {
+    const stripped = structuredClone(packet);
+    stripped.audit_snapshots = stripped.audit_snapshots.filter(x => x.phase !== 'after');
+    assert.throws(() => buildReport(stripped), /after audit snapshot differs from the audit recorded in its run context/);
+    // Also claiming the phase was not audited contradicts the hashed context evidence.
+    stripped.after.input.run_context.audited = false;
+    assert.throws(() => buildReport(stripped), /context evidence differs/);
+    const unaudited = structuredClone(packet);
+    unaudited.audit_snapshots = unaudited.audit_snapshots.filter(x => x.phase !== 'baseline');
+    assert.throws(() => buildReport(unaudited), /baseline audit snapshot differs from the audit recorded in its run context/);
+  });
   const moduleRef = path.join(path.dirname(followup.evidence_ref), 'modules.json');
   const modules = JSON.parse(await readFile(moduleRef, 'utf8'));
   modules['naver-searchadvisor'][0].title = null;

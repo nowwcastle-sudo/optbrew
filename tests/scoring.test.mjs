@@ -170,6 +170,10 @@ test('high score and full coverage do not conceal a confirmed noindex blocker', 
       state: 'pass', q: 1, partial_basis: null, reason: 'synthetic pass', evaluator_type: 'code',
       source_ref: 'synthetic', evidence_ref: `synthetic/${unit.family_id}`,
       ...(measurements[unit.family_id] ? { measurement: measurements[unit.family_id] } : {}) });
+  const unaudited = score(input)[0];
+  assert.equal(unaudited.score, 100);
+  assert.equal(unaudited.readiness_status, 'unverified', 'a phase with no audit is never measured');
+  input.run_context.audited = true;
   const measured = score(input)[0];
   assert.equal(measured.score, 100);
   assert.equal(measured.readiness_status, 'measured');
