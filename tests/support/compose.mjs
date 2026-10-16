@@ -20,5 +20,5 @@ export function headlineOf(result, { audited = true } = {}) {
   const context = { ...verified.baseline.input.run_context };
   delete context.audited;
   const input = { ...verified.baseline.input, run_context: audited === null ? context : { ...context, audited } };
-  return composeReport({ ...verified, baseline: { input, scores: [result] } }).completeness[0].before.headline;
+  return composeReport({ ...verified, baseline: { input, scores: [{ blockers: [], unknown_core: [], ...result }] } }).completeness[0].before.headline;
 }

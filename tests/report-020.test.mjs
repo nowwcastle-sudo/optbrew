@@ -14,7 +14,9 @@ import { fixturePacket, headlineOf, verifiedOf } from './support/compose.mjs';
 
 const withProbe = (probe, over = {}) => {
   const verified = verifiedOf(over);
-  return { ...verified, run_context: { ...verified.run_context, environment_probe: environmentProbe(probe) } };
+  const environment_probe = environmentProbe(probe);
+  const phase = value => value && { ...value, input: { ...value.input, run_context: { ...value.input.run_context, environment_probe } } };
+  return { ...verified, run_context: { ...verified.run_context, environment_probe }, baseline: phase(verified.baseline), after: phase(verified.after) };
 };
 const finding = (id, over) => ({ schema_version: '1.0.0', finding_id: id, check_id: 'index-policy', unit_key: `index-policy|https://example.com/${id}`,
   priority: 'P1', blocker: false, message: `problem ${id}`, source_ref: 'module:a', evidence_ref: 'module-a.html', remediation_ids: [],
@@ -22,7 +24,7 @@ const finding = (id, over) => ({ schema_version: '1.0.0', finding_id: id, check_
 const order = composed => composed.fixes.map(item => item.finding_id);
 /** A phase result of the first profile as score() would give it, with the coverage and score the test needs. */
 const result = over => ({ ...verifiedOf().baseline.scores[0], score: 91.2, A: 100, M: 90, N: 82, coverage: 90, unknown_core: [], blockers: [], readiness_status: 'unverified', ...over });
-const unscored = observations => ({ input: { observations }, scores: [] });
+const unscored = observations => ({ input: { run_context: verifiedOf().baseline.input.run_context, observations }, scores: [] });
 const later = (observations = []) => {
   const { baseline } = verifiedOf();
   return { input: { ...baseline.input, observations: [...baseline.input.observations, ...observations] }, scores: baseline.scores };
@@ -165,7 +167,7 @@ test('the Google key item adds the key-saving runbook that matches the harness',
 });
 
 test('a user who has a Google key is never sent to get or save one', () => {
-  const unknown = reason => ({ input: { observations: [{ state: 'unknown', reason }] }, scores: [] });
+  const unknown = reason => unscored([{ state: 'unknown', reason }]);
   const ids = verified => composeReport(verified).remaining.flatMap(row => row.runbook_ids);
   const keyed = withProbe({ google_key: true }, { after: unknown('field_data_unavailable') });
   assert.deepEqual(ids(keyed), ['cwv-site-collection', 'gsc-export', 'naver-searchadvisor-export']);
@@ -177,14 +179,14 @@ test('a user who has a Google key is never sent to get or save one', () => {
 });
 
 test('remaining joins the unknown reasons with the start items the user did not answer', () => {
-  const unknown = reason => ({ input: { observations: [{ state: 'unknown', reason }] }, scores: [] });
+  const unknown = reason => unscored([{ state: 'unknown', reason }]);
   const ids = verified => composeReport(verified).remaining.map(row => row.runbook_ids[0]);
   const base = withProbe({ google_key: true, chrome: { found: true, kind: 'chrome', reason: null } });
   assert.deepEqual(ids(base), ['gsc-export'], 'only the export file is always missing');
   const missing = withProbe({ google_key: false, chrome: { found: false, kind: null, reason: 'chrome_not_found' } });
   assert.deepEqual(ids(missing), ['google-api-key', 'chrome-install', 'gsc-export']);
   assert.deepEqual(ids({ ...missing, answered_runbooks: ['chrome-install', 'gsc-export'] }), ['google-api-key']);
-  assert.deepEqual(ids({ ...missing, answered_runbooks: ['chrome-install'], after: unknown('chrome_missing') }), ['chrome-install', 'google-api-key', 'gsc-export'],
+  assert.deepEqual(ids({ ...missing, answered_runbooks: ['chrome-install'], after: { ...unknown('chrome_missing'), input: { ...unknown('chrome_missing').input, run_context: missing.baseline.input.run_context } } }), ['chrome-install', 'google-api-key', 'gsc-export'],
     'an unknown reason keeps its runbook even when the start item was answered');
   assert.deepEqual(composeReport(base).remaining[0].runbook_ids, ['gsc-export', 'naver-searchadvisor-export']);
   assert.match(composeReport(base).remaining[0].item, /점수에는 들어가지 않음/, 'the export fills actual outcomes, not a score');
@@ -245,7 +247,45 @@ test('an unaudited report with 80% coverage shows no score and is never measured
     assert.equal(row.before.headline.headline_score, null, row.profile);
   }
   assert.match(markdown, /SEO: not audited/);
-  assert.equal(json.composed.headline.text, 'Nothing is left to fix in what was checked.');
+  assert.equal(json.composed.headline.text, 'Nothing failed in what was checked, but the check is incomplete; see Still blank.');
+});
+
+test('the conclusion never reassures while the check is thin', () => {
+  const thin = composeReport(verifiedOf({ findings: [] }));
+  assert.ok(thin.completeness.every(row => row.before.headline.status === 'insufficient_coverage'));
+  assert.equal(thin.headline.open, 0);
+  assert.equal(thin.headline.text, 'Nothing failed in what was checked, but the check is incomplete; see Still blank.');
+  const verified = verifiedOf({ findings: [] });
+  const input = { ...verified.baseline.input, run_context: { ...verified.baseline.input.run_context, audited: true } };
+  const full = composeReport({ ...verified, baseline: { input, scores: [result()] } });
+  assert.equal(full.completeness[0].before.headline.status, 'sufficient');
+  assert.equal(full.headline.text, 'Nothing is left to fix in what was checked.');
+  assert.match(composeReport(verifiedOf()).headline.text, /^1 thing\(s\) to fix first/, 'open fixes are stated first, whatever the coverage');
+});
+
+test('change paths and blocker counts are composed, and the renderer only formats them', () => {
+  const change = { finding_ids: ['a'], path: 'site/page.html' };
+  const verified = verifiedOf({ findings: [finding('a'), finding('b')], changes: [change, { finding_ids: ['a'], path: 'site/other.html' }] });
+  const composed = composeReport(verified);
+  assert.deepEqual(composed.fixes.map(item => [item.finding_id, item.change_paths]), [['a', ['site/page.html', 'site/other.html']], ['b', []]]);
+  assert.match(renderReport(composed, verified).markdown, /site\/page\.html; site\/other\.html/);
+  const { before, after } = composed.conditions.blockers;
+  const scores = verified.baseline.scores[0];
+  assert.deepEqual(before, { count: scores.blockers.length, items: scores.blockers.map(x => `${x.family_id} ${x.unit_key}`), core_unknown: scores.unknown_core.length });
+  assert.equal(after, null);
+  const both = composeReport({ ...verified, after: { ...later(), scores: [result()] } }).conditions.blockers.after;
+  assert.deepEqual(both, { count: 0, items: [], core_unknown: 0 });
+  const rendered = renderReport(composed, { ...verified, changes: [], baseline: { ...verified.baseline, scores: [] } }).markdown;
+  assert.match(rendered, /Baseline blockers: \d+ \(/, 'the line is formatted from composed.conditions.blockers alone');
+});
+
+test('the blanks follow the probe of the latest phase', () => {
+  const marked = withProbe({ google_key: true });
+  assert.ok(!composeReport(marked).remaining.some(row => row.runbook_ids.includes('google-api-key')));
+  const keyless = { ...unscored([]), input: { ...unscored([]).input, run_context: { ...marked.baseline.input.run_context, environment_probe: environmentProbe({ google_key: false }) } } };
+  const composed = composeReport({ ...marked, after: keyless });
+  assert.ok(composed.remaining.some(row => row.runbook_ids.includes('google-api-key')));
+  assert.equal(composed.conditions.probe.google_key, false);
 });
 
 test('an unaudited fixture report has no verified finding', () => {

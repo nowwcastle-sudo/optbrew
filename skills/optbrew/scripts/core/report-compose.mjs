@@ -45,20 +45,28 @@ const compareRank = (a, b) => a === b ? 0 : a < b ? -1 : 1;
 const affectedKey = finding => `${finding.check_id}\0${messageKey(finding.message)}`;
 
 /** Open before resolved, then blocking, then priority (P0 first, an unknown one last), then the problem on the most pages, then the unit. */
-function sortedFixes(findings) {
+function sortedFixes(findings, changes) {
   const pages = new Map();
   for (const finding of findings) pages.set(affectedKey(finding), (pages.get(affectedKey(finding)) ?? new Set()).add(finding.unit_key));
-  return [...findings].sort((a, b) => Number(resolved(a)) - Number(resolved(b)) || Number(b.blocker) - Number(a.blocker) ||
+  const withPaths = findings.map(finding => ({ ...finding,
+    change_paths: changes.filter(change => change.finding_ids.some(id => finding.finding_ids.includes(id))).map(change => change.path) }));
+  return withPaths.sort((a, b) => Number(resolved(a)) - Number(resolved(b)) || Number(b.blocker) - Number(a.blocker) ||
     compareRank(priorityRank(a.priority), priorityRank(b.priority)) || pages.get(affectedKey(b)).size - pages.get(affectedKey(a)).size ||
     a.unit_key.localeCompare(b.unit_key));
 }
 
-function conclusionOf(fixes) {
+/** A clean result never hides a thin one (D4): with no open fix but an incomplete check, the line says so. */
+function conclusionOf(fixes, completeness) {
   const open = fixes.filter(finding => !resolved(finding));
   const blocking = open.filter(finding => finding.blocker).length;
+  const thin = completeness.some(row => (row.after ?? row.before).headline.status !== 'sufficient');
+  const none = thin ? 'Nothing failed in what was checked, but the check is incomplete; see Still blank.' : 'Nothing is left to fix in what was checked.';
   return { open: open.length, blocking, already_fixed: fixes.length - open.length,
-    text: open.length ? `${open.length} thing(s) to fix first${blocking ? `, ${blocking} of them blocking` : ''}.` : 'Nothing is left to fix in what was checked.' };
+    text: open.length ? `${open.length} thing(s) to fix first${blocking ? `, ${blocking} of them blocking` : ''}.` : none };
 }
+
+const blockerSummary = scores => ({ count: scores[0]?.blockers.length ?? 0, items: scores[0]?.blockers.map(x => `${x.family_id} ${x.unit_key}`) ?? [],
+  core_unknown: scores[0]?.unknown_core.length ?? 0 });
 
 function completenessOf(verified) {
   const { baseline, after } = verified;
@@ -77,8 +85,8 @@ function completenessOf(verified) {
  * unanswered (D25). Nothing the probe already has is offered again, and the Google key item adds the runbook that saves
  * the key for the probe's harness.
  */
-function remainingBlanks(verified, observations) {
-  const probe = verified.run_context.environment_probe;
+function remainingBlanks(verified, { observations, run_context: context }) {
+  const probe = context.environment_probe;
   const has = { google_key: probe.google_key, chrome: probe.chrome.found };
   // The blocking runbooks are not remaining work: a run that reached a report was not blocked.
   const { improving } = startRunbooks({ ...probe, block_reason: null }, { level: 'brief', skillRoot: null, harnesses: runbookHarnesses(probe.harness) });
@@ -99,15 +107,17 @@ function remainingBlanks(verified, observations) {
  * phase when there is one). Every format renders this and decides nothing.
  */
 export function composeReport(verified) {
-  const observations = (verified.after ?? verified.baseline).input.observations;
-  const fixes = sortedFixes(verified.findings);
-  const afterRender = observations.some(obs => obs.family_id === 'render-content' && obs.state === 'pass' && obs.reason.startsWith(CONTENT_AFTER_RENDER));
+  const latest = (verified.after ?? verified.baseline).input;
+  const fixes = sortedFixes(verified.findings, verified.changes);
+  const completeness = completenessOf(verified);
+  const afterRender = latest.observations.some(obs => obs.family_id === 'render-content' && obs.state === 'pass' && obs.reason.startsWith(CONTENT_AFTER_RENDER));
   return {
-    headline: conclusionOf(fixes),
+    headline: conclusionOf(fixes, completeness),
     fixes,
-    completeness: completenessOf(verified),
-    remaining: remainingBlanks(verified, observations),
-    conditions: { probe: verified.run_context.environment_probe, model_judgments: verified.model_judgments, lab_cwv: verified.lab_cwv,
+    completeness,
+    remaining: remainingBlanks(verified, latest),
+    conditions: { probe: latest.run_context.environment_probe, model_judgments: verified.model_judgments, lab_cwv: verified.lab_cwv,
+      blockers: { before: blockerSummary(verified.baseline.scores), after: verified.after ? blockerSummary(verified.after.scores) : null },
       notes: afterRender ? [JAVASCRIPT_NOTE] : [] },
   };
 }
@@ -134,7 +144,7 @@ function tableRows(composed, verified) {
     `${before.readiness_status} → ${after?.readiness_status ?? 'unknown'}`, withoutField ?? 'unknown']);
   const remediation = composed.fixes.map(f => [f.priority, `${f.message} ${f.unit_key}`, f.sources.map(x => `${x.source_ref} ${x.evidence_ref}`).join('; '),
     f.remediation ? `${f.remediation.mechanism} (${f.remediation.source_url}, checked ${f.remediation.checked_date})` : 'unknown',
-    verified.changes.filter(x => x.finding_ids.some(id => f.finding_ids.includes(id))).map(x => x.path).join('; ') || f.remediation?.location_hint || 'owner implementation location required',
+    f.change_paths.join('; ') || f.remediation?.location_hint || 'owner implementation location required',
     f.remediation ? `${f.remediation.cost}; ${f.remediation.effort}` : 'unknown', f.remediation?.validation ?? 'unknown',
     f.resolution ? `${f.status} (resolved by ${f.resolution.evaluator_type} observation from ${f.resolution.source_ref})` : f.status]);
   return { score, remediation,
@@ -146,13 +156,13 @@ function tableRows(composed, verified) {
 
 const conditionLines = (conditions, verified) => {
   const { probe, lab_cwv: lab } = conditions;
-  const { baseline, after } = verified;
+  const { before, after } = conditions.blockers;
+  const listed = summary => `${summary.count} (${summary.items.join('; ') || 'none'})`;
   return [
     `Host: ${probe.harness}; transport: ${probe.transport ?? 'unknown'}; Chrome: ${probe.chrome.found ? probe.chrome.kind : `not found (${probe.chrome.reason ?? 'unknown'})`}; Google key: ${probe.google_key ? 'present' : 'absent'}`,
     `Analysis tools: ${probe.source_tools.join(', ') || 'none named'}; model judgments checked: ${conditions.model_judgments.length}`,
-    `Baseline blockers: ${baseline.scores[0]?.blockers.length ?? 0} (${baseline.scores[0]?.blockers.map(x => `${x.family_id} ${x.unit_key}`).join('; ') || 'none'}) → ` +
-      `After blockers: ${after ? after.scores[0]?.blockers.length ?? 0 : 'unknown'} (${after ? after.scores[0]?.blockers.map(x => `${x.family_id} ${x.unit_key}`).join('; ') || 'none' : 'after not observed'}); ` +
-      `after core unknown: ${after ? after.scores[0]?.unknown_core.length ?? 0 : 'unknown'}; actual outcomes: ${verified.metrics.length ? 'see measured and missing states below' : 'not_connected / unknown'}`,
+    `Baseline blockers: ${listed(before)} → After blockers: ${after ? listed(after) : 'unknown (after not observed)'}; ` +
+      `after core unknown: ${after?.core_unknown ?? 'unknown'}; actual outcomes: ${verified.metrics.length ? 'see measured and missing states below' : 'not_connected / unknown'}`,
     `Cost and capability limitations: ${verified.cost_issues.join('; ') || 'none recorded'}`,
     `Metric source limitations: ${verified.metric_origin_limitations.join('; ') || 'no measured provider input'}`,
     `Lab Core Web Vitals (reference, not scored): ${lab ? `LCP ${lab.lcp ?? 'unknown'} ms; CLS ${lab.cls ?? 'unknown'}` : 'not measured'}`,
