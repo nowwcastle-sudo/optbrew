@@ -11,8 +11,9 @@ const EVIDENCE_INDEX = path.join('preflight', 'evidence', 'evidence-index.json')
 const AUXILIARY_PATH = /\/(?:robots\.txt|sitemap[^/]*\.xml)$/i;
 // A sitemap is an XML document whose root element is <urlset> or <sitemapindex>: before the root only a byte order mark, white
 // space, the XML declaration, other processing instructions (Yoast's stylesheet) and comments may stand. An HTML page that shows
-// sample sitemap XML in its text or a script is a page, never a sitemap.
-const SITEMAP_ROOT = /^﻿?(?:\s|<\?[\s\S]*?\?>|<!--[\s\S]*?-->)*<(urlset|sitemapindex)\b/i;
+// sample sitemap XML in its text or a script is a page, never a sitemap. Each instruction and comment ends at its first
+// closing mark, so the prolog has one reading and the match stays linear on a body with many leading comments.
+const SITEMAP_ROOT = /^﻿?(?:\s|<\?(?:[^?]|\?(?!>))*\?>|<!--(?:[^-]|-(?!->))*-->)*<(urlset|sitemapindex)\b/i;
 // Files a sitemap or a link may name that are not pages to audit.
 const NOT_A_PAGE = /\.(?:pdf|jpe?g|png|gif|webp|svg|ico|zip|xml|txt|css|js|json|mp4|mp3)$/i;
 const KOREAN_PAGE = /<html\b[^>]*\blang\s*=\s*["']?ko/i;

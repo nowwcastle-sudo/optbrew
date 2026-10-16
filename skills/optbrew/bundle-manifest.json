@@ -848,7 +848,7 @@
     },
     {
       "path": "scripts/core/page-select.mjs",
-      "sha256": "d718799328b37982a5b757f98e432eee8a4f8b0ab4c338062a9891328ebe913d"
+      "sha256": "8b4013259e0cbedda7b4a71e2e30d0e87710322198ec6f74ceefddb386222348"
     },
     {
       "path": "scripts/core/probe.mjs",
@@ -915,5 +915,5 @@
       "sha256": "a53223b7eefab2204c026a62b1da04cfdb8a07be8d3749613e8241a81b027d9b"
     }
   ],
-  "bundle_hash": "d7b8db98e698f99ed149fefac0fb1143ffc83b49f3c008cf5e6ef8effdd1736a"
+  "bundle_hash": "eec199a42f450fa78dce49c3512d4b1cf241a1d7889e8b7d306bc12c7161582b"
 }
