@@ -9,11 +9,25 @@ const rawCoverage = result => result.A === 0 ? null : 100 * result.M / result.A;
 const difference = (before, after) => before === null || after === null ? null : after - before;
 const relative = (before, after) => before === null || after === null || close(before, 0) ? null : (after - before) / before;
 
+/**
+ * An input made before the render stage has no `protocol.render`. It was a valid input then, so it is reported as not
+ * comparable in plain words instead of failing the schema. Checked before validation, by the shape the older protocol lacked.
+ */
+const olderProtocol = (input, label) => {
+  const protocol = input?.run_context?.protocol;
+  if (protocol === null || typeof protocol !== 'object' || Object.hasOwn(protocol, 'render')) return null;
+  return `the ${label} was made with audit protocol ${input.run_context.protocol_version ?? 'unknown'}, which is older than the current one; run a new audit to compare`;
+};
+
 /** Compare two ScoreInputs only when their frozen conditions and applicable units match. */
 export function compare(before, after) {
+  const oldBaseline = olderProtocol(before, 'baseline');
+  if (oldBaseline) return { status: 'not_comparable', score_deltas: [], reasons: [oldBaseline] };
   validateEntity('ScoreInput', before);
   const baseline = freezeProtocol(before.run_context);
   if (after === null || after === undefined) return { status: 'no_after', score_deltas: [], reasons: ['after_missing'] };
+  const oldFollowup = olderProtocol(after, 'follow-up');
+  if (oldFollowup) return { status: 'not_comparable', score_deltas: [], reasons: [oldFollowup] };
   validateEntity('ScoreInput', after);
   const followup = freezeProtocol(after.run_context);
   const reasons = [];

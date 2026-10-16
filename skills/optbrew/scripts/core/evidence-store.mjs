@@ -5,7 +5,7 @@ import path from 'node:path';
 
 const INDEX_FILE = 'evidence-index.json';
 // Raw collected bodies keep their own extension; every other kind is a JSON record.
-const RAW_KINDS = new Set(['html', 'bin']);
+const RAW_KINDS = new Set(['html', 'bin', 'render-dom']);
 // Written with the index so an audit that fetched nothing still has them; the others appear on first append.
 const BASE_SECTIONS = ['raw', 'responses', 'failures'];
 const ALL_SECTIONS = [...BASE_SECTIONS, 'renders', 'render_ledger', 'cwv'];

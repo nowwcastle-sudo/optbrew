@@ -317,11 +317,15 @@ function routerFor(cdp) {
  * any request that is not GET/HEAD fails with BlockedByClient; an out-of-scope GET script, stylesheet, font or image
  * loads and is recorded as `third_party_static`. Redirect hops arrive as new requests and are checked again. Past
  * `budget` intercepted requests every request fails with `render_budget`.
+ * With `fetchStatic(url)` (direct mode) Chrome never touches a third-party static host: the bytes come from that function,
+ * which vets the address, and are handed to Chrome with Fetch.fulfillRequest; a refusal or failure fails the request and is
+ * recorded (`third_party_refused`, `third_party_failed`). Without it (proxy mode) the proxy carries the request.
+ * Every record gets the `status` of its response or the `error` text of its failure from the Network events.
  * The rules cover every target the page owns, not only its main frame: iframes and dedicated workers (auto-attached from the
  * page session), popups, service workers and shared workers (auto-attached from the browser). Each is paused, gets the same
  * Fetch interception, and only then runs; the records say which kind of target made the request (`target_type`).
  */
-export async function scopedPage({ chrome, context, budget }) {
+export async function scopedPage({ chrome, context, budget, fetchStatic = null }) {
   const { cdp } = chrome;
   const { claims, retired } = await routerFor(cdp);
   const { browserContextId } = await cdp.send('Target.createBrowserContext', { disposeOnDetach: true });
@@ -329,6 +333,8 @@ export async function scopedPage({ chrome, context, budget }) {
   const requests = [];
   const consoleErrors = [];
   const sessions = new Map();
+  // Records per Network request id in arrival order, so a response, a redirect or a failure lands on the right hop.
+  const byNetwork = new Map();
   const targets = new Set();
   const idleLoaders = new Set();
   let targetId = null;
@@ -355,16 +361,30 @@ export async function scopedPage({ chrome, context, budget }) {
     return { promise, off };
   };
 
-  async function onPaused(session, { requestId, request, resourceType, redirectedRequestId, frameId }) {
+  const unresolved = networkId => byNetwork.get(networkId)?.find(record => record.status === null && record.error === null);
+
+  async function onPaused(session, { requestId, networkId, request, resourceType, redirectedRequestId, frameId }) {
     seen += 1;
-    const verdict = seen > budget ? { action: 'blocked', blocked_reason: 'render_budget' } : decide(request, resourceType, context.scope);
+    let verdict = seen > budget ? { action: 'blocked', blocked_reason: 'render_budget' } : decide(request, resourceType, context.scope);
     if (verdict.blocked_reason === 'render_budget') budgetBlocked = true;
+    const record = { url: request.url, method: request.method, resource_type: resourceType, target_type: sessions.get(session),
+      redirected: Boolean(redirectedRequestId), ...verdict, status: null, error: null };
     // Past the budget only the first overflowing request is listed, so a request flood cannot grow the list.
-    if (seen <= budget + 1) {
-      requests.push({ url: request.url, method: request.method, resource_type: resourceType, target_type: sessions.get(session),
-        redirected: Boolean(redirectedRequestId), ...verdict });
+    if (seen <= budget + 1) requests.push(record);
+    if (verdict.action !== 'blocked' && networkId) byNetwork.set(networkId, [...(byNetwork.get(networkId) ?? []), record]);
+    let served = null;
+    if (verdict.action === 'third_party_static' && fetchStatic) {
+      try { served = await fetchStatic(request.url); }
+      catch (error) {
+        verdict = { action: 'blocked', blocked_reason: error.code === 'scope_rejected' ? 'third_party_refused' : 'third_party_failed' };
+        Object.assign(record, verdict);
+      }
     }
-    if (verdict.action === 'blocked') {
+    if (served) {
+      record.status = served.status;
+      const responseHeaders = Object.entries(served.headers).filter(([name]) => name === 'content-type').map(([name, value]) => ({ name, value }));
+      await cdp.send('Fetch.fulfillRequest', { requestId, responseCode: served.status, responseHeaders, body: served.body.toString('base64') }, session);
+    } else if (verdict.action === 'blocked') {
       if (session === sessionId && resourceType === 'Document' && frameId === mainFrameId) {
         mainBlocked ??= verdict.blocked_reason;
         notifyMainBlocked();
@@ -382,6 +402,8 @@ export async function scopedPage({ chrome, context, budget }) {
     targets.add(targetInfo.targetId);
     // Every adopted session is listed, so a target nested under a dedicated worker is adopted too instead of staying paused.
     sessions.set(child, targetInfo.type);
+    // Outcomes of requests this target makes arrive on its own session; a target without a Network domain only loses them.
+    cdp.send('Network.enable', {}, child).catch(() => {});
     if (!OWNER_INTERCEPTS.has(targetInfo.type)) {
       try { await cdp.send('Fetch.enable', INTERCEPT_ALL, child); }
       catch {
@@ -413,6 +435,18 @@ export async function scopedPage({ chrome, context, budget }) {
     targets.add(targetId);
     offs.push(cdp.on('Fetch.requestPaused', (params, session) => { if (sessions.has(session)) onPaused(session, params).catch(() => {}); }));
     offs.push(cdp.on('Target.attachedToTarget', (params, parent) => { if (parent !== undefined && sessions.has(parent)) adopt(params).catch(() => {}); }));
+    offs.push(cdp.on('Network.requestWillBeSent', ({ requestId, redirectResponse }, session) => {
+      const record = redirectResponse && sessions.has(session) ? unresolved(requestId) : null;
+      if (record) record.status = redirectResponse.status;
+    }));
+    offs.push(cdp.on('Network.responseReceived', ({ requestId, response }, session) => {
+      const record = sessions.has(session) ? unresolved(requestId) : null;
+      if (record) record.status = response.status;
+    }));
+    offs.push(cdp.on('Network.loadingFailed', ({ requestId, errorText }, session) => {
+      const record = sessions.has(session) ? unresolved(requestId) : null;
+      if (record) record.error = errorText;
+    }));
     on('Network.responseReceived', ({ type, frameId, response }) => {
       if (type === 'Document' && frameId === mainFrameId) lastDocument = { status: response.status };
     });

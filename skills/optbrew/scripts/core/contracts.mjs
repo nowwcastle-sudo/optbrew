@@ -32,7 +32,7 @@ function checkRule(rule, value, path) {
   if (rule.enum && !rule.enum.includes(value)) fail(path, 'unrecognized value');
   if (rule.type) {
     const types = Array.isArray(rule.type) ? rule.type : [rule.type];
-    const valid = types.some(type => type === 'null' ? value === null : type === 'array' ? Array.isArray(value) : type === 'object' ? plainObject(value) : typeof value === type);
+    const valid = types.some(type => type === 'null' ? value === null : type === 'integer' ? Number.isInteger(value) : type === 'array' ? Array.isArray(value) : type === 'object' ? plainObject(value) : typeof value === type);
     if (!valid) fail(path, `expected ${types.join(' or ')}`);
   }
   if (typeof value === 'number') {

@@ -167,8 +167,8 @@ test('the render plan is a fixed comparison input bounded by the selected pages 
   assert.equal(baseline.length, 64);
   assert.throws(() => freezeProtocol(planned([{ original: 'https://example.com/other', normalized: 'https://example.com/other' }])), /not a selected URL/);
   assert.throws(() => freezeProtocol(planned([page, page])), /duplicate/);
-  assert.throws(() => freezeProtocol(planned([page], { max_render_requests: 301 })), /render request limit/);
-  assert.throws(() => freezeProtocol(planned([page], { max_render_requests: 2.5 })), /render request limit/);
+  assert.throws(() => freezeProtocol(planned([page], { max_render_requests: 301 })), /above maximum/);
+  assert.throws(() => freezeProtocol(planned([page], { max_render_requests: 2.5 })), /expected integer/);
   assert.throws(() => freezeProtocol(planned([page], { max_render_requests: 0 })), ContractError);
   const missing = context();
   delete missing.protocol.render;

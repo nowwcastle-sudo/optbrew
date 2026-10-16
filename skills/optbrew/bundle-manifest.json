@@ -30,11 +30,11 @@
     },
     {
       "path": "scripts/core/contracts.mjs",
-      "sha256": "a2c493b9c97915aa3b5ec08c477008123e1c3dd39f8b0a5ed0a400cae0651b6a"
+      "sha256": "25b64195a3924ebf314c426bfc8b06ff56b2cac4ae0224c91be04016868339cb"
     },
     {
       "path": "scripts/core/compare.mjs",
-      "sha256": "16d43532285072d6d4a3489d1e4392651a3013ce5d34b5dc5057fdcbd13e5356"
+      "sha256": "aa42fc630227eea62aba7bd63370436ff1bafc57523044f6f0d597bff6d144f7"
     },
     {
       "path": "scripts/core/metrics.mjs",
@@ -45,11 +45,11 @@
       "sha256": "703d5c16878c526114afb540e4a6d54bd74831f35a824c03a839e2480097d279"
     }
   ],
-  "evaluation_hash": "a26931c6e10624cf9aac56e8295e20cbc9de936e3a3a0c72d0f619b6b46fb43d",
+  "evaluation_hash": "d838d40f2375dae49da4f591efaaa5272b9b8bfdb01b27814b3264dfa2a7ec5e",
   "protocol_sources": [
     {
       "path": "references/schemas/contract.schema.json",
-      "sha256": "413c66ec26c8c19dbdb1cdd398cc93b9a009a64e40be8651dc3192c6775291c1"
+      "sha256": "4a20a6602eaf45832281cbee27b75e023de932954db72ec837ee5d51c3e88528"
     },
     {
       "path": "references/limits.json",
@@ -60,7 +60,7 @@
       "sha256": "c7f85f963abd125155fed1a3a4e707885e8d63fa6d146c1a00c431440dda0336"
     }
   ],
-  "protocol_hash": "f63e739d985a0089e5a7b059552fdc4cead3c80f61aafa7a3c0b1da2aab58c53",
+  "protocol_hash": "d47ffc55181fa66d53903551dc5e3498fdef753fa8170d99d6eb47b12f4602df",
   "files": [
     {
       "path": "LICENSE",
@@ -548,7 +548,7 @@
     },
     {
       "path": "references/api.md",
-      "sha256": "1e306233f8c834d5f3b497e16c70d13d13e57c3f2a2bf06d2c03070ec9dade2e"
+      "sha256": "f7b58e2780732f1d5d7e6804afb6babd3f8d559fcc19268d41ddaa2ea9161df3"
     },
     {
       "path": "references/check-registry.json",
@@ -600,7 +600,7 @@
     },
     {
       "path": "references/schemas/contract.schema.json",
-      "sha256": "413c66ec26c8c19dbdb1cdd398cc93b9a009a64e40be8651dc3192c6775291c1"
+      "sha256": "4a20a6602eaf45832281cbee27b75e023de932954db72ec837ee5d51c3e88528"
     },
     {
       "path": "references/scoring.md",
@@ -696,7 +696,7 @@
     },
     {
       "path": "scripts/core/chrome.mjs",
-      "sha256": "cc24f5edade5960d08d02d848348bfe13a02ea8b05df6bab822d8c8f78192ed9"
+      "sha256": "39ad61b8bb96269bd5d586f870d94239498dae0c268a8d179b638a79eb2d278c"
     },
     {
       "path": "scripts/core/collector.mjs",
@@ -704,7 +704,7 @@
     },
     {
       "path": "scripts/core/compare.mjs",
-      "sha256": "16d43532285072d6d4a3489d1e4392651a3013ce5d34b5dc5057fdcbd13e5356"
+      "sha256": "aa42fc630227eea62aba7bd63370436ff1bafc57523044f6f0d597bff6d144f7"
     },
     {
       "path": "scripts/core/config.mjs",
@@ -712,7 +712,7 @@
     },
     {
       "path": "scripts/core/contracts.mjs",
-      "sha256": "a2c493b9c97915aa3b5ec08c477008123e1c3dd39f8b0a5ed0a400cae0651b6a"
+      "sha256": "25b64195a3924ebf314c426bfc8b06ff56b2cac4ae0224c91be04016868339cb"
     },
     {
       "path": "scripts/core/cost-ledger.mjs",
@@ -728,7 +728,7 @@
     },
     {
       "path": "scripts/core/evidence-store.mjs",
-      "sha256": "4e53eebd9078f92d2cf482b1bbc2a857b55e7123bb505ad062e6ffa5261e98da"
+      "sha256": "833a6a54f7a0cd72b25f1f7a1d388a2bf803d7ea4bf6d72139f428f13585c558"
     },
     {
       "path": "scripts/core/facts.mjs",
@@ -756,11 +756,11 @@
     },
     {
       "path": "scripts/core/render.mjs",
-      "sha256": "3869cfd502f143ceffe67f3e2628f7bf9b2e48d06da2c96274d9c12af80f5849"
+      "sha256": "309751a51e604001e281234d46ed05a23a9990138aff9f675825c8785de76707"
     },
     {
       "path": "scripts/core/report.mjs",
-      "sha256": "480f52d271085fad32443a77d69021e35b08cf4430ae2aec93998c76e62e2165"
+      "sha256": "347f418e2f73a507f69809e6b21b853bab01518250b965bc324fed589627141b"
     },
     {
       "path": "scripts/core/scope.mjs",
@@ -783,5 +783,5 @@
       "sha256": "a53223b7eefab2204c026a62b1da04cfdb8a07be8d3749613e8241a81b027d9b"
     }
   ],
-  "bundle_hash": "ffac7e2992c5a1afe938abb9ad169a5b98d6feefe9e2c19d751ae24e14b7d9f8"
+  "bundle_hash": "9e0024410bab9572961cda71a6e6b2dc2ec711d2c9f53a9a748d846b302fd24e"
 }

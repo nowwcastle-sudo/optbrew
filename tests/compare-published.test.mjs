@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { spawnSync } from 'node:child_process';
@@ -34,32 +34,27 @@ test('0.1.2 baselines are not comparable with 0.1.3 inputs: real published outpu
   assert.equal(after.run_context.evaluation_version, current.evaluation_version);
   assert.notEqual(current.evaluation_version, '0.2.0');
   assert.ok(score(after).every(item => item.evaluation_version === current.evaluation_version));
-  // A 0.1.2 baseline has no protocol.render (Task 6 made it required), so the current bundle rejects the file itself.
+  // A 0.1.2 baseline has no protocol.render, so scoring it as a current input fails the schema ...
   assert.throws(() => score(before), /protocol\.render: required/, 'the current bundle must not score a 0.1.2 baseline');
-  assert.throws(() => compare(before, after), /protocol\.render: required/);
-  // With only that field added, the original guarantee holds: another evaluation version is never scored or compared.
-  const completed = structuredClone(before);
-  completed.run_context.protocol.render = { enabled: false, pages: [], max_render_requests: 300 };
-  assert.throws(() => score(completed), /evaluation/i, 'the current bundle must not score a 0.1.2 baseline');
-
-  const result = compare(completed, after);
+  // ... but comparing against it is answered in plain words, not with a schema error.
+  const result = compare(before, after);
   assert.equal(result.status, 'not_comparable');
-  assert.ok(result.reasons.includes('evaluation_version_changed'), JSON.stringify(result.reasons));
+  assert.equal(result.reasons.length, 1);
+  assert.match(result.reasons[0], /^the baseline was made with audit protocol .+, which is older than the current one; run a new audit to compare$/);
   assert.deepEqual(result.score_deltas, []);
 
-  // The shipped CLI refuses the real 0.1.2 file and reports the same verdict for the completed one.
-  const compareWith = async beforeFile => {
-    const output = path.join(temp, 'compare.json');
-    const cli = spawnSync(process.execPath, [path.join(root, 'skills/optbrew/scripts/cli.mjs'), 'compare',
-      '--before', beforeFile, '--after', path.join(root, 'tests/fixtures/scoring/before.json'), '--output', output], { encoding: 'utf8' });
-    return { cli, output };
-  };
-  const refused = await compareWith(path.join(old.fixtures, 'before.json'));
-  assert.notEqual(refused.cli.status, 0);
-  assert.match(refused.cli.stderr, /protocol\.render: required/);
-  const completedFile = path.join(temp, 'before-with-render.json');
-  await writeFile(completedFile, JSON.stringify(completed));
-  const verdict = await compareWith(completedFile);
-  assert.equal(verdict.cli.status, 0, verdict.cli.stderr);
-  assert.equal((await json(verdict.output)).status, 'not_comparable');
+  // With only the render field added, the evaluation version is what makes the two incomparable.
+  const completed = structuredClone(before);
+  completed.run_context.protocol.render = { enabled: false, pages: [], max_render_requests: 300 };
+  assert.throws(() => score(completed), /evaluation/i);
+  assert.ok(compare(completed, after).reasons.includes('evaluation_version_changed'));
+
+  // The shipped CLI reports the same verdict for the real 0.1.2 file.
+  const output = path.join(temp, 'compare.json');
+  const cli = spawnSync(process.execPath, [path.join(root, 'skills/optbrew/scripts/cli.mjs'), 'compare',
+    '--before', path.join(old.fixtures, 'before.json'), '--after', path.join(root, 'tests/fixtures/scoring/before.json'), '--output', output], { encoding: 'utf8' });
+  assert.equal(cli.status, 0, cli.stderr);
+  const verdict = await json(output);
+  assert.equal(verdict.status, 'not_comparable');
+  assert.deepEqual(verdict.reasons, result.reasons);
 });

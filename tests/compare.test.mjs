@@ -96,3 +96,20 @@ test('compare CLI rejects changed conditions without writing a misleading score 
   assert.deepEqual(result.score_deltas, []);
   assert.ok(result.reasons.includes('environment_changed'));
 });
+
+test('an input from before the render stage is not comparable, in plain words, instead of a schema error', () => {
+  const current = fixture();
+  const older = structuredClone(current);
+  delete older.run_context.protocol.render;
+  for (const [before, after, who] of [[older, current, 'baseline'], [current, older, 'follow-up']]) {
+    const result = compare(before, after);
+    assert.equal(result.status, 'not_comparable');
+    assert.deepEqual(result.score_deltas, []);
+    assert.equal(result.reasons.length, 1);
+    assert.ok(result.reasons[0].startsWith(`the ${who} was made with audit protocol 0.1.0, which is older than the current one`), result.reasons[0]);
+  }
+  assert.equal(compare(older, null).status, 'not_comparable');
+  const broken = structuredClone(current);
+  delete broken.run_context.target;
+  assert.throws(() => compare(broken, current), /target/);
+});
