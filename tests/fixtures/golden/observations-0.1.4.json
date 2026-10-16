@@ -1,0 +1,80 @@
+[
+  {
+    "check_id": "document-title",
+    "family_id": "document-title",
+    "unit_key": "document-title|http://127.0.0.1:PORT/",
+    "state": "unknown",
+    "q": null,
+    "partial_basis": null,
+    "reason": "Raw HTML has a title; uniqueness and descriptiveness are not established",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/239b66f2f58e6d41d966cb7da2240e8415189925030bd5b8a3ed957fb3717d77.html",
+    "site": "after"
+  },
+  {
+    "check_id": "fetch-response",
+    "family_id": "fetch-response",
+    "unit_key": "fetch-response|http://127.0.0.1:PORT/",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "HTTP 200",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/239b66f2f58e6d41d966cb7da2240e8415189925030bd5b8a3ed957fb3717d77.html",
+    "site": "after"
+  },
+  {
+    "check_id": "index-policy",
+    "family_id": "index-policy",
+    "unit_key": "index-policy|http://127.0.0.1:PORT/",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "Raw response has no applicable noindex directive",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/239b66f2f58e6d41d966cb7da2240e8415189925030bd5b8a3ed957fb3717d77.html",
+    "site": "after"
+  },
+  {
+    "check_id": "document-title",
+    "family_id": "document-title",
+    "unit_key": "document-title|http://127.0.0.1:PORT/",
+    "state": "fail",
+    "q": 0,
+    "partial_basis": null,
+    "reason": "Raw HTML has no title",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/c79271fb4d98447734a702cd72feb167ec5dd825e82817cfc672f24045e1d7a0.html",
+    "site": "before"
+  },
+  {
+    "check_id": "fetch-response",
+    "family_id": "fetch-response",
+    "unit_key": "fetch-response|http://127.0.0.1:PORT/",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "HTTP 200",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/c79271fb4d98447734a702cd72feb167ec5dd825e82817cfc672f24045e1d7a0.html",
+    "site": "before"
+  },
+  {
+    "check_id": "index-policy",
+    "family_id": "index-policy",
+    "unit_key": "index-policy|http://127.0.0.1:PORT/",
+    "state": "fail",
+    "q": 0,
+    "partial_basis": null,
+    "reason": "Raw response blocks indexing for the target engine",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/c79271fb4d98447734a702cd72feb167ec5dd825e82817cfc672f24045e1d7a0.html",
+    "site": "before"
+  }
+]
