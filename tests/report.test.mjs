@@ -797,12 +797,11 @@ test('final review M2: the CLI refuses an invalid packet before creating any out
 });
 
 test('final review round 3: a production resolution shows the evaluator type of its resolving observation', () => {
-  for (const evaluator of ['code', 'host_model']) {
+  for (const evaluator of ['code']) {
     const run = productionRun();
     try {
       const observation = run.packet.after.input.observations.find(x => x.check_id === 'index-policy');
       observation.evaluator_type = evaluator;
-      if (evaluator === 'host_model') observation.evidence_span = { evidence_sha256: run.packet.evidence_index.find(x => x.ref === observation.evidence_ref).sha256, start: 0, end: 6 };
       run.packet.after.scores = score(run.packet.after.input);
       const report = buildReport(run.packet);
       assert.equal(report.json.findings[0].status, 'verified_production');
@@ -812,6 +811,14 @@ test('final review round 3: a production resolution shows the evaluator type of 
       assert.ok(report.markdown.includes(`resolved by ${evaluator} observation`));
     } finally { rmSync(run.dir, { recursive: true, force: true }); }
   }
+  const forged = productionRun();
+  try {
+    const observation = forged.packet.after.input.observations.find(x => x.check_id === 'index-policy');
+    Object.assign(observation, { evaluator_type: 'host_model', source_ref: 'optbrew:model-judgment',
+      evidence_span: [{ evidence_sha256: forged.packet.evidence_index.find(x => x.ref === observation.evidence_ref).sha256, start: 0, end: 6 }] });
+    forged.packet.after.scores = score(forged.packet.after.input);
+    assert.throws(() => buildReport(forged.packet), /index-policy is judged by code/, 'a model cannot stand in for a code-judged family');
+  } finally { rmSync(forged.dir, { recursive: true, force: true }); }
   const pending = copyRun();
   try {
     addChange(pending, 'c1');

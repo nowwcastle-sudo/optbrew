@@ -52,6 +52,7 @@ function checkRule(rule, value, path) {
     for (const [key, child] of Object.entries(rule.properties ?? {})) if (Object.hasOwn(value, key)) checkRule(child, value[key], `${path}.${key}`);
     if (rule.if && rule.then && matches(rule.if, value)) checkRule(rule.then, value, path);
   }
+  if (Array.isArray(value) && rule.minItems !== undefined && value.length < rule.minItems) fail(path, 'too few items');
   if (Array.isArray(value) && rule.items) value.forEach((item, i) => checkRule(rule.items, item, `${path}[${i}]`));
 }
 

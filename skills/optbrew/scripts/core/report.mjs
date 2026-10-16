@@ -16,7 +16,7 @@ import { links } from './collector.mjs';
 import { checkRenderLedger } from './render.mjs';
 import { assertUrlInScope } from './scope.mjs';
 import { sensitive } from './secrets.mjs';
-import { checkSpan } from './judgments.mjs';
+import { MODEL_SOURCE, checkSpan, isCodeJudged, queuedSpan } from './judgments.mjs';
 import { parseRobots, robotsVerdict } from '../../modules/naver-searchadvisor/scripts/robots.mjs';
 
 const catalog = JSON.parse(readFileSync(new URL('../../references/remediations.json', import.meta.url))).items;
@@ -106,9 +106,10 @@ function indexedEvidence(packet) {
     if (sensitive.test(bytes.toString('utf8'))) throw new ContractError('private identifier or secret in report evidence');
     index.set(entry.ref, { ...entry, text: bytes.toString('utf8'), bytes });
   }
-  const requireRef = (ref, sourceRef) => {
+  /** `source` is the `source_ref` the entry must carry, or `{ anySource: true }` for evidence cited from another source. */
+  const requireRef = (ref, source) => {
     const entry = index.get(ref);
-    if (!entry || sourceRef && entry.source_ref !== sourceRef) throw new ContractError(`evidence/source link missing: ${ref}`);
+    if (!entry || source && !source.anySource && entry.source_ref !== source) throw new ContractError(`evidence/source link missing: ${ref}`);
     return entry;
   };
   const context = requireRef(packet.run_context.evidence_ref);
@@ -240,8 +241,8 @@ function checkDecisions(input, requireRef, collectedFor) {
   for (const family of input.run_context.protocol.families)
     if (family.applicability_decision) decisionRecord(family.applicability_decision, 'family', { key: 'family_id', value: family.family_id });
   for (const observation of input.observations) {
-    // A model's verdict cites evidence the collector stored; modelJudgmentRows binds it to that evidence by hash and byte range.
-    const evidence = requireRef(observation.evidence_ref, observation.evaluator_type === 'host_model' ? undefined : observation.source_ref);
+    // A model's verdict cites evidence the collector stored; modelJudgmentRows binds it to that page's raw evidence.
+    const evidence = requireRef(observation.evidence_ref, observation.evaluator_type === 'host_model' ? { anySource: true } : observation.source_ref);
     if (observation.applicability_decision) decisionRecord(observation.applicability_decision, 'unit', { key: 'unit_key', value: observation.unit_key });
     if (observation.check_id === 'index-policy' && observation.state === 'fail') {
       if (evidence.kind !== 'raw_html' && evidence.kind !== 'http_response')
@@ -582,18 +583,36 @@ function checkAuditPhase(input, phase, snapshot, requireRef) {
 const MODEL_JUDGMENT_LABEL = '근거 확인됨, 판정은 모델';
 
 /**
- * The model judgments of one score input, each checked against the run's stored evidence: a verdict other than unknown
- * needs an evidence span, the evidence must be in the run with the span's hash, and the byte range must sit inside it on
- * character boundaries. The label says the evidence was checked and the verdict is the model's.
+ * The model judgments of one score input, each replayed against the run's audit evidence. A `host_model` observation is
+ * refused for a code-judged family and unless it carries the model source. Its evidence must be the audit raw entry of
+ * the page its unit names. A verdict other than unknown cites ranges that are candidates of the queue stored in the audit
+ * index, each with that raw entry's hash and a byte range inside it on character boundaries. The label says the evidence was
+ * checked and the verdict is the model's.
  */
-function modelJudgmentRows(phase, input, index) {
-  return (input?.observations ?? []).filter(obs => obs.evaluator_type === 'host_model' && obs.state !== 'unknown').map(obs => {
-    const span = obs.evidence_span;
-    const entry = index.get(obs.evidence_ref);
-    if (!span || !entry || entry.sha256 !== span.evidence_sha256) throw new ContractError(`model judgment is not bound to stored evidence: ${obs.unit_key}`);
-    try { checkSpan(entry.bytes, span); }
-    catch (error) { throw new ContractError(`model judgment span is invalid for ${obs.unit_key}: ${error.message}`); }
-    return { phase, family_id: obs.family_id, unit_key: obs.unit_key, state: obs.state, evidence_ref: obs.evidence_ref, evidence_span: span, label: MODEL_JUDGMENT_LABEL };
+function modelJudgmentRows(phase, input, snapshot, requireRef) {
+  const judgments = (input?.observations ?? []).filter(obs => obs.evaluator_type === 'host_model');
+  const fail = (obs, message) => { throw new ContractError(`model judgment ${obs.unit_key}: ${message}`); };
+  for (const obs of judgments) {
+    if (isCodeJudged(obs.family_id)) fail(obs, `${obs.family_id} is judged by code; a host_model observation cannot stand for it`);
+    if (obs.source_ref !== MODEL_SOURCE) fail(obs, `source_ref must be ${MODEL_SOURCE}`);
+  }
+  if (!judgments.length) return [];
+  if (!snapshot) throw new ContractError(`${phase} model judgments require their audit snapshot`);
+  const audit = JSON.parse(requireRef(snapshot.audit_ref).text);
+  const queues = (audit.judge_queue ?? []).map(entry => {
+    const stored = requireRef(entry.evidence_ref);
+    if (stored.sha256 !== entry.sha256) throw new ContractError('judge queue hash differs from the audit index');
+    return JSON.parse(stored.text);
+  });
+  return judgments.filter(obs => obs.state !== 'unknown').map(obs => {
+    const raw = (audit.raw ?? []).find(x => x.evidence_ref === obs.evidence_ref && x.normalized_url === unitUrl(obs.unit_key));
+    if (!raw) fail(obs, 'its evidence is not the audit raw entry of the unit page');
+    for (const span of obs.evidence_span ?? []) {
+      if (span.evidence_sha256 !== raw.content_hash) fail(obs, 'a span names evidence other than the unit page');
+      try { checkSpan(requireRef(obs.evidence_ref).bytes, span); } catch (error) { fail(obs, error.message); }
+      if (!queues.some(queue => queuedSpan(queue, obs, span))) fail(obs, `span ${span.start}-${span.end} is not a candidate of the stored judge queue`);
+    }
+    return { phase, family_id: obs.family_id, unit_key: obs.unit_key, state: obs.state, evidence_ref: obs.evidence_ref, evidence_span: obs.evidence_span, label: MODEL_JUDGMENT_LABEL };
   });
 }
 
@@ -604,7 +623,7 @@ export function buildReport(packet) {
   if (packet.baseline.input.run_context.run_id !== packet.run_context.run_id ||
       !same(packet.baseline.input.run_context, packet.run_context) || packet.costs.run_id !== packet.run_context.run_id)
     throw new ContractError('report run context or cost ledger mismatch');
-  const { requireRef, index } = indexedEvidence(packet);
+  const { requireRef } = indexedEvidence(packet);
   const snapshots = packet.audit_snapshots ?? (packet.audit_ref ? [{ phase: 'baseline',
     audit_ref: packet.audit_ref, context_ref: packet.run_context.evidence_ref }] : []);
   if (new Set(snapshots.map(x => x.phase)).size !== snapshots.length ||
@@ -632,9 +651,10 @@ export function buildReport(packet) {
   const metricOriginLimitations = [...new Set(packet.metrics.map(metric => checkMetricEvidence(metric, packet, requireRef)))];
   if (!packet.costs.evidence_ref || !same(JSON.parse(requireRef(packet.costs.evidence_ref).text), packet.costs))
     throw new ContractError('cost ledger snapshot evidence differs from report');
+  // Model verdicts are replayed first, so a host_model observation never reaches the collector replay under a collector source.
+  const modelRows = [['baseline', packet.baseline.input], ['after', packet.after?.input]].flatMap(([phase, input]) => modelJudgmentRows(phase, input, snapshotFor(phase), requireRef));
   checkAuditPhase(packet.baseline.input, 'baseline', snapshotFor('baseline'), requireRef);
   checkAuditPhase(packet.after?.input, 'after', snapshotFor('after'), requireRef);
-  const modelRows = [['baseline', packet.baseline.input], ['after', packet.after?.input]].flatMap(([phase, input]) => modelJudgmentRows(phase, input, index));
   const merged = mergeFindings(packet.findings);
   const observations = [...packet.baseline.input.observations, ...(packet.after?.input.observations ?? [])];
   const collectedAny = collectedResponses(snapshots, requireRef);
@@ -771,7 +791,7 @@ export function buildReport(packet) {
     f.resolution ? `${f.status} (resolved by ${f.resolution.evaluator_type} observation from ${f.resolution.source_ref})` : f.status]);
   const outcomeRows = metricRows(packet.metrics);
   const remainingRows = remaining.map(x => [x.problem, x.reason, x.required_input_or_authority, x.next_action, x.reobserve_when]);
-  const modelTableRows = modelRows.map(x => [x.phase, `${x.family_id} ${x.unit_key}`, x.state, `${x.evidence_ref} bytes ${x.evidence_span.start}–${x.evidence_span.end}`, x.label]);
+  const modelTableRows = modelRows.map(x => [x.phase, `${x.family_id} ${x.unit_key}`, x.state, `${x.evidence_ref} bytes ${x.evidence_span.map(span => `${span.start}–${span.end}`).join(', ')}`, x.label]);
   const markdown = `# optbrew report\n\n${packet.data_class === 'synthetic' ? '**Synthetic example — no real site or provider outcome.**\n\n' : ''}` +
     `Target: ${html(packet.run_context.target)}  \nEnvironment: ${html(packet.run_context.environment)}  \nGoals: ${html(packet.run_context.goals.join(', '))}  \n` +
     `Comparison: ${html(comparison.status)} (${html(comparison.reasons.join(', ') || 'none')})  \n` +
