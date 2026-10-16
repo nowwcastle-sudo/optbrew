@@ -3,10 +3,11 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { EventEmitter } from 'node:events';
 import { mkdir, readFile, readdir, stat, writeFile } from 'node:fs/promises';
+import os from 'node:os';
 import path from 'node:path';
 import { PassThrough } from 'node:stream';
 import { tempDir } from './support/temp-dir.mjs';
-import { readGoogleKey } from '../skills/optbrew/scripts/core/keys.mjs';
+import { keyHome, readGoogleKey } from '../skills/optbrew/scripts/core/keys.mjs';
 import { runKeyCommand } from '../skills/optbrew/scripts/key.mjs';
 import { main } from '../lib/cli.mjs';
 
@@ -172,10 +173,87 @@ test('unknown commands print usage and return 2', async () => {
 test('optbrew key reaches the key command and keeps the key out of its output', async () => {
   const home = await tempDir('optbrew-keys-');
   const out = sink(); const err = sink();
-  const code = await main(['key', 'set', 'google'], { stdin: pipeStdin(`${KEY}\n`), stdout: out, stderr: err, env: { HOME: home }, cwd: home });
+  const code = await main(['key', 'set', 'google'], { stdin: pipeStdin(`${KEY}\n`), stdout: out, stderr: err, env: { HOME: home, USERPROFILE: home }, cwd: home });
   assert.equal(code, 0);
   assert.equal((out.text() + err.text()).includes(KEY), false);
   const status = sink();
-  assert.equal(await main(['key', 'status'], { stdout: status, stderr: err, env: { HOME: home }, cwd: home }), 0);
+  assert.equal(await main(['key', 'status'], { stdout: status, stderr: err, env: { HOME: home, USERPROFILE: home }, cwd: home }), 0);
   assert.deepEqual(JSON.parse(status.text()), { google: { present: true, sha256_8: sha8(KEY) } });
+});
+
+test('keyHome picks USERPROFILE on Windows and HOME elsewhere, then the OS home', () => {
+  const env = { HOME: '/posix/home', USERPROFILE: 'C:\\win\\profile' };
+  assert.equal(keyHome(env, 'win32'), env.USERPROFILE);
+  assert.equal(keyHome(env, 'linux'), env.HOME);
+  assert.equal(keyHome({ HOME: '', USERPROFILE: '' }, 'win32'), os.homedir());
+  assert.equal(keyHome({}, 'linux'), os.homedir());
+});
+
+test('without an explicit home, set and read resolve to the platform home from env', async () => {
+  const root = await tempDir('optbrew-keys-');
+  const [homeDir, profileDir] = [path.join(root, 'home'), path.join(root, 'profile')];
+  const env = { HOME: homeDir, USERPROFILE: profileDir };
+  const expected = process.platform === 'win32' ? profileDir : homeDir;
+  const stdout = sink();
+  assert.equal(await runKeyCommand(['set', 'google'], { stdin: pipeStdin(`${KEY}\n`), stdout, stderr: sink(), env }), 0);
+  assert.deepEqual(await readdir(path.join(expected, '.optbrew')), ['credentials.json']);
+  assert.equal(readGoogleKey({ env }), KEY);
+  assert.equal(readGoogleKey({ env: {}, home: expected }), KEY);
+  assert.equal(stdout.text().includes(KEY), false);
+});
+
+test('set keeps other entries in an existing key file; remove drops only google and unlinks an empty file', async () => {
+  const home = await tempDir('optbrew-keys-');
+  const file = path.join(home, '.optbrew', 'credentials.json');
+  await writeKeyFile(home, JSON.stringify({ other: OTHER, google: 'old' }));
+  assert.equal((await run(['set', 'google'], { home, stdin: pipeStdin(`${KEY}\n`) })).code, 0);
+  assert.deepEqual(JSON.parse(await readFile(file, 'utf8')), { other: OTHER, google: KEY });
+  assert.equal((await run(['remove', 'google'], { home })).code, 0);
+  assert.deepEqual(JSON.parse(await readFile(file, 'utf8')), { other: OTHER });
+  assert.equal(readGoogleKey({ env: {}, home }), null);
+  await writeKeyFile(home, JSON.stringify({ google: KEY }));
+  assert.equal((await run(['remove', 'google'], { home })).code, 0);
+  await assert.rejects(stat(file), { code: 'ENOENT' });
+});
+
+test('the key folder is owner-only on POSIX', { skip: process.platform === 'win32' && 'Windows has no POSIX modes' }, async () => {
+  const home = await tempDir('optbrew-keys-');
+  await mkdir(path.join(home, '.optbrew'), { mode: 0o755 });
+  await run(['set', 'google'], { home, stdin: pipeStdin(`${KEY}\n`) });
+  assert.equal((await stat(path.join(home, '.optbrew'))).mode & 0o777, 0o700);
+});
+
+/** Type into a fake terminal and return the command result. */
+async function typeOnTerminal(home, steps) {
+  const terminal = fakeTerminal();
+  const pending = run(['set', 'google'], { home, stdin: terminal });
+  await new Promise(resolve => setImmediate(resolve));
+  for (const step of steps) step(terminal);
+  return { terminal, result: await pending };
+}
+
+test('hidden input drops control characters; Ctrl-D cancels only an empty line', async () => {
+  const home = await tempDir('optbrew-keys-');
+  const typed = await typeOnTerminal(home, [t => t.emit('data', `\u0001\t${KEY.slice(0, 5)}\u0004`), t => t.emit('data', `${KEY.slice(5)}\r`)]);
+  assert.equal(typed.result.code, 0);
+  assert.equal(readGoogleKey({ env: {}, home }), KEY);
+  const other = await tempDir('optbrew-keys-');
+  const cancelled = await typeOnTerminal(other, [t => t.emit('data', '\u0004')]);
+  assert.equal(cancelled.result.code, 1);
+  assert.deepEqual(cancelled.terminal.raw, [true, false]);
+  assert.equal(readGoogleKey({ env: {}, home: other }), null);
+});
+
+test('hidden input ends cleanly when the terminal stream ends or fails', async () => {
+  const home = await tempDir('optbrew-keys-');
+  const ended = await typeOnTerminal(home, [t => t.emit('data', KEY.slice(0, 6)), t => t.emit('end')]);
+  assert.equal(ended.result.code, 1);
+  assert.deepEqual(ended.terminal.raw, [true, false]);
+  assert.equal(ended.terminal.listenerCount('data') + ended.terminal.listenerCount('end') + ended.terminal.listenerCount('error'), 0);
+  const failed = await typeOnTerminal(home, [t => t.emit('error', new Error('stream broke'))]);
+  assert.equal(failed.result.code, 1);
+  assert.match(failed.result.stderr, /stream broke/);
+  assert.deepEqual(failed.terminal.raw, [true, false]);
+  assert.equal(readGoogleKey({ env: {}, home }), null);
+  assert.equal((ended.result.stdout + ended.result.stderr + failed.result.stdout + failed.result.stderr).includes(KEY.slice(0, 6)), false);
 });
