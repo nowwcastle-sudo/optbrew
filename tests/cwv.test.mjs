@@ -52,14 +52,14 @@ test('uses CrUX when the key works', async () => {
   await collectCwv({ origin: ORIGIN, key: KEY, fetchFn, store });
   assert.equal(calls.length, 1);
   assert.equal(calls[0].init.method, 'POST');
-  assert.deepEqual(JSON.parse(calls[0].init.body), { origin: ORIGIN });
-  const url = new URL(calls[0].url);
-  assert.equal(`${url.origin}${url.pathname}`, endpoints().crux);
-  assert.equal(url.searchParams.get('key'), KEY);
+  assert.deepEqual(JSON.parse(calls[0].init.body), { origin: ORIGIN, formFactor: 'PHONE' });
+  assert.equal(calls[0].url, endpoints().crux, 'the URL is the endpoint as configured, with no key in it');
+  assert.equal(calls[0].init.headers['x-goog-api-key'], KEY);
+  assert.equal(calls[0].init.headers['content-type'], 'application/json');
   const [entry] = await stored(store);
   assert.equal(entry.source, 'crux');
   assert.equal(entry.sha256, sha(readFileSync(entry.evidence_ref)));
-  assert.deepEqual([entry.record.source, entry.record.origin, entry.record.status], ['crux', ORIGIN, 200]);
+  assert.deepEqual([entry.record.source, entry.record.origin, entry.record.status, entry.record.key], ['crux', ORIGIN, 200, 'used']);
   assert.equal(entry.record.body.record.metrics.largest_contentful_paint.percentiles.p75, 2100);
 });
 
@@ -71,7 +71,8 @@ test('falls back to PSI on CrUX 404', async () => {
   const psi = new URL(calls[1].url);
   assert.equal(`${psi.origin}${psi.pathname}`, endpoints().psi.split('?')[0]);
   assert.equal(psi.searchParams.get('url'), `${ORIGIN}/`);
-  assert.equal(psi.searchParams.get('key'), KEY);
+  assert.equal(psi.searchParams.has('key'), false);
+  assert.equal(calls[1].init.headers['x-goog-api-key'], KEY);
   assert.deepEqual((await stored(store)).map(x => [x.source, x.record.status]), [['crux', 404], ['psi', 200]]);
 });
 
@@ -90,7 +91,8 @@ test('tries PSI once without a key', async () => {
   assert.equal(limits().psi_attempts, 1);
   assert.equal(calls.length, limits().psi_attempts);
   assert.equal(new URL(calls[0].url).searchParams.has('key'), false);
-  assert.deepEqual((await stored(store)).map(x => [x.source, x.record.status]), [['psi', 429]]);
+  assert.equal(calls[0].init.headers['x-goog-api-key'], undefined);
+  assert.deepEqual((await stored(store)).map(x => [x.source, x.record.status, x.record.key]), [['psi', 429, 'absent']]);
 });
 
 test('a network failure leaves evidence and no exception', async () => {
@@ -104,7 +106,8 @@ test('stored CWV evidence never contains the key', async () => {
   const { dir, store } = await newStore();
   const echo = fakeFetch(reply(400, { error: { message: `API key not valid: ${KEY}`, echoed: encodeURIComponent(KEY) } }));
   await collectCwv({ origin: ORIGIN, key: KEY, fetchFn: echo.fetchFn, store });
-  assert.ok(echo.calls[0].url.includes(KEY), 'the key travels in the request, so this test can see a leak');
+  assert.equal(echo.calls[0].init.headers['x-goog-api-key'], KEY, 'the key travels in the request, so this test can see a leak');
+  assert.equal(echo.calls[0].url.includes(KEY), false, 'and never in the URL');
   const failing = fakeFetch(reply(404, NOT_FOUND), new Error(`request to https://api.test/?key=${KEY} failed`));
   await collectCwv({ origin: ORIGIN, key: KEY, fetchFn: failing.fetchFn, store });
   const all = filesText(dir);
@@ -119,6 +122,24 @@ test('stored CWV evidence never contains the key', async () => {
 const judge = (block, cwv) => block.derive({ context: { evidence_ref: 'context.json' }, artifacts: [], selected: new Map([[`${ORIGIN}/`, {}]]), cwv })[0];
 const answer = (source, body, extra = {}) => ({ source, origin: ORIGIN, status: 200, body, evidence_ref: `evidence/${source}.json`, ...extra });
 const psiBody = metrics => ({ originLoadingExperience: { metrics } });
+
+test('a key that is not shaped like a Google key is ignored and the record says so', async () => {
+  const { dir, store } = await newStore();
+  const { calls, fetchFn } = fakeFetch(reply(200, { note: 'short appears here' }));
+  await collectCwv({ origin: ORIGIN, key: 'short', fetchFn, store });
+  assert.equal(calls.length, 1);
+  assert.equal(new URL(calls[0].url).origin, new URL(endpoints().psi).origin, 'no CrUX call without a usable key');
+  assert.equal(calls[0].init.headers['x-goog-api-key'], undefined);
+  const [{ record }] = await stored(store);
+  assert.deepEqual([record.source, record.key], ['psi', 'malformed_ignored']);
+  assert.equal(record.body.note, 'short appears here', 'a short string is never stripped from a body');
+  assert.ok(filesText(dir).includes('short appears here'));
+});
+
+test('collectCwv refuses to run without a fetch function', async () => {
+  const { store } = await newStore();
+  await assert.rejects(collectCwv({ origin: ORIGIN, key: KEY, store }), TypeError);
+});
 
 test('field families judge the p75 against the registry thresholds', () => {
   const field = answer('crux', crux({ largest_contentful_paint: 2500, interaction_to_next_paint: 350, cumulative_layout_shift: '0.3' }));
@@ -148,6 +169,8 @@ test('PSI answers are read from the origin experience and CLS is unscaled by its
   const cls = value => judge(clsField, [answer('psi', metrics(value))]);
   assert.deepEqual([cls(10), cls(18), cls(30)].map(x => [x.state, x.measurement.value]), [['pass', 0.1], ['partial', 0.18], ['fail', 0.3]]);
   assert.equal(judge(clsField, [answer('psi', metrics(10, []))]).state, 'unknown', 'without a bucket bound the scale is not known');
+  const other = [{ min: 0, max: 0.1 }, { min: 0.1, max: 0.25 }];
+  assert.equal(judge(clsField, [answer('psi', metrics(10, other))]).state, 'unknown', 'a first bucket that does not end at 10 means another scale');
 });
 
 test('lab values never create observations', async () => {

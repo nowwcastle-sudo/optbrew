@@ -11,6 +11,11 @@ import { assertInScope } from './scope.mjs';
 /** A timer that never keeps the process alive; it only bounds a race. */
 const sleep = (ms, value) => delay(ms, value, { ref: false });
 
+/** An exception thrown by script evaluated in the page. */
+class EvaluateError extends Error {
+  constructor(message) { super(message); this.name = 'EvaluateError'; }
+}
+
 const envValue = (env, name) => env[Object.keys(env).find(key => key.toLowerCase() === name.toLowerCase())];
 
 /** Expand `%NAME%` against `env`; a variable that is not set makes the whole template unusable. */
@@ -517,9 +522,10 @@ export async function scopedPage({ chrome, context, budget, fetchStatic = null, 
       Object.assign(result, JSON.parse(evaluated.value), { status: lastDocument?.status ?? null });
       return result;
     },
-    /** The value of an expression run in the loaded page; a promise is awaited. */
+    /** The value of an expression run in the loaded page; a promise is awaited. An exception in the page throws an EvaluateError. */
     async evaluate(expression) {
-      const { result } = await send('Runtime.evaluate', { expression, returnByValue: true, awaitPromise: true });
+      const { result, exceptionDetails } = await send('Runtime.evaluate', { expression, returnByValue: true, awaitPromise: true });
+      if (exceptionDetails) throw new EvaluateError(exceptionDetails.exception?.description ?? exceptionDetails.text);
       return result.value;
     },
   };

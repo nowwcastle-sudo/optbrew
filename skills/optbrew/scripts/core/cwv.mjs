@@ -1,8 +1,12 @@
 import { endpoints, limits } from './config.mjs';
 
-const NOT_FOUND = /chrome ux report data not found/i;
-const HTTP_OK = 200;
+export const HTTP_OK = 200;
 const HTTP_NOT_FOUND = 404;
+const NOT_FOUND = /chrome ux report data not found/i;
+// Google API keys are letters, digits, "_" and "-"; anything else is not a key optbrew can send, and a short string could not be removed safely.
+const KEY_SHAPE = /^[A-Za-z0-9_-]{20,}$/;
+// CrUX is asked for phones, as PageSpeed Insights is (strategy=mobile in endpoints.json).
+const FORM_FACTOR = 'PHONE';
 // CLS counts shifts in session windows: a gap of 1 s ends a window and a window ends after 5 s (the web.dev definition).
 const SESSION_GAP_MS = 1000;
 const SESSION_CAP_MS = 5000;
@@ -20,34 +24,40 @@ async function ask(fetchFn, url, init, key) {
   }
 }
 
-/** Store what the source answered, cleaned of the key, and list it in the index's `cwv` section. */
-async function keep(store, source, origin, result) {
+/** Store what the source answered, cleaned of the key, and list it in the index's `cwv` section. `key` says what became of the user's key. */
+async function keep(store, source, origin, keyState, result) {
   let body = result.text;
   try { body = JSON.parse(result.text); } catch { /* a body that is not JSON is kept as text */ }
-  const record = { source, origin, status: result.status, ...(result.error === undefined ? { body } : { error: result.error }) };
+  const record = { source, origin, key: keyState, status: result.status, ...(result.error === undefined ? { body } : { error: result.error }) };
   const { ref, sha256 } = await store.write('cwv', `${JSON.stringify(record, null, 2)}\n`);
   await store.append('cwv', { source, evidence_ref: ref, sha256 });
 }
 
 /**
  * Field Core Web Vitals of one origin, stored as evidence and never judged here. With the user's own Google key the
- * Chrome UX Report is asked first and PageSpeed Insights only when CrUX has no data for the origin; without a key
- * PageSpeed Insights is tried `psi_attempts` times, keyless. The key goes into the request only: no endpoint holds it
- * and every stored body or error has it removed.
+ * Chrome UX Report is asked first and PageSpeed Insights only when CrUX has no data for the origin; without a key (or with
+ * one that is not shaped like a Google key, which the record says) PageSpeed Insights is tried `psi_attempts` times, keyless.
+ * `fetchFn(url, { method, headers, body })` answers `{ status, text() }`: pass `transportFetch` of the run's transport, so a
+ * proxy-only network works and the host is vetted. The key travels in the `x-goog-api-key` header only: no endpoint and no URL
+ * holds it, and every stored body or error has it removed.
  */
-export async function collectCwv({ origin, key = null, fetchFn = fetch, store }) {
-  if (key) {
-    const crux = await ask(fetchFn, `${endpoints().crux}?key=${encodeURIComponent(key)}`,
-      { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ origin }) }, key);
-    await keep(store, 'crux', origin, crux);
+export async function collectCwv({ origin, key = null, fetchFn, store }) {
+  if (typeof fetchFn !== 'function') throw new TypeError('collectCwv needs fetchFn');
+  const usable = typeof key === 'string' && KEY_SHAPE.test(key);
+  const keyState = key ? (usable ? 'used' : 'malformed_ignored') : 'absent';
+  const auth = usable ? { 'x-goog-api-key': key } : {};
+  const secret = usable ? key : null;
+  if (usable) {
+    const crux = await ask(fetchFn, endpoints().crux, { method: 'POST', headers: { 'content-type': 'application/json', ...auth },
+      body: JSON.stringify({ origin, formFactor: FORM_FACTOR }) }, secret);
+    await keep(store, 'crux', origin, keyState, crux);
     if (!(crux.status === HTTP_NOT_FOUND && NOT_FOUND.test(crux.text))) return;
   }
   for (let attempt = 0; attempt < limits().psi_attempts; attempt++) {
     const url = new URL(endpoints().psi);
     url.searchParams.set('url', `${origin}/`);
-    if (key) url.searchParams.set('key', key);
-    const psi = await ask(fetchFn, url.href, { method: 'GET' }, key);
-    await keep(store, 'psi', origin, psi);
+    const psi = await ask(fetchFn, url.href, { method: 'GET', headers: auth }, secret);
+    await keep(store, 'psi', origin, keyState, psi);
     if (psi.status === HTTP_OK) return;
   }
 }

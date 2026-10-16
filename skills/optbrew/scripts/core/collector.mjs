@@ -58,8 +58,8 @@ async function addressesFor(url, resolve) {
 }
 
 /** Fetch one URL with fresh DNS validation at every redirect and a pinned connection. */
-export async function fetchScoped(input, { context, transport = directTransport, resolve = host => lookup(host, { all: true, verbatim: true }), timeoutMs = limits().timeout_ms, maxBytes = limits().max_bytes, maxRedirects = limits().max_redirects, headers = {}, allowedAuxiliary = null, reserveRequest = null, addressVetting = 'direct', extraHeaders = [] }) {
-  if (![timeoutMs, maxBytes, maxRedirects].every(Number.isInteger) || timeoutMs < 1 || timeoutMs > limits().timeout_ms || maxBytes < 1 || maxBytes > limits().max_bytes || maxRedirects < 0 || maxRedirects > limits().max_redirects)
+export async function fetchScoped(input, { context, transport = directTransport, resolve = host => lookup(host, { all: true, verbatim: true }), timeoutMs = limits().timeout_ms, maxBytes = limits().max_bytes, maxRedirects = limits().max_redirects, headers = {}, allowedAuxiliary = null, reserveRequest = null, addressVetting = 'direct', extraHeaders = [], method = 'GET', body: requestBody = null, ceiling = { timeoutMs: limits().timeout_ms, maxBytes: limits().max_bytes } }) {
+  if (![timeoutMs, maxBytes, maxRedirects].every(Number.isInteger) || timeoutMs < 1 || timeoutMs > ceiling.timeoutMs || maxBytes < 1 || maxBytes > ceiling.maxBytes || maxRedirects < 0 || maxRedirects > limits().max_redirects)
     throw new Error('fetch limits exceed context ceiling');
   // Proxy vetting skips DNS-name checks, which is only safe when the proxy transport (not a direct connection) carries the request.
   if (addressVetting === 'proxy' && transport.addressVetting !== 'proxy') throw new Error('proxy address vetting requires the proxy transport');
@@ -90,7 +90,7 @@ export async function fetchScoped(input, { context, transport = directTransport,
         throw error;
       }
       made++;
-      const response = await withinDeadline(transport({ url, address: addresses[0], timeoutMs: remainingMs, maxBytes, headers, signal: controller.signal }));
+      const response = await withinDeadline(transport({ url, address: addresses[0], timeoutMs: remainingMs, maxBytes, headers, signal: controller.signal, method, body: requestBody }));
       if (!Number.isInteger(response?.status) || response.status < 100 || response.status > 599) throw new Error('invalid transport status');
       const body = text(response.body);
       if (body.length > maxBytes) throw new Error('response byte limit exceeded');

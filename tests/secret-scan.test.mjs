@@ -93,9 +93,11 @@ test('requestAnthropic does not call transport when env has no key', async () =>
 test('collectCwv without a key never adds a key parameter', async () => {
   const urls = [];
   const store = { write: async () => ({ ref: 'cwv.json', sha256: '0' }), append: async () => {} };
-  const fetchFn = async url => { urls.push(url); return { status: 200, text: async () => '{}' }; };
+  const headers = [];
+  const fetchFn = async (url, init) => { urls.push(url); headers.push(init.headers); return { status: 200, text: async () => '{}' }; };
   for (const key of [null, undefined, '']) await collectCwv({ origin: 'https://example.test', key, fetchFn, store });
   assert.equal(urls.length, 3);
+  for (const sent of headers) assert.deepEqual(Object.keys(sent), []);
   for (const url of urls) {
     assert.equal(new URL(url).searchParams.has('key'), false, url);
     assert.doesNotMatch(url, /key/i, url);

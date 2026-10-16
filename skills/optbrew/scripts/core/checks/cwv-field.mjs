@@ -1,14 +1,18 @@
 import { cwvVerdict } from '../contracts.mjs';
 import { thresholds } from '../config.mjs';
+import { HTTP_OK } from '../cwv.mjs';
 import { makeObservation, unitKey } from './observation.mjs';
 
 const UNAVAILABLE = 'field_data_unavailable';
 const P75 = 75;
-const HTTP_OK = 200;
+// PageSpeed Insights gives the CLS percentile as an integer, 100 times the score (0.1 reads 10).
+const PSI_CLS_PERCENTILE_SCALE = 100;
+const SCALE_TOLERANCE = 1e-9;
 
 /**
  * Where each family's 75th percentile sits in a stored answer. CrUX gives the value itself (a string for CLS); PageSpeed
- * Insights gives an integer, and for CLS one scaled so that the bucket bounds of its first distribution read 0.1 as 10.
+ * Insights gives an integer, and for CLS one scaled by PSI_CLS_PERCENTILE_SCALE. Google does not document that scale, so it is
+ * trusted only while the first distribution bucket ends at the good bound times the scale (10 for 0.1); otherwise there is no value.
  */
 const FIELDS = {
   'lcp-field': { crux: 'largest_contentful_paint', psi: 'LARGEST_CONTENTFUL_PAINT_MS', scaled: false },
@@ -27,7 +31,7 @@ function p75Of(record, familyId) {
   const value = finite(metric?.percentile);
   if (value === null || !names.scaled) return value;
   const bound = finite(metric.distributions?.[0]?.max);
-  return bound > 0 ? value / (bound / thresholds(familyId).good) : null;
+  return Math.abs(bound - thresholds(familyId).good * PSI_CLS_PERCENTILE_SCALE) < SCALE_TOLERANCE ? value / PSI_CLS_PERCENTILE_SCALE : null;
 }
 
 /** With no CWV answer to point at, an unknown points at a collected response of the origin: collector evidence, as every collector verdict needs. */
