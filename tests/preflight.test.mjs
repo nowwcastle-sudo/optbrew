@@ -50,6 +50,7 @@ test('preflight never exceeds preflight_pages', async () => {
   assert.equal(startJson.sitemap_pages, 40);
   assert.equal(startJson.probe.sitemap_pages, 40);
   assert.equal(startJson.sitemap_pages_basis, 'exact');
+  assert.equal(startJson.sitemap_declared, 1, 'one sitemap file is declared');
 });
 
 test('redirect hops and the sitemap count against the same budget', async () => {
@@ -77,8 +78,10 @@ test('a sitemap index read in full is exact', async () => {
     '/s1.xml': xml('<urlset><url><loc>https://example.test/a</loc></url></urlset>'), '/s2.xml': xml('<urlset><url><loc>https://example.test/b</loc></url><url><loc>https://example.test/c</loc></url></urlset>') };
   const { startJson } = await run(site(routes));
   assert.deepEqual([startJson.sitemap_pages, startJson.sitemap_pages_basis], [3, 'exact']);
+  assert.equal(startJson.sitemap_declared, 3, 'the index and its two children are declared files of the audit');
   const broken = await run(site({ ...routes, '/s2.xml': undefined }));
   assert.deepEqual([broken.startJson.sitemap_pages, broken.startJson.sitemap_pages_basis], [1, 'lower_bound']);
+  assert.equal(broken.startJson.sitemap_declared, 2, 'a child that could not be read is not declared');
 });
 
 test('a missing sitemap leaves sitemap_pages null', async () => {

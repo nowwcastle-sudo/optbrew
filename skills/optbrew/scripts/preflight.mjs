@@ -109,11 +109,15 @@ export async function preflight({ url, out, sourceTools = [], skillRoot = defaul
   let sitemapBasis = null;
   // Where /sitemap.xml ended up: WordPress and Yoast send it on to an index file under another name.
   let sitemapFinal = null;
+  // The sitemap files the audit will declare: /sitemap.xml, where it ended up, and the child files of an index that were read.
+  const sitemapFiles = new Set();
   if (first && !probe.block_reason) {
     addPage(first);
     const sitemapUrl = new URL(SITEMAP_PATH, new URL(first.final_url).origin).href;
     const sitemap = await tryGet(sitemapUrl);
     sitemapFinal = sitemap?.status === 200 ? sitemap.final_url : null;
+    sitemapFiles.add(sitemapUrl);
+    if (sitemapFinal) sitemapFiles.add(sitemapFinal);
     if (sitemap?.status === 200) {
       const text = sitemap.body.toString('utf8');
       if (/<sitemapindex/i.test(text)) {
@@ -123,7 +127,7 @@ export async function preflight({ url, out, sourceTools = [], skillRoot = defaul
         for (const child of children) {
           if (used >= budget) break;
           const artifact = await tryGet(child);
-          if (artifact?.status === 200) { read += locCount(artifact.body.toString('utf8')); counted++; sitemapPages = read; }
+          if (artifact?.status === 200) { read += locCount(artifact.body.toString('utf8')); counted++; sitemapPages = read; sitemapFiles.add(child); }
         }
         sitemapBasis = counted === children.length ? 'exact' : 'lower_bound';
       } else { sitemapPages = locCount(text); sitemapBasis = 'exact'; }
@@ -148,6 +152,7 @@ export async function preflight({ url, out, sourceTools = [], skillRoot = defaul
     probe: { ...probe, sitemap_pages: sitemapPages },
     sitemap_pages: sitemapPages,
     sitemap_pages_basis: sitemapBasis,
+    sitemap_declared: sitemapFiles.size,
     question_candidates_input: pages.map(({ artifact, html }) => questionInput(artifact, html)),
     fact_candidates: factCandidates(pages),
     start_runbooks: startRunbooks(probe, { level, skillRoot, harnesses: runbookHarnesses(probe.harness) }),

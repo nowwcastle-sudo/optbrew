@@ -28,10 +28,22 @@ const naConditions = new Map(registry.families.map(family => [family.family_id, 
 // The not_applicable conditions that mean "the page has no X", and the families whose fail may rest on something missing from the page.
 const absenceConditions = new Map(registry.families.map(family => [family.family_id, new Set(family.na_absence_conditions ?? [])]));
 const absenceFamilies = new Set(registry.families.filter(family => family.absence_fail).map(family => family.family_id));
-/** What a model marks (`basis`) on a fail that rests on something missing from the page, as opposed to a fail the cited text shows directly. */
+/** What a model marks (`basis`) on every fail of an absence family: the fail rests on something missing from the page, or on something the cited text shows. */
 const ABSENCE_BASIS = 'absence';
+const SHOWN_BASIS = 'shown';
 /** Why a verdict that rests on absence becomes unknown when the queue offered too little of the page. */
-export const ABSENCE_UNCOVERED = 'queue covers too little of the page to declare absence';
+const ABSENCE_UNCOVERED = 'queue covers too little of the page to declare absence';
+const CHROME_ONLY = 'the cited spans are all site chrome, not the page\'s own text';
+const NO_TEXT_REASON = 'page shows no text';
+const DATE_OUTSIDE = 'a date is visible outside the queued spans';
+const DATE_INSIDE = 'a date is visible in the queued spans';
+const OPERATOR_OUTSIDE = 'the operator is named outside the queued spans';
+const OPERATOR_INSIDE = 'the operator is named in the queued spans';
+const FRESHNESS_FAMILY = 'freshness-truth';
+const SOURCE_FAMILY = 'source-transparency';
+const COPYRIGHT = /©|\(c\)|copyright/i;
+// A line that credits someone. The host label (a product's own name, as in "htmx") names an operator only on such a line.
+const CREDIT = /©|\(c\)|copyright|\b(?:published|operated|maintained|created|made|written|run|owned)\s+by\b|운영|제공|발행|저작권|문의/i;
 const SPACE = '[ \\t\\r\\n\\f]';
 const LEADING = new RegExp(`^${SPACE}*`);
 const TRAILING = new RegExp(`${SPACE}+$`);
@@ -46,20 +58,44 @@ const SENTENCE_END = /[.!?。！？]+["'”’」)\]]*(?=\s|$)/gu;
 const SENTENCE_TAIL = /[.!?。！？]+["'”’」)\]]*\s*$/u;
 // Tags inside a line of text: they do not end a span, and the text shown to the model has them taken out.
 const INLINE_TAGS = new Set(['a', 'abbr', 'b', 'br', 'code', 'em', 'i', 'mark', 'small', 'span', 'strong', 'sub', 'sup', 'time']);
-// Short text that is still worth offering: a date, a way to reach the owner (and, by element, an author line in <address>). The floor in limits.json does not drop these.
-const SHORT_TEXT_EXCEPTIONS = [
-  /\d{4}\s*[-./년]\s*\d{1,2}\s*[-./월]\s*\d{1,2}/u,
-  /\d{4}\s*년\s*\d{1,2}\s*월/u,
-  /\d{1,2}\s*[-./]\s*\d{1,2}\s*[-./]\s*\d{4}/u,
-  /\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+\d{1,2},?\s+\d{4}/iu,
-  /\b\d{1,2}\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?,?\s+\d{4}/iu,
+// A date form is a pattern plus a check of its parts: digits stand alone (no digit right before or after, so a business number such as
+// 142-80-39228 or a phone number is not read as a date), the year is 1990-2099, the month 1-12 and the day 1-31.
+const YEAR = value => value >= 1990 && value <= 2099;
+const MONTH = value => value >= 1 && value <= 12;
+const DAY = value => value >= 1 && value <= 31;
+// A full date names a day, a month and a year. A long line that holds one is kept ahead of other long lines when the cap is full.
+const FULL_DATE_FORMS = [
+  { re: /(?<!\d)(\d{4})\s*[-./년]\s*(\d{1,2})\s*[-./월]\s*(\d{1,2})(?!\d)/gu, ok: (y, m, d) => YEAR(+y) && MONTH(+m) && DAY(+d) },
+  { re: /(?<!\d)(\d{4})\s+(\d{1,2})\s*월\s*(\d{1,2})\s*일/gu, ok: (y, m, d) => YEAR(+y) && MONTH(+m) && DAY(+d) },
+  { re: /(?<!\d)(\d{1,2})\s*[-./]\s*(\d{1,2})\s*[-./]\s*(\d{4})(?!\d)/gu, ok: (a, b, y) => YEAR(+y) && (MONTH(+a) && DAY(+b) || MONTH(+b) && DAY(+a)) },
+  { re: /(?<!\w)(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|june?|july?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)(?![a-z])\.?\s+(\d{1,2}),?\s+(\d{4})(?!\d)/giu, ok: (_, d, y) => DAY(+d) && YEAR(+y) },
+  { re: /(?<!\d)(\d{1,2})\s+(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|june?|july?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)(?![a-z])\.?,?\s+(\d{4})(?!\d)/giu, ok: (d, _, y) => DAY(+d) && YEAR(+y) },
+];
+// A year and month, offered when short.
+const YEAR_MONTH_FORMS = [
+  { re: /(?<!\d)(\d{4})\s*년\s*(\d{1,2})\s*월/gu, ok: (y, m) => YEAR(+y) && MONTH(+m) },
+];
+// Any text that shows a date, a month or a day of a month: a page that has one is not "without a visible date". Broad, but each form checks its parts.
+const BROAD_DATE_FORMS = [
+  ...FULL_DATE_FORMS,
+  ...YEAR_MONTH_FORMS,
+  { re: /(?<!\d)(\d{4})\s+(\d{1,2})\s*월/gu, ok: (y, m) => YEAR(+y) && MONTH(+m) },
+  { re: /(?<![\d./-])(\d{4})\s*[-./]\s*(\d{1,2})(?![\d./-])/gu, ok: (y, m) => YEAR(+y) && MONTH(+m) },
+  { re: /(?<!\d)(\d{1,2})\s*월\s*(\d{1,2})\s*일/gu, ok: (m, d) => MONTH(+m) && DAY(+d) },
+  { re: /(?<!\w)(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|June?|July?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)(?![a-z])\.?\s+(\d{1,2})(?!\d)/gu, ok: (_, d) => DAY(+d) },
+  { re: /(?<!\w)(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|June?|July?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)(?![a-z])\.?,?\s+(\d{4})(?!\d)/gu, ok: (_, y) => YEAR(+y) },
+];
+const hasDate = (text, forms) => forms.some(({ re, ok }) => [...text.matchAll(re)].some(found => ok(...found.slice(1))));
+// Short text that is still worth offering: a full date or a year and month, a way to reach the owner (and, by element, an author line in <address>). The floor in limits.json does not drop these.
+const CONTACT_PATTERNS = [
   /[\w.+-]+@[\w-]+(?:\.[\w-]+)+/u,
   /(?:\+?\d{1,3}[\s.-]?)?\(?\d{2,4}\)?[\s.-]\d{3,4}[\s.-]\d{4}/u,
   /\b1[568]\d{2}[-\s]\d{4}\b/u,
 ];
+const isShortException = text => hasDate(text, [...FULL_DATE_FORMS, ...YEAR_MONTH_FORMS]) || CONTACT_PATTERNS.some(pattern => pattern.test(text));
 const ADDRESS_ELEMENT = /<address\b[^>]*>([\s\S]*?)<\/address\s*>/gi;
-const MAIN_ELEMENT = /<main\b[^>]*>([\s\S]*?)<\/main\s*>/i;
-const BODY_ELEMENT = /<body\b[^>]*>([\s\S]*)/i;
+const BODY_ELEMENT = /<body(?=[\s>/])[^>]*>([\s\S]*)/i;
+const HEAD_ELEMENT = /<head(?=[\s>/])[\s\S]*?<\/head\s*>/i;
 // What is left of an element once its tags and blank entities are gone.
 const NO_TEXT = /^(?:\s|&nbsp;|&#160;|&#xa0;)*$/i;
 
@@ -74,8 +110,15 @@ export const isModelJudged = family_id => modelFamilies().includes(family_id);
 /** Whether a family has a code check block, so only code may judge it. */
 export const isCodeJudged = family_id => blocks.some(block => block.family_id === family_id);
 
+/**
+ * Whether a judgment's `basis` is allowed: a fail of an absence family names `absence` (it rests on something missing from the page)
+ * or `shown` (the cited text shows it); every other verdict names none.
+ */
+export const basisAllowed = ({ family_id, state, basis }) =>
+  state === 'fail' && absenceFamilies.has(family_id) ? basis === ABSENCE_BASIS || basis === SHOWN_BASIS : basis === undefined;
+
 /** Whether a judgment rests on something being absent from the page: a not_applicable under an absence condition, or a fail marked with the absence basis in a family that allows it. */
-export const restsOnAbsence = ({ family_id, state, condition, basis }) =>
+const restsOnAbsence = ({ family_id, state, condition, basis }) =>
   state === 'not_applicable' ? absenceConditions.get(family_id)?.has(condition) === true : state === 'fail' && basis === ABSENCE_BASIS && absenceFamilies.has(family_id);
 
 /** The basis the model's identity verdict must record for its state. */
@@ -280,7 +323,8 @@ function textLines(bytes) {
  * offsets are byte offsets and a span can only start or end next to an ASCII character, never inside a multi-byte one. A line shorter
  * than the floor is dropped unless it is a date, a contact or a line inside an <address> element; those (one of each text) have an
  * allowance of their own beside the cap. A line longer than the maximum is cut at sentence ends (or a space, or a character) into
- * several spans of at most that size. Lines with a secret are dropped; the longest lines are kept, in document order.
+ * several spans of at most that size. Lines with a secret are dropped; the longest lines are kept, in document order, but a long line
+ * that holds a full date comes before the others when the cap is full.
  */
 export function candidateSpans(bytes, evidence_sha256) {
   const { judge_spans_per_unit: cap, judge_span_min_bytes: minimum, judge_short_spans_per_unit: shortCap } = limits();
@@ -290,27 +334,94 @@ export function candidateSpans(bytes, evidence_sha256) {
     if (sensitive.test(line.text)) continue;
     const span = { span_id: `${line.start}-${line.end}`, evidence_sha256, start: line.start, end: line.end, text: line.text };
     const size = Buffer.byteLength(line.text);
-    if (size >= minimum) long.push({ span, size });
-    else if (!short.has(line.text) && (line.address || SHORT_TEXT_EXCEPTIONS.some(pattern => pattern.test(line.text)))) short.set(line.text, span);
+    if (size >= minimum) long.push({ span, size, dated: hasDate(line.text, FULL_DATE_FORMS) });
+    else if (!short.has(line.text) && (line.address || isShortException(line.text))) short.set(line.text, span);
   }
-  const kept = long.sort((a, b) => b.size - a.size || a.span.start - b.span.start).slice(0, cap).map(x => x.span);
+  const kept = long.sort((a, b) => b.dated - a.dated || b.size - a.size || a.span.start - b.span.start).slice(0, cap).map(x => x.span);
   return [...kept, ...[...short.values()].slice(0, shortCap)].sort((a, b) => a.start - b.start);
 }
 
-/** Whether the page's main text is empty: its <main> element holds no text, or, without one, its <body> does not. A fragment with neither is not empty. */
+/** Whether the page shows no text: its <body> holds none or, with no <body>, nothing outside <head> does. Script, style and comments are not text. */
 export function isEmptyPage(bytes) {
   const { masked } = maskedBody(bytes);
-  const region = MAIN_ELEMENT.exec(masked) ?? BODY_ELEMENT.exec(masked);
-  return region ? NO_TEXT.test(region[1].replace(/<[^>]*>/g, '')) : false;
+  const body = BODY_ELEMENT.exec(masked)?.[1] ?? masked.replace(HEAD_ELEMENT, '');
+  return NO_TEXT.test(body.replace(/<[^>]*>/g, ''));
+}
+
+/**
+ * The lines of text that repeat across most of the audited pages (menus, headers, footers): a line on more than `site_chrome.min_share`
+ * of the pages, when at least `site_chrome.min_pages` pages were audited. They belong to the site, not to a page. Queue building and
+ * report replay both derive the set from the pages' bytes.
+ */
+export function siteChrome(pages) {
+  const { min_share: share, min_pages: minimum } = limits().site_chrome;
+  const counts = new Map();
+  if (pages.length < minimum) return new Set();
+  for (const bytes of pages) for (const text of new Set(textLines(bytes).map(line => line.text))) counts.set(text, (counts.get(text) ?? 0) + 1);
+  return new Set([...counts].filter(([, n]) => n / pages.length > share).map(([text]) => text));
+}
+
+/**
+ * Why an absence fail is not accepted although the queue covered the page: the page shows what the fail says is missing, in lines the
+ * model may not have read. A date: any line with a date (menus and footers included). The operator: a line of the page's own text (not
+ * site chrome) inside <address>, with a copyright mark, or naming one of `names`. Returns the reason, or null when the page shows nothing.
+ * `spans` are the spans the queue offered, to tell a line the model could read from one it could not.
+ */
+function absenceRefuted(family_id, bytes, spans, { chrome, names, host }) {
+  const inSpans = line => spans.some(span => span.start <= line.start && line.end <= span.end);
+  const lines = textLines(bytes);
+  if (family_id === FRESHNESS_FAMILY) {
+    const hits = lines.filter(line => !chrome.has(line.text) && hasDate(line.text, BROAD_DATE_FORMS));
+    return hits.length ? (hits.every(inSpans) ? DATE_INSIDE : DATE_OUTSIDE) : null;
+  }
+  if (family_id !== SOURCE_FAMILY) return null;
+  const lowered = names.map(name => name.toLowerCase());
+  const hits = lines.filter(line => !chrome.has(line.text) && (line.address || COPYRIGHT.test(line.text) || lowered.some(name => line.text.toLowerCase().includes(name)) ||
+    host && CREDIT.test(line.text) && line.text.toLowerCase().includes(host)));
+  return hits.length ? (hits.every(inSpans) ? OPERATOR_INSIDE : OPERATOR_OUTSIDE) : null;
+}
+
+/**
+ * The names that tell a page names its operator, from every source the run has: the names the owner confirmed (`confirmed`) and the
+ * organization name the code identity check found (JSON-LD) are `names`; the site's host label (`youthdc` of youthdc.com) is `host`
+ * and counts only on a credit line. A name under two characters is not used.
+ */
+export function operatorNames({ confirmed = [], observations = [], url }) {
+  const entity = observations.find(observation => observation.unit_key === ENTITY_UNIT && observation.evaluator_type === 'code')?.measurement?.name_reference;
+  // A site unit has no address of its own, and an IP address has no name: no host label then.
+  const hostname = URL.canParse(url) ? new URL(url).hostname.replace(/^www\./, '') : '';
+  const host = /^[\d.]+$|^\[/.test(hostname) ? null : hostname.split('.')[0];
+  const usable = name => typeof name === 'string' && name.trim().length >= 2;
+  return { names: [...new Set([...confirmed, entity].filter(usable).map(name => name.trim()))], host: usable(host) ? host.toLowerCase() : null };
+}
+
+/**
+ * Whether a model verdict stands, from the page's bytes: null when it does, else `{ reason, code }` and the verdict becomes unknown.
+ * A page that shows no text gets no verdict but unknown. A fail of an absence family, and a freshness pass, must cite some of the page's
+ * own text (not only site chrome); a date that only site chrome shows is not the page showing a date. A verdict that rests on absence (an
+ * absence N/A, an absence fail, and a freshness fail labelled shown on a page that shows no date, which is an absence fail in
+ * disguise) needs a queue that covered the page; an absence fail also needs a page that does not show what it says is missing.
+ * `cited` are the spans the verdict cites, `offered` all spans of the queue unit. Merge and report replay both call this.
+ */
+export function acceptance(verdict, bytes, cited, offered, { chrome, names, host }) {
+  const { family_id, state } = verdict;
+  if (state !== 'unknown' && isEmptyPage(bytes)) return { reason: NO_TEXT_REASON, code: 'empty_page' };
+  const failOfAbsenceFamily = state === 'fail' && absenceFamilies.has(family_id);
+  const freshnessPass = state === 'pass' && family_id === FRESHNESS_FAMILY;
+  if ((failOfAbsenceFamily || freshnessPass) && cited.length && cited.every(span => chrome.has(span.text))) return { reason: CHROME_ONLY, code: 'chrome' };
+  const disguised = failOfAbsenceFamily && verdict.basis === SHOWN_BASIS && family_id === FRESHNESS_FAMILY &&
+    !textLines(bytes).some(line => !chrome.has(line.text) && hasDate(line.text, BROAD_DATE_FORMS));
+  if (!restsOnAbsence(verdict) && !disguised) return null;
+  if (!coversPage(bytes, offered)) return { reason: ABSENCE_UNCOVERED, code: 'queue_coverage' };
+  const shown = failOfAbsenceFamily ? absenceRefuted(family_id, bytes, offered, { chrome, names, host }) : null;
+  return shown ? { reason: shown, code: 'visible' } : null;
 }
 
 /**
  * Whether the queue's `spans` cover enough of the page to show that something is absent from it: the spans make up at least
- * `judge_absence_min_coverage` of the page's visible text (bytes of text), or the page's main text is empty. Queue building, merge
- * and report replay all ask this one question.
+ * `judge_absence_min_coverage` of the page's visible text (bytes of text). A page with no text never gets here (acceptance refuses it first).
  */
-export function coversPage(bytes, spans) {
-  if (isEmptyPage(bytes)) return true;
+function coversPage(bytes, spans) {
   const total = textLines(bytes).reduce((sum, line) => sum + Buffer.byteLength(line.text), 0);
   return total === 0 || spans.reduce((sum, span) => sum + Buffer.byteLength(span.text), 0) / total >= limits().judge_absence_min_coverage;
 }
@@ -341,14 +452,19 @@ export async function buildJudgeQueue({ observations, store, context = null, nam
   const offered = family_id => !planned || planned.has(family_id);
   const families = modelFamilies().filter(offered);
   const items = [];
-  const queue = { items };
-  const spansOf = new Map();
+  const loaded = new Map();
   for (const [url, entry] of pages) {
     const bytes = await store.read(entry.evidence_ref, entry.content_hash);
-    const spans = candidateSpans(bytes, entry.content_hash);
-    spansOf.set(url, spans);
+    loaded.set(url, { bytes, spans: candidateSpans(bytes, entry.content_hash), empty: isEmptyPage(bytes) });
+  }
+  // A line that most audited pages repeat is the site's, not the page's: the spans that hold one say so.
+  const chrome = siteChrome([...loaded.values()].map(page => page.bytes));
+  const spansOf = new Map();
+  for (const [url, page] of loaded) spansOf.set(url, page.spans.map(span => chrome.has(span.text) ? { ...span, site_chrome: true } : span));
+  for (const [url, entry] of pages) {
+    const spans = spansOf.get(url);
     if (!spans.length) continue;
-    const empty = isEmptyPage(bytes) ? { empty_page: true } : {};
+    const empty = loaded.get(url).empty ? { empty_page: true } : {};
     for (const family_id of families) {
       const unit_key = unitKey(family_id, url);
       if (!judged.has(unit_key)) items.push({ family_id, unit_key, url, evidence_ref: entry.evidence_ref, evidence_sha256: entry.content_hash, spans, ...empty });
@@ -358,8 +474,10 @@ export async function buildJudgeQueue({ observations, store, context = null, nam
   if (home && spansOf.get(home).length && offered(ENTITY_FAMILY) && !judged.has(ENTITY_UNIT)) {
     const entry = pages.get(home);
     items.push({ family_id: ENTITY_FAMILY, unit_key: ENTITY_UNIT, url: home, evidence_ref: entry.evidence_ref, evidence_sha256: entry.content_hash,
-      spans: spansOf.get(home), identity: { names, facts, host: new URL(home).host } });
+      spans: spansOf.get(home), ...(loaded.get(home).empty ? { empty_page: true } : {}), identity: { names, facts, host: new URL(home).host } });
   }
+  const emptyPages = [...loaded].filter(([, page]) => page.empty).map(([url]) => url);
+  const queue = { items, ...(chrome.size ? { site_chrome: [...chrome].sort() } : {}), ...(emptyPages.length ? { empty_pages: emptyPages } : {}), ...(names.length ? { owner_names: names } : {}) };
   const { ref, sha256 } = await store.write(QUEUE_KIND, `${JSON.stringify(queue, null, 2)}\n`);
   if (!(index[QUEUE_SECTION] ?? []).some(entry => entry.sha256 === sha256)) await store.append(QUEUE_SECTION, { evidence_ref: ref, sha256 });
   return queue;
@@ -404,6 +522,8 @@ function partialBasis(judgment) {
 export async function mergeJudgments({ observations, judgments, store, questions = [] }) {
   const queue = await storedQueue(store);
   const items = new Map(queue.items.map(item => [item.unit_key, item]));
+  const confirmed = [...(queue.owner_names ?? []), ...(queue.items.find(item => item.identity)?.identity.names ?? [])];
+  const chrome = new Set(queue.site_chrome ?? []);
   const questionIds = new Set(questions.map(question => question.id));
   const made = [];
   for (const judgment of judgments) {
@@ -418,8 +538,10 @@ export async function mergeJudgments({ observations, judgments, store, questions
     if (sensitive.test(judgment.reason ?? '')) throw new Error(`judgment reason for ${unit_key} contains a secret`);
     const extra = { evaluator_type: MODEL_EVALUATOR, source_ref: OBSERVATION_SOURCES[MODEL_EVALUATOR] };
     let evidence = null;
-    if (judgment.basis !== undefined && !(state === 'fail' && judgment.basis === ABSENCE_BASIS && absenceFamilies.has(family_id)))
-      throw new Error(`basis "${judgment.basis}" is allowed only as "absence" on a fail of ${[...absenceFamilies].join(' or ')} (${unit_key})`);
+    if (state === 'fail' && absenceFamilies.has(family_id) && judgment.basis === undefined)
+      throw new Error(`a fail of ${family_id} needs basis "absence" (something is missing from the page) or "shown" (the cited text shows it) (${unit_key})`);
+    if (!basisAllowed(judgment))
+      throw new Error(`basis "${judgment.basis}" is allowed only as "absence" or "shown" on a fail of ${[...absenceFamilies].join(' or ')} (${unit_key})`);
     if (state === 'not_applicable') {
       if (site) throw new Error(`${unit_key} is a site unit and cannot be not_applicable`);
       if (!naConditions.get(family_id).includes(judgment.condition))
@@ -447,15 +569,16 @@ export async function mergeJudgments({ observations, judgments, store, questions
         checkSpan(bytes, part);
       }
     }
-    // A verdict that rests on something missing from the page needs a queue that offered enough of the page; otherwise it is unknown.
-    const absence = restsOnAbsence(judgment);
-    if (absence && !coversPage(evidence, item.spans)) {
-      made.push(makeObservation({ family_id, unit_key, state: 'unknown', reason: ABSENCE_UNCOVERED, evidence_ref: item.evidence_ref, extra: { evaluator_type: MODEL_EVALUATOR, source_ref: extra.source_ref } }));
+    // A verdict that rests on something missing from the page needs a queue that offered enough of it and a page that does not show it; otherwise it is unknown.
+    const notAccepted = evidence && acceptance(judgment, evidence, extra.evidence_span.map(part => item.spans.find(span => span.start === part.start && span.end === part.end)), item.spans,
+      { chrome, ...operatorNames({ confirmed, observations, url: item.url }) });
+    if (notAccepted) {
+      made.push(makeObservation({ family_id, unit_key, state: 'unknown', reason: notAccepted.reason, evidence_ref: item.evidence_ref,
+        extra: { evaluator_type: MODEL_EVALUATOR, source_ref: extra.source_ref, measurement: { not_accepted: notAccepted.code } } }));
       continue;
     }
-    if (absence && state === 'fail') extra.measurement = { ...extra.measurement, basis: ABSENCE_BASIS };
-    if (item.empty_page && state !== 'unknown') extra.measurement = { ...extra.measurement, empty_page: true };
-    if (site && state !== 'unknown') extra.measurement = { identity_basis: IDENTITY_BASIS[state] };
+    if (state === 'fail' && absenceFamilies.has(family_id)) extra.measurement = { ...extra.measurement, basis: judgment.basis };
+    if (site && state !== 'unknown') extra.measurement = { ...extra.measurement, identity_basis: IDENTITY_BASIS[state] };
     if (state === 'not_applicable') extra.applicability_decision = { condition: judgment.condition, reason: judgment.reason, evidence_ref: item.evidence_ref };
     const partial = state === 'partial' ? partialBasis(judgment) : { basis: null, q: undefined };
     // A q the model supplies is ignored: the state fixes it (pass 1, fail 0, unknown and not applicable none) and a partial takes the basis's q.
