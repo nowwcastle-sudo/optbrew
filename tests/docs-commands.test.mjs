@@ -3,6 +3,7 @@ import { readFile, writeFile, mkdir, cp, access } from 'node:fs/promises';
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import path from 'node:path';
+import { PassThrough } from 'node:stream';
 import { fileURLToPath } from 'node:url';
 import { test } from 'node:test';
 import { fixture } from './fixtures/releases/create.mjs';
@@ -132,4 +133,26 @@ test('README relative links resolve and package includes the linked documentatio
       if (file.startsWith('docs/')) assert.ok(pkg.files.includes(file) || pkg.files.includes('docs/'), `${file} is linked from ${name} but absent from npm files`);
     }
   }
+});
+
+test('documented key commands run against an isolated home and keep the key out of the output', async () => {
+  const documentedKey = async name => [...(await readFile(path.join(root, name), 'utf8')).matchAll(/^optbrew key (.+)$/gm)].map(match => match[1]);
+  const required = ['set google', 'status', 'remove google'];
+  for (const name of ['README.md', 'README.ko.md']) assert.deepEqual(await documentedKey(name), required, `${name} must document exactly the key commands that are executed here`);
+  const home = path.join(await tempDir('optbrew-docs-key-'), 'home');
+  const key = ['docs', 'fake', 'key', 'value'].join('-');
+  const call = async (args, input) => {
+    const stdin = new PassThrough();
+    stdin.end(input);
+    let stdout = '', stderr = '';
+    const code = await main(['key', ...args.split(' ')], { stdin, stdout: { write: s => { stdout += s; } }, stderr: { write: s => { stderr += s; } }, env: { HOME: home, USERPROFILE: home } });
+    return { code, stdout, stderr };
+  };
+  const saved = await call('set google', `${key}\n`);
+  assert.equal(saved.code, 0, saved.stderr);
+  assert.equal(JSON.parse((await call('status', '')).stdout).google.present, true);
+  const removed = await call('remove google', '');
+  assert.equal(removed.code, 0, removed.stderr);
+  assert.equal(JSON.parse((await call('status', '')).stdout).google.present, false);
+  for (const result of [saved, removed]) assert.ok(!`${result.stdout}${result.stderr}`.includes(key), 'a key command never prints the key');
 });

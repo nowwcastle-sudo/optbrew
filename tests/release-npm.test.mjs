@@ -12,6 +12,7 @@ import { createBundleManifest } from '../skills/optbrew/scripts/core/bundle.mjs'
 import { verifiedBundle } from '../lib/transaction.mjs';
 import { copyReleaseTree, removeReleaseCopies } from './support/release-copy.mjs';
 import { skipCrlfCheckout } from './support/checkout-eol.mjs';
+import { versions } from '../skills/optbrew/scripts/core/config.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 // Every build and verification runs on a private copy of the release tree, never on the repository itself.
@@ -32,7 +33,7 @@ test('npm tarball includes matching skill bytes and excludes authoring files', {
   const copy = await copyReleaseTree();
   let passed = false;
   try {
-    const artifacts = await buildRelease({ root: copy, version: '0.1.4', outputDir });
+    const artifacts = await buildRelease({ root: copy, version: versions().release, outputDir });
     const packed = npmPack(outputDir, copy);
     assert.equal(packed.status, 0, packed.stderr);
     const info = JSON.parse(packed.stdout);
@@ -62,7 +63,7 @@ test('npm verifier rejects tampered entrypoint, missing libs, and false package 
   const copy = await copyReleaseTree();
   let passed = false;
   try {
-    const artifacts = await buildRelease({ root: copy, version: '0.1.4', outputDir });
+    const artifacts = await buildRelease({ root: copy, version: versions().release, outputDir });
     const packed = npmPack(outputDir, copy);
     assert.equal(packed.status, 0, packed.stderr);
     const info = JSON.parse(packed.stdout);

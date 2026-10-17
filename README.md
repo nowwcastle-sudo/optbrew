@@ -8,6 +8,7 @@
 A search-readiness audit skill for coding agents. optbrew checks a site for Google, Naver and AI answer engines, fixes the local files you approve, checks again under the same conditions, and writes a scored report built from replayable evidence.
 
 - One skill for five profiles: **SEO**, **NEO** (Naver), **AEO**, **GEO** and **LLMO**.
+- One call for a beginner: answer one set of start questions, then the agent runs the whole audit and hands you an HTML report.
 - Five pinned audit guide bundles merged into 22 check families. An issue that several guides report is counted once.
 - Every verdict in the report can be recomputed from the raw responses that were collected and hashed.
 - No headline score when the evidence is thin: below 80% coverage the report shows the measured part and its bounds.
@@ -21,10 +22,11 @@ optbrew gives the agent one workflow and one scoring rule for all five profiles.
 
 ## How it works
 
-1. **Audit.** You give the URL, the goal and the scope. A collector makes at most 50 requests (pages, redirects and robots or sitemap files together; depth 3, two at a time) and stores every response with its hash.
-2. **Fix.** The agent proposes changes to local files. Nothing is edited, deployed or submitted without your approval.
-3. **Re-check.** The same collection runs again under the same conditions, so the before and after are comparable.
-4. **Report.** A score per profile with its coverage, blockers, open core checks, and separate tables for readiness, fixes, real outcomes and remaining work.
+1. **Ask.** You give the URL. optbrew reads the start page, the sitemap and your setup (Chrome, a Google key, network access). Then it sends one message with the start questions: your guidance level, the goal, the questions people search for, the facts it read from the site, and the page limit. Reply with an answer for each number, or just "start" to take the defaults. If one thing blocks the audit, such as a network that is closed, you get one setup guide first. Up to three more guides appear as one-line offers; you open one by answering with its word.
+2. **Audit.** One command collects the pages, renders them in a headless Chrome of its own, measures speed and runs the code checks. It audits pages from the sitemap and from links on the start page, up to your limit: 50 pages by default, up to 200 if you raise it. The limit counts every request, so redirects and the robots and sitemap files use part of it. It follows a redirect to the `www` or `https` twin of your address and says so in the report. It stores every response with its hash.
+3. **Judge.** The agent reads the page text that code cannot judge, such as claims, answer clarity and freshness. It cites the sentences it relied on. A second call of the same command checks that the cited text exists in the evidence, then scores.
+4. **Report.** You get three files with the same content: `report.html` (open this one; it is a single self-contained file), `report.md` and `report.json`. The text is in Korean. Each problem has one fix with the number of pages it affects. A numbered list of steps tells you how to fill each blank, such as a missing Google key. Blanks are shown as unknown, never as a pass.
+5. **Fix and re-check (optional).** The agent proposes changes to local files. Nothing is edited, deployed or submitted without your approval. After you deploy, the same collection runs again under the same conditions, so the before and after are comparable.
 
 What the script measures by itself, and what still needs the guides and the agent's judgment:
 
@@ -34,8 +36,9 @@ What the script measures by itself, and what still needs the guides and the agen
 | NEO | Naver | robots.txt for Yeti, Open Graph, description, canonical, viewport, title repetition, blocked CSS or JS | Naver-specific content guidance |
 | AEO, GEO | Answer engines and AI search | robots.txt for the AI search bots in [ai-crawlers.md](skills/optbrew/references/ai-crawlers.md) (training bots are never scored) | Answer structure, claims, authorship, freshness |
 | LLMO | How models describe you | Whether name, address, phone and founding year agree across pages, and whether the pages describe one business | Whether those facts are true |
+| All | Speed and scripts | Whether the text still shows after JavaScript runs in Chrome. Field Core Web Vitals (LCP, INP, CLS) from Google's Chrome UX Report and PageSpeed Insights | Nothing. The Chrome lab values are shown as a run condition and are never scored |
 
-Engine-specific checks run for the engines you name as targets. Say that Naver matters, or name the AI answer engines you care about, such as ChatGPT, Claude or Perplexity. The scoring rule is in [scoring.md](skills/optbrew/references/scoring.md). The 80% coverage threshold is optbrew's own rule, not a search engine standard.
+Engine-specific checks run for the engines you name as targets. Name the AI answer engines you care about, such as ChatGPT, Claude or Perplexity. Naver is added on its own when the goal, an export or the site's language points to it. The scoring rule is in [scoring.md](skills/optbrew/references/scoring.md). The 80% coverage threshold is optbrew's own rule, not a search engine standard.
 
 ## Install
 
@@ -46,7 +49,7 @@ In Windows PowerShell, if `npx` or `optbrew` reports that running scripts is dis
 ### 1. npm
 
 ```bash
-npm install -g optbrew@0.1.4
+npm install -g optbrew@0.2.0
 optbrew install --agents codex,claude-code --scope user --dry-run
 optbrew install --agents codex,claude-code --scope user
 optbrew doctor --agents codex,claude-code --scope user
@@ -59,20 +62,20 @@ The dry run prints the folders it will write. `doctor` checks the files and thei
 Runs the same CLI without a global install:
 
 ```bash
-npx optbrew@0.1.4 install --agents codex,claude-code --scope user
-npx optbrew@0.1.4 doctor --agents codex,claude-code --scope user
+npx optbrew@0.2.0 install --agents codex,claude-code --scope user
+npx optbrew@0.2.0 doctor --agents codex,claude-code --scope user
 ```
 
 ### 3. PowerShell (Windows)
 
 ```powershell
-irm https://raw.githubusercontent.com/nowwcastle-sudo/optbrew/v0.1.4/install.ps1 | iex
+irm https://raw.githubusercontent.com/nowwcastle-sudo/optbrew/v0.2.0/install.ps1 | iex
 ```
 
 The script is pinned to this release. It checks Node.js, shows the target folders, installs for Codex and Claude Code, and stops with an error if `doctor` finds a problem. To read it first, or to choose agents or a project folder:
 
 ```powershell
-irm https://raw.githubusercontent.com/nowwcastle-sudo/optbrew/v0.1.4/install.ps1 -OutFile install.ps1
+irm https://raw.githubusercontent.com/nowwcastle-sudo/optbrew/v0.2.0/install.ps1 -OutFile install.ps1
 powershell -ExecutionPolicy Bypass -File .\install.ps1 -Agents codex,claude-code,cursor
 ```
 
@@ -103,7 +106,7 @@ Plugins follow this repository's `main` branch and update through the host's plu
 Paste this into Codex, Claude Code or another coding agent:
 
 ```text
-Install the optbrew skill for me. Read https://raw.githubusercontent.com/nowwcastle-sudo/optbrew/v0.1.4/AGENT_INSTALL.md and follow it step by step. Ask me which agents and which scope to use, and show me the planned changes before you install.
+Install the optbrew skill for me. Read https://raw.githubusercontent.com/nowwcastle-sudo/optbrew/v0.2.0/AGENT_INSTALL.md and follow it step by step. Ask me which agents and which scope to use, and show me the planned changes before you install.
 ```
 
 [AGENT_INSTALL.md](AGENT_INSTALL.md) gives the agent a command and a pass check for each step, and the cases where it must stop and ask you.
@@ -118,7 +121,21 @@ Start a new agent session and ask, for example:
 Run optbrew on https://example.com. Goal: show up in Naver and get cited in AI answers.
 ```
 
-optbrew asks for anything it is missing: site ownership or access, which local changes are allowed, and which evidence you already have. Raw evidence goes to `.optbrew/runs`. Private network addresses are fetched only when you declare a local target.
+optbrew then checks your setup and sends the start questions in one message. Answer each number, or reply "start" to accept the defaults. A missing Google key, Chrome or export file does not stop the audit. The blank is listed in the report with the steps to fill it.
+
+The audit takes a few minutes. Everything it writes goes to `optbrew-audit/<site>-<date>` in your working folder: the evidence (every response with its hash) and the three reports. Open `report.html` first. The same name with a number added (`-2`, `-3`) is used when the folder already exists. Private network addresses are fetched only when you declare a local target.
+
+### Google API key (optional)
+
+A free Google API key fills the speed scores that real visitors get (LCP, INP, CLS). When optbrew offers it, answer "key" to see how to get one. Then save it from your own terminal, never in the chat. In Codex and Claude Code cloud, the key guide shows where to save it instead.
+
+```bash
+optbrew key set google
+optbrew key status
+optbrew key remove google
+```
+
+`set` asks for the key with hidden input. `status` shows only whether a key exists and the first 8 characters of its hash. `remove` deletes it. Without the npm CLI, the skill folder has the same command: `node <skill folder>/scripts/key.mjs set google`. The key is saved in `.optbrew/credentials.json` in your home folder, outside every project, and the environment variable `OPTBREW_GOOGLE_API_KEY` takes priority if it is set. optbrew sends the key to Google only in a request header, and never writes it to a report, a log or the evidence.
 
 ## Update
 
@@ -129,11 +146,17 @@ optbrew update --scope user
 
 With npx, run `npx optbrew@latest update --scope user`. `optbrew check-updates --package optbrew` tells you, without changing anything, whether npm has a newer release than the CLI you are running; `optbrew doctor --json` shows the `release_version` installed in your agent folders. `npm update` alone does not touch copies already placed in agent folders; the `update` command does.
 
-An install from 0.1.3 or earlier stops with `migration_required`: 0.1.3 scored with a new evaluation version, and 0.1.4 changes a scoring contract file (`score.mjs`) so that a CRLF checkout of the skill verifies. Scores from different evaluation versions are not comparable; 0.1.3 and 0.1.4 share evaluation version 0.3.0. Follow [Reinstall after a migration_required update](docs/platforms.md#reinstall-after-a-migration_required-update); the steps delete only paths that a read-only check printed and never touch your audit evidence.
+### Upgrading from 0.1.x
+
+0.2.0 changes the evaluation version (0.4.0), the audit protocol (0.2.0) and the contract schema (2.0.0). So:
+
+- A managed install of any 0.1.x release stops with `migration_required`, and `optbrew update` changes nothing. Follow [Reinstall after a migration_required update](docs/platforms.md#reinstall-after-a-migration_required-update); the steps delete only paths that a read-only check printed and never touch your audit evidence.
+- A plugin install (Claude Code, Codex, claude.ai) follows `main`, so the plugin update commands of your host work as before.
+- An output folder or evidence packet from a 0.1.x run is refused with one sentence: run the audit again in a new folder. Scores from different evaluation versions are not comparable, so `compare` reports `not_comparable` against a 0.1.x baseline. Run the baseline audit again with 0.2.0.
 
 ## APIs and cost
 
-Nothing here requires a paid account. A direct Anthropic API call or an [SE Ranking](https://seranking.com/api.html) call needs your approval, a recorded budget and a stop condition first; a Claude subscription does not include API billing. Keys stay in your environment variables and never go into a report. Details: [API boundaries](skills/optbrew/references/api.md).
+Nothing here requires a paid account. A direct Anthropic API call or an [SE Ranking](https://seranking.com/api.html) call needs your approval, a recorded budget and a stop condition first; a Claude subscription does not include API billing. The Google key above is your own, and the Google speed services it calls are free. Keys stay in your environment variables or the key file and never go into a report. Details: [API boundaries](skills/optbrew/references/api.md).
 
 ## Documentation
 

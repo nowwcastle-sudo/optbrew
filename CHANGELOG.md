@@ -1,11 +1,51 @@
 # Changelog
 
-## 0.1.4
+## 0.2.0
+
+The beginner audit in one call. You answer one set of start questions, the agent runs the whole audit, and you get an HTML report in Korean with the fixes in order and the blanks explained.
+
+### What you see
+
+- **One call.** The agent checks your setup (`preflight.mjs`), sends the start questions in one message (one setup guide at most when something blocks the audit, plus up to three one-line offers), runs the audit with one command (`run.mjs`), judges the page text that code cannot judge, runs the same command again with `--judgments`, and hands you three reports: `report.html`, `report.md` and `report.json`. You answer once. "start" takes every default.
+- **Which pages.** The audit takes pages from the sitemap and from links on the start page, up to the limit you choose: 50 pages by default, up to 200. The limit counts every request, including redirects and the robots and sitemap files. The same site gives the same pages every time. An address that redirects to its `www` or `https` twin is followed, and the report says so. A redirect to a different site stops the run with one sentence.
+- **Which engines.** Google is always a target. Naver is a target when a goal names it, when you give a Naver export, or when the site is Korean.
+- **One fix per problem.** Pages with the same problem are one fix that lists how many pages it affects, instead of one finding per page. The fixes are sorted by what to do first.
+- **Korean report.** Every sentence in `report.md` and `report.html` is Korean: the fixes, the remaining work and the run conditions. JSON keys and ids stay English. The HTML report is one self-contained file with no script and no outside request. Runbook steps are a plain numbered list. A step shows a screen drawing only where a runbook names the position, and no runbook does yet.
+- **Speed scores.** Core Web Vitals of real visitors (LCP, INP, CLS) come from Google's Chrome UX Report and PageSpeed Insights when they have data. A free Google API key makes this work; without one those cells can stay blank, with the steps to get a key in the report. The lab values measured in your Chrome are shown as a run condition and are never scored.
+- **Google key command.** `optbrew key set google`, `optbrew key status` and `optbrew key remove google` (or `node skills/optbrew/scripts/key.mjs ...`). You run it in your own terminal with hidden input. The key is saved in `.optbrew/credentials.json` in your home folder, outside every project; `OPTBREW_GOOGLE_API_KEY` takes priority. It is sent to Google only in a request header and is never written to a report, a log or the evidence. The agent never asks for it in the chat.
+- **Chrome.** The audit renders pages in a headless Chrome of its own, with a temporary profile that it removes at the end. Your running Chrome is never touched. The audit works through a proxy (`HTTPS_PROXY`); proxy credentials are never recorded. Without Chrome the render checks are blank, with the steps to install it.
+- **Owner exports.** A Search Console zip and a Naver Search Advisor text file are read when you give their paths. Their numbers appear as actual outcomes and do not enter the score.
+- **Setup guides (runbooks).** Step-by-step guides cover what needs your account or your machine: a Google API key and where to save it (your terminal, Codex, Claude Code cloud), Chrome, the two export files, network permission for Codex and Claude Code cloud, collecting visitor speed data inside your site, and the optional Anthropic and SE Ranking connections. The agent shows one at a time, at the guidance level you picked.
+- **Old output folders.** A folder or evidence packet from a 0.1.x run is refused with one sentence: run the audit again in a new folder. A finished folder, or one that holds files the audit did not write, is refused too.
+
+### Versions
+
+Release 0.2.0, evaluation 0.4.0 (was 0.3.0), audit protocol 0.2.0 (was 0.1.0), contract schema 2.0.0. Scores of different evaluation versions are not comparable: `compare` reports `not_comparable` against a 0.1.x baseline.
+
+### Upgrading from 0.1.x
+
+- A managed install of any 0.1.x release (0.1.2 and 0.1.3 were tested) stops `optbrew update` with `migration_required` and changes nothing. Replace it with the blocks in `docs/platforms.md`, "Reinstall after a migration_required update". They run the read-only `optbrew reinstall-plan` first and never touch your evidence.
+- A plugin install from the marketplace follows `main`; the plugin update commands of your host are enough.
+- Run the baseline audit again with 0.2.0 before you compare.
+
+### Known limitations
+
+- The fix step writes a change record for each edited file, but the 0.2.0 report does not read it, and a re-check after deploy does not update its `verification`; it stays `pending`. The re-check compares two audits (`cli.mjs compare`) and says what is resolved.
+- Core Web Vitals field data can stay unknown: a site with few visitors has no Google data, and the `cwv-site-collection` guide explains how to collect it in the site itself.
+- A runbook shows no screen drawing yet. A drawing appears only for a step that carries an explicit position tag.
+
+### Release checks that stay with the owner
+
+- The wording of the eli5 notice in `skills/optbrew/THIRD_PARTY_NOTICES.md`: its licence text was reconstructed because upstream has no licence file and no year. Decide the wording before the release is published. The caveman notice is copied from the installed 4.0.1 package.
+- After the merge: the claude.ai copy shows the merge commit (a check that waits for the sync). A directory review result does not block the release.
+- The steps in `docs/release.md`: CI on the merge commit, the tag, the GitHub Release and `npm publish` are run by the owner, not by an agent.
+
+### Carried over from the unreleased 0.1.4
+
 
 - The Claude marketplace now serves the `skills/` folder (new `skills/.claude-plugin/plugin.json`) instead of the repository root, because claude.ai, Claude Desktop and Cowork refuse a plugin with a top-level `bin/` folder and the marketplace sync failed. The marketplace entry and the served manifest pin no version, so every commit is picked up by marketplace sync. Claude Code installs keep the name `optbrew@optbrew` and the skill `/optbrew:optbrew`.
 - No `.gitattributes` at the repository root or inside `skills/`. The Claude plugin directory refuses one there whatever its lines say, `* -text` included, so the root file is gone. `tests/` and `docs/` keep their own `* -text`, because the test fixtures, evidence hashes and the documented shell blocks need exact bytes. A test rejects a `.gitattributes` at the root or inside `skills/`, and every file is still committed with LF.
 - Bundle hashes ignore the line endings a checkout adds. With `core.autocrlf=true` (the Git for Windows default) a Claude Code plugin install from the marketplace checks the skill out with CRLF. `bundle.mjs` and `score.mjs` now hash a file without a NUL byte as its LF form, so `doctor`, `install` and scoring accept that copy; LF files keep their old hashes and binary files hash as is. The ZIP and npm verifiers still compare exact bytes, so releases are built from a `core.autocrlf=false` clone (`docs/release.md`).
-- Evaluation version stays 0.3.0 and protocol 0.1.0: the audit's observations do not change, and 0.1.3 baselines stay comparable. `score.mjs` is a scoring contract file, so `optbrew update` on a managed 0.1.3 install stops with `migration_required` and changes nothing; replace it with the reinstall blocks in `docs/platforms.md`.
 - `docs/release.md` adds two steps: publish a GitHub Release for each tag and read it back, and confirm that the webhook got a push for `refs/heads/main` with the merge commit (a branch deletion is answered `ignored_delete` and does not sync).
 - The served `skills/` folder is a complete directory plugin: `skills/README.md` describes what the plugin runs, reads and sends, and `skills/.claude-plugin/plugin.json` adds `displayName`, `homepage`, `repository`, `license`, `keywords` and a 1024 px icon (`skills/.claude-plugin/icon.png`). Submit to the Claude directory with plugin path `skills`, so the scan reads only the plugin and not the repository's CLI, tests and npm files. A test checks the directory's README, license, icon, file-size and file-count rules.
 
