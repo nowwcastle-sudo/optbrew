@@ -576,7 +576,7 @@
     },
     {
       "path": "references/judging.md",
-      "sha256": "91290c5e3ced0aa0578c3bf5a8852475fc333bc14e2f7bf59f6b8f029bdacf78"
+      "sha256": "2118d517d56cb126711b16d38498eb242da0c32783f7681ee2ab304a14cbc6bb"
     },
     {
       "path": "references/limits.json",
@@ -931,5 +931,5 @@
       "sha256": "dca0bbd03fbf591c4aca6a568be76615eb48d69f7df0c634886f652b54f3f46d"
     }
   ],
-  "bundle_hash": "686dd0407ceeca658ed9b3027e37ab553e3df6ef4414b29e40821ebf75455aac"
+  "bundle_hash": "b23f6fda554c4aa9021189ef1cb4662f51a231c26bca5a2211498d21ce69237a"
 }
