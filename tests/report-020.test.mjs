@@ -341,8 +341,8 @@ test('the units a model declared not applicable are counted under model judgment
   assert.deepEqual(composed.conditions.model_not_applicable, { 'claim-support': 2, 'freshness-truth': 1 });
   const markdown = renderReport(composed, verified).markdown;
   assert.ok(markdown.slice(markdown.indexOf('## 모델 판단')).includes('모델이 해당 없음으로 판정한 단위: 3건 (claim-support 2건, freshness-truth 1건)'));
-  assert.ok(htmlOf(composed).includes('모델이 해당 없음으로 뺀 단위 3건이 이 확인 범위에서 빠져 있습니다'));
-  assert.ok(!htmlOf(composeReport(verifiedOf())).includes('모델이 해당 없음으로 뺀 단위'), 'no note when the model declared none');
+  assert.ok(htmlOf(composed).includes('이번 실행에서 모델이 해당 없음으로 뺀 단위는 모두 3건이고'));
+  assert.ok(!htmlOf(composeReport(verifiedOf())).includes('모델이 해당 없음으로 뺀 단위는'), 'no note when the model declared none');
 });
 
 test('a coverage that shows as 79.9% is not sufficient (M12)', () => {

@@ -9,6 +9,7 @@ import { validateEntity } from '../skills/optbrew/scripts/core/contracts.mjs';
 import { buildReport } from '../skills/optbrew/scripts/core/report.mjs';
 import { score } from '../skills/optbrew/scripts/core/score.mjs';
 import { compileUnits } from '../skills/optbrew/scripts/core/weights.mjs';
+import { limits } from '../skills/optbrew/scripts/core/config.mjs';
 import { compare } from '../skills/optbrew/scripts/core/compare.mjs';
 import { buildScenario, page, startSite } from './support/review-scenario.mjs';
 import { tempDir } from './support/temp-dir.mjs';
@@ -483,6 +484,86 @@ test('the home page is chosen the same way whatever the order of the pages', () 
   assert.equal(homeOf([]), null);
 });
 
+const MAX_SPAN = limits().judge_span_max_bytes;
+
+/** The spans of a page must tile its text: each range exact, inside the cap, in order, and no text lost between them. */
+function assertTiled(bytes, spans, text) {
+  for (const span of spans) {
+    assert.ok(Buffer.byteLength(span.text) <= MAX_SPAN, `a span is at most ${MAX_SPAN} bytes`);
+    const range = bytes.subarray(span.start, span.end).toString('utf8');
+    assert.equal(range.replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' '), span.text.replace(/\s+/g, ' '), 'the range holds exactly the text, tags aside');
+    checkSpan(bytes, span);
+  }
+  assert.ok(spans.every((span, i) => i === 0 || spans[i - 1].end <= span.start), 'in order, without overlap');
+  assert.equal(spans.map(span => span.text).join(' ').replace(/\s+/g, ' '), text.replace(/\s+/g, ' ').trim(), 'nothing is lost');
+}
+
+test('a page of lines separated only by <br> is cut into spans of at most the maximum, each with an exact range (N3)', () => {
+  const lines = Array.from({ length: 4000 }, (_, n) => `줄 ${n}번은 한 줄짜리 문장이며 마흔 바이트가 넘도록 쓴 글입니다`);
+  const html = `<body>${lines.join('<br>')}</body>`;
+  const bytes = Buffer.from(html);
+  assert.ok(bytes.length > 150000, 'a page with one huge run');
+  const spans = candidateSpans(bytes, 'h');
+  assert.equal(spans.length, limits().judge_spans_per_unit, 'the longest spans fill the cap');
+  for (const span of spans) {
+    assert.ok(Buffer.byteLength(span.text) <= MAX_SPAN);
+    assert.equal(bytes.subarray(span.start, span.end).toString('utf8').replaceAll('<br>', ' '), span.text, 'the range, with each <br> read as a space, is the text');
+    assert.ok(!span.text.includes('<'), 'no tag in the text');
+  }
+  assert.deepEqual(candidateSpans(bytes, 'h'), spans, 'the same split every time');
+  const few = Buffer.from(`<body>${lines.slice(0, 60).join('<br>')}</body>`);
+  const cutLines = candidateSpans(few, 'h');
+  assertTiled(few, cutLines, lines.slice(0, 60).join(' '));
+  assert.ok(cutLines.every(span => span.text.endsWith('입니다') && span.text.startsWith('줄 ')), 'cut at line breaks, whole lines only');
+});
+
+test('one 330 KB paragraph is cut at sentence ends, at a space, or at a character, never inside one (N3)', () => {
+  const sentence = '이 문장은 마침표로 끝나며 한 문단 안에서 아주 길게 반복된다. ';
+  const paragraph = sentence.repeat(Math.ceil(330000 / Buffer.byteLength(sentence)));
+  const bytes = Buffer.from(`<p>${paragraph}</p>`);
+  assert.ok(bytes.length >= 330000);
+  const [first, second] = candidateSpans(bytes, 'h');
+  assert.ok(first.text.endsWith('된다.') && second.text.startsWith('이 문장은'), 'cut after a sentence end');
+  assert.ok(candidateSpans(bytes, 'h').length >= 1);
+  const small = Buffer.from(`<p>${sentence.repeat(120)}</p>`);
+  const spans = candidateSpans(small, 'h');
+  assert.ok(spans.length > 1);
+  assertTiled(small, spans, sentence.repeat(120));
+  assert.ok(spans.slice(0, -1).every(span => span.text.endsWith('된다.')), 'every cut is a sentence end');
+  const words = Buffer.from(`<p>${'단어 '.repeat(2010)}</p>`);
+  const cut = candidateSpans(words, 'h');
+  assert.ok(cut.length > 1 && cut.every(span => span.text.endsWith('단어')), 'no sentence end: cut at a space');
+  assertTiled(words, cut, '단어 '.repeat(2010));
+  const solid = Buffer.from(`<p>${'가'.repeat(2500)}</p>`);
+  const solidSpans = candidateSpans(solid, 'h');
+  assert.deepEqual(solidSpans.map(span => Buffer.byteLength(span.text) % 3), solidSpans.map(() => 0), 'no cut inside a three-byte character');
+  assert.equal(solidSpans.map(span => span.text).join(''), '가'.repeat(2500), 'nothing is lost, and each range is exact');
+  assert.ok(solidSpans.every((span, i) => solid.subarray(span.start, span.end).toString('utf8') === span.text && (i === 0 || solidSpans[i - 1].end === span.start)), 'contiguous exact ranges');
+});
+
+test('a sentence inside the maximum is not cut, and a long one with inline tags keeps exact ranges (N3)', () => {
+  const sentence = '이 문장은 <a href="/x">링크</a>와 <code>코드</code>가 있고 마침표로 끝난다. ';
+  const bytes = Buffer.from(`<p>${sentence.repeat(60)}</p>`);
+  const spans = candidateSpans(bytes, 'h');
+  assert.ok(spans.length > 1);
+  for (const span of spans) {
+    assert.ok(span.text.startsWith('이 문장은 링크와 코드가 있고') && span.text.endsWith('끝난다.'));
+    assert.ok(!span.text.includes('<'));
+    assert.ok(bytes.subarray(span.start, span.end).toString('utf8').includes('<a href'), 'the range covers the inline tags');
+  }
+  const short = Buffer.from(`<p>${sentence.repeat(3)}</p>`);
+  assert.equal(candidateSpans(short, 'h').length, 1);
+});
+
+test('a custom element is not an inline tag, and two elements side by side are not glued (N2)', () => {
+  const html = `<p>${FIRST}</p><b-card>${MIDDLE}</b-card><code-block>${LAST}</code-block>`;
+  assert.deepEqual(candidateSpans(Buffer.from(html), 'h').map(span => span.text), [FIRST, MIDDLE, LAST]);
+  const glued = '<div><span>9월 23일(수)</span><strong>추석 민속놀이로 함께한 날을 기록한 글입니다</strong></div>';
+  assert.equal(candidateSpans(Buffer.from(glued), 'h')[0].text, '9월 23일(수) 추석 민속놀이로 함께한 날을 기록한 글입니다');
+  const particle = '<p>이 문장은 <a href="/x">링크</a>와 이어지는 조사가 붙은 글이며 길이를 맞추려고 길게 쓴다</p>';
+  assert.ok(candidateSpans(Buffer.from(particle), 'h')[0].text.includes('링크와 이어지는'), 'a word and its particle stay together');
+});
+
 const naFor = (family, condition, span_ids, extra = {}) => ({ family_id: family, unit_key: unit(family), state: 'not_applicable', condition,
   reason: '쪽이 안내 문구뿐이라 항목이 적용되지 않는다', span_ids, ...extra });
 
@@ -632,10 +713,10 @@ test('the model\'s identity verdict: pass needs the name and another fact, name 
   const verdict = (state, extra = {}) => ({ family_id: 'entity-identity', unit_key: ENTITY_UNIT, state, reason: '홈 글을 읽고 판단했다', span_ids: spans.slice(0, 2), ...extra });
   const made = async judgment => (await mergeJudgments({ observations, store, judgments: [judgment] })).find(x => x.unit_key === ENTITY_UNIT);
   const named = await made(verdict('partial'));
-  assert.deepEqual([named.state, named.q, named.partial_basis, named.measurement], ['partial', 0.5, { kind: 'threshold_half' }, { identity_basis: 'name only' }], 'the name alone is half');
-  assert.deepEqual((await made(verdict('pass'))).measurement, { identity_basis: 'name and identifying fact' });
+  assert.deepEqual([named.state, named.q, named.partial_basis, named.measurement], ['partial', 0.5, { kind: 'threshold_half' }, { identity_basis: 'name_only' }], 'the name alone is half');
+  assert.deepEqual((await made(verdict('pass'))).measurement, { identity_basis: 'name_and_fact' });
   const missing = await made(verdict('fail'));
-  assert.deepEqual([missing.state, missing.q, missing.measurement], ['fail', 0, { identity_basis: 'no matching name' }]);
+  assert.deepEqual([missing.state, missing.q, missing.measurement], ['fail', 0, { identity_basis: 'no_matching_name' }]);
   assert.equal(Object.hasOwn(await made(verdict('unknown', { span_ids: [] })), 'measurement'), false, 'nothing to compare: unknown');
   assert.equal(named.evidence_ref, ref);
   await assert.rejects(mergeJudgments({ observations, store, judgments: [{ family_id: 'freshness-truth', unit_key: unit('freshness-truth'), state: 'partial', reason: 'x', span_ids: spans.slice(0, 1) }] }), /is binary/, 'the other binary families still refuse a partial');
@@ -655,6 +736,60 @@ test('answer-clarity: a page about a question that does not answer it is a fail;
   await assert.rejects(merge({ state: 'not_applicable' }), /needs a condition of the family/);
   await assert.rejects(merge({ state: 'not_applicable', condition: 'no_material_claims' }), /needs a condition of the family/);
   assert.match(readFileSync(new URL('../skills/optbrew/references/judging.md', import.meta.url), 'utf8'), /질문에 관련된 쪽이 답하지 않으면 `fail`이지 `not_applicable`이 아니다/);
+});
+
+test('replay checks the identity basis against the state, and the report shows it (N4)', { timeout: 120000 }, async () => {
+  const run = await modelRun('judge-basis', ['/'], { enable: ['entity-identity'], withContext: true });
+  try {
+    const item = run.queue.items.find(x => x.unit_key === ENTITY_UNIT);
+    const made = (await run.merge([{ family_id: 'entity-identity', unit_key: ENTITY_UNIT, state: 'partial', reason: '이름만 말한다', span_ids: [item.spans[0].span_id] }]))
+      .find(x => x.unit_key === ENTITY_UNIT);
+    assert.deepEqual(made.measurement, { identity_basis: 'name_only' });
+    forge(run, list => list.push(made));
+    const report = buildReport(run.scenario.packet);
+    assert.equal(report.json.model_judgments[0].identity_basis, 'name_only');
+    assert.ok(report.markdown.includes('일부 통과 (이름만 맞음)'), 'the judgment row says what it rests on');
+    forge(run, list => list.pop());
+    forge(run, list => list.push({ ...made, measurement: { identity_basis: 'name_and_fact' } }));
+    assert.throws(() => buildReport(run.scenario.packet), /its identity basis is not the one its state records/);
+    forge(run, list => list.pop());
+    const { measurement, ...bare } = made;
+    assert.ok(measurement);
+    forge(run, list => list.push(bare));
+    assert.throws(() => buildReport(run.scenario.packet), /its identity basis is not the one its state records/);
+  } finally { await run.site.close(); }
+});
+
+test('the queued text is taken from the item of the same evidence that offered the span (N7)', { timeout: 120000 }, async () => {
+  const run = await modelRun('judge-text', ['/']);
+  try {
+    const made = await run.judge(run.units[0]);
+    await forgeQueue(run, queue => {
+      const item = queue.items.find(x => x.unit_key === made.unit_key);
+      queue.items.push({ ...structuredClone(item), evidence_ref: 'elsewhere', spans: item.spans.map(span => ({ ...span })) });
+      item.spans.find(span => span.start === made.evidence_span[0].start).text = '다른 글을 읽었다고 속인 문장';
+    });
+    forge(run, list => list.push(made));
+    assert.throws(() => buildReport(run.scenario.packet), /queued text of span .* differs from the text of the page/);
+  } finally { await run.site.close(); }
+});
+
+test('replay derives the same split of a long run, and refuses a range that spans two of its parts (N3)', { timeout: 120000 }, async () => {
+  const long = `<p>${'이 문단은 문장 하나가 마침표로 끝나며 한 쪽에 아주 길게 이어진다. '.repeat(100)}</p>`;
+  const run = await modelRun('judge-long', ['/'], { bodyOf: () => long });
+  try {
+    const item = run.queue.items.find(x => x.unit_key === run.units[0]);
+    const parts = item.spans.filter(span => span.text.startsWith('이 문단은'));
+    assert.ok(parts.length >= 3 && parts.every(span => Buffer.byteLength(span.text) <= MAX_SPAN), 'the long run is several spans within the cap');
+    const made = await run.judge(run.units[0], [0, 1]);
+    forge(run, list => list.push(made));
+    buildReport(run.scenario.packet);
+    forge(run, list => list.pop());
+    const [a, b] = parts;
+    const spanning = { evidence_sha256: a.evidence_sha256, start: a.start, end: b.end };
+    forge(run, list => list.push({ ...made, evidence_span: [spanning] }));
+    assert.throws(() => buildReport(run.scenario.packet), /is not a text run of the page/);
+  } finally { await run.site.close(); }
 });
 
 const SITE_BODY = route => `<p>페이지 ${route} 에만 있는 고유한 문장이며 다른 쪽과 바이트가 달라지도록 쓴 글입니다</p>`;

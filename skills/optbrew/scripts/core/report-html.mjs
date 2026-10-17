@@ -112,7 +112,7 @@ const profileHtml = (row, excluded) => {
   return `<li class="profile"><div class="head"><strong>${esc(row.profile)}</strong><span class="chip">${esc(VERDICTS[h.status])}</span></div>` +
     `${typeof shown === 'number' ? `<meter min="0" max="100" value="${shown}" aria-label="확인 범위 ${shown}%">${shown}%</meter>` : ''}` +
     `<p class="big">확인 범위 ${percent(shown)}</p><p>${sentenceOf(h)}</p>` +
-    `${excluded ? `<p class="note">모델이 해당 없음으로 뺀 단위 ${excluded}건이 이 확인 범위에서 빠져 있습니다.</p>` : ''}` +
+    `${excluded ? `<p class="note">이번 실행에서 모델이 해당 없음으로 뺀 단위는 모두 ${excluded}건이고, 점수를 내는 영역에 따라 일부만 이 확인 범위에서 빠집니다.</p>` : ''}` +
     `<details><summary>자세히</summary><p>${esc(headlineLine(h))}</p>${difference}<p class="note">방문자 실측(CWV)을 뺀 확인 범위 ${percent(row.coverage_without_cwv)}</p></details></li>`;
 };
 

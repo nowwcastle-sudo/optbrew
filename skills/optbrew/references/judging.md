@@ -27,8 +27,8 @@ SKILL.md 8단계의 절차다. 코드가 판정하지 못하는 내용 항목을
 ```
 
 - `questions`는 시작 질문으로 확정한 질문 목록이다(`answer-clarity` 판정이 고른다). 질문이 없으면 비어 있고, 그때는 `answer-clarity` 항목도 없다.
-- 쪽(page) 하나에 판정할 항목(`families`)이 여럿 붙어 있다. 항목 하나가 판정 하나다. `families`의 각 항목에는 `family_id`와 `unit_key`가 있다. 홈 쪽의 항목에는 사이트 정체 판정(`entity-identity|site`, 2절 끝)이 붙을 수 있고, 그 항목에는 `identity`(`names`, `host`)도 있다.
-- `spans`는 쪽의 보이는 글 덩어리다. 쪽마다 길이 순으로 40바이트 이상인 덩어리 30개까지, 문서 순서로 들어 있다(`judge_span_min_bytes` 40, `judge_spans_per_unit` 30). 날짜와 연락처(이메일·전화번호)는 40바이트 미만이어도 들어 있다. 이런 짧은 글은 따로 같은 글 하나씩 10개까지다(`judge_short_spans_per_unit` 10). 쪽 제목(`<title>`)의 글도 들어 있다. 태그 안쪽의 글(속성 값)과 스크립트, 스타일, 템플릿, noscript, 주석 안의 글은 없다. 키나 토큰처럼 보이는 글이 든 덩어리는 빠져 있다.
+- 쪽(page) 하나에 판정할 항목(`families`)이 여럿 붙어 있다. 항목 하나가 판정 하나다. `families`의 각 항목에는 `family_id`와 `unit_key`가 있다. 홈 쪽의 항목에는 사이트 정체 판정(`entity-identity|site`, 2절 끝)이 붙을 수 있고, 그 항목에는 `identity`(`names`, `facts`, `host`)도 있다.
+- `spans`는 쪽의 보이는 글 덩어리다. 쪽마다 길이 순으로 40바이트 이상인 덩어리 30개까지, 문서 순서로 들어 있다(`judge_span_min_bytes` 40, `judge_spans_per_unit` 30). 날짜와 연락처(이메일·전화번호)는 40바이트 미만이어도 들어 있다. 이런 짧은 글은 따로 같은 글 하나씩 10개까지다(`judge_short_spans_per_unit` 10). 한 덩어리가 2000바이트(`judge_span_max_bytes`)를 넘으면 문장 끝(없으면 공백, 그것도 없으면 글자)에서 나뉘어 덩어리 여러 개가 된다. 나뉜 덩어리마다 바이트 범위가 따로 있고, 코드는 같은 나눔을 다시 만든다. 쪽 제목(`<title>`)의 글도 들어 있다. 태그 안쪽의 글(속성 값)과 스크립트, 스타일, 템플릿, noscript, 주석 안의 글은 없다. 키나 토큰처럼 보이는 글이 든 덩어리는 빠져 있다.
 - 문장 안의 `a`, `code`, `em`, `strong`, `b`, `i`, `span`, `abbr`, `time`, `mark`, `small`, `sub`, `sup`, `br` 태그는 덩어리를 끊지 않는다. 덩어리의 바이트 범위는 그 태그를 덮지만, `text`에는 태그가 빠져 있다. 코드는 같은 범위에서 같은 `text`를 다시 만든다.
 - `text`는 HTML에서 태그 사이의 글을 그대로 뗀 것이다. `&amp;`나 `&nbsp;` 같은 문자 참조가 풀리지 않은 채 보일 수 있다. 뜻은 풀어서 읽는다.
 - `span_id`는 `<시작>-<끝>`이다. 숫자는 쪽 원본의 UTF-8 바이트 위치다(끝은 포함하지 않는다). 한글은 글자 하나가 3바이트이므로 글자 수가 아니다. 숫자를 직접 계산하지 말고 `span_id`를 그대로 복사한다.
@@ -199,7 +199,7 @@ SKILL.md 8단계의 절차다. 코드가 판정하지 못하는 내용 항목을
 | `needs a condition of the family` | `not_applicable`인데 `condition`이 없거나 그 항목의 코드가 아니다 | 2절의 항목별 조건 코드를 쓴다 |
 | `needs question_id from the question list` | `answer-clarity`의 `pass`, `partial`, `fail`에 `question_id`가 없거나 목록에 없다 | 목록 파일의 `questions`에서 `id`를 고른다 |
 | `names no question` | `answer-clarity`의 `not_applicable`에 `question_id`를 썼다 | 질문을 골랐다면 `pass`, `partial`, `fail` 중에서 고르고, 어느 질문도 쪽의 주제가 아니면 `question_id`를 뺀다 |
-| `is a site unit and cannot be not_applicable` | 사이트 정체 항목에 `not_applicable`을 썼다 | `pass`, `fail`, `unknown` 중에서 고른다 |
+| `is a site unit and cannot be not_applicable` | 사이트 정체 항목에 `not_applicable`을 썼다 | `pass`, `partial`, `fail`, `unknown` 중에서 고른다 |
 | `contains a secret` | 이유에 비밀값처럼 보이는 글이 있다 | 그 글을 빼고 다시 쓴다 |
 | `no judge queue is stored` | 이 결과 폴더에 판정 목록이 없다 | 7단계부터 다시 한다 |
 | 스키마 오류에 `reason` | `reason`이 비었거나 없다 | 한 문장을 쓴다 |

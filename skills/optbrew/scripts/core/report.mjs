@@ -20,7 +20,7 @@ import { composeReport, pagesLabel, renderReport } from './report-compose.mjs';
 import { messageOf } from './messages.mjs';
 import { runbookEntry } from './runbooks.mjs';
 import { sensitive } from './secrets.mjs';
-import { ENTITY_UNIT, OBSERVATION_SOURCES, QUEUE_KIND, QUESTION_UNIT, candidateSpans, checkSpan, deriveQuestionCoverage, homeOf, isCodeJudged, isEntityFallback, isModelJudged, queuedSpan } from './judgments.mjs';
+import { ENTITY_UNIT, OBSERVATION_SOURCES, QUEUE_KIND, QUESTION_UNIT, candidateSpans, checkSpan, deriveQuestionCoverage, homeOf, identityBasisOf, isCodeJudged, isEntityFallback, isModelJudged, queuedSpan } from './judgments.mjs';
 import { parseRobots, robotsVerdict } from '../../modules/naver-searchadvisor/scripts/robots.mjs';
 
 const catalog = JSON.parse(readFileSync(new URL('../../references/remediations.json', import.meta.url))).items;
@@ -660,6 +660,7 @@ function modelJudgmentRows(phase, input, snapshot, requireRef) {
       if (obs.state === 'not_applicable' ? named !== undefined : !(input.run_context.protocol.question_panel ?? []).some(question => question.id === named))
         fail(obs, obs.state === 'not_applicable' ? 'a not applicable answer-clarity verdict names no question' : 'an answer-clarity verdict names a question of the fixed panel');
     }
+    if (isEntityFallback(obs.family_id, obs.unit_key) && obs.measurement?.identity_basis !== identityBasisOf(obs.state)) fail(obs, 'its identity basis is not the one its state records');
     const raw = (audit.raw ?? []).find(x => x.evidence_ref === obs.evidence_ref && x.normalized_url === (isEntityFallback(obs.family_id, obs.unit_key) ? home : unitUrl(obs.unit_key)));
     if (!raw) fail(obs, 'its evidence is not the audit raw entry of the unit page');
     // Candidates are recomputed from the raw bytes, so a consistently forged queue cannot widen what a model may cite.
@@ -671,11 +672,12 @@ function modelJudgmentRows(phase, input, snapshot, requireRef) {
       if (!candidate) fail(obs, `span ${span.start}-${span.end} is not a text run of the page`);
       if (!queues.some(queue => queuedSpan(queue, obs, span))) fail(obs, `span ${span.start}-${span.end} is not a candidate of the stored judge queue`);
       // The text the model read is the text of that range, with inline tags left out: the queue cannot show it something else.
-      const offered = queues.flatMap(queue => queue.items.filter(x => x.unit_key === obs.unit_key && x.family_id === obs.family_id)).flatMap(x => x.spans)
-        .find(x => x.start === span.start && x.end === span.end);
+      const offered = queues.flatMap(queue => queue.items.filter(x => x.unit_key === obs.unit_key && x.family_id === obs.family_id && x.evidence_ref === obs.evidence_ref))
+        .flatMap(x => x.spans).find(x => x.evidence_sha256 === span.evidence_sha256 && x.start === span.start && x.end === span.end);
       if (offered.text !== candidate.text) fail(obs, `the queued text of span ${span.start}-${span.end} differs from the text of the page`);
     }
-    return { phase, family_id: obs.family_id, unit_key: obs.unit_key, state: obs.state, evidence_ref: obs.evidence_ref, evidence_span: obs.evidence_span, label: MODEL_JUDGMENT_LABEL };
+    return { phase, family_id: obs.family_id, unit_key: obs.unit_key, state: obs.state, evidence_ref: obs.evidence_ref, evidence_span: obs.evidence_span, label: MODEL_JUDGMENT_LABEL,
+      ...(obs.measurement?.identity_basis ? { identity_basis: obs.measurement.identity_basis } : {}) };
   });
 }
 

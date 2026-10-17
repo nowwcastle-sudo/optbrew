@@ -53,14 +53,14 @@
     },
     {
       "path": "references/limits.json",
-      "sha256": "1b1cf610b913772999663db82378c8bed3b0c18c1e7ceebc154ba8370b5cc2eb"
+      "sha256": "6cb8c4c1ae1c9fab5ad173733feb24d76827219c188ff2592e4376571bd8ed72"
     },
     {
       "path": "scripts/core/protocol.mjs",
       "sha256": "2c7beef888e5df3df84f0a0d4d2e06ed4124bde70c01da7ae740dc75c2380bda"
     }
   ],
-  "protocol_hash": "653f3cfee17f04648fa2879e8789b77d08bd25eb2ec40c8b5faa61439bcf9809",
+  "protocol_hash": "f38c622d1dcac63e5c43ab04d16b9766248df70649535c662877d8e6da2c3869",
   "files": [
     {
       "path": "LICENSE",
@@ -576,11 +576,11 @@
     },
     {
       "path": "references/judging.md",
-      "sha256": "70909880f090514380d161d224388f1db5e0db840b84654ea99e26779a0edd84"
+      "sha256": "6238386c9c65dfb0d86d9c6014128f925594bb2784e3e1562c7d17a1d1876010"
     },
     {
       "path": "references/limits.json",
-      "sha256": "1b1cf610b913772999663db82378c8bed3b0c18c1e7ceebc154ba8370b5cc2eb"
+      "sha256": "6cb8c4c1ae1c9fab5ad173733feb24d76827219c188ff2592e4376571bd8ed72"
     },
     {
       "path": "references/measurement.md",
@@ -588,7 +588,7 @@
     },
     {
       "path": "references/messages.ko.json",
-      "sha256": "6214b4c9d13c079542011182310fde4b839b52bd79b81b24c59ee96776730682"
+      "sha256": "8a21c65d6c4d7bec76daa9279e2767ef91f063df7ad488674b7d75e9dffb1877"
     },
     {
       "path": "references/policies.md",
@@ -836,7 +836,7 @@
     },
     {
       "path": "scripts/core/judgments.mjs",
-      "sha256": "1d46ec3773957297cbf316fe8b340d26d00f550a5894e3eb51001055c7873d3b"
+      "sha256": "fd79575b5903c6d9f4283a36c535b50c787f501529b46c5afffcd1803f2f0a53"
     },
     {
       "path": "scripts/core/keys.mjs",
@@ -876,15 +876,15 @@
     },
     {
       "path": "scripts/core/report-compose.mjs",
-      "sha256": "d99bf97e1874a576285f51cb7332158e4e7cfbafbac8febf94bf63d29e9752a3"
+      "sha256": "35ec882f7348238d1ed8a92f82c4a88f1ed576a23c359ee453c9aa6b8e8192c0"
     },
     {
       "path": "scripts/core/report-html.mjs",
-      "sha256": "d4750eda0e1c72ce5253647d6e56a3b5731f8541f1a2a1faf255662b1f3b6657"
+      "sha256": "9134ab3b6b141041e2f5a0003d801afdbf63c7c6cd8b13af0991680c1e3064a7"
     },
     {
       "path": "scripts/core/report.mjs",
-      "sha256": "ba92f1f17124809b45fcc1a483fe104a771f678f578f19c78a25561ff0308ee7"
+      "sha256": "8e7c12ea7dbc0a840e3b192c7baee93db860c90c7dc9b587b1aff47e69e45568"
     },
     {
       "path": "scripts/core/runbooks.mjs",
@@ -931,5 +931,5 @@
       "sha256": "dca0bbd03fbf591c4aca6a568be76615eb48d69f7df0c634886f652b54f3f46d"
     }
   ],
-  "bundle_hash": "a8c4421aa997ca2da11de3b4edbb154ac7a0957624e62da2ee245564f28c02f0"
+  "bundle_hash": "31728b9cfbaf03a43fad352f4004fac9c5749370df150e18d23de49302eb61e1"
 }

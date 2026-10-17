@@ -19,8 +19,8 @@ export const QUEUE_KIND = 'judge-queue';
 export const ENTITY_UNIT = unitKey(ENTITY_FAMILY, 'site');
 export const QUESTION_UNIT = unitKey(QUESTION_FAMILY, 'site');
 const QUEUE_SECTION = 'judge_queue';
-/** What the model's identity verdict rests on, by state (recorded in its measurement): the name with another fact, the name alone, or no matching name. */
-const IDENTITY_BASIS = { pass: 'name and identifying fact', partial: 'name only', fail: 'no matching name' };
+/** What the model's identity verdict rests on, by state (recorded in its measurement; report replay checks it): the name with another fact, the name alone, or no matching name. */
+const IDENTITY_BASIS = { pass: 'name_and_fact', partial: 'name_only', fail: 'no_matching_name' };
 const NONE_ANSWERED = problem('Question coverage: no audited page answers a question of the fixed list', 'question-coverage.none-answered');
 const registry = JSON.parse(readFileSync(new URL('../../references/check-registry.json', import.meta.url)));
 const verdictMode = new Map(registry.families.map(family => [family.family_id, family.verdict_mode]));
@@ -33,7 +33,10 @@ const INERT = /<!--[\s\S]*?(?:-->|$)|<(script|style|template|noscript)\b[\s\S]*?
 // An inert run is blanked to this character between its angle brackets, so it still reads as one tag and splits the text around it.
 const BLANK = '\0';
 const TAG_OPENER = /[A-Za-z/!?\0]/;
-const TAG_NAME = /^<\/?([A-Za-z][A-Za-z0-9]*)/;
+// A hyphenated name (a custom element) is one name, so `b-card` is not the inline tag `b`.
+const TAG_NAME = /^<\/?([A-Za-z][A-Za-z0-9-]*)/;
+const SENTENCE_END = /[.!?。！？]+["'”’」)\]]*(?=\s|$)/gu;
+const SENTENCE_TAIL = /[.!?。！？]+["'”’」)\]]*\s*$/u;
 // Tags inside a line of text: they do not end a span, and the text shown to the model has them taken out.
 const INLINE_TAGS = new Set(['a', 'abbr', 'b', 'br', 'code', 'em', 'i', 'mark', 'small', 'span', 'strong', 'sub', 'sup', 'time']);
 // Short text that is still worth offering: a date or a way to reach the owner. The floor in limits.json does not drop these.
@@ -58,6 +61,9 @@ export const isModelJudged = family_id => modelFamilies().includes(family_id);
 
 /** Whether a family has a code check block, so only code may judge it. */
 export const isCodeJudged = family_id => blocks.some(block => block.family_id === family_id);
+
+/** The basis the model's identity verdict must record for its state. */
+export const identityBasisOf = state => IDENTITY_BASIS[state];
 
 /** The one code-judged unit a model may judge: the site's identity, when code produced no verdict for it. */
 export const isEntityFallback = (family_id, unit_key) => family_id === ENTITY_FAMILY && unit_key === ENTITY_UNIT;
@@ -137,6 +143,9 @@ function textRuns(masked) {
   return runs;
 }
 
+/** What joins two pieces of a run: a space where a line break lies between them or one element ends and the next begins; nothing where a single tag does (a word and its particle). */
+const joinerOf = gap => /<br\b/i.test(gap) || /<\/[^>]*>\s*<[A-Za-z]/.test(gap) ? ' ' : '';
+
 /**
  * The text of a run: its pieces outside tags, with leading and trailing ASCII whitespace taken off the whole. Returns the byte range
  * from the first to the last text byte (inline tags in between lie inside it) and the text those pieces hold, tags left out.
@@ -154,10 +163,77 @@ function trimmedRun(masked, bytes, from, to) {
     if (end - trail <= start) pieces.pop(); else { pieces[pieces.length - 1] = [start, end - trail]; break; }
   }
   if (!pieces.length) return null;
-  // A line break between two pieces reads as a space, so two words are not run together.
-  const text = pieces.map(([start, end], index) => (index && /<br\b/i.test(masked.slice(pieces[index - 1][1], start)) ? ' ' : '') +
-    bytes.subarray(start, end).toString('utf8')).join('');
-  return { start: pieces[0][0], end: pieces.at(-1)[1], text };
+  // Two words are not run together across a line break or the boundary of two elements.
+  const text = pieces.map(([start, end], index) => (index ? joinerOf(masked.slice(pieces[index - 1][1], start)) : '') + bytes.subarray(start, end).toString('utf8')).join('');
+  return { start: pieces[0][0], end: pieces.at(-1)[1], text, pieces };
+}
+
+/** The ranges of `text` (character indices) cut after each sentence end, and a sentence that is still longer than `max` bytes at its last space, else at a character. */
+function sentenceRanges(text, max) {
+  const cuts = [0, ...[...text.matchAll(SENTENCE_END)].map(found => found.index + found[0].length), text.length];
+  const ranges = [];
+  for (let i = 1; i < cuts.length; i++) {
+    let from = cuts[i - 1];
+    const to = cuts[i];
+    if (to <= from) continue;
+    while (Buffer.byteLength(text.slice(from, to)) > max) {
+      let at = from;
+      let used = 0;
+      while (at < to) {
+        const width = Buffer.byteLength(String.fromCodePoint(text.codePointAt(at)));
+        if (used + width > max) break;
+        used += width;
+        at += text.codePointAt(at) > 0xFFFF ? 2 : 1;
+      }
+      const space = text.slice(from, at).search(/\s\S*$/);
+      const cut = space > 0 ? from + space + 1 : at;
+      ranges.push([from, cut]);
+      from = cut;
+    }
+    ranges.push([from, to]);
+  }
+  return ranges;
+}
+
+/**
+ * A run longer than `max` bytes as several runs of at most `max` bytes each. Its pieces are cut after sentence ends (and, for a
+ * sentence still too long, at a space or a character); the cut pieces form units that end at a sentence end or a line break, and the
+ * units are packed, in order, into the longest groups that fit (a unit longer than `max` is packed piece by piece). Each part is a byte
+ * range from its first to its last text byte, with the text of that range as `trimmedRun` builds it.
+ */
+function splitRun(masked, bytes, pieces, max) {
+  const units = [];
+  let unit = [];
+  pieces.forEach(([start, end], index) => {
+    const text = bytes.subarray(start, end).toString('utf8');
+    const before = index ? joinerOf(masked.slice(pieces[index - 1][1], start)) : '';
+    const lineBreak = index + 1 < pieces.length && /<br\b/i.test(masked.slice(end, pieces[index + 1][0]));
+    const ranges = sentenceRanges(text, max);
+    ranges.forEach(([from, to], n) => {
+      const atom = { start: start + Buffer.byteLength(text.slice(0, from)), end: start + Buffer.byteLength(text.slice(0, to)), text: text.slice(from, to), before: n ? '' : before };
+      unit.push(atom);
+      if (SENTENCE_TAIL.test(atom.text) || n + 1 === ranges.length && lineBreak) { units.push(unit); unit = []; }
+    });
+  });
+  if (unit.length) units.push(unit);
+  const items = units.flatMap(atoms => {
+    const joined = { start: atoms[0].start, end: atoms.at(-1).end, before: atoms[0].before,
+      text: atoms.map((atom, n) => (n ? atom.before : '') + atom.text).join('') };
+    return Buffer.byteLength(joined.text) <= max ? [joined] : atoms;
+  });
+  const parts = [];
+  let current = null;
+  for (const item of items) {
+    if (current && Buffer.byteLength(current.text + item.before + item.text) <= max) { current.text += item.before + item.text; current.end = item.end; }
+    else { if (current) parts.push(current); current = { start: item.start, end: item.end, text: item.text }; }
+  }
+  if (current) parts.push(current);
+  return parts.flatMap(part => {
+    const lead = LEADING.exec(part.text)[0];
+    const trail = TRAILING.exec(part.text)?.[0] ?? '';
+    const text = part.text.slice(lead.length, part.text.length - trail.length);
+    return text ? [{ start: part.start + Buffer.byteLength(lead), end: part.end - Buffer.byteLength(trail), text }] : [];
+  });
 }
 
 /**
@@ -166,20 +242,23 @@ function trimmedRun(masked, bytes, from, to) {
  * Text inside a tag (attribute values) and inside script and style is never offered. The body is scanned as bytes (latin1), so
  * offsets are byte offsets and a span can only start or end next to an ASCII character, never inside a multi-byte one. A line shorter
  * than the floor is dropped unless it is a date or a contact; those (one of each text) have an allowance of their own beside the
- * cap. Lines with a secret are dropped; the longest lines are kept, in document order.
+ * cap. A line longer than the maximum is cut at sentence ends (or a space, or a character) into several spans of at most that size. Lines with a secret are dropped; the longest lines are kept, in document order.
  */
 export function candidateSpans(bytes, evidence_sha256) {
-  const { judge_spans_per_unit: cap, judge_span_min_bytes: minimum, judge_short_spans_per_unit: shortCap } = limits();
+  const { judge_spans_per_unit: cap, judge_span_min_bytes: minimum, judge_span_max_bytes: maximum, judge_short_spans_per_unit: shortCap } = limits();
   const masked = bytes.toString('latin1').replace(INERT, found => `<${BLANK.repeat(found.length - 2)}>`);
   const long = [];
   const short = new Map();
   for (const [from, to] of textRuns(masked)) {
-    const run = trimmedRun(masked, bytes, from, to);
-    if (!run || sensitive.test(run.text)) continue;
-    const span = { span_id: `${run.start}-${run.end}`, evidence_sha256, start: run.start, end: run.end, text: run.text };
-    const size = Buffer.byteLength(run.text);
-    if (size >= minimum) long.push({ span, size });
-    else if (!short.has(run.text) && SHORT_TEXT_EXCEPTIONS.some(pattern => pattern.test(run.text))) short.set(run.text, span);
+    const whole = trimmedRun(masked, bytes, from, to);
+    if (!whole) continue;
+    for (const run of Buffer.byteLength(whole.text) > maximum ? splitRun(masked, bytes, whole.pieces, maximum) : [whole]) {
+      if (sensitive.test(run.text)) continue;
+      const span = { span_id: `${run.start}-${run.end}`, evidence_sha256, start: run.start, end: run.end, text: run.text };
+      const size = Buffer.byteLength(run.text);
+      if (size >= minimum) long.push({ span, size });
+      else if (!short.has(run.text) && SHORT_TEXT_EXCEPTIONS.some(pattern => pattern.test(run.text))) short.set(run.text, span);
+    }
   }
   const kept = long.sort((a, b) => b.size - a.size || a.span.start - b.span.start).slice(0, cap).map(x => x.span);
   return [...kept, ...[...short.values()].slice(0, shortCap)].sort((a, b) => a.start - b.start);

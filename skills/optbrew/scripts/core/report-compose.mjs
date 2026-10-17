@@ -270,7 +270,7 @@ function tableRows(composed, verified) {
   return { score, remediation,
     actual_outcomes: verified.outcome_rows.map(cells => cells.map(outcomeCell)),
     remaining_work: composed.follow_ups.map(({ text_ko: x }) => [x.problem, x.reason, x.required_input_or_authority, x.next_action, x.reobserve_when]),
-    model_judgments: composed.conditions.model_judgments.map(x => [x.phase, `${x.family_id} ${x.unit_key}`, wordFor('state', x.state),
+    model_judgments: composed.conditions.model_judgments.map(x => [x.phase, `${x.family_id} ${x.unit_key}`, wordFor('state', x.state) + (x.identity_basis ? ` (${wordFor('identity-basis', x.identity_basis)})` : ''),
       `${x.evidence_ref} 바이트 ${x.evidence_span.map(span => `${span.start}–${span.end}`).join(', ')}`, x.label]) };
 }
 
