@@ -728,7 +728,7 @@
     },
     {
       "path": "scripts/core/checks/document-title.mjs",
-      "sha256": "73b0c258e7eaba122bcbff8b8d17daeeda364fa96c461842f0f9b77ea3d5bf47"
+      "sha256": "3c47065f5f50caa1f75c8d11d739d18178601e792edbb07ee658424f062a2a87"
     },
     {
       "path": "scripts/core/checks/entity-identity.mjs",
@@ -768,7 +768,7 @@
     },
     {
       "path": "scripts/core/checks/prepare.mjs",
-      "sha256": "631b9ff161b5bdecaccb2706d58cbe358577bdbd5eadf1678ecd952480288433"
+      "sha256": "b3a3726afd0983994d28c27373ccde6eaef7e4648e94b60418b03ea4db260d18"
     },
     {
       "path": "scripts/core/checks/render-content.mjs",
@@ -935,5 +935,5 @@
       "sha256": "dca0bbd03fbf591c4aca6a568be76615eb48d69f7df0c634886f652b54f3f46d"
     }
   ],
-  "bundle_hash": "eae32fdd5aa7f2b43a08f32f055cc9af47448b9d4de89f8b2e9722a6c13ac21f"
+  "bundle_hash": "663d23c46f0fbdfbbdf8ae51bd07ea7c477b4b77155cb5f1b3978fac29de19b5"
 }

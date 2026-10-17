@@ -617,6 +617,10 @@ test('only a page that differs from its canonical in the query string joins its 
   assert.match(grouped.reason, /^The title is present, shared only with query variants of the same page/);
   assert.deepEqual(grouped.measurement.same_document.pages.sort(), [`${SITE}/bookings`, `${SITE}/bookings?service=home-visit`]);
   assert.equal(grouped.measurement.message_key, 'document-title.same-document');
+  // Query pages that each name themselves as canonical are different documents: one title on both is a duplicate (review N-1).
+  const selfQuery = await audit({ ...home(['/products?cat=shoes', '/products?cat=bags']),
+    [`${SITE}/products?cat=shoes`]: titled('Products', canonical(`${SITE}/products?cat=shoes`)), [`${SITE}/products?cat=bags`]: titled('Products', canonical(`${SITE}/products?cat=bags`)) });
+  assert.deepEqual(duplicates(selfQuery), [`${SITE}/products?cat=bags`, `${SITE}/products?cat=shoes`]);
   const unique = titleOf(await audit({ ...home(['/a', '/b']), '/a': titled('Alpha', ''), '/b': titled('Beta', '') }), `${SITE}/a`);
   assert.match(unique.reason, /differs from the title of every other audited page/, 'a unique title keeps its own reason');
   // <base href> decides what a relative canonical means.

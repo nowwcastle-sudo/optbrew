@@ -54,7 +54,7 @@ export const documentTitle = {
       if (variants.length) return makeObservation({ ...observed, state: 'pass',
         extra: { measurement: { ...measurement, same_document: { document: row.documentKey, pages: variants.map(x => x.url) },
           ...messageOf(SAME_DOCUMENT, { pages: variants.map(x => x.url).join(', ') }) } },
-        reason: 'The title is present, shared only with query variants of the same page (the same canonical path), and is not only the site name or a generic word' });
+        reason: 'The title is present, shared only with query variants of the same page (the same canonical URL), and is not only the site name or a generic word' });
       return makeObservation({ ...observed, state: 'pass', extra: { measurement },
         reason: 'The title is present, differs from the title of every other audited page, and is not only the site name or a generic word' });
     });

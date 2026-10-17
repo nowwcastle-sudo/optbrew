@@ -14,8 +14,9 @@ const pathOf = url => url.pathname.length > 1 ? url.pathname.replace(/\/+$/, '')
 /** A page's address as its site and path, and its query when asked: the spelling documents are compared by. */
 const documentAddress = (url, withQuery) => `${url.origin}${pathOf(url)}${withQuery ? url.search : ''}`;
 /**
- * The document a page stands for (R95, R98). A page whose canonical link names the same page without its query string or fragment
- * (same site with `www.` and http/https folded, same path) is a variant of that page, and the variants and the page are one document.
+ * The document a page stands for (R95, R98). A page whose canonical link names the same site (`www.` and http/https folded) and the same
+ * path is one document with every page that names the same canonical, query included: `/bookings?service=x` -> `/bookings` groups with
+ * `/bookings`, while `/products?cat=shoes` and `/products?cat=bags` that each name themselves stay two documents.
  * Any other canonical (the home page, another path, another site), an unusable one, or none leaves the page its own document.
  * The canonical is resolved against `<base href>` when the head has one, else against where the page was served.
  */
@@ -26,7 +27,7 @@ function documentKeyOf(artifact, info, html) {
       const live = String(html ?? '').replace(/<!--[\s\S]*?(?:-->|$)/g, '').replace(/<(script|style|template|noscript)\b[\s\S]*?(?:<\/\1\s*>|$)/gi, '');
       const baseHref = BASE_HREF.exec(/<head\b[\s\S]*?<\/head\s*>/i.exec(live)?.[0] ?? live)?.[1];
       const target = new URL(info.canonical, baseHref ? new URL(baseHref, own).href : own.href);
-      if (sameSite(target, own) && pathOf(target) === pathOf(own)) return documentAddress(own, false);
+      if (sameSite(target, own) && pathOf(target) === pathOf(own)) return `${documentAddress(own, false)}${target.search}`;
     } catch { /* an unusable canonical declares nothing */ }
   }
   return documentAddress(own, true);
