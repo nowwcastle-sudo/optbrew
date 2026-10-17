@@ -463,7 +463,7 @@ test('fix rows carry plain labels and one place to fix, composed once', () => {
   const composed = composeReport(verifiedOf({ findings: [finding('a', { priority: 'P1', status: 'confirmed' }), finding('b', { priority: 'P2' })], changes: [change] }));
   const [a, b] = composed.fixes;
   assert.deepEqual([a.priority_label, a.status_label, a.where], ['중요', '확인됨', 'site/page.html']);
-  assert.deepEqual([b.priority_label, b.status_label, b.where], ['보통', '제안만 함', '고칠 위치는 사이트 담당자가 정해야 합니다']);
+  assert.deepEqual([b.priority_label, b.status_label, b.where], ['보통', '제안만 함', '고칠 위치는 사이트 소유자가 정해야 합니다']);
   const page = htmlOf(composed);
   assert.ok(page.includes('<span class="chip">중요</span>') && !page.includes('>P1<') && !page.includes('proposed_only'));
 });

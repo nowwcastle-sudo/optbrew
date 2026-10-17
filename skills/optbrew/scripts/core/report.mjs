@@ -325,8 +325,8 @@ function checkMetricEvidence(metric, packet, requireRef) {
     observed = measurePanel(source.panel, source.responses, source.evaluations);
   } else throw new ContractError('unsupported metric evidence kind');
   if (!observed.some(item => same(item, metric))) throw new ContractError('metric differs from bound export or panel evidence');
-  return source.kind === 'native_export' ? 'owner export origin and provider completeness are not independently authenticated' :
-    'provider response origin and semantic evaluations are attributed to indexed receipts, not independently authenticated';
+  return source.kind === 'native_export' ? ['owner export origin and provider completeness are not independently authenticated', 'metric-origin.owner-export'] :
+    ['provider response origin and semantic evaluations are attributed to indexed receipts, not independently authenticated', 'metric-origin.panel'];
 }
 
 /**
@@ -575,7 +575,7 @@ function checkAuditPhase(input, phase, snapshot, requireRef) {
   const derived = deriveObservations({ context: input.run_context, artifacts, collection,
     textOf: artifact => artifact.content_hash ? requireRef(artifact.evidence_ref).text : null,
     renders: records, renderTextOf, chrome: audit.chrome ?? null, cwv: storedCwv(audit, requireRef) });
-  const shape = x => [x.state, x.q, x.partial_basis, x.evidence_ref, x.reason, x.evaluator_type, x.source_ref, x.applicability_decision ?? null, x.measurement ?? null];
+  const shape = x => [x.state, x.q, x.partial_basis, x.evidence_ref, x.reason, x.evaluator_type, x.source_ref, x.applicability_decision ?? null, x.measurement ?? null, x.problem_messages ?? null];
   for (const expected of derived) {
     if (!observations.some(x => x.unit_key === expected.unit_key) || !savedObservations.some(x => x.unit_key === expected.unit_key))
       throw new ContractError(`planned collector observation missing: ${expected.unit_key}`);
@@ -677,7 +677,8 @@ export function buildReport(packet) {
   }
   const comparison = compare(packet.baseline.input, packet.after?.input ?? null);
   if (!same(packet.comparison, comparison)) throw new ContractError('comparison differs from raw inputs');
-  const metricOriginLimitations = [...new Set(packet.metrics.map(metric => checkMetricEvidence(metric, packet, requireRef)))];
+  const originNotes = [...new Map(packet.metrics.map(metric => checkMetricEvidence(metric, packet, requireRef))).entries()];
+  const metricOriginLimitations = originNotes.map(([text]) => text);
   if (!packet.costs.evidence_ref || !same(JSON.parse(requireRef(packet.costs.evidence_ref).text), packet.costs))
     throw new ContractError('cost ledger snapshot evidence differs from report');
   // Model verdicts are replayed first, so a host_model observation never reaches the collector replay under a collector source.
@@ -711,6 +712,13 @@ export function buildReport(packet) {
         problemsOf(obs).some(problem => pageNeutral(problem, unit) === pageNeutral(finding.message, finding.unit_key)) &&
         (obs.evaluator_type === 'host_model') === modelFinding))
       throw new ContractError(`finding names a page that is not a failed verdict of the same problem: ${unit}`);
+    // The Korean text rests on the same verdict as the English message: its key and values are the ones the verdict recorded for this problem.
+    if (finding.message_key !== undefined || finding.message_values !== undefined) {
+      const stated = { message_key: finding.message_key ?? null, message_values: finding.message_values ?? {} };
+      if (!observations.some(obs => obs.check_id === finding.check_id && obs.unit_key === finding.unit_key && obs.state === 'fail' &&
+          problemsOf(obs).some((problem, index) => pageNeutral(problem, obs.unit_key) === pageNeutral(finding.message, finding.unit_key) && same(obs.problem_messages?.[index] ?? null, stated))))
+        throw new ContractError(`finding message key differs from its verdict: ${finding.finding_id}`);
+    }
     if (modelFinding && !observations.some(obs => obs.check_id === finding.check_id && obs.unit_key === finding.unit_key &&
         obs.evaluator_type === 'host_model' && obs.state === 'fail'))
       throw new ContractError(`model finding has no model verdict: ${finding.finding_id}`);
@@ -820,7 +828,8 @@ export function buildReport(packet) {
     after: packet.after ? { input: packet.after.input, scores: afterScores } : null, comparison,
     metrics: packet.metrics, findings, changes: packet.changes, costs: packet.costs,
     capabilities: packet.capabilities ?? null, cost_issues: costNotes.map(item => item.text),
-    cost_issue_messages: costNotes.map(({ message_key, message_values }) => ({ message_key, message_values })), metric_origin_limitations: metricOriginLimitations, follow_ups: remaining,
+    cost_issue_messages: costNotes.map(({ message_key, message_values }) => ({ message_key, message_values })), metric_origin_limitations: metricOriginLimitations,
+    metric_origin_limitation_messages: originNotes.map(([, key]) => messageOf(key)), follow_ups: remaining,
     evidence_root: packet.evidence_root, evidence_index: packet.evidence_index,
     audit_ref: packet.audit_ref ?? null, audit_snapshots: snapshots, model_judgments: modelRows, source_ref: packet.source_ref,
     outcome_rows: metricRows(packet.metrics), lab_cwv: packet.lab_cwv ?? null, start_redirect: startRedirect, answered_runbooks: packet.answered_runbooks ?? [] };

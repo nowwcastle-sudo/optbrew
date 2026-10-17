@@ -6,11 +6,12 @@ import { koText } from '../skills/optbrew/scripts/core/messages.mjs';
 import { mergeFindings, messageKey, problemsOf } from '../skills/optbrew/scripts/core/findings.mjs';
 import { canonicalUrl } from '../skills/optbrew/scripts/core/link-graph.mjs';
 import { compareFacts, pageFacts } from '../skills/optbrew/scripts/core/facts.mjs';
-import { composeReport, renderReport } from '../skills/optbrew/scripts/core/report-compose.mjs';
+import { composeReport, pagesLabel, renderReport } from '../skills/optbrew/scripts/core/report-compose.mjs';
+import { buildReport } from '../skills/optbrew/scripts/core/report.mjs';
 import { renderHtmlReport } from '../skills/optbrew/scripts/core/report-html.mjs';
 import { auditCollected } from '../skills/optbrew/modules/naver-searchadvisor/scripts/audit.mjs';
 import { selectCapabilities } from '../skills/optbrew/scripts/core/capabilities.mjs';
-import { verifiedOf } from './support/compose.mjs';
+import { fixturePacket, verifiedOf } from './support/compose.mjs';
 
 const read = file => readFileSync(new URL(file, import.meta.url), 'utf8');
 const catalog = JSON.parse(read('../skills/optbrew/references/messages.ko.json'));
@@ -155,7 +156,8 @@ test('grouping still uses the English message (R62)', () => {
 
 // What the owner reads: a finding for every message a check can emit, every remediation the catalog has, and one row of each follow-up kind.
 const SENTENCE = /(?:^|[^A-Za-z0-9_\-.:/@])(?:[A-Za-z][A-Za-z']*[,.]?\s+){2,}[A-Za-z][A-Za-z']*/;
-const withoutIds = text => text.replace(/https?:\/\/[^\s)<]+/g, ' ').replace(/<[^>]+>/g, ' ').replace(/&lt;|&gt;|&amp;|&quot;|&#39;/g, ' ');
+const PRODUCT_NAMES = /Chrome UX Report|PageSpeed Insights|Core Web Vitals/g;
+const withoutIds = text => text.replace(PRODUCT_NAMES, ' ').replace(/https?:\/\/[^\s)<]+/g, ' ').replace(/<[^>]+>/g, ' ').replace(/&lt;|&gt;|&amp;|&quot;|&#39;/g, ' ');
 const sectionOf = (page, id) => page.slice(page.indexOf(`<section id="${id}"`), page.indexOf('</section>', page.indexOf(`<section id="${id}"`)));
 const everyFailing = () => {
   const english = key => `This English message of ${key} stays in the data only`;
@@ -166,10 +168,16 @@ const everyFailing = () => {
   const follow = [
     { problem: 'English problem', reason: 'preflight_unreadable', required_input_or_authority: 'English', next_action: 'English', reobserve_when: 'English', message_key: 'follow-up.preflight-unreadable', message_values: {} },
     { problem: 'English problem', reason: 'export_file_missing', required_input_or_authority: 'English', next_action: 'English', reobserve_when: 'English', message_key: 'follow-up.export-unusable', message_values: { kind: 'gsc', reason: 'export_zip_damaged' } },
-    { problem: 'English problem', reason: 'production_deployment_pending', required_input_or_authority: 'English', next_action: 'English', reobserve_when: 'English', message_key: 'follow-up.production-pending', message_values: { pages: 'https://s.test/a' } },
+    { problem: 'English problem', reason: 'production_deployment_pending', required_input_or_authority: 'English', next_action: 'English', reobserve_when: 'English', finding_id: 'f0', message_key: 'follow-up.production-pending', message_values: { pages: 'https://s.test/a' } },
     { finding_id: 'r0', problem: 'English problem', reason: 'confirmed', required_input_or_authority: 'site_owner_edit', next_action: 'English', reobserve_when: 'English', message_key: 'follow-up.finding', message_values: {} },
     { finding_id: 'f0', problem: 'English problem', reason: 'confirmed', required_input_or_authority: 'English', next_action: 'English', reobserve_when: 'English', message_key: 'follow-up.finding', message_values: {} }];
-  const verified = verifiedOf({ findings: [...findings, ...withRemediation], follow_ups: follow });
+  const verified = verifiedOf({ findings: [...findings, ...withRemediation], follow_ups: follow,
+    cost_issues: ['anthropic: unknown (reserved unknown; actual unknown)', 'p: host_policy', 'bulk_crawl: boundary or cost enforcement is host_policy/unverified', 'Anthropic direct v0: text-only'],
+    cost_issue_messages: [{ message_key: 'cost.reservation', message_values: { provider: 'anthropic', status: 'unknown', reserved: null, actual: null } },
+      { message_key: 'cost.host-policy', message_values: { provider: 'p' } }, { message_key: 'cost.bulk-crawl-unverified', message_values: {} },
+      { message_key: 'cost.anthropic', message_values: { version: '0.2.0' } }],
+    metric_origin_limitations: ['owner export origin and provider completeness are not independently authenticated', 'provider response origin and semantic evaluations are attributed to indexed receipts, not independently authenticated'],
+    metric_origin_limitation_messages: [{ message_key: 'metric-origin.owner-export', message_values: {} }, { message_key: 'metric-origin.panel', message_values: {} }] });
   const composed = { ...composeReport(verified), remaining: [] };
   return { composed, verified, page: renderHtmlReport(composed, { runbooks: [], level: 'beginner', target: PAGE }) };
 };
@@ -182,7 +190,13 @@ test('report.html section 1 and the follow-ups have no English sentence for a fi
   assert.doesNotMatch(fixes, SENTENCE);
   assert.doesNotMatch(later, /English|site_owner_edit|preflight_unreadable/);
   assert.doesNotMatch(later, SENTENCE);
-  assert.match(later, /사이트 담당자의 수정 권한/);
+  assert.match(later, /사이트 소유자의 수정 권한/);
+  assert.match(later, /이 고침은 내 컴퓨터에서만 확인했습니다: (?!알 수 없음)\S+/, 'the production row names its fix');
+  // The run conditions (cost notes, metric limits) are Korean too.
+  const conditions = withoutIds(sectionOf(page, 'conditions'));
+  assert.match(conditions, /에이전트 프로그램의 설정/);
+  assert.match(conditions, /검색 서비스가 돌려준 답의 출처/);
+  assert.doesNotMatch(conditions, SENTENCE);
   assert.equal(SENTENCE.test('Raw response blocks indexing for the target engine'), true, 'the detector sees an English sentence');
   assert.equal(SENTENCE.test('robots.txt가 Googlebot의 접근을 막고 있습니다. X-Robots-Tag 헤더, JSON-LD'), false, 'identifiers are not sentences');
 });
@@ -203,4 +217,57 @@ test('a finding with no catalog entry (a model\'s) keeps its own words', () => {
     message: '모델이 쓴 문장', source_ref: 'host_model', evidence_ref: 'e', remediation_ids: [], status: 'confirmed', finding_ids: ['m'], sources: [], remediation: null, resolution: null };
   const [fix] = composeReport(verifiedOf({ findings: [finding, { ...finding, finding_id: 'n', unit_key: 'index-policy|https://s.test/n', message_key: 'not.in.catalog', message: 'English words' }] })).fixes;
   assert.equal(fix.text_ko.message, '모델이 쓴 문장');
+});
+
+test('the majority value is never called the reference, and the missing fact list is said (I2)', () => {
+  const text = catalog['fact-consistency.differs'];
+  assert.doesNotMatch(text, /기준/);
+  assert.match(text, /사실 확인용 목록이 없어 페이지끼리만 비교한/);
+  assert.match(text, /어느 쪽이 맞는지 확인한 뒤/);
+});
+
+test('replay binds the key and values of a finding to the verdict that states its problem (I1)', () => {
+  const keyed = (key, values) => {
+    const packet = fixturePacket();
+    const observation = packet.baseline.input.observations.find(x => x.check_id === 'index-policy' && x.state === 'fail');
+    observation.reason = packet.findings[0].message;
+    observation.problem_messages = [{ message_key: 'index-policy.noindex', message_values: {} }];
+    for (const finding of packet.findings) Object.assign(finding, { message_key: key, message_values: values });
+    return packet;
+  };
+  assert.doesNotThrow(() => buildReport(keyed('index-policy.noindex', {})), 'the recorded key passes');
+  assert.throws(() => buildReport(keyed('fetch-response.http-error', { status: 503 })), /finding message key differs from its verdict/);
+  assert.throws(() => buildReport(keyed('index-policy.noindex', { status: 503 })), /finding message key differs from its verdict/);
+  const unkeyed = fixturePacket();
+  assert.doesNotThrow(() => buildReport(unkeyed), 'a finding with no key is still accepted');
+});
+
+test('a fix names its address, with the engine in parentheses and no internal prefix (M9)', () => {
+  assert.equal(pagesLabel({ unit_key: 'search-crawl-policy|naver|https://s.test/a' }), 'https://s.test/a (네이버)');
+  assert.equal(pagesLabel({ unit_key: 'search-crawl-policy|google|https://s.test/a' }), 'https://s.test/a (구글)');
+  assert.equal(pagesLabel({ unit_key: 'entity-identity|site' }), '사이트 전체');
+  assert.equal(pagesLabel({ unit_key: 'document-title|https://s.test/a|b' }), 'https://s.test/a|b');
+});
+
+test('codes in the actual-result, model-judgment and readiness cells read as Korean words; the data keeps the codes (R70)', () => {
+  const row = ['provider:x', 'm', 'w', 1, 'unknown', 'unknown', 'unknown → 0.5', 'not_comparable_or_missing_window; measured → zero_or_missing; '];
+  const judgment = { phase: 'baseline', family_id: 'document-title', unit_key: 'document-title|https://s.test/', state: 'fail', evidence_ref: 'e', evidence_span: [{ start: 0, end: 1 }], label: 'l' };
+  const verified = verifiedOf({ outcome_rows: [row], model_judgments: [judgment] });
+  const { tables } = renderReport(composeReport(verified), verified);
+  assert.deepEqual(tables.actual_outcomes[0], ['provider:x', 'm', 'w', 1, '알 수 없음', '알 수 없음', '알 수 없음 → 0.5', '비교할 수 없거나 기간이 빠짐; 측정됨 → 0이거나 빠짐; ']);
+  assert.equal(tables.model_judgments[0][2], '실패');
+  assert.match(tables.score[0][6], /^(막힘|확인 전|임시|측정됨|해당 없음) → /);
+  assert.equal(verified.outcome_rows[0][4], 'unknown');
+  assert.equal(verified.model_judgments[0].state, 'fail');
+});
+
+test('a follow-up row about a fix is told from that fix', () => {
+  const fix = { schema_version: '2.0.0', finding_id: 'r', check_id: 'index-policy', unit_key: 'index-policy|https://s.test/r', priority: 'P1', blocker: false,
+    message: 'English', message_key: 'index-policy.noindex', message_values: {}, source_ref: 'optbrew:collector', evidence_ref: 'e', remediation_ids: [], status: 'confirmed',
+    finding_ids: ['r'], sources: [], remediation: null, resolution: null };
+  const row = { finding_id: 'r', problem: 'English', reason: 'confirmed', required_input_or_authority: 'English', next_action: 'English', reobserve_when: 'English', message_key: 'follow-up.finding', message_values: {} };
+  const [composed] = composeReport(verifiedOf({ findings: [fix], follow_ups: [row] })).follow_ups;
+  assert.match(composed.text_ko.problem, /^이 페이지가 noindex로 색인을 막고 있습니다/);
+  assert.equal(composed.text_ko.reason, '확인됨');
+  assert.equal(composed.text_ko.next_action, catalog['follow-up.finding.next']);
 });

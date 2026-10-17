@@ -318,7 +318,7 @@ test('unknown billing and observed overrun remain visible alongside host policy'
     assert.deepEqual(json.costs.settlements[1].actual, [{ unit: 'tokens', amount: 1000200 }]);
     assert.match(markdown, /anthropic: 비용 상태가 '알 수 없음'입니다/);
     assert.match(markdown, /anthropic: 비용 상태가 '한도 초과'입니다/);
-    assert.match(markdown, /호스트의 정책/);
+    assert.match(markdown, /에이전트 프로그램의 설정/);
     assert.match(markdown, /글자만 처리합니다/);
     // The English sentences stay in the checked data.
     assert.match(json.cost_issues.join('\n'), /anthropic: unknown/);
@@ -344,7 +344,7 @@ test('native export is replayed, with ambiguous zero preserved as missing', () =
       source_ref: 'synthetic-export', run_id: 'synthetic-report' });
     const { json } = buildReport(run.packet);
     assert.equal(json.metrics[0].value_state, 'zero_or_missing');
-    assert.match(json.tables.actual_outcomes[0].at(-1), /zero_or_missing/);
+    assert.match(json.tables.actual_outcomes[0].at(-1), /0이거나 빠짐/);
     run.packet.metrics[0].filters.property = 'other.example';
     assert.throws(() => buildReport(run.packet), /metric differs/);
   } finally { rmSync(run.dir, { recursive: true, force: true }); }
@@ -371,7 +371,7 @@ test('two complete matched native windows report raw before, after and differenc
     }
     const row = buildReport(run.packet).json.tables.actual_outcomes[0];
     assert.deepEqual(row.slice(3, 6), [2, 5, 3]);
-    assert.match(row.at(-1), /comparable_windows/);
+    assert.match(row.at(-1), /비교할 수 있는 기간/);
     run.packet.metrics[1].filters.country = 'US';
     assert.throws(() => buildReport(run.packet), /metric differs/);
   } finally { rmSync(run.dir, { recursive: true, force: true }); }
@@ -393,6 +393,8 @@ test('collector observations bind to the owning audit index and raw content hash
   try {
     for (const obs of run.packet.baseline.input.observations) obs.source_ref = 'optbrew:collector';
     run.packet.baseline.input.observations.find(x => x.check_id === 'index-policy').reason = 'Raw response blocks indexing for the target engine';
+    // The Korean key is part of what replay compares.
+    run.packet.baseline.input.observations.find(x => x.check_id === 'index-policy').problem_messages = [{ message_key: 'index-policy.noindex', message_values: {} }];
     run.packet.baseline.input.observations.push(titleObservation('raw.html'));
     run.packet.evidence_index.find(x => x.ref === 'raw.html').source_ref = 'optbrew:collector';
     const hand = handAudit(run, { prefix: 'bind', collectionRef: 'collection.json', ref: 'raw.html' });
@@ -609,7 +611,7 @@ test('review P1-4: evaluated facts and citations require all four indexed source
   const healthy = completePanelRun();
   try {
     assert.equal(buildReport(healthy.packet).json.metrics[3].value, 1);
-    assert.match(buildReport(healthy.packet).markdown, /provider response origin/);
+    assert.match(buildReport(healthy.packet).markdown, /검색 서비스가 돌려준 답의 출처/);
   } finally { rmSync(healthy.dir, { recursive: true, force: true }); }
   for (const [missing, pattern] of [
     ['facts.json', /evidence\/source link|fact list/],
@@ -685,7 +687,7 @@ test('review P1-6: definition, cohort and future incomplete windows produce no o
         definition: variant === 'definition' ? 'B' : 'A',
         sample_selection: { kind: 'all', cohort: variant === 'cohort' ? 'B' : 'A' },
         last_complete_date: variant === 'lag' ? '2026-09-20' : '2026-10-13' });
-      assert.ok(buildReport(run.packet).json.tables.actual_outcomes.every(row => row[5] === 'unknown'), variant);
+      assert.ok(buildReport(run.packet).json.tables.actual_outcomes.every(row => row[5] === '알 수 없음'), variant);
     } finally { rmSync(run.dir, { recursive: true, force: true }); }
   }
 });
@@ -716,6 +718,8 @@ test('review P2-8: before and after collector snapshots use their own evidence r
   try {
     for (const obs of run.packet.baseline.input.observations) obs.source_ref = 'optbrew:collector';
     run.packet.baseline.input.observations.find(x => x.check_id === 'index-policy').reason = 'Raw response blocks indexing for the target engine';
+    // The Korean key is part of what replay compares.
+    run.packet.baseline.input.observations.find(x => x.check_id === 'index-policy').problem_messages = [{ message_key: 'index-policy.noindex', message_values: {} }];
     run.packet.baseline.input.observations.push(titleObservation('raw.html'));
     run.packet.evidence_index.find(x => x.ref === 'raw.html').source_ref = 'optbrew:collector';
     const hands = {};
@@ -787,10 +791,10 @@ test('final review M1: a single measured window keeps its raw value and state wi
     setNativeIdentity(run);
     addNative(run, 'only-export.json', { start: '2026-09-01', end: '2026-09-28', value: 7 });
     const row = buildReport(run.packet).json.tables.actual_outcomes[0];
-    assert.deepEqual(row.slice(3, 6), [7, 'unknown', 'unknown']);
-    assert.match(row.at(-1), /not_comparable_or_missing_window; measured/);
+    assert.deepEqual(row.slice(3, 6), [7, '알 수 없음', '알 수 없음']);
+    assert.match(row.at(-1), /비교할 수 없거나 기간이 빠짐; 측정됨/);
     const markdown = buildReport(run.packet).markdown;
-    assert.match(markdown, /\| 7 \| unknown \| unknown \|/);
+    assert.match(markdown, /\| 7 \| 알 수 없음 \| 알 수 없음 \|/);
   } finally { rmSync(run.dir, { recursive: true, force: true }); }
 });
 

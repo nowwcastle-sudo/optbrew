@@ -15,7 +15,7 @@ const JAVASCRIPT_NOTE = '네이버와 AI 크롤러는 자바스크립트를 실�
 
 /** Report text is Korean (R64); the ids and JSON keys around it stay English. */
 export const UNKNOWN = '알 수 없음';
-const LOCATION_NEEDED = '고칠 위치는 사이트 담당자가 정해야 합니다';
+const LOCATION_NEEDED = '고칠 위치는 사이트 소유자가 정해야 합니다';
 /** Said at the top of a report built from a synthetic example, in report.md and report.html alike. */
 export const SYNTHETIC_BANNER = '예시 보고서 — 실제 사이트나 외부 서비스의 결과가 아닙니다.';
 /** The section names, shared by report.md, report.html and the sentences that point to a section. */
@@ -73,7 +73,14 @@ const pagesOf = finding => finding.unit_keys ?? [finding.unit_key];
 const PAGES_SHOWN = 5;
 const SITE_UNIT = 'site';
 /** A unit key is `<check>|<address>`; the address may hold `|` itself, so it is everything after the first one. */
-const addressOf = unit => { const address = unit.slice(unit.indexOf('|') + 1); return address === SITE_UNIT ? '사이트 전체' : address; };
+const ENGINE_LABELS = { naver: '네이버', google: '구글' };
+/** A unit of a check judged per engine reads `<engine>|<address>`: the address first, the engine in parentheses. */
+const addressOf = unit => {
+  const address = unit.slice(unit.indexOf('|') + 1);
+  const engine = /^([A-Za-z][\w-]*)\|(.+)$/.exec(address);
+  if (engine) return `${engine[2]} (${ENGINE_LABELS[engine[1]] ?? engine[1]})`;
+  return address === SITE_UNIT ? '사이트 전체' : address;
+};
 /** How a fix row names its pages: the one address (a site-level check reads 「사이트 전체」), or the count and the first few addresses. */
 export const pagesLabel = finding => {
   const units = pagesOf(finding);
@@ -135,9 +142,18 @@ function followUpText(row, fixes) {
       next_action: remediation?.mechanism ?? koText(`${FINDING_ROW}.next`, {}, row.next_action),
       reobserve_when: remediation?.validation ?? koText(`${FINDING_ROW}.when`, {}, row.reobserve_when) };
   }
+  const named = row.finding_id ? fixes.find(item => item.finding_ids.includes(row.finding_id)) : null;
+  const values = { ...row.message_values, ...(named ? { fix: named.text_ko.message } : {}) };
   return Object.fromEntries(Object.entries(FOLLOW_UP_LINES).map(([field, line]) =>
-    [field, koText(row.message_key && `${row.message_key}.${line}`, row.message_values, row[field])]));
+    [field, koText(row.message_key && `${row.message_key}.${line}`, values, row[field])]));
 }
+
+const OUTCOME_CODES = /\b(?:comparable_windows|not_comparable_or_missing_window|measured|unknown|zero_or_missing|not_applicable)\b/g;
+/** The codes in a cell of the actual-outcome table (the checked data keeps them) read as Korean words. */
+const outcomeCell = cell => typeof cell === 'string' ? cell.replace(OUTCOME_CODES, code => koText(`outcome-word.${code}`, {}, code)) : cell;
+
+/** A word the catalog has for a code (a check state, a readiness status); the code itself when it has none. */
+const wordFor = (table, code) => koText(`${table}.${code}`, {}, code);
 
 /** The cost and feature limits, one Korean sentence each; a note without a catalog key keeps its English text. */
 const costIssuesKo = verified => verified.cost_issues.map((text, index) => {
@@ -225,15 +241,15 @@ function tableRows(composed, verified) {
     `${difference ?? UNKNOWN}${between ? ' (확인한 범위끼리의 비교)' : ''}`,
     `${percent(coverageOf(before.headline))} → ${after ? percent(coverageOf(after.headline)) : UNKNOWN}`,
     `${before.missing_bounds?.join('–') ?? UNKNOWN} → ${after?.missing_bounds?.join('–') ?? UNKNOWN}`,
-    `${before.readiness_status} → ${after?.readiness_status ?? UNKNOWN}`, percent(withoutField)]);
+    `${wordFor('readiness', before.readiness_status)} → ${after ? wordFor('readiness', after.readiness_status) : UNKNOWN}`, percent(withoutField)]);
   const remediation = composed.fixes.map(f => [f.priority_label, `${f.text_ko.message} ${pagesLabel(f)}`, f.sources.map(x => `${x.source_ref} ${x.evidence_ref}`).join('; '),
     f.remediation ? `${f.text_ko.remediation.mechanism} (${f.remediation.source_url}, 확인일 ${f.remediation.checked_date})` : UNKNOWN,
     f.where, f.remediation ? `${f.text_ko.remediation.cost}; ${f.text_ko.remediation.effort}` : UNKNOWN, f.text_ko.remediation?.validation ?? UNKNOWN,
     f.resolution ? `${f.status_label} (${f.resolution.source_ref}의 ${f.resolution.evaluator_type} 관찰로 해결 확인)` : f.status_label]);
   return { score, remediation,
-    actual_outcomes: verified.outcome_rows,
+    actual_outcomes: verified.outcome_rows.map(cells => cells.map(outcomeCell)),
     remaining_work: composed.follow_ups.map(({ text_ko: x }) => [x.problem, x.reason, x.required_input_or_authority, x.next_action, x.reobserve_when]),
-    model_judgments: composed.conditions.model_judgments.map(x => [x.phase, `${x.family_id} ${x.unit_key}`, x.state,
+    model_judgments: composed.conditions.model_judgments.map(x => [x.phase, `${x.family_id} ${x.unit_key}`, wordFor('state', x.state),
       `${x.evidence_ref} 바이트 ${x.evidence_span.map(span => `${span.start}–${span.end}`).join(', ')}`, x.label]) };
 }
 
@@ -253,7 +269,7 @@ function conditionLines(conditions, verified) {
     { label: '이후 결과 없는 핵심 검사', value: count(after?.core_unknown ?? null) },
     { label: '실제 결과', value: verified.metrics.length ? "아래 '실제 결과'의 측정·빈칸 상태 참고" : '연결 안 됨 / 알 수 없음' },
     { label: '비용·기능 제한', value: costIssuesKo(verified).join('; ') || '기록 없음' },
-    { label: '지표 출처 제한', value: verified.metric_origin_limitations.join('; ') || '측정된 제공자 입력 없음' },
+    { label: '지표 출처 제한', value: verified.metric_origin_limitations.map((text, index) => koText(verified.metric_origin_limitation_messages?.[index]?.message_key, {}, text)).join('; ') || '측정된 제공자 입력 없음' },
     { label: '실험실 Core Web Vitals (참고용, 점수에 넣지 않음)', value: lab ? `LCP ${lab.lcp ?? UNKNOWN} ms; CLS ${lab.cls ?? UNKNOWN}` : '측정하지 않음' },
     ...(conditions.start_redirect ? [{ label: '시작 주소', value: `${conditions.start_redirect.from} → ${conditions.start_redirect.to} (이 주소로 연결되므로 감사는 ${conditions.start_redirect.to}에서 실행했습니다)` }] : []),
   ];
@@ -269,7 +285,7 @@ export function renderReport(composed, verified) {
     `대상: ${html(context.target)}  \n환경: ${html(context.environment)}  \n목표: ${html(context.goals.join(', '))}  \n` +
     `비교: ${html(verified.comparison.status)} (${html(verified.comparison.reasons.join(', ') || '없음')})  \n` +
     `결론: ${html(composed.headline.text)}\n\n` +
-    `## ${SECTION_TITLES.fixes}\n\n${table(['우선순위', '문제 / 주소', '근거', '고르는 해결 방법', '고칠 위치 또는 사이트 담당자', '비용 / 노력', '확인 방법', '상태'], tables.remediation)}\n\n` +
+    `## ${SECTION_TITLES.fixes}\n\n${table(['우선순위', '문제 / 주소', '근거', '고르는 해결 방법', '고칠 위치 또는 사이트 소유자', '비용 / 노력', '확인 방법', '상태'], tables.remediation)}\n\n` +
     `## ${SECTION_TITLES.completeness} (확인한 범위 안의 통과율)\n\n요약:  \n${latest.map(phase => `- ${html(headlineLine(phase.headline))}  \n`).join('')}\n` +
     `${table(['영역', '이전', '이후', '차이', '확인 범위 이전 → 이후', '점수 범위', '상태', '방문자 실측(CWV)을 뺀 확인 범위(최신)'], tables.score)}\n\n` +
     `## ${SECTION_TITLES.blank}\n\n${table(['비어 있는 것과 채우면 알 수 있는 것', '런북'], blanks)}\n\n` +

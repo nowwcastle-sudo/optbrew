@@ -588,7 +588,7 @@
     },
     {
       "path": "references/messages.ko.json",
-      "sha256": "22c1b5112ab3971e0ccaae6f38950717bde8fa44ee983000a07d827322813668"
+      "sha256": "d2335aafb2da0e1cfb1291b886c3e444598d17340ba03d712234ff2d4bea6b5f"
     },
     {
       "path": "references/policies.md",
@@ -604,7 +604,7 @@
     },
     {
       "path": "references/report.md",
-      "sha256": "99cffd1a96f61942c0907af37924dbb13ce2d82e83903cc4724f6cdec3c785e4"
+      "sha256": "90c2b19bd12b9808213e54680bde8d5756e5cf3317ddcfa9d879aaee8c1c48d6"
     },
     {
       "path": "references/routing.md",
@@ -720,7 +720,7 @@
     },
     {
       "path": "scripts/core/checks/cwv-field.mjs",
-      "sha256": "5c19aaabb5ebde3d4619f3ef8da7c512b0500f253a41faff3a273b874c8d1874"
+      "sha256": "c5cb19d54f6406c28a339dde1de54cc624e1896a2be71af3b9f9f5fe10b920d5"
     },
     {
       "path": "scripts/core/checks/discovery.mjs",
@@ -876,7 +876,7 @@
     },
     {
       "path": "scripts/core/report-compose.mjs",
-      "sha256": "3c8167a3376e46edb4231dc56db02c138cdebf4a733b69b0f6990d74c5743a09"
+      "sha256": "6127973aa45b73150fef44c5a87513a3a024991b6cb8009b82ca4b6d19517f18"
     },
     {
       "path": "scripts/core/report-html.mjs",
@@ -884,7 +884,7 @@
     },
     {
       "path": "scripts/core/report.mjs",
-      "sha256": "211ae52c4028af6a6251c3c113c72a6444028a2b2ec262dcafe9c990ec26411e"
+      "sha256": "d21677bbf20b9d3b06abd05a866aaeb6ffef03930bc0c38b65d630b12e214b73"
     },
     {
       "path": "scripts/core/runbooks.mjs",
@@ -931,5 +931,5 @@
       "sha256": "dca0bbd03fbf591c4aca6a568be76615eb48d69f7df0c634886f652b54f3f46d"
     }
   ],
-  "bundle_hash": "3b10976c9ca4730cb79b869b7ad9fcccf2d27f93911e6530970a56d53dc7b26b"
+  "bundle_hash": "bc1c77edd07b1171e2054212ca5480085e113fa1ea644040eea3debe3ee14e92"
 }

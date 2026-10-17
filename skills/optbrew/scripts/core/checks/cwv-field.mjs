@@ -49,7 +49,7 @@ const fieldBlock = familyId => ({
   family_id: familyId,
   message_keys: [`${familyId}.slow`],
   derive({ context, artifacts, selected, cwv }) {
-    const { unit } = thresholds(familyId);
+    const { unit, good, poor } = thresholds(familyId);
     return [...new Set([...selected.keys()].map(url => new URL(url).origin))].map(origin => {
       const mine = cwv.filter(record => record.origin === origin);
       const source = mine.find(record => p75Of(record, familyId) !== null);
@@ -61,7 +61,7 @@ const fieldBlock = familyId => ({
       const { state, q, partial_basis } = cwvVerdict(familyId, value, measurement);
       const reason = `p75 ${value} ${unit} from ${source.source}`;
       return makeObservation({ ...observation, state, q, partial_basis, evidence_ref: source.evidence_ref, extra: { measurement },
-        ...(state === 'fail' ? { problems: [problem(reason, `${familyId}.slow`, { value, source: source.source })] } : { reason }) });
+        ...(state === 'fail' ? { problems: [problem(reason, `${familyId}.slow`, { value, source: source.source, good, poor })] } : { reason }) });
     });
   },
 });
