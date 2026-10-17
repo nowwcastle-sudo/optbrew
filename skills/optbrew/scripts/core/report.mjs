@@ -454,6 +454,8 @@ function storedRenders(audit, renderBudget, requireRef) {
     let record;
     try { record = JSON.parse(stored.text); } catch { fail('render record is not JSON'); }
     if (typeof record.url !== 'string' || !Array.isArray(record.requests)) fail('render record is malformed');
+    // The ref it was read from, as the audit's own reading gives it, so a verdict inherited from a rendered page cites the same record.
+    record.evidence_ref = entry.evidence_ref;
     if (record.dom_ref) {
       const rendered = requireRef(record.dom_ref);
       if (rendered.sha256 !== record.dom_sha256) fail('render DOM hash differs from its record');
@@ -514,6 +516,8 @@ function checkAuditPhase(input, phase, snapshot, requireRef) {
   }
   // Field CWV answers are collected evidence too; their hashes are checked where the verdicts are re-derived below.
   for (const entry of audit.cwv ?? []) rawRefs.add(entry.evidence_ref);
+  // So are the render records: a verdict inherited from a rendered page cites that page's record (the replay compares the exact ref).
+  for (const entry of audit.renders ?? []) rawRefs.add(entry.evidence_ref);
   // Final URL, redirect chain and header lines come from the hashed response records, not from collection.json alone.
   const artifacts = collection.artifacts.map(x => boundArtifact(x, audit, requireRef));
   checkLedger(input, audit, collection, artifacts, requireRef);

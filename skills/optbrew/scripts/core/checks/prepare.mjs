@@ -30,7 +30,7 @@ function readSitemaps(artifacts, declared, textOf) {
  * `pageRows` are the selected pages with a 200 raw HTML body, each with its module audit (`info`), its declared robots
  * artifact and its normalized title key. `titleCounts` maps a title key to the rows that carry it. `facts` and `comparison`
  * are the cross-page entity facts. `linkGraph` and `orphans` come from every collected HTML page, `sitemaps` from the
- * declared sitemaps. `alternates` maps a page url (as requested and as finally served) to `{ urls, alternates }`, the hreflang
+ * declared sitemaps; `crawlComplete` is false when the crawl was cut short and `htmlPages` counts the collected HTML pages. `alternates` maps a page url (as requested and as finally served) to `{ urls, alternates }`, the hreflang
  * links of every collected HTML page. `renderSample` holds the canonical urls of the pages the run renders: the protocol's fixed render pages, or for a run from before the render plan the first URL of each page type. `renders` are the stored render records, `renderTextOf(record)` the final DOM of one, and
  * `chrome` is `{ found, reason }` for the run's Chrome, or null when the run recorded none. `cwv` holds the stored
  * field-data answers, each `{ source, origin, status, body | error, evidence_ref }`, empty when the run collected none.
@@ -55,7 +55,7 @@ export function prepare({ context, artifacts, collection = {}, textOf, renders =
   }
   const titleCounts = new Map();
   for (const row of pageRows) if (row.titleKey !== null) titleCounts.set(row.titleKey, [...titleCounts.get(row.titleKey) ?? [], row]);
-  const facts = pageRows.map(row => ({ url: row.url, row, facts: pageFacts(row.html) }));
+  const facts = pageRows.map(row => ({ url: row.url, row, facts: pageFacts(row.html, [row.url, row.artifact.final_url]) }));
   const htmlRows = artifacts.filter(x => x.capability === 'raw_html' && x.status === 200)
     .map(artifact => ({ url: artifact.normalized_url, artifact, html: textOf(artifact) }));
   const graph = linkGraph(htmlRows, artifacts);
@@ -67,6 +67,6 @@ export function prepare({ context, artifacts, collection = {}, textOf, renders =
   const sitemaps = readSitemaps(artifacts, declared('sitemap'), textOf);
   const complete = !collection.limit_reached && !(collection.skipped ?? []).some(x => SKIP_REASONS.includes(x.reason));
   return { context, artifacts, textOf, planned, selected, pageRows, titleCounts, facts, comparison: compareFacts(facts), sitemaps,
-    linkGraph: graph, orphans: findOrphans({ pageRows, rows: htmlRows, graph, sitemaps, complete }), alternates,
+    linkGraph: graph, orphans: findOrphans({ pageRows, rows: htmlRows, graph, sitemaps, complete }), crawlComplete: complete, htmlPages: htmlRows.length, alternates,
     renderSample: new Set(renderPlan(protocol).map(page => canonicalUrl(page.normalized))), renders, renderTextOf, chrome, cwv };
 }

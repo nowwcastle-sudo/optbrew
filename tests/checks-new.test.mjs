@@ -219,8 +219,9 @@ test('the three new thresholds are pinned', () => {
  */
 async function replayable() {
   let origin = '';
+  // Both pages load the one stylesheet and script, so they are made by one template.
   const hreflang = () => [['en', '/'], ['ko', '/ko'], ['x-default', '/']]
-    .map(([lang, route]) => `<link rel="alternate" hreflang="${lang}" href="${origin}${route}">`).join('');
+    .map(([lang, route]) => `<link rel="alternate" hreflang="${lang}" href="${origin}${route}">`).join('') + '<link rel="stylesheet" href="/site.css"><script src="/site.js"></script>';
   const site = await startSite({
     '/': () => ({ body: page(hreflang(), `<div id="app"></div>${link('/ko', 'Korean site')}`, 'Brew') }),
     '/ko': () => ({ body: page(hreflang(), RICH + link('/', 'English site'), '브루') }),
@@ -239,12 +240,12 @@ async function storedRender(site, origin) {
   const recordFile = await store.write('render', `${JSON.stringify(rendered, null, 2)}\n`);
   await store.append('renders', { url: rendered.url, evidence_ref: recordFile.ref, sha256: recordFile.sha256 });
   await scenario.add(domFile.ref, 'render_dom');
-  await scenario.add(recordFile.ref, 'render');
+  await scenario.add(recordFile.ref, 'render', 'optbrew:collector');
   const chrome = { found: true, reason: null };
   const indexRef = scenario.evidence('evidence-index.json');
   await scenario.rewrite(indexRef, index => { index.chrome = chrome; });
   const derived = deriveObservations({ context: scenario.context, artifacts: scenario.audit.artifacts, collection: scenario.audit,
-    textOf: x => x.content_hash ? readFileSync(x.evidence_ref, 'utf8') : null, renders: [rendered], renderTextOf: () => dom, chrome });
+    textOf: x => x.content_hash ? readFileSync(x.evidence_ref, 'utf8') : null, renders: [{ ...rendered, evidence_ref: recordFile.ref }], renderTextOf: () => dom, chrome });
   const forged = () => scenario.forgeObservations(list => list.splice(0, list.length, ...list.filter(x => x.family_id !== 'render-content'),
     ...derived.filter(x => x.family_id === 'render-content')));
   return { site, scenario, derived, forged, indexRef, domFile, recordFile, origin };
@@ -259,16 +260,36 @@ test('report replay recomputes the three new families from stored evidence', { t
   try {
     assert.deepEqual(verdicts(run.derived, 'internal-navigation'), { '/': 'pass', '/ko': 'pass' });
     assert.deepEqual(verdicts(run.derived, 'locale-links'), { '/': 'pass', '/ko': 'pass' });
-    assert.deepEqual(verdicts(run.derived, 'render-content'), { '/': 'pass' }, 'only the rendered page has a render verdict');
+    assert.deepEqual(verdicts(run.derived, 'render-content'), { '/': 'pass', '/ko': 'pass' }, 'the rendered page, and the page of its type that inherits from it');
+    const inherited = run.derived.find(x => x.unit_key === `render-content|${run.origin}/ko`);
+    assert.equal(inherited.evidence_ref, run.recordFile.ref, 'an inherited verdict cites the sampled page\'s render record');
+    assert.equal(inherited.measurement.inherited_from.url, `${run.origin}/`);
     assert.throws(() => buildReport(run.scenario.packet), /collector verdict differs from raw evidence: render-content/,
       'the audit derived chrome_missing, the stored render says otherwise');
     await run.forged();
     assert.ok(buildReport(run.scenario.packet).json.baseline.scores.length > 0);
     await run.scenario.forgeObservations(list => {
-      const forgedRow = list.find(x => x.family_id === 'render-content');
-      forgedRow.state = 'fail'; forgedRow.q = 0;
+      const at = list.findIndex(x => x.family_id === 'render-content');
+      list[at] = { ...structuredClone(list[at]), state: 'fail', q: 0 };
     });
     assert.throws(() => buildReport(run.scenario.packet), /collector verdict differs from raw evidence/);
+    // The inherited verdict re-derives exactly, and one that drops its sampled page or its render record is refused.
+    await run.forged();
+    assert.ok(buildReport(run.scenario.packet).json.baseline.scores.length > 0, 'the inherited verdict replays');
+    const alter = change => list => {
+      const at = list.findIndex(x => x.unit_key === `render-content|${run.origin}/ko`);
+      list[at] = change(structuredClone(list[at]));
+    };
+    await run.scenario.forgeObservations(alter(row => ({ ...row, reason: 'Content shows after rendering' })));
+    assert.throws(() => buildReport(run.scenario.packet), /collector verdict differs from raw evidence: render-content\|.*\/ko/);
+    await run.forged();
+    await run.scenario.forgeObservations(alter(row => { row.measurement.inherited_from.url = `${run.origin}/ko`; return row; }));
+    assert.throws(() => buildReport(run.scenario.packet), /collector verdict differs from raw evidence: render-content\|.*\/ko/);
+    // Citing the page's own raw HTML instead of the sampled page's render record is refused too.
+    await run.forged();
+    const ownRaw = run.derived.find(x => x.family_id === 'internal-navigation' && x.unit_key.endsWith('/ko')).evidence_ref;
+    await run.scenario.forgeObservations(alter(row => ({ ...row, evidence_ref: ownRaw })));
+    assert.throws(() => buildReport(run.scenario.packet), /collector verdict differs from raw evidence: render-content\|.*\/ko/);
   } finally { await run.site.close(); }
 });
 

@@ -67,6 +67,7 @@ function titleObservation(ref) {
   return { schema_version: '2.0.0', observation_id: 'collector-title', check_id: 'document-title', family_id: 'document-title',
     unit_key: 'document-title|https://example.com/', state: 'unknown', q: null, partial_basis: null,
     reason: 'Raw HTML has a title; uniqueness and descriptiveness are not established', evaluator_type: 'code',
+    measurement: { title: 'Example', audited_pages: 1, site_name_only: true, generic_word_only: false },
     source_ref: 'optbrew:collector', evidence_ref: ref };
 }
 /** Record in the hashed run context that the phase was audited, as the audit flow does; the packet then needs its snapshot. */
@@ -89,6 +90,12 @@ function handAudit(run, { prefix, collectionRef, ref = null, homeError = 'fetch_
       artifacts.push(bound.artifact); responses.push(bound.response);
       entries.push({ url, requests: 1, outcome: 'response', skipped_reason: null, error: null });
       raw.push({ normalized_url: url, evidence_ref: ref, content_hash: run.packet.evidence_index.find(x => x.ref === ref).sha256 });
+      // The one collected page is neither listed nor linked, and one page cannot prove an orphan: discovery says why it is unknown.
+      if (run.packet.run_context.protocol.families.some(x => x.applicable && x.family_id === 'discovery'))
+        observations.push({ schema_version: '2.0.0', observation_id: 'discovery-0', check_id: 'discovery', family_id: 'discovery', unit_key: `discovery|${url}`,
+          state: 'unknown', q: null, partial_basis: null, reason: 'Not in a read sitemap and not linked from a collected page, but the evidence cannot show that nothing else leads to it',
+          evaluator_type: 'code', source_ref: 'optbrew:collector', evidence_ref: ref,
+          measurement: { crawl_complete: true, sitemap_index_unread: false, script_gap: false, collected_pages: 1 } });
       continue;
     }
     const error = index === 0 ? homeError : 'fetch_failed';
@@ -731,6 +738,8 @@ test('review P2-8: before and after collector snapshots use their own evidence r
     run.packet.baseline.scores = score(run.packet.baseline.input);
     const afterInput = structuredClone(run.packet.baseline.input);
     for (const obs of afterInput.observations) obs.evidence_ref = obs.evidence_ref === 'b-collection.json' ? 'a-collection.json' : 'after.html';
+    // The after page has its own title, which the measurement records.
+    afterInput.observations.find(x => x.check_id === 'document-title').measurement = { title: 'After', audited_pages: 1, site_name_only: false, generic_word_only: false };
     run.packet.after = { input: afterInput, scores: score(afterInput) };
     run.packet.comparison = compare(run.packet.baseline.input, afterInput);
     for (const [phase] of [['baseline'], ['after']]) {

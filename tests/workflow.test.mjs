@@ -159,7 +159,7 @@ test('real local HTTP baseline, authorized edit and same-condition rescan clear 
   assert.deepEqual(baseline.observations.filter(x => x.state === 'fail').map(x => x.family_id).sort(), ['document-title', 'index-policy']);
   assert.deepEqual(followup.observations.filter(x => x.state === 'pass').map(x => x.family_id).sort(), ['fetch-response', 'index-policy']);
   assert.equal(followup.observations.find(x => x.family_id === 'document-title').state, 'unknown',
-    'a present title proves existence only; uniqueness and descriptiveness stay unknown');
+    'a present title of the only audited page proves existence only; uniqueness and descriptiveness stay unknown');
   assert.equal(score(beforeInput).find(x => x.profile === 'SEO').readiness_status, 'blocked');
   assert.equal(score(afterInput).find(x => x.profile === 'SEO').blockers.length, 0);
   const delta = compare(beforeInput, afterInput);
