@@ -203,14 +203,16 @@ export async function collect(context, { transport, resolve, addressVetting } = 
     if (depth > depthLimit) { skip(normalized, 'depth_limit'); return; }
     queue.push({ url: normalized, depth, auxiliaryResource });
   };
-  initial.forEach(url => enqueue(url, 0));
+  if (auxiliary.some(resource => initial.includes(resource.normalized))) throw new Error('auxiliary resource duplicates selected URL');
+  // Declared resources (robots, sitemap) are evidence for every page, so they go first: a selected page's redirect hop
+  // takes a request the page budget did not count, and that overrun must cost a page, never the site-wide evidence.
   for (const resource of auxiliary) {
-    if (seen.has(resource.normalized)) throw new Error('auxiliary resource duplicates selected URL');
     const normalized = assertUrlInScope(resource.normalized, scope).href;
     if (normalized !== resource.normalized || assertUrlInScope(resource.original, scope).href !== normalized)
       throw new Error('auxiliary resource URL mismatch');
     enqueue(normalized, 0, true);
   }
+  initial.forEach(url => enqueue(url, 0));
   const artifacts = []; let cursor = 0; let requestCount = 0;
   async function worker() {
     while (cursor < queue.length) {

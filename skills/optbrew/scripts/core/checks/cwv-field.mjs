@@ -37,8 +37,14 @@ function p75Of(record, familyId) {
   return Math.abs(bound - thresholds(familyId).good * PSI_CLS_PERCENTILE_SCALE) < SCALE_TOLERANCE ? value / PSI_CLS_PERCENTILE_SCALE : null;
 }
 
-/** With no CWV answer to point at, an unknown points at a collected response of the origin: collector evidence, as every collector verdict needs. */
-const anchorOf = (artifacts, origin) => artifacts.find(artifact => artifact.normalized_url && new URL(artifact.normalized_url).origin === origin)?.evidence_ref;
+/**
+ * With no CWV answer to point at, an unknown points at a collected response of the origin: collector evidence, as every collector verdict needs.
+ * A page of the origin comes before its robots or sitemap, so the anchor does not depend on the order the collector fetched them in.
+ */
+function anchorOf(artifacts, origin) {
+  const ofOrigin = artifacts.filter(artifact => artifact.normalized_url && new URL(artifact.normalized_url).origin === origin);
+  return (ofOrigin.find(artifact => artifact.capability === 'raw_html') ?? ofOrigin[0])?.evidence_ref;
+}
 
 /**
  * One family's verdict at the 75th percentile of real users, one per origin, from the stored CWV answers (`prepared.cwv`)

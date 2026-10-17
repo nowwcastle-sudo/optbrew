@@ -720,7 +720,7 @@
     },
     {
       "path": "scripts/core/checks/cwv-field.mjs",
-      "sha256": "c5cb19d54f6406c28a339dde1de54cc624e1896a2be71af3b9f9f5fe10b920d5"
+      "sha256": "9fbe8ab45b3f66bfe44edf0a6c509513eebd725c64f8bd72b1e345cf41c9d7ea"
     },
     {
       "path": "scripts/core/checks/discovery.mjs",
@@ -788,7 +788,7 @@
     },
     {
       "path": "scripts/core/collector.mjs",
-      "sha256": "2c9b54ff9638b7cfdebf1e5cbb9be14af1635cb0feb20b000c2810f2b64b8779"
+      "sha256": "132fc07715b7c39300412dd63d8e8ea24a4675aff8cf2f7d73d4844e0056b60a"
     },
     {
       "path": "scripts/core/compare.mjs",
@@ -931,5 +931,5 @@
       "sha256": "dca0bbd03fbf591c4aca6a568be76615eb48d69f7df0c634886f652b54f3f46d"
     }
   ],
-  "bundle_hash": "1579a3d745aa6f9e2f86880e23076e081a652b9cdc75516066601b403cac203b"
+  "bundle_hash": "f66484e7acc9f3dc8eb56f30482950dc911a38559e5c2a40098162ab8b12c706"
 }

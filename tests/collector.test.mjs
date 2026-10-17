@@ -277,3 +277,28 @@ test('TLS transport preserves hostname verification and pins the vetted IP in bo
     assert.equal(checked, true);
   } finally { https.request = original; }
 });
+
+test('a selected page redirect cannot spend the declared sitemap request, so listed pages stay discoverable', async () => {
+  const { prepare } = await import('../skills/optbrew/scripts/core/checks/prepare.mjs');
+  const { discovery } = await import('../skills/optbrew/scripts/core/checks/discovery.mjs');
+  const base = 'https://example.test/owned/';
+  const pages = ['a/', 'B/', 'c/'].map(path => base + path);
+  const robots = `${base}robots.txt`;
+  const sitemap = `${base}sitemap.xml`;
+  const sitemapBody = `<urlset>${pages.map(url => `<loc>${url}</loc>`).join('')}</urlset>`;
+  const input = context(pages, { max_urls: pages.length + 2 });
+  input.protocol.auxiliary_resources = [{ kind: 'robots', original: robots, normalized: robots }, { kind: 'sitemap', original: sitemap, normalized: sitemap }];
+  // The upper-case page answers with a redirect, so one selected page takes two requests of the budget.
+  const transport = async ({ url }) => url.pathname === '/owned/B/' ? response('', 301, { location: '/owned/b/' })
+    : url.href === sitemap ? response(sitemapBody, 200, { 'content-type': 'application/xml' })
+    : url.href === robots ? response(`Sitemap: ${sitemap}`, 200, { 'content-type': 'text/plain' }) : response('<title>Page</title>');
+  const collection = await collect(input, { transport, resolve });
+  assert.ok(collection.artifacts.some(x => x.normalized_url === sitemap && x.status === 200), 'the declared sitemap is read');
+  const protocol = { ...input.protocol, families: [{ family_id: 'discovery', applicable: true }], engines: [] };
+  // The evidence store names each artifact file in a real run; here the url stands in for it.
+  const artifacts = collection.artifacts.map(x => ({ ...x, evidence_ref: x.normalized_url }));
+  const prepared = prepare({ context: { protocol }, artifacts, collection, textOf: x => x.body?.toString('utf8') ?? '' });
+  const verdicts = discovery.derive(prepared).map(x => [x.unit_key, x.state]);
+  assert.deepEqual(verdicts, prepared.pageRows.map(row => [`discovery|${row.url}`, 'pass']));
+  assert.ok(verdicts.length >= pages.length - 1);
+});
