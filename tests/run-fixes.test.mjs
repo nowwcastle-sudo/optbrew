@@ -374,8 +374,11 @@ test('WordPress and Yoast: /sitemap.xml redirects to an index; pages that only t
   const declared = context.protocol.auxiliary_resources.filter(x => x.kind === 'sitemap').map(x => x.normalized).sort();
   assert.deepEqual(declared, ['/page-sitemap.xml', '/post-sitemap.xml', '/sitemap.xml', '/sitemap_index.xml'].map(p => `${SITE}${p}`));
   const discovery = report.baseline.input.observations.filter(x => x.family_id === 'discovery');
-  assert.equal(discovery.length, 3, 'the three pages the child sitemaps list have a verdict (the home page is in no sitemap and has none)');
-  assert.ok(discovery.every(x => x.state === 'pass'), JSON.stringify(discovery.map(x => [x.unit_key, x.state, x.reason])));
+  const listed = discovery.filter(x => !x.unit_key.endsWith(`${SITE}/`));
+  assert.equal(listed.length, 3, 'the three pages the child sitemaps list have a verdict');
+  assert.ok(listed.every(x => x.state === 'pass'), JSON.stringify(discovery.map(x => [x.unit_key, x.state, x.reason])));
+  // The home page is in no sitemap and links prove no orphan: an explicit unknown (Task 21b lane B), never a fail.
+  assert.deepEqual(discovery.filter(x => x.unit_key.endsWith(`${SITE}/`)).map(x => x.state), ['unknown']);
   assert.ok(discovery.some(x => x.unit_key.endsWith('/menu') && x.reason === 'Listed in a declared sitemap'));
 });
 
