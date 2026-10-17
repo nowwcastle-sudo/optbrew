@@ -16,7 +16,8 @@ const found = findChrome();
 const skip = found ? false : 'no Chrome found on this machine (set OPTBREW_CHROME)';
 
 // Everything this run starts lives under `root`; the guard at the end finds any process whose command line names it.
-const root = await mkdtemp(path.join(os.tmpdir(), 'optbrew-t5-'));
+// A short prefix: the redirected Chrome temp folder must stay short enough for Chrome's Unix socket (see chromeEnv).
+const root = await mkdtemp(path.join(os.tmpdir(), 'ob5-'));
 const runDir = path.join(root, 'run');
 const hangulDir = path.join(root, '프로필 (한글) 폴더');
 await mkdir(runDir);
@@ -160,6 +161,12 @@ describe('chrome block', async () => {
   test('a failed launch removes its profile directory and leaves no process', { skip }, async () => {
     const missing = path.join(root, 'does-not-exist', 'chrome');
     await assert.rejects(launchChrome({ path: missing, tmpRoot: runDir }), /chrome could not be started/);
+    assert.deepEqual(await profiles(runDir), []);
+  });
+
+  test('a browser that dies at start says what it wrote to stderr, and leaves no profile folder', async () => {
+    // node stands in for Chrome: it rejects the Chrome flags with "bad option" and exits. The port variant waits for the exit event.
+    await assert.rejects(launchChrome({ path: process.execPath, tmpRoot: runDir, transports: ['port'] }), /chrome exited before it was ready: .*bad option/);
     assert.deepEqual(await profiles(runDir), []);
   });
 

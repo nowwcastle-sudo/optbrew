@@ -104,6 +104,14 @@ test('SKILL.md checks the key file with status only, states the 200 cap, and tel
 test('Chrome runs with a temp folder of its own, and a profile folder nobody uses is swept at the next start (M-7)', async () => {
   const env = chromeEnv({ Path: 'p', Temp: 'C:/Users/me/Temp', tmp: 'C:/Users/me/Tmp', TMPDIR: '/x', KEEP: '1' }, 'D:/run/tmp');
   assert.deepEqual(env, { Path: 'p', KEEP: '1', TEMP: 'D:/run/tmp', TMP: 'D:/run/tmp', TMPDIR: 'D:/run/tmp' }, 'one value each, whatever the letter case of the old ones');
+  // A Unix socket path holds at most 107 bytes; Chrome binds one under its temp folder, so a long profile path keeps the user's temp folder.
+  const host = { PATH: 'p', TMPDIR: '/tmp' };
+  const long = `/tmp/optbrew-t6-AbCdEf/profiles/optbrew-chrome-AbCdEf/tmp`;
+  const hangul = '/tmp/프로필 (한글) 폴더/optbrew-chrome-AbCdEf/tmp';
+  assert.deepEqual(chromeEnv(host, long, 'linux'), host);
+  assert.deepEqual(chromeEnv(host, hangul, 'darwin'), host);
+  assert.deepEqual(chromeEnv(host, '/tmp/optbrew-chrome-AbCdEf/tmp', 'linux'), { PATH: 'p', TEMP: '/tmp/optbrew-chrome-AbCdEf/tmp', TMP: '/tmp/optbrew-chrome-AbCdEf/tmp', TMPDIR: '/tmp/optbrew-chrome-AbCdEf/tmp' });
+  assert.equal(chromeEnv(host, long, 'win32').TEMP, long, 'Windows has no such limit');
   const tmpRoot = await tempDir('optbrew-sweep-');
   const make = async (name, ageMs, withTemp = true) => {
     const dir = path.join(tmpRoot, name);

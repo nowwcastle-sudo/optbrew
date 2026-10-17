@@ -167,12 +167,19 @@ async function attempt({ executable, proxy, hostRules, tmpRoot, transport: kind,
   if (proxy) args.push(`--proxy-server=${proxy.host.includes(':') ? `[${proxy.host}]` : proxy.host}:${proxy.port}`);
   if (hostRules) args.push(`--host-resolver-rules=${hostRules}`);
 
-  const child = spawn(executable, args, { env: chromeEnv(process.env, tempDir), stdio: kind === 'pipe' ? ['ignore', 'ignore', 'ignore', 'pipe', 'pipe'] : 'ignore',
+  const child = spawn(executable, args, { env: chromeEnv(process.env, tempDir), stdio: kind === 'pipe' ? ['ignore', 'ignore', 'pipe', 'pipe', 'pipe'] : ['ignore', 'ignore', 'pipe'],
     windowsHide: true, detached: process.platform !== 'win32' });
+  // The last words Chrome wrote to stderr, kept for the error of a Chrome that dies at start (a sandbox, socket or profile problem
+  // names itself there). Only the tail is kept and only a short, single-line piece is shown.
+  let stderrTail = '';
+  child.stderr.on('data', chunk => { stderrTail = (stderrTail + chunk).slice(-2000); });
   const gone = new Promise(resolve => child.once('exit', resolve));
   const failed = new Promise((_, reject) => {
     child.once('error', () => reject(new Error('chrome could not be started')));
-    gone.then(() => reject(new Error('chrome exited before it was ready')));
+    gone.then(() => {
+      const said = stderrTail.replace(/\s+/g, ' ').trim().slice(-300);
+      reject(new Error(`chrome exited before it was ready${said ? `: ${said}` : ''}`));
+    });
   });
   failed.catch(() => {});
 
@@ -182,6 +189,7 @@ async function attempt({ executable, proxy, hostRules, tmpRoot, transport: kind,
     transport?.close();
     if (!exited(child) && child.pid !== undefined) { await killTree(child.pid); await Promise.race([gone, sleep(closeGrace)]); }
     await killLeftovers(userDataDir, closeGrace);
+    child.stderr.destroy();
     await rm(userDataDir, { recursive: true, force: true, maxRetries: 20, retryDelay: 100 });
   };
 

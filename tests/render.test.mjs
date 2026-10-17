@@ -407,7 +407,9 @@ Promise.all([load('A'), load('B')]).then(results => { document.title = 'fonts:' 
     const record = JSON.parse((await store.read(stored.evidence_ref, stored.sha256)).toString('utf8'));
     const entries = index.render_ledger;
     assert.ok(entries.some(entry => entry.outcome === 'response') && entries.some(entry => entry.outcome === 'skipped') && entries.some(entry => entry.outcome === 'error'));
-    assert.deepEqual(entries.filter(entry => entry.url.endsWith('/beacon')).map(entry => entry.outcome).sort(), ['response', 'skipped']);
+    // The failure message carries the entries, so a run that sees an `error` here shows Chrome's own error text (CI run 39049765483, Windows, once).
+    const beacons = entries.filter(entry => entry.url.endsWith('/beacon'));
+    assert.deepEqual(beacons.map(entry => entry.outcome).sort(), ['response', 'skipped'], JSON.stringify(beacons));
     checkRenderLedger(entries, record, 100);
 
     const failsWith = (changed, pattern, limit = 100, changedRecord = record) => assert.throws(() => checkRenderLedger(changed, changedRecord, limit), pattern);

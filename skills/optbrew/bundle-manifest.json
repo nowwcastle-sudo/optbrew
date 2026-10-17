@@ -884,11 +884,11 @@
     },
     {
       "path": "scripts/core/chrome-temp.mjs",
-      "sha256": "9d14a34a3abf6cb4b8f97789e38f08e8592b88ea76c41a448623a56a12e0b0c1"
+      "sha256": "d047eeec9611cc8de297e6768b5ebe658d0f4c503ad9cff51c26c208ab8ed94f"
     },
     {
       "path": "scripts/core/chrome.mjs",
-      "sha256": "d5891127d85092959b7dc08db647e3d948e695e8e925f3183e68d15b3de0b7f8"
+      "sha256": "ec2a8b88c5d85977794c60330f57ec965d36e99342e7c49fa94a2f46b92c233c"
     },
     {
       "path": "scripts/core/collector.mjs",
@@ -1043,5 +1043,5 @@
       "sha256": "dca0bbd03fbf591c4aca6a568be76615eb48d69f7df0c634886f652b54f3f46d"
     }
   ],
-  "bundle_hash": "fc5ecb532d0fabcabb055a23d35356520af8db86d57db55a4f7b189594995cd2"
+  "bundle_hash": "d8cf9b99e99dff1b39839515033736db7db98f8bcad825cb9ee5c139c53d0fd1"
 }

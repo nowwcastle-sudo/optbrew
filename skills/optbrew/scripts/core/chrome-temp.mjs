@@ -30,8 +30,16 @@ const YOUNG_PROFILE_MS = 12 * 60 * 60_000;
  * The environment Chrome runs in: `tempDir`, a folder inside this run's profile folder, in place of the user's temporary folder.
  * What Chrome writes there (its `scoped_dir*` folders and component updates) is removed with the profile, even after a forced kill
  * skipped Chrome's own cleanup. Existing TEMP, TMP and TMPDIR entries are dropped in any letter case, so the child sees one value each.
+ *
+ * Off Windows, Chrome binds its single-instance socket at `<temp folder>/.org.chromium.Chromium.XXXXXX/SingletonSocket`, and a Unix
+ * socket path is limited to 107 bytes on Linux and 104 on macOS; Chrome aborts at start when it is longer (Chromium
+ * `process_singleton_posix.cc`: "Socket path too long"). A profile under a long folder (a macOS `/var/folders/...` temp folder, a
+ * folder with Hangul, which takes three bytes a character) would put `tempDir` past that, so then Chrome keeps the user's own temp
+ * folder, as it did before this redirect. `platform` is injectable for tests.
  */
-export function chromeEnv(env, tempDir) {
+const MAX_REDIRECTED_TEMP_BYTES = 48;
+export function chromeEnv(env, tempDir, platform = process.platform) {
+  if (platform !== 'win32' && Buffer.byteLength(tempDir) > MAX_REDIRECTED_TEMP_BYTES) return { ...env };
   const kept = Object.fromEntries(Object.entries(env).filter(([name]) => !TEMP_VARIABLES.test(name)));
   return { ...kept, TEMP: tempDir, TMP: tempDir, TMPDIR: tempDir };
 }
