@@ -34,6 +34,7 @@ const SHOWN_BASIS = 'shown';
 /** Why a verdict that rests on absence becomes unknown when the queue offered too little of the page. */
 const ABSENCE_UNCOVERED = 'queue covers too little of the page to declare absence';
 const CHROME_ONLY = 'the cited spans are all site chrome, not the page\'s own text';
+const NO_TEXT_REASON = 'page shows no text';
 const DATE_OUTSIDE = 'a date is visible outside the queued spans';
 const DATE_INSIDE = 'a date is visible in the queued spans';
 const OPERATOR_OUTSIDE = 'the operator is named outside the queued spans';
@@ -370,7 +371,7 @@ function absenceRefuted(family_id, bytes, spans, { chrome, names, host }) {
   const inSpans = line => spans.some(span => span.start <= line.start && line.end <= span.end);
   const lines = textLines(bytes);
   if (family_id === FRESHNESS_FAMILY) {
-    const hits = lines.filter(line => hasDate(line.text, BROAD_DATE_FORMS));
+    const hits = lines.filter(line => !chrome.has(line.text) && hasDate(line.text, BROAD_DATE_FORMS));
     return hits.length ? (hits.every(inSpans) ? DATE_INSIDE : DATE_OUTSIDE) : null;
   }
   if (family_id !== SOURCE_FAMILY) return null;
@@ -396,16 +397,20 @@ export function operatorNames({ confirmed = [], observations = [], url }) {
 
 /**
  * Whether a model verdict stands, from the page's bytes: null when it does, else `{ reason, code }` and the verdict becomes unknown.
- * A fail of an absence family must cite some of the page's own text (not only site chrome). A verdict that rests on absence (an
+ * A page that shows no text gets no verdict but unknown. A fail of an absence family, and a freshness pass, must cite some of the page's
+ * own text (not only site chrome); a date that only site chrome shows is not the page showing a date. A verdict that rests on absence (an
  * absence N/A, an absence fail, and a freshness fail labelled shown on a page that shows no date, which is an absence fail in
  * disguise) needs a queue that covered the page; an absence fail also needs a page that does not show what it says is missing.
  * `cited` are the spans the verdict cites, `offered` all spans of the queue unit. Merge and report replay both call this.
  */
 export function acceptance(verdict, bytes, cited, offered, { chrome, names, host }) {
   const { family_id, state } = verdict;
+  if (state !== 'unknown' && isEmptyPage(bytes)) return { reason: NO_TEXT_REASON, code: 'empty_page' };
   const failOfAbsenceFamily = state === 'fail' && absenceFamilies.has(family_id);
-  if (failOfAbsenceFamily && cited.length && cited.every(span => chrome.has(span.text))) return { reason: CHROME_ONLY, code: 'chrome' };
-  const disguised = failOfAbsenceFamily && verdict.basis === SHOWN_BASIS && family_id === FRESHNESS_FAMILY && !textLines(bytes).some(line => hasDate(line.text, BROAD_DATE_FORMS));
+  const freshnessPass = state === 'pass' && family_id === FRESHNESS_FAMILY;
+  if ((failOfAbsenceFamily || freshnessPass) && cited.length && cited.every(span => chrome.has(span.text))) return { reason: CHROME_ONLY, code: 'chrome' };
+  const disguised = failOfAbsenceFamily && verdict.basis === SHOWN_BASIS && family_id === FRESHNESS_FAMILY &&
+    !textLines(bytes).some(line => !chrome.has(line.text) && hasDate(line.text, BROAD_DATE_FORMS));
   if (!restsOnAbsence(verdict) && !disguised) return null;
   if (!coversPage(bytes, offered)) return { reason: ABSENCE_UNCOVERED, code: 'queue_coverage' };
   const shown = failOfAbsenceFamily ? absenceRefuted(family_id, bytes, offered, { chrome, names, host }) : null;
@@ -414,11 +419,9 @@ export function acceptance(verdict, bytes, cited, offered, { chrome, names, host
 
 /**
  * Whether the queue's `spans` cover enough of the page to show that something is absent from it: the spans make up at least
- * `judge_absence_min_coverage` of the page's visible text (bytes of text), or the page shows no text. Queue building, merge
- * and report replay all ask this one question.
+ * `judge_absence_min_coverage` of the page's visible text (bytes of text). A page with no text never gets here (acceptance refuses it first).
  */
 function coversPage(bytes, spans) {
-  if (isEmptyPage(bytes)) return true;
   const total = textLines(bytes).reduce((sum, line) => sum + Buffer.byteLength(line.text), 0);
   return total === 0 || spans.reduce((sum, span) => sum + Buffer.byteLength(span.text), 0) / total >= limits().judge_absence_min_coverage;
 }
@@ -575,7 +578,6 @@ export async function mergeJudgments({ observations, judgments, store, questions
       continue;
     }
     if (state === 'fail' && absenceFamilies.has(family_id)) extra.measurement = { ...extra.measurement, basis: judgment.basis };
-    if (state !== 'unknown' && isEmptyPage(evidence)) extra.measurement = { ...extra.measurement, empty_page: true };
     if (site && state !== 'unknown') extra.measurement = { ...extra.measurement, identity_basis: IDENTITY_BASIS[state] };
     if (state === 'not_applicable') extra.applicability_decision = { condition: judgment.condition, reason: judgment.reason, evidence_ref: item.evidence_ref };
     const partial = state === 'partial' ? partialBasis(judgment) : { basis: null, q: undefined };

@@ -1063,7 +1063,7 @@ test('lines most audited pages repeat are marked site chrome and never stand for
   } finally { await narrow.site.close(); }
 });
 
-test('an empty page is one whose body shows no text; it is marked in the queue and meets the coverage condition (R83, H)', async () => {
+test('an empty page is one whose body shows no text; it is marked in the queue and every model verdict on it is unknown, never not applicable (R83, R88)', async () => {
   const title = 't'.repeat(50);
   const empty = `<!doctype html><html><head><title>${title}</title></head><body> <main></main> &nbsp; </body></html>`;
   const { store, observations } = await fixtureStore(empty);
@@ -1071,8 +1071,11 @@ test('an empty page is one whose body shows no text; it is marked in the queue a
   assert.equal(queue.items.every(item => item.empty_page === true), true);
   assert.deepEqual(queue.empty_pages, [URL_A]);
   const item = queuedItem(queue, 'claim-support');
-  const made = (await mergeJudgments({ observations, store, judgments: [naFor('claim-support', 'no_material_claims', [item.spans[0].span_id])] })).find(x => x.unit_key === unit('claim-support'));
-  assert.deepEqual([made.state, made.measurement], ['not_applicable', { empty_page: true }]);
+  const span_ids = [item.spans[0].span_id];
+  const judgments = [naFor('claim-support', 'no_material_claims', span_ids), failFor('freshness-truth', { basis: 'absence', span_ids }), failFor('source-transparency', { basis: 'shown', span_ids }),
+    { family_id: 'original-value', unit_key: unit('original-value'), state: 'pass', reason: '자기 자료가 있다', span_ids }];
+  for (const made of (await mergeJudgments({ observations, store, judgments })).filter(x => judgments.some(j => j.unit_key === x.unit_key)))
+    assert.deepEqual([made.state, made.reason, made.measurement], ['unknown', 'page shows no text', { not_accepted: 'empty_page' }], made.unit_key);
   const bodiless = await fixtureStore('<html><body></body></html>');
   const none = await buildJudgeQueue({ observations: bodiless.observations, store: bodiless.store });
   assert.deepEqual([none.items.length, none.empty_pages], [0, [URL_A]], 'a page with no span at all is still listed as empty');
@@ -1161,7 +1164,7 @@ test('the report names the audited pages that show no text, also a page the queu
 test('judging.md and SKILL.md state the rules the judging and the last message depend on (R82-R84, rerun 3)', () => {
   const read = name => readFileSync(new URL(`../skills/optbrew/${name}`, import.meta.url), 'utf8');
   const judging = read('references/judging.md');
-  for (const part of ['basis: "shown"', 'basis: "absence"', 'site_chrome', 'hx-vars', 'hx-on', '2026-10-31부터 적용', '경계 한 문장: 제품의 기능을 설명하는 참조 쪽', 'empty_page', '인용한 조각이 모두 `site_chrome`이면', '쪽에 날짜가 하나도 없으면 코드는'])
+  for (const part of ['basis: "shown"', 'basis: "absence"', 'site_chrome', 'hx-vars', 'hx-on', '2026-10-31부터 적용', '경계 한 문장: 제품의 기능을 설명하는 참조 쪽', 'empty_page', '인용한 조각이 모두 `site_chrome`이면', '쪽에 날짜가 하나도 없으면 코드는', 'page shows no text', '쪽에 날짜가 보이는 것이 아니다'])
     assert.ok(judging.includes(part), `judging.md names ${part}`);
   const skill = read('SKILL.md');
   for (const part of ['영어 문장을 쓰지 않는다', '진행 문장의 언어', '보고서 파일(`md`, `json`, `html`)에 든 내용만 요약한다', '`sitemap_declared`'])
@@ -1175,10 +1178,10 @@ test('an empty-body home page with a model identity verdict still builds the rep
     const item = run.queue.items.find(x => x.unit_key === ENTITY_UNIT);
     assert.equal(item?.empty_page, true, 'the home page is empty and the queue offers its identity');
     const made = (await run.merge([{ family_id: 'entity-identity', unit_key: ENTITY_UNIT, state: 'fail', reason: '이름이 보이지 않는다', span_ids: [item.spans[0].span_id] }])).find(x => x.unit_key === ENTITY_UNIT);
-    assert.deepEqual(made.measurement, { identity_basis: 'no_matching_name', empty_page: true });
+    assert.deepEqual([made.state, made.reason, made.measurement], ['unknown', 'page shows no text', { not_accepted: 'empty_page' }], 'the empty home gets no identity verdict from the model');
     forge(run, list => list.splice(0, list.length, ...list.filter(x => x.unit_key !== ENTITY_UNIT), made));
     const report = buildReport(run.scenario.packet);
-    assert.equal(report.json.model_judgments.find(x => x.unit_key === ENTITY_UNIT).empty_page, true);
+    assert.ok(report.json.composed.conditions.lines.some(x => x.label === '쪽에 없다는 판정 중 받아들이지 않은 것' && x.value === '쪽에 글이 없음 1건'));
     assert.deepEqual(report.json.empty_pages, [`${run.site.origin}/`]);
   } finally { await run.site.close(); }
 });
@@ -1235,4 +1238,53 @@ test('a fail must cite some of the page\'s own text, not only site chrome (N4, N
     forge(run, list => list.push(forged));
     assert.throws(() => buildReport(run.scenario.packet), /verdict is not accepted: the cited spans are all site chrome/, 'replay derives the chrome set from the pages');
   } finally { await run.site.close(); }
+});
+
+test('a date only site chrome shows is not the page showing a date (R87)', { timeout: 120000 }, async () => {
+  const routes = ['/', '/b', '/c', '/d', '/e'];
+  const footer = '<footer><p>최종 수정 2026-10-17 · 모든 쪽 바닥글에 같은 안내</p></footer>';
+  const own = route => `<p>Page ${route} ${'a'.repeat(40)} says version 4.0 has been released</p>${route === '/' ? '<p>Released on 2026-08-28 by the team</p>' : ''}`;
+  const run = await modelRun('judge-chrome-date', routes, { enable: ['freshness-truth'], innerOf: route => own(route) + footer });
+  try {
+    const judge = async (route, state, basis) => {
+      const unit_key = unitKey('freshness-truth', `${run.site.origin}${route}`);
+      const spans = run.queue.items.find(x => x.unit_key === unit_key).spans;
+      const cited = spans.find(span => !span.site_chrome && span.text.startsWith('Page'));
+      assert.ok(spans.some(span => span.site_chrome && span.text.includes('2026-10-17')), 'the footer date is marked as chrome');
+      return (await run.merge([{ family_id: 'freshness-truth', unit_key, state, ...(basis ? { basis } : {}), reason: 'x', span_ids: [cited.span_id] }])).find(x => x.unit_key === unit_key);
+    };
+    const claim = await judge('/b', 'fail', 'absence');
+    assert.deepEqual([claim.state, claim.measurement], ['fail', { basis: 'absence' }], 'a time-sensitive claim and a date only in the footer: the absence fail stands');
+    const dated = await judge('/', 'fail', 'absence');
+    assert.deepEqual([dated.state, dated.reason], ['unknown', 'a date is visible in the queued spans'], 'the same page with a date in its own text is not a fail');
+    const unit_key = unitKey('freshness-truth', `${run.site.origin}/b`);
+    const chrome = run.queue.items.find(x => x.unit_key === unit_key).spans.find(span => span.site_chrome);
+    const pass = (await run.merge([{ family_id: 'freshness-truth', unit_key, state: 'pass', reason: 'x', span_ids: [chrome.span_id] }])).find(x => x.unit_key === unit_key);
+    assert.deepEqual([pass.state, pass.measurement], ['unknown', { not_accepted: 'chrome' }], 'a footer date does not satisfy freshness either');
+    forge(run, list => list.push(claim));
+    buildReport(run.scenario.packet);
+  } finally { await run.site.close(); }
+});
+
+test('a fail labelled shown must cite the page\'s own text; on an empty page replay refuses every verdict that is not unknown (R88)', { timeout: 120000 }, async () => {
+  const routes = ['/', '/b', '/c', '/d', '/e'];
+  const footer = '<footer><p>© 2026 Acme Foundation, operated by Acme, all rights reserved here</p></footer>';
+  const run = await modelRun('judge-shown-chrome', routes, { enable: ['source-transparency'], innerOf: route => `<p>Page ${route} ${'a'.repeat(40)} has its own long sentence</p>${footer}` });
+  try {
+    const unit_key = unitKey('source-transparency', `${run.site.origin}/`);
+    const spans = run.queue.items.find(x => x.unit_key === unit_key).spans;
+    const judge = span => run.merge([{ family_id: 'source-transparency', unit_key, state: 'fail', basis: 'shown', reason: 'x', span_ids: [span.span_id] }]).then(list => list.find(x => x.unit_key === unit_key));
+    const refused = await judge(spans.find(span => span.site_chrome));
+    assert.deepEqual([refused.state, refused.measurement], ['unknown', { not_accepted: 'chrome' }]);
+    assert.equal((await judge(spans.find(span => !span.site_chrome))).state, 'fail', 'the page\'s own text is enough');
+  } finally { await run.site.close(); }
+  const empty = await modelRun('judge-empty-replay', ['/'], { innerOf: () => '', titleOf: () => 'T'.repeat(60) });
+  try {
+    const unit_key = empty.units[0];
+    const span = empty.queue.items.find(x => x.unit_key === unit_key).spans[0];
+    const unknown = (await empty.merge([{ family_id: 'claim-support', unit_key, state: 'pass', reason: 'x', span_ids: [span.span_id] }])).find(x => x.unit_key === unit_key);
+    assert.equal(unknown.state, 'unknown');
+    forge(empty, list => list.push({ ...unknown, state: 'pass', q: 1, reason: 'x', evidence_span: [{ evidence_sha256: span.evidence_sha256, start: span.start, end: span.end }] }));
+    assert.throws(() => buildReport(empty.scenario.packet), /verdict is not accepted: page shows no text/);
+  } finally { await empty.site.close(); }
 });

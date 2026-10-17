@@ -692,7 +692,6 @@ function modelJudgmentRows(phase, input, snapshot, requireRef, confirmedNames = 
       if (offered.text !== candidate.text) fail(obs, `the queued text of span ${span.start}-${span.end} differs from the text of the page`);
     }
     return { phase, family_id: obs.family_id, unit_key: obs.unit_key, state: obs.state, evidence_ref: obs.evidence_ref, evidence_span: obs.evidence_span, label: MODEL_JUDGMENT_LABEL,
-      ...(obs.measurement?.empty_page ? { empty_page: true } : {}),
       ...(obs.measurement?.basis ? { basis: obs.measurement.basis } : {}),
       ...(obs.measurement?.identity_basis ? { identity_basis: obs.measurement.identity_basis } : {}) };
   });

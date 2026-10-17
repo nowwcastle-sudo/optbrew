@@ -14,7 +14,7 @@
     },
     {
       "path": "references/scoring.md",
-      "sha256": "45ab7bb38e680407a76dfa0ec11a6d1ed8fc39889a1656919471e3812a05e6ce"
+      "sha256": "0eb6e9001e43291043bc6bc6fa11c1314a8e8c91e153461569c40ae86e97a42a"
     },
     {
       "path": "references/measurement.md",
@@ -45,7 +45,7 @@
       "sha256": "703d5c16878c526114afb540e4a6d54bd74831f35a824c03a839e2480097d279"
     }
   ],
-  "evaluation_hash": "a6760984c2dea0946a272c8fcae00cd370cbdf12ca35c814d219948ec02f7b2c",
+  "evaluation_hash": "aa802eff06ba9506340f47a19c84e792c0ccd4317f0bd6485fc69ee868acd105",
   "protocol_sources": [
     {
       "path": "references/schemas/contract.schema.json",
@@ -576,7 +576,7 @@
     },
     {
       "path": "references/judging.md",
-      "sha256": "ee8701d0122ea788598cb8c762b1184bd62a01f07cdcf333ddb6fba9487fb5db"
+      "sha256": "6bc1115e0a8440bc91055ed6e15fd52457525191909601f7dc662b4a8718dbdb"
     },
     {
       "path": "references/limits.json",
@@ -672,7 +672,7 @@
     },
     {
       "path": "references/scoring.md",
-      "sha256": "45ab7bb38e680407a76dfa0ec11a6d1ed8fc39889a1656919471e3812a05e6ce"
+      "sha256": "0eb6e9001e43291043bc6bc6fa11c1314a8e8c91e153461569c40ae86e97a42a"
     },
     {
       "path": "references/source-analysis.md",
@@ -836,7 +836,7 @@
     },
     {
       "path": "scripts/core/judgments.mjs",
-      "sha256": "bc06bc48204a7bb3c52f9c24675cd6df537da05083bb66b398d2fb17302760f0"
+      "sha256": "52c93944d7ad467e57a0447f46b660da44a7fcc5b5fcd62d582111065489c519"
     },
     {
       "path": "scripts/core/keys.mjs",
@@ -876,7 +876,7 @@
     },
     {
       "path": "scripts/core/report-compose.mjs",
-      "sha256": "6eac9219f02f95c7399439baa8868812445f1f614f7bf0e699111f36b944f8b0"
+      "sha256": "fac1efbd1b3d0317a65b70d17ffd7ac71fd882a9acd1f8f27e8ea7191877d2a2"
     },
     {
       "path": "scripts/core/report-html.mjs",
@@ -884,7 +884,7 @@
     },
     {
       "path": "scripts/core/report.mjs",
-      "sha256": "0f21b65b241cc85f77aa7703f3058340fce0d9d84f88f38e644b8bfe68f67f87"
+      "sha256": "6bb0437ca1e7d739159108de4a1613e30028893958f7d60374d27fa3bdb6329a"
     },
     {
       "path": "scripts/core/runbooks.mjs",
@@ -931,5 +931,5 @@
       "sha256": "dca0bbd03fbf591c4aca6a568be76615eb48d69f7df0c634886f652b54f3f46d"
     }
   ],
-  "bundle_hash": "cc8926445ef0c3afd667f17cd953c753ba26e2d102acf06b7dc3a946da976ae5"
+  "bundle_hash": "6d97b99875799119d7f3f1e3888c00bfeafaf27c6d49887a3e344f0b5c38f89d"
 }

@@ -63,7 +63,7 @@ SKILL.md 8단계의 절차다. 코드가 판정하지 못하는 내용 항목을
 - `span_ids`: 적용되지 않는다고 판단한 근거가 된 조각. 쪽에서 실제로 읽은 조각을 고른다(예: 연락처뿐인 쪽이면 그 안내 문구 조각). 하나 이상이다.
 - `reason`: 왜 적용되지 않는지 한 문장.
 
-쪽에 `X`가 없다는 판정은 모델이 쓰고, 받아들일지는 코드가 정한다. 이런 판정은 `no_material_claims`와 `no_date_or_currentness`로 낸 `not_applicable`, 그리고 `basis: "absence"`를 붙여 낸 `fail`이다. 모델은 조각이 쪽을 얼마나 덮는지 볼 수 없으므로 덮었는지 따지지 않고 판정을 쓴다. 코드는 조각이 쪽 보이는 글의 `judge_absence_min_coverage` 0.5(절반) 이상을 덮는지 본다. 덮지 못하면 그 판정을 `unknown`으로 바꾸고 이유를 「queue covers too little of the page to declare absence」로 적는다. `fail`은 하나가 더 있다. 조각 밖에서라도 쪽에 날짜가 보이거나(`freshness-truth`) 쪽 자신의 글이 운영 주체를 밝히면(`source-transparency`) 코드가 그 `fail`을 `unknown`으로 바꾼다. 쪽에 글이 없으면(`empty_page`) 덮는 조건은 채운 것으로 본다. 보고서는 받아들이지 않은 판정의 수를 알린다.
+쪽에 `X`가 없다는 판정은 모델이 쓰고, 받아들일지는 코드가 정한다. 이런 판정은 `no_material_claims`와 `no_date_or_currentness`로 낸 `not_applicable`, 그리고 `basis: "absence"`를 붙여 낸 `fail`이다. 모델은 조각이 쪽을 얼마나 덮는지 볼 수 없으므로 덮었는지 따지지 않고 판정을 쓴다. 코드는 조각이 쪽 보이는 글의 `judge_absence_min_coverage` 0.5(절반) 이상을 덮는지 본다. 덮지 못하면 그 판정을 `unknown`으로 바꾸고 이유를 「queue covers too little of the page to declare absence」로 적는다. `fail`은 하나가 더 있다. 조각 밖에서라도 쪽에 날짜가 보이거나(`freshness-truth`) 쪽 자신의 글이 운영 주체를 밝히면(`source-transparency`) 코드가 그 `fail`을 `unknown`으로 바꾼다. 쪽에 글이 없으면(`empty_page`) 어떤 항목의 판정이든 코드가 `unknown`으로 바꾸고 이유를 「page shows no text」로 적는다. 글이 없는 쪽에는 `fail`도 `not_applicable`도 쓰지 않는다. 보고서는 받아들이지 않은 판정의 수를 알린다.
 
 `not_applicable`은 그 단위를 점수의 분모에서 뺀다. 그래서 조각에서 찾지 못했다는 이유만으로 쓰지 않는다. 쪽의 성격이 항목의 전제와 맞지 않는다는 것을 조각으로 보일 수 있을 때만 쓴다. 판단할 근거가 모자라면 `unknown`이다. 보고서는 모델이 적용 대상 아님으로 판정한 단위의 수를 항목별로 따로 보인다.
 
@@ -112,7 +112,8 @@ SKILL.md 8단계의 절차다. 코드가 판정하지 못하는 내용 항목을
 - `fail`은 두 가지다. 모든 `fail`에 `basis`를 쓴다.
   - 조각이 직접 보여 주는 것: 목적상 필요한 것(예: 건강 정보에 출처가 없음)이 없다는 것이 조각에 보인다. `basis: "shown"`.
   - 쪽에 없는 것: 쪽 자신의 글에 운영 주체·저자·기관이 보이지 않는다. `basis: "absence"`. 예: 소식을 전하는 홈 쪽의 보이는 글 어디에도 누가 운영하는지 적혀 있지 않다.
-  - 어느 항목이든 `fail`은 쪽 자신의 조각을 하나 이상 인용해야 한다. 인용한 조각이 모두 `site_chrome`이면 코드가 `unknown`으로 바꾼다.
+  - 어느 항목이든 `fail`은 쪽 자신의 조각을 하나 이상 인용해야 한다. `basis: "shown"`도 같다. 인용한 조각이 모두 `site_chrome`이면 코드가 `unknown`으로 바꾼다.
+  - `site_chrome` 조각에만 있는 날짜(예: 모든 쪽 바닥글의 「© 2026」)는 쪽에 날짜가 보이는 것이 아니다. 그 쪽의 부재 `fail`을 막지 않고, `pass`의 근거도 되지 않는다. 인용한 조각이 모두 `site_chrome`인 `freshness-truth`의 `pass`는 `unknown`이 된다. 쪽 자신의 글에 날짜가 있으면 부재 `fail`은 `unknown`이 된다.
   - `site_chrome` 조각에 적힌 운영 주체나 © 줄은 이 쪽이 운영 주체를 밝혔다는 근거가 아니다. `pass`의 근거로도, 부재 `fail`을 막는 근거로도 쓰지 않는다. 쪽 자신의 글만 본다.
 - `not_applicable`: 쪽의 목적상 출처나 책임자 표시가 필요하지 않다는 것이 조각에 보인다(제품 화면 설명, 단순 탐색 쪽 등).
 - 경계 한 문장: 제품의 기능을 설명하는 참조 쪽(문법, 속성, 설정)은 `not_applicable`이고, 소식·의견·자료·남에 대한 주장을 내는 쪽은 운영 주체나 저자가 있어야 하므로 그것이 없으면 `fail`이다. 예: 속성 `hx-get`의 문법만 설명하는 쪽은 `not_applicable`이고, 「4.0이 출시되었다」고 알리는 홈 쪽에 운영 주체가 없으면 `fail`이다.
