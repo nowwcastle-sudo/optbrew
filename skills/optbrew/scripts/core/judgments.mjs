@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs';
 import { blocks } from './checks/index.mjs';
 import { makeObservation, problem, unitKey } from './checks/observation.mjs';
 import { limits } from './config.mjs';
+import { decodeEntities } from './html.mjs';
 import { messageOf } from './messages.mjs';
 import { sensitive } from './secrets.mjs';
 
@@ -40,16 +41,30 @@ const SHOWN_BASIS = 'shown';
 const modelFixKey = ({ family_id, basis }) => `model-fix.${family_id}${absenceFamilies.has(family_id) && basis ? `.${basis}` : ''}`;
 const QUOTE_SPANS = 2;
 const QUOTE_CHARS = 60;
-/** The cited text as the report quotes it: the page's own lines first (site chrome only when nothing else is cited), at most two, each cut to 60 characters. */
+/**
+ * The cited text as the report quotes it: the page's own lines first (site chrome only when nothing else is cited), in page order, at most
+ * two, each with its character references decoded and cut to 60 characters.
+ */
 const quoteOf = (spans, chrome) => {
   const own = spans.filter(span => !chrome.has(span.text));
-  return (own.length ? own : spans).slice(0, QUOTE_SPANS).map(span => {
-    const text = span.text.replace(/\s+/g, ' ').trim();
+  return [...(own.length ? own : spans)].sort((a, b) => a.start - b.start).slice(0, QUOTE_SPANS).map(span => {
+    const text = decodeEntities(span.text).replace(/\s+/g, ' ').trim();
     return text.length > QUOTE_CHARS ? `${[...text].slice(0, QUOTE_CHARS).join('')}…` : text;
   }).join(' / ');
 };
-/** The `problem_messages` a failed model verdict records: one entry, the key of its family and basis with the text it cites. */
-export const modelFailMessages = (verdict, spans, chrome) => [messageOf(modelFixKey(verdict), { quote: quoteOf(spans, chrome) })];
+/**
+ * The `problem_messages` a failed model verdict records: one entry, the key of its family and basis with the text it cites, and for an
+ * answer-clarity fail the text of the question it fails (`question`).
+ */
+export const modelFailMessages = (verdict, spans, chrome, question = null) =>
+  [messageOf(modelFixKey(verdict), { quote: quoteOf(spans, chrome), ...(question ? { question } : {}) })];
+/**
+ * A freshness fail labelled shown on a page whose own text shows no date is an absence fail in disguise (acceptance treats it as one).
+ */
+const disguisedFreshness = (verdict, bytes, chrome) => verdict.state === 'fail' && verdict.basis === SHOWN_BASIS && verdict.family_id === FRESHNESS_FAMILY &&
+  !textLines(bytes).some(line => !chrome.has(line.text) && hasDate(line.text, BROAD_DATE_FORMS));
+/** The basis the owner's sentence rests on: the verdict's own, except that a disguised absence fail is told as the absence it is. */
+export const sentenceBasis = (verdict, bytes, chrome) => disguisedFreshness(verdict, bytes, chrome) ? ABSENCE_BASIS : verdict.basis;
 /** Why a verdict that rests on absence becomes unknown when the queue offered too little of the page. */
 const ABSENCE_UNCOVERED = 'queue covers too little of the page to declare absence';
 const CHROME_ONLY = 'the cited spans are all site chrome, not the page\'s own text';
@@ -435,8 +450,7 @@ export function acceptance(verdict, bytes, cited, offered, { chrome, names, host
   const failOfAbsenceFamily = state === 'fail' && absenceFamilies.has(family_id);
   const freshnessPass = state === 'pass' && family_id === FRESHNESS_FAMILY;
   if ((failOfAbsenceFamily || freshnessPass) && cited.length && cited.every(span => chrome.has(span.text))) return { reason: CHROME_ONLY, code: 'chrome' };
-  const disguised = failOfAbsenceFamily && verdict.basis === SHOWN_BASIS && family_id === FRESHNESS_FAMILY &&
-    !textLines(bytes).some(line => !chrome.has(line.text) && hasDate(line.text, BROAD_DATE_FORMS));
+  const disguised = failOfAbsenceFamily && disguisedFreshness(verdict, bytes, chrome);
   if (!restsOnAbsence(verdict) && !disguised) return null;
   if (!coversPage(bytes, offered)) return { reason: ABSENCE_UNCOVERED, code: 'queue_coverage' };
   const shown = failOfAbsenceFamily ? absenceRefuted(family_id, bytes, offered, { chrome, names, host }) : null;
@@ -586,10 +600,8 @@ export async function mergeJudgments({ observations, judgments, store, questions
       // A question named means the page is meant to answer it: the verdict is pass, partial or fail. Not applicable is for a page no question is about.
       if (family_id === ANSWER_FAMILY && judgment.question_id !== undefined) throw new Error(`a not_applicable answer-clarity judgment for ${unit_key} names no question`);
     }
-    if (family_id === ANSWER_FAMILY && state !== 'not_applicable' && judgment.also_question_ids !== undefined && !['pass', 'partial'].includes(state))
+    if (family_id === ANSWER_FAMILY && judgment.also_question_ids !== undefined && !['pass', 'partial'].includes(state))
       throw new Error(`an answer-clarity ${state} judgment for ${unit_key} names no also_question_ids`);
-    if (family_id === ANSWER_FAMILY && state === 'not_applicable' && judgment.also_question_ids !== undefined)
-      throw new Error(`a not_applicable answer-clarity judgment for ${unit_key} names no question`);
     if (family_id === ANSWER_FAMILY && ['pass', 'partial', 'fail'].includes(state)) {
       if (!questionIds.has(judgment.question_id)) throw new Error(`an answer-clarity judgment for ${unit_key} needs question_id from the question list`);
       const also = alsoQuestionIds(judgment, questionIds);
@@ -623,7 +635,8 @@ export async function mergeJudgments({ observations, judgments, store, questions
     }
     if (state === 'fail' && absenceFamilies.has(family_id)) extra.measurement = { ...extra.measurement, basis: judgment.basis };
     // What the owner reads for a fail comes from the catalog (R100); the model's own reason stays as the verdict's reason.
-    if (state === 'fail') extra.problem_messages = modelFailMessages({ family_id, basis: judgment.basis }, cited, chrome);
+    if (state === 'fail') extra.problem_messages = modelFailMessages({ family_id, basis: sentenceBasis(judgment, evidence, chrome) }, cited, chrome,
+      family_id === ANSWER_FAMILY ? questions.find(question => question.id === judgment.question_id)?.question : null);
     if (site && state !== 'unknown') extra.measurement = { ...extra.measurement, identity_basis: IDENTITY_BASIS[state] };
     if (state === 'not_applicable') extra.applicability_decision = { condition: judgment.condition, reason: judgment.reason, evidence_ref: item.evidence_ref };
     const partial = state === 'partial' ? partialBasis(judgment) : { basis: null, q: undefined };

@@ -292,10 +292,11 @@ test('every failing model family (and each basis) has a problem, a method, an ef
       const text = catalog[`${key}${suffix}`];
       assert.equal(typeof text, 'string', `${key}${suffix}`);
       assert.doesNotMatch(withoutIds(text), SENTENCE, `${key}${suffix} has no English sentence`);
-      assert.deepEqual(placeholders(text), [], `${key}${suffix} fills no value`);
+      assert.deepEqual(namesOf(text), key === 'model-fix.answer-clarity' && ['', '.mechanism'].includes(suffix) ? ['question'] : [], `${key}${suffix} fills only the question it names`);
+      if (key !== 'question-coverage.none-answered') assert.ok(!text.includes('쪽'), `${key}${suffix} says page, not 쪽`);
     }
   }
-  assert.equal(catalog['model-fix.freshness-truth.absence'], '이 쪽에 바뀔 수 있는 내용(운영 시간·정원·가격 등)이 있는데 언제 기준인지 날짜가 없습니다.');
+  assert.equal(catalog['model-fix.freshness-truth.absence'], '이 페이지에 바뀔 수 있는 내용(운영 시간·정원·가격 등)이 있는데 언제 기준인지 날짜가 없습니다.');
   assert.equal(catalog['model-fix.freshness-truth.absence.mechanism'], '그 내용 옆에 「2026년 10월 17일 기준」처럼 확인한 날짜를 적으세요.');
   assert.equal(catalog['model-fix.freshness-truth.absence.effort'], '작음 — 문장 한 줄');
   assert.equal(catalog['model-fix.freshness-truth.absence.validation'], '다시 검사하면 이 항목이 통과로 바뀝니다.');
@@ -324,7 +325,7 @@ test('a model\'s fix reads in Korean with its page, the text it cites, the metho
   const [later] = composed.follow_ups;
   assert.equal(later.text_ko.next_action, method);
   assert.equal(later.text_ko.reobserve_when, check);
-  assert.match(later.text_ko.problem, /^이 쪽에 바뀔 수 있는 내용.*https:\/\/s\.test\/families 해당 글: 「/);
+  assert.match(later.text_ko.problem, /^이 페이지에 바뀔 수 있는 내용.*https:\/\/s\.test\/families 해당 글: 「/);
   const page = renderHtmlReport({ ...composed, remaining: [] }, { runbooks: [], level: 'beginner', target: PAGE });
   const fixes = sectionOf(page, 'fixes');
   for (const text of [catalog['model-fix.freshness-truth.absence'], method, effort, check, '해당 글: 「면회·이용 시간은 연중무휴 08:00~18:00입니다」']) assert.ok(fixes.includes(text.replace(/&/g, '&amp;')), text);
@@ -341,6 +342,35 @@ test('a model\'s fix with no catalog key keeps its own words, and the questions 
     assert.match(catalog[key], /찾지 못했습니다/, key);
     assert.doesNotMatch(catalog[key], /(?:^|[^못])없습니다\. 사람들/, `${key} does not say the site lacks it`);
   }
-  assert.match(catalog['question-coverage.note'], /사이트에 답이 없다는 뜻이 아닙니다/);
-  assert.match(catalog['question-coverage.note'], /머리말이나 바닥글처럼 모든 페이지에 있는 글에 답이 있으면/);
+  assert.match(catalog['question-coverage.note'], /사이트에 답이 없다는 뜻이 아니며/);
+  assert.match(catalog['question-coverage.note'], /판정이 그 글을 인용한 질문만 답한 것으로 셉니다/, 'chrome text counts only when the verdict cites it');
+  assert.doesNotMatch(catalog['question-coverage.note'], /있으면|자동/, 'and not by itself');
+  assert.doesNotMatch(read('../CHANGELOG.md'), /a line every page repeats[^.]*counts for the site\b/);
+});
+
+test('a model fix names where to look: the page address at its body text, every page of a grouped fix, in md and html (R100, I-2)', () => {
+  const one = modelFinding('w1', 'families');
+  const two = { ...modelFinding('w2', 'meals'), unit_keys: ['freshness-truth|https://s.test/meals', 'freshness-truth|https://s.test/costs'] };
+  const verified = verifiedOf({ findings: [one, two] });
+  const composed = composeReport(verified);
+  const { tables } = renderReport(composed, verified);
+  const where = tables.remediation.map(row => row[4]).sort();
+  assert.deepEqual(where, ['(2개 페이지: https://s.test/meals, https://s.test/costs)의 본문', 'https://s.test/families의 본문']);
+  assert.ok(!where.some(text => text.includes('사이트 소유자가 정해야')));
+  const fixes = sectionOf(renderHtmlReport({ ...composed, remaining: [] }, { runbooks: [], level: 'beginner', target: PAGE }), 'fixes');
+  assert.ok(fixes.includes('<strong>고칠 곳</strong> https://s.test/families의 본문'));
+});
+
+test('an answer-clarity fix names its question; the operator advice says the line goes in the body and that repeated lines do not count (R100, I-3, I-4)', () => {
+  const finding = { ...modelFinding('q', 'costs'), check_id: 'answer-clarity', unit_key: 'answer-clarity|https://s.test/costs', message_key: 'model-fix.answer-clarity',
+    message_values: { quote: '비용은 상담 후 안내합니다', question: '더청춘 요양원·주야간보호 비용은 한 달에 얼마인가요?' } };
+  const [fix] = composeReport(verifiedOf({ findings: [finding] })).fixes;
+  assert.equal(fix.text_ko.message, '이 페이지는 「더청춘 요양원·주야간보호 비용은 한 달에 얼마인가요?」에 답하려는 페이지인데, 그 답이 틀렸거나 빠져 있습니다.');
+  assert.match(fix.text_ko.remediation.mechanism, /^「더청춘 요양원·주야간보호 비용은 한 달에 얼마인가요\?」의 답/);
+  const method = catalog['model-fix.source-transparency.absence.mechanism'];
+  assert.match(method, /페이지 본문 안에/);
+  assert.match(method, /똑같이 되풀이되는 줄은 검사가 그 페이지의 글로 세지 않습니다/);
+  assert.match(catalog['model-fix.source-transparency.absence.validation'], /이 페이지의 본문에 적은 운영 기관이 확인되어/);
+  for (const key of ['question-coverage.none-answered', 'model-fix.original-value', 'model-fix.claim-support.mechanism', 'question-coverage.note'])
+    assert.equal((catalog[key].match(/[.]/g) ?? []).length, 1, `${key} is one sentence`);
 });

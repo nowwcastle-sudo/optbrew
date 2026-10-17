@@ -849,7 +849,7 @@ test('report replay recomputes the question coverage from the answers and refuse
     assert.equal(report.json.model_judgments.length, 2, 'the derived verdict is code\'s, not a model judgment row');
     assert.deepEqual(report.json.composed.conditions.question_coverage.map(x => [x.question_id, x.pages.length]), [['q1', 2], ['q2', 0]]);
     const section = report.markdown.slice(report.markdown.indexOf('## 모델 판단'));
-    assert.ok(section.includes('| 운영 시간은 언제인가? |') && section.includes('| 비용은 얼마인가? | 이번에 읽은 페이지에서는 이 질문에 답하는 페이지를 찾지 못했습니다. |') && section.includes('사이트에 답이 없다는 뜻이 아닙니다'), 'the model-judgment section lists each question with the pages that answer it');
+    assert.ok(section.includes('| 운영 시간은 언제인가? |') && section.includes('| 비용은 얼마인가? | 이번에 읽은 페이지에서는 이 질문에 답하는 페이지를 찾지 못했습니다. |') && section.includes('사이트에 답이 없다는 뜻이 아니며'), 'the model-judgment section lists each question with the pages that answer it');
     assert.ok(run.scenario.packet.baseline.input.observations.some(x => x.unit_key === QUESTION_UNIT));
     const swapped = change => put(withCoverage.map(x => x.unit_key === QUESTION_UNIT ? { ...x, ...change } : x));
     const follows = /does not follow from the answer-clarity judgments/;
@@ -1122,7 +1122,7 @@ test('report replay accepts a covered absence fail and refuses a forged coverage
     forge(wide, list => list.push(ok));
     const report = buildReport(wide.scenario.packet);
     assert.equal(report.json.model_judgments[0].basis, 'absence');
-    assert.ok(report.json.composed.conditions.lines.some(x => x.label === '날짜·운영 주체 판정(fail)의 근거' && x.value === '쪽에 없다는 근거 1건, 인용한 글에서 직접 확인 0건'));
+    assert.ok(report.json.composed.conditions.lines.some(x => x.label === '날짜·운영 주체 판정(fail)의 근거' && x.value === '페이지에 없다는 근거 1건, 인용한 글에서 직접 확인 0건'));
     forge(wide, list => list.pop());
     forge(wide, list => list.push({ ...ok, measurement: {} }));
     assert.throws(() => buildReport(wide.scenario.packet), /basis is not the one this verdict must carry/, 'a fail of an absence family without its basis');
@@ -1141,7 +1141,7 @@ test('replay re-derives the visible-operator gate: a forged absence fail on a pa
     assert.deepEqual([refused.state, refused.measurement], ['unknown', { not_accepted: 'visible' }]);
     forge(run, list => list.push(refused));
     const report = buildReport(run.scenario.packet);
-    assert.ok(report.json.composed.conditions.lines.some(x => x.label === '쪽에 없다는 판정 중 받아들이지 않은 것' && x.value === '쪽에 날짜나 운영 주체가 보임 1건'));
+    assert.ok(report.json.composed.conditions.lines.some(x => x.label === '페이지에 없다는 판정 중 받아들이지 않은 것' && x.value === '페이지에 날짜나 운영 주체가 보임 1건'));
     forge(run, list => list.pop());
     const forged = { ...refused, state: 'fail', q: 0, reason: '운영 주체가 보이지 않는다', measurement: { basis: 'absence' }, evidence_span: [{ evidence_sha256: span.evidence_sha256, start: span.start, end: span.end }] };
     forge(run, list => list.push(forged));
@@ -1156,8 +1156,8 @@ test('the report names the audited pages that show no text, also a page the queu
     assert.equal(run.queue.items.length, 0, 'no span, no queued unit');
     const report = buildReport(run.scenario.packet);
     assert.deepEqual(report.json.empty_pages, [`${run.site.origin}/`]);
-    assert.ok(report.json.composed.conditions.lines.some(x => x.label === '본문이 빈 쪽' && x.value.startsWith('1쪽 (')));
-    assert.ok(report.markdown.includes('본문이 빈 쪽'));
+    assert.ok(report.json.composed.conditions.lines.some(x => x.label === '본문이 빈 페이지' && x.value.startsWith('1페이지 (')));
+    assert.ok(report.markdown.includes('본문이 빈 페이지'));
   } finally { await run.site.close(); }
 });
 
@@ -1181,7 +1181,7 @@ test('an empty-body home page with a model identity verdict still builds the rep
     assert.deepEqual([made.state, made.reason, made.measurement], ['unknown', 'page shows no text', { not_accepted: 'empty_page' }], 'the empty home gets no identity verdict from the model');
     forge(run, list => list.splice(0, list.length, ...list.filter(x => x.unit_key !== ENTITY_UNIT), made));
     const report = buildReport(run.scenario.packet);
-    assert.ok(report.json.composed.conditions.lines.some(x => x.label === '쪽에 없다는 판정 중 받아들이지 않은 것' && x.value === '쪽에 글이 없음 1건'));
+    assert.ok(report.json.composed.conditions.lines.some(x => x.label === '페이지에 없다는 판정 중 받아들이지 않은 것' && x.value === '페이지에 글이 없음 1건'));
     assert.deepEqual(report.json.empty_pages, [`${run.site.origin}/`]);
   } finally { await run.site.close(); }
 });
@@ -1364,7 +1364,7 @@ test('an answer-clarity verdict may name other questions the page answers; each 
   for (const bad of [[], 'q2', ['q1'], ['q9'], ['q2', 'q2'], [null]])
     await assert.rejects(merge({ also_question_ids: bad }), /also_question_ids of .* must be a list of other, distinct ids from the question list/, JSON.stringify(bad));
   await assert.rejects(merge({ state: 'fail', also_question_ids: ['q2'] }), /fail judgment .* names no also_question_ids/, 'a fail answers nothing');
-  await assert.rejects(merge({ state: 'not_applicable', condition: 'no_matching_questions', question_id: undefined, also_question_ids: ['q2'] }), /names no question/);
+  await assert.rejects(merge({ state: 'not_applicable', condition: 'no_matching_questions', question_id: undefined, also_question_ids: ['q2'] }), /names no also_question_ids/, 'a not applicable verdict answers nothing');
   // The page counts for every question it names; a question counts once however many pages answer it.
   const answers = (n, measurement) => makeObservation({ family_id: 'answer-clarity', unit_key: `answer-clarity|https://example.com/${n}`, state: 'pass', reason: 'x', evidence_ref: 'e',
     extra: { evaluator_type: 'host_model', source_ref: 'optbrew:model-judgment', measurement, evidence_span: [{ evidence_sha256: 'h', start: 0, end: 3 }] } });
@@ -1412,4 +1412,55 @@ test('judging.md tells the model to name several questions and to credit site ch
   assert.match(doc, /사이트 공통 글이 답할 때/);
   assert.match(doc, /`site_chrome`은 파일 맨 위에 한 번만 나오는 글 목록이다/);
   assert.doesNotMatch(doc, /이유에 「time-sensitive claim without a visible date」를 쓴다/, 'the model no longer writes the English reason prefix');
+});
+
+test('a freshness fail labelled shown on a page that shows no date is told as the absence it is, in merge and in replay (R100, I-1)', { timeout: 120000 }, async () => {
+  const wide = bare(LONG_LINE + unoffered(3, 20));
+  const shown = (await mergeOne(wide, failFor('freshness-truth', { basis: 'shown' }))).made;
+  assert.deepEqual([shown.state, shown.measurement], ['fail', { basis: 'shown' }], 'the model\'s own basis is kept');
+  assert.equal(shown.problem_messages[0].message_key, 'model-fix.freshness-truth.absence', 'the page shows no date: the sentence says so');
+  const dated = (await mergeOne(bare(LONG_LINE + unoffered(3, 21) + '<p>2026-10-17 closed</p>'), failFor('freshness-truth', { basis: 'shown' }))).made;
+  assert.equal(dated.problem_messages[0].message_key, 'model-fix.freshness-truth.shown', 'a page with a date keeps the shown sentence');
+  const absent = (await mergeOne(wide, failFor('freshness-truth', { basis: 'absence' }))).made;
+  assert.equal(absent.problem_messages[0].message_key, 'model-fix.freshness-truth.absence');
+  const run = await modelRun('judge-disguised', ['/'], { enable: ['freshness-truth'], withContext: true });
+  try {
+    const unit_key = unitKey('freshness-truth', run.site.origin + '/');
+    const item = run.queue.items.find(x => x.unit_key === unit_key);
+    const [made] = (await run.merge([{ family_id: 'freshness-truth', unit_key, state: 'fail', basis: 'shown', reason: '오래되어 보인다', span_ids: [item.spans[0].span_id] }])).filter(x => x.unit_key === unit_key);
+    assert.equal(made.problem_messages[0].message_key, 'model-fix.freshness-truth.absence');
+    forge(run, list => list.push(made));
+    buildReport(run.scenario.packet);
+    forge(run, list => list.splice(list.findIndex(x => x.unit_key === unit_key), 1, { ...made, problem_messages: [{ message_key: 'model-fix.freshness-truth.shown', message_values: made.problem_messages[0].message_values }] }));
+    assert.throws(() => buildReport(run.scenario.packet), /its problem message is not the one/, 'replay tells it as absence too');
+  } finally { await run.site.close(); }
+});
+
+test('an answer-clarity fail names the question it fails, and replay checks the text (R100, I-3)', { timeout: 120000 }, async () => {
+  const run = await modelRun('judge-question-fail', ['/'], { enable: ['answer-clarity', 'question-coverage'], questions: PANEL, withContext: true });
+  try {
+    const unit_key = unitKey('answer-clarity', run.site.origin + '/');
+    const item = run.queue.items.find(x => x.unit_key === unit_key);
+    const merged = await run.merge([{ family_id: 'answer-clarity', unit_key, state: 'fail', reason: '시간이 없다', question_id: 'q1', span_ids: [item.spans[0].span_id] }]);
+    const made = merged.find(x => x.unit_key === unit_key);
+    assert.equal(made.problem_messages[0].message_values.question, PANEL[0].question);
+    const withCoverage = list => deriveQuestionCoverage({ observations: list, panel: PANEL, evidence_ref: run.scenario.context.evidence_ref });
+    const put = list => forge(run, observations => observations.splice(0, observations.length, ...list));
+    put(withCoverage(merged));
+    buildReport(run.scenario.packet);
+    put(withCoverage(merged.map(x => x === made ? { ...x, problem_messages: [{ ...x.problem_messages[0], message_values: { ...x.problem_messages[0].message_values, question: PANEL[1].question } }] } : x)));
+    assert.throws(() => buildReport(run.scenario.packet), /its problem message is not the one/, 'another question');
+  } finally { await run.site.close(); }
+});
+
+test('the quote decodes character references and follows page order, whatever order the model cites (R100, M6)', async () => {
+  const { store, observations } = await fixtureStore(bare('<p>첫째 줄은 Q&amp;A 안내이며 &lt;b&gt; 표시와&nbsp;띄어쓰기를 가진다 그리고 충분히 길다</p><p>둘째 줄은 나중에 나오는 두 번째 문장이고 충분히 길다 충분히 길다</p>'));
+  const queue = await buildJudgeQueue({ observations, store });
+  const spans = queuedItem(queue, 'claim-support').spans;
+  const made = (await mergeJudgments({ observations, store, judgments: [{ family_id: 'claim-support', unit_key: unit('claim-support'), state: 'fail', reason: 'x', span_ids: [spans[1].span_id, spans[0].span_id] }] }))
+    .find(x => x.unit_key === unit('claim-support'));
+  const quote = made.problem_messages[0].message_values.quote;
+  assert.ok(quote.startsWith('첫째 줄은 Q&A 안내이며 <b> 표시와 띄어쓰기를'), quote);
+  assert.ok(quote.includes(' / 둘째 줄은'), 'the later line follows the earlier one although it was cited first');
+  assert.ok(!quote.includes('&amp;') && !quote.includes('&nbsp;'));
 });

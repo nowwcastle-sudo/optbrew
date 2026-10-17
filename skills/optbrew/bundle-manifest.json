@@ -68,7 +68,7 @@
     },
     {
       "path": "SKILL.md",
-      "sha256": "7d67c4b8acaa79f2a25febe4a271113dff5530fd24ecef02f27c9c5d193a3af0"
+      "sha256": "b6e4a389771d8838f414e9f19a65a91fddbaba47890215044aa11347cd14c2ac"
     },
     {
       "path": "THIRD_PARTY_NOTICES.md",
@@ -576,7 +576,7 @@
     },
     {
       "path": "references/judging.md",
-      "sha256": "eb0b48103237c88f2ee4e4c3a760211c9643f9d6a69a1e472a2d14a8196ac6b2"
+      "sha256": "aeee661bd9d94d7b2f08c2f9ffc25bada4e38d7283964eca485c46b4a455829c"
     },
     {
       "path": "references/limits.json",
@@ -588,7 +588,7 @@
     },
     {
       "path": "references/messages.ko.json",
-      "sha256": "9764788395774fcee7ef3962aba129cb11b1b72d4218eaf442a44e5d056261ff"
+      "sha256": "ec994db9b5ad87d96b70f2a59d46116a4d40887a036b00243a351dcc697e1235"
     },
     {
       "path": "references/policies.md",
@@ -840,7 +840,7 @@
     },
     {
       "path": "scripts/core/judgments.mjs",
-      "sha256": "5b072ced03390605ebccc1f9f1b4d0c573e9d4e05033dbfb4d5775f287abfacd"
+      "sha256": "0896c1cfad5a27f1b30bd5b00f0d1421449af71f5e65d08fbc75c004106586d5"
     },
     {
       "path": "scripts/core/keys.mjs",
@@ -880,7 +880,7 @@
     },
     {
       "path": "scripts/core/report-compose.mjs",
-      "sha256": "82bd0d8870ec5cdf0f8fab128703c653a6b4866f9c47f0507a0ad6c9ce0dcc2e"
+      "sha256": "cda8eab0db2a1b754317d72574dc7e4ffee9886b3879cf65f8f10eeacb7c16c9"
     },
     {
       "path": "scripts/core/report-html.mjs",
@@ -888,7 +888,7 @@
     },
     {
       "path": "scripts/core/report.mjs",
-      "sha256": "93ffdc2258f9549e838b14e1cf7774cecec7458457129ea9f2b51723057c834b"
+      "sha256": "ae1efc26e7fb05a286dd9a15ea2a4a955c001b9036cff28ddb6413553eba73c4"
     },
     {
       "path": "scripts/core/runbooks.mjs",
@@ -908,7 +908,7 @@
     },
     {
       "path": "scripts/core/stages.mjs",
-      "sha256": "c013ba2886ceb8cd0e6f1d42ab593f023dc935dc3312019481d5c6d92de81f60"
+      "sha256": "8168884e16e7a0e2a757fc283f762e14ab27129bc567a89174de820be41a9a7f"
     },
     {
       "path": "scripts/core/transport.mjs",
@@ -935,5 +935,5 @@
       "sha256": "dca0bbd03fbf591c4aca6a568be76615eb48d69f7df0c634886f652b54f3f46d"
     }
   ],
-  "bundle_hash": "9c340e3f45b70c784b0dc6930708925fe52e0e79237705a0be320d522f7de7a1"
+  "bundle_hash": "19b3e3be0e7c55964bbb56e0f22ccc2da4c26f359a29422a471d4a88b6c6d6ae"
 }

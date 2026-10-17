@@ -104,9 +104,11 @@ const fixTextKo = finding => ({ message: koText(finding.message_key, finding.mes
 /** A model's fix (and the question coverage's) has no catalogued remediation; the catalog gives its steps under the key of its problem (R100). */
 const MODEL_FIX_STEPS = ['mechanism', 'validation', 'effort'];
 const stepsOf = finding => {
-  const steps = Object.fromEntries(MODEL_FIX_STEPS.map(field => [field, koText(finding.message_key && `${finding.message_key}.${field}`, {}, null)]));
+  const steps = Object.fromEntries(MODEL_FIX_STEPS.map(field => [field, koText(finding.message_key && `${finding.message_key}.${field}`, finding.message_values, null)]));
   return steps.mechanism ? { ...steps, cost: null, location_hint: null } : null;
 };
+/** Where to look for a model's fix: the body text of the page it names (every page it names, for a grouped one). */
+const modelWhere = finding => finding.message_key?.startsWith('model-fix.') ? koText('model-fix.where', { pages: pagesLabel(finding) }, null) : null;
 /** The text a model's verdict cites, as the page shows it, so the owner sees where to look. */
 const citedOf = finding => finding.message_values?.quote ? koText('model-fix.cited', { quote: finding.message_values.quote }, null) : null;
 /** What a fix row says in each column: the problem with its pages and cited text, the method, and the effort. */
@@ -121,7 +123,7 @@ function sortedFixes(findings, changes) {
   const withPaths = findings.map(finding => {
     const change_paths = changes.filter(change => change.finding_ids.some(id => finding.finding_ids.includes(id))).map(change => change.path);
     const text_ko = fixTextKo(finding);
-    return { ...finding, change_paths, text_ko, where: change_paths.join('; ') || text_ko.remediation?.location_hint || LOCATION_NEEDED,
+    return { ...finding, change_paths, text_ko, where: change_paths.join('; ') || modelWhere(finding) || text_ko.remediation?.location_hint || LOCATION_NEEDED,
       priority_label: PRIORITY_LABELS[finding.priority] ?? finding.priority, status_label: STATUS_LABELS[finding.status] ?? finding.status };
   });
   return withPaths.sort((a, b) => Number(resolved(a)) - Number(resolved(b)) || Number(b.blocker) - Number(a.blocker) ||
@@ -191,7 +193,7 @@ function absenceBasisCounts(verified) {
   for (const row of verified.model_judgments) if (row.phase === phase && row.basis) counts[row.basis]++;
   return counts;
 }
-const NOT_ACCEPTED_REASONS = { queue_coverage: '조각이 쪽을 충분히 덮지 못함', visible: '쪽에 날짜나 운영 주체가 보임', chrome: '인용한 조각이 모두 사이트 공통 글', empty_page: '쪽에 글이 없음' };
+const NOT_ACCEPTED_REASONS = { queue_coverage: '조각이 페이지를 충분히 덮지 못함', visible: '페이지에 날짜나 운영 주체가 보임', chrome: '인용한 조각이 모두 사이트 공통 글', empty_page: '페이지에 글이 없음' };
 /** The model verdicts of the latest phase that rested on absence and were turned into unknown by the code, by reason. */
 function notAcceptedCounts(input) {
   const counts = {};
@@ -323,12 +325,12 @@ function conditionLines(conditions, verified) {
     { label: '분석 도구', value: probe.source_tools.join(', ') || '지정 없음' },
     { label: '확인한 모델 판단', value: count(conditions.model_judgments.length) },
     { label: '모델이 해당 없음으로 판정한 단위', value: notApplicableText(conditions.model_not_applicable) },
-    ...(conditions.empty_pages.length ? [{ label: '본문이 빈 쪽', value: `${conditions.empty_pages.length}쪽 (${conditions.empty_pages.join(', ')})` }] : []),
+    ...(conditions.empty_pages.length ? [{ label: '본문이 빈 페이지', value: `${conditions.empty_pages.length}페이지 (${conditions.empty_pages.join(', ')})` }] : []),
     ...(conditions.absence_basis.absence + conditions.absence_basis.shown ? [{ label: '날짜·운영 주체 판정(fail)의 근거',
-      value: `쪽에 없다는 근거 ${conditions.absence_basis.absence}건, 인용한 글에서 직접 확인 ${conditions.absence_basis.shown}건` }] : []),
-    ...(Object.keys(conditions.not_accepted).length ? [{ label: '쪽에 없다는 판정 중 받아들이지 않은 것',
+      value: `페이지에 없다는 근거 ${conditions.absence_basis.absence}건, 인용한 글에서 직접 확인 ${conditions.absence_basis.shown}건` }] : []),
+    ...(Object.keys(conditions.not_accepted).length ? [{ label: '페이지에 없다는 판정 중 받아들이지 않은 것',
       value: Object.entries(conditions.not_accepted).map(([code, n]) => `${NOT_ACCEPTED_REASONS[code]} ${n}건`).join(', ') }] : []),
-    ...(conditions.not_indexed ? [{ label: '색인하지 않는 쪽', value: koText(conditions.not_indexed.message_key, conditions.not_indexed.message_values) }] : []),
+    ...(conditions.not_indexed ? [{ label: '색인하지 않는 페이지', value: koText(conditions.not_indexed.message_key, conditions.not_indexed.message_values) }] : []),
     { label: '이전 막는 문제', value: listed(before) },
     { label: '이후 막는 문제', value: after ? listed(after) : `${UNKNOWN} (이후 단계를 보지 않음)` },
     { label: '이후 결과 없는 핵심 검사', value: count(after?.core_unknown ?? null) },

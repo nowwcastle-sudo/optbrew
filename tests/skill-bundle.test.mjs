@@ -61,7 +61,7 @@ test('SKILL.md walks the one-call flow in order and links the new references', a
 test('the docs quote the limits that code reads from limits.json', async () => {
   const limit = await json('references/limits.json');
   const entry = await text('SKILL.md');
-  assert.ok(entry.includes(`표본 ${limit.max_urls_default}쪽`) && entry.includes(`최대 ${limit.max_urls_cap}쪽`));
+  assert.ok(entry.includes(`표본 ${limit.max_urls_default}페이지`) && entry.includes(`최대 ${limit.max_urls_cap}페이지`));
   assert.ok(entry.includes(`${limit.max_urls_default}을 넘거나`));
   const judging = await text('references/judging.md');
   assert.ok(judging.includes(`\`judge_span_min_bytes\` ${limit.judge_span_min_bytes}, \`judge_spans_per_unit\` ${limit.judge_spans_per_unit}`));

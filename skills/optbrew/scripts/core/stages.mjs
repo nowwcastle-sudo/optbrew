@@ -540,7 +540,8 @@ function findingsOf(observations, evidence) {
     const model = observation.evaluator_type === 'host_model';
     const blocker = observation.blocker === true || blocking.has(observation.family_id);
     for (const [position, problem] of problemsOf(observation).entries()) {
-      const key = JSON.stringify([observation.check_id, pageNeutral(problem, observation.unit_key), model, blocker]);
+      // A model's fix is told page by page: each page has its own cited text, which the owner needs to find the place.
+      const key = JSON.stringify([observation.check_id, pageNeutral(problem, observation.unit_key), model, blocker, ...(model ? [observation.unit_key] : [])]);
       if (!groups.has(key)) groups.set(key, { observation, problem, position, model, blocker, stated: observation.problem_messages?.[position], unit_keys: [] });
       groups.get(key).unit_keys.push(observation.unit_key);
     }

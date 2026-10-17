@@ -21,7 +21,7 @@ import { composeReport, pagesLabel, renderReport } from './report-compose.mjs';
 import { messageOf } from './messages.mjs';
 import { runbookEntry } from './runbooks.mjs';
 import { sensitive } from './secrets.mjs';
-import { ENTITY_UNIT, OBSERVATION_SOURCES, QUEUE_KIND, QUESTION_UNIT, acceptance, alsoQuestionIds, basisAllowed, candidateSpans, modelFailMessages, checkSpan, deriveQuestionCoverage, homeOf, identityBasisOf, isCodeJudged, isEmptyPage, isEntityFallback, isModelJudged, operatorNames, queuedSpan, siteChrome } from './judgments.mjs';
+import { ENTITY_UNIT, OBSERVATION_SOURCES, QUEUE_KIND, QUESTION_UNIT, acceptance, alsoQuestionIds, basisAllowed, candidateSpans, modelFailMessages, sentenceBasis, checkSpan, deriveQuestionCoverage, homeOf, identityBasisOf, isCodeJudged, isEmptyPage, isEntityFallback, isModelJudged, operatorNames, queuedSpan, siteChrome } from './judgments.mjs';
 import { parseRobots, robotsVerdict } from '../../modules/naver-searchadvisor/scripts/robots.mjs';
 
 const catalog = JSON.parse(readFileSync(new URL('../../references/remediations.json', import.meta.url))).items;
@@ -698,7 +698,9 @@ function modelJudgmentRows(phase, input, snapshot, requireRef, confirmedNames = 
       { chrome, ...operatorNames({ confirmed: confirmedNames, observations: input.observations, url: unitUrl(obs.unit_key) }) });
     if (unaccepted) fail(obs, `its verdict is not accepted: ${unaccepted.reason}`);
     // What the owner reads for a fail is the catalog sentence of its family and basis with the text it cites; any other verdict states no problem.
-    if (!same(obs.problem_messages ?? null, obs.state === 'fail' ? modelFailMessages({ family_id: obs.family_id, basis: obs.measurement?.basis }, cited, chrome) : null))
+    const failed = { family_id: obs.family_id, state: obs.state, basis: obs.measurement?.basis };
+    const question = obs.family_id === 'answer-clarity' ? input.run_context.protocol.question_panel.find(item => item.id === obs.measurement?.question_id)?.question : null;
+    if (!same(obs.problem_messages ?? null, obs.state === 'fail' ? modelFailMessages({ family_id: obs.family_id, basis: sentenceBasis(failed, bytes, chrome) }, cited, chrome, question) : null))
       fail(obs, 'its problem message is not the one its family, basis and cited text give');
     if (Boolean(obs.measurement?.empty_page) !== isEmptyPage(bytes)) fail(obs, 'its empty-page mark differs from the page');
     for (const span of obs.evidence_span ?? []) {
