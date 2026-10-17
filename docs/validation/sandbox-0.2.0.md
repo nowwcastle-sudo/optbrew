@@ -69,6 +69,8 @@ After run 5 the youthdc headline lists 3 fixes, and an independent reading of th
 
 Code measured: runs 4 and 5 used commits a35dc08 and 67c61ca; the release branch adds Task 21f (447b839) on top.
 
+Replay at the release code (Task 22 fixes): the stored evidence of both runs was replayed through it (a copy at a same-length sibling path, no model call, no network). The release code gives the same coverage as the table on every profile, without and with CWV, and the same headline counts: 10 fixes for htmx.org (run 4, which predates Task 21e) and 3 for youthdc.com (run 5). Verdicts derived again from the stored evidence equal the recorded ones. The only change in the reports is wording: the youthdc report now names its 3 pages left out of the index (inquiry, inquiry?about=grade, request-change) next to the headline, and the htmx fixes read in Korean from the catalog.
+
 ## Not measured here
 
 - Codex: skipped by the owner's decision for this release.

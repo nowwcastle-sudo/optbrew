@@ -1,10 +1,11 @@
 import { execFile, spawn } from 'node:child_process';
 import { existsSync, readdirSync } from 'node:fs';
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { createCdpClient, pipeTransport, webSocketTransport } from './cdp.mjs';
+import { PROFILE_PREFIX, chromeEnv, sweepStaleProfiles } from './chrome-temp.mjs';
 import { chromePaths, limits } from './config.mjs';
 import { assertInScope } from './scope.mjs';
 
@@ -155,7 +156,9 @@ async function readActivePort(userDataDir, deadline) {
 /** One launch attempt with one transport; on any failure it kills its own process tree and removes its profile directory. */
 async function attempt({ executable, proxy, hostRules, tmpRoot, transport: kind, launchTimeout }) {
   const { chrome_close_grace_ms: closeGrace, cdp_command_timeout_ms: commandTimeout } = limits();
-  const userDataDir = await mkdtemp(path.join(tmpRoot, 'optbrew-chrome-'));
+  const userDataDir = await mkdtemp(path.join(tmpRoot, PROFILE_PREFIX));
+  const tempDir = path.join(userDataDir, 'tmp');
+  try { await mkdir(tempDir); } catch (error) { await rm(userDataDir, { recursive: true, force: true }); throw error; }
   const args = ['--headless=new', `--user-data-dir=${userDataDir}`, '--no-first-run', '--no-default-browser-check',
     '--disable-background-networking', '--disable-extensions',
     kind === 'pipe' ? '--remote-debugging-pipe' : '--remote-debugging-port=0'];
@@ -164,7 +167,7 @@ async function attempt({ executable, proxy, hostRules, tmpRoot, transport: kind,
   if (proxy) args.push(`--proxy-server=${proxy.host.includes(':') ? `[${proxy.host}]` : proxy.host}:${proxy.port}`);
   if (hostRules) args.push(`--host-resolver-rules=${hostRules}`);
 
-  const child = spawn(executable, args, { stdio: kind === 'pipe' ? ['ignore', 'ignore', 'ignore', 'pipe', 'pipe'] : 'ignore',
+  const child = spawn(executable, args, { env: chromeEnv(process.env, tempDir), stdio: kind === 'pipe' ? ['ignore', 'ignore', 'ignore', 'pipe', 'pipe'] : 'ignore',
     windowsHide: true, detached: process.platform !== 'win32' });
   const gone = new Promise(resolve => child.once('exit', resolve));
   const failed = new Promise((_, reject) => {
@@ -223,6 +226,7 @@ async function attempt({ executable, proxy, hostRules, tmpRoot, transport: kind,
 export async function launchChrome({ path: executable, proxy = null, hostRules = null, tmpRoot = os.tmpdir(), transports = ['pipe', 'port'],
   launchTimeoutMs = limits().chrome_launch_timeout_ms }) {
   let failure;
+  await sweepStaleProfiles(tmpRoot).catch(() => []);
   for (const transport of transports) {
     try { return await attempt({ executable, proxy, hostRules, tmpRoot, transport, launchTimeout: launchTimeoutMs }); }
     catch (error) { failure = error; }

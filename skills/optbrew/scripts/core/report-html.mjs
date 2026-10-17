@@ -155,6 +155,7 @@ section{margin-top:1rem}p{margin:.4rem 0}ol,ul{padding-left:1.25rem;margin:.5rem
 .tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(8.5rem,1fr));gap:.6rem;margin:0;padding:0;list-style:none}
 .tiles li{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:.6rem .8rem}
 .tiles b{display:block;font-size:1.6rem;line-height:1.2}
+.skipped{margin:.9rem 0 0;border-top:1px solid var(--line);padding-top:.7rem}
 .fixes,.blanks,.profiles{list-style:none;padding:0}
 .fix,.blank,.profile{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:.8rem .9rem;margin:.6rem 0}
 .head{display:flex;gap:.5rem;align-items:baseline;flex-wrap:wrap}.msg{font-weight:700}
@@ -190,7 +191,8 @@ export function renderHtmlReport(composed, { runbooks, level, target, synthetic 
     `<title>optbrew 보고서</title><style>${STYLE}</style></head><body><main><h1>사이트 점검 결과</h1><p class="target">${esc(target)}</p>` +
     `${synthetic ? `<p class="banner">${SYNTHETIC_BANNER}</p>` : ''}` +
     `<section class="hero"><p class="lead">${esc(headline.text)}</p><ul class="tiles"><li><b>${esc(headline.open)}건</b>먼저 고칠 것</li>` +
-    `<li><b>${esc(headline.blocking)}건</b>가장 급한 것</li><li><b>${esc(headline.already_fixed)}건</b>이미 고친 것</li></ul></section>` +
+    `<li><b>${esc(headline.blocking)}건</b>가장 급한 것</li><li><b>${esc(headline.already_fixed)}건</b>이미 고친 것</li></ul>` +
+    `${headline.not_indexed ? `<p class="skipped">${esc(headline.not_indexed.text)}</p>` : ''}</section>` +
     `${fixesSection(composed)}${completenessSection(composed)}${blankSection(composed, runbooks, level)}${followUpsSection(composed)}${conditionsSection(composed)}` +
     `<footer>실제 결과와 모델 판단의 표는 report.md와 report.json에 있습니다. 점수 계산에 쓴 원본 값은 report.json에 있습니다.</footer></main></body></html>\n`;
 }

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { readFileSync, writeFileSync } from 'node:fs';
-import { ENTITY_UNIT, QUESTION_UNIT, buildJudgeQueue, candidateSpans, checkSpan, deriveQuestionCoverage, homeOf, isEmptyPage, mergeJudgments, operatorNames } from '../skills/optbrew/scripts/core/judgments.mjs';
+import { ENTITY_UNIT, QUESTION_UNIT, acceptance, buildJudgeQueue, candidateSpans, checkSpan, deriveQuestionCoverage, homeOf, isEmptyPage, mergeJudgments, operatorNames } from '../skills/optbrew/scripts/core/judgments.mjs';
 import { blocks } from '../skills/optbrew/scripts/core/checks/index.mjs';
 import { makeObservation, unitKey } from '../skills/optbrew/scripts/core/checks/observation.mjs';
 import { openStore } from '../skills/optbrew/scripts/core/evidence-store.mjs';
@@ -1430,10 +1430,22 @@ test('a freshness fail labelled shown on a page that shows no date is told as th
     const [made] = (await run.merge([{ family_id: 'freshness-truth', unit_key, state: 'fail', basis: 'shown', reason: '오래되어 보인다', span_ids: [item.spans[0].span_id] }])).filter(x => x.unit_key === unit_key);
     assert.equal(made.problem_messages[0].message_key, 'model-fix.freshness-truth.absence');
     forge(run, list => list.push(made));
-    buildReport(run.scenario.packet);
+    const report = buildReport(run.scenario.packet);
+    // T22 M-1: the run conditions count this fail by the basis its sentence rests on (absence), not by the model's own label (shown).
+    assert.deepEqual([report.json.model_judgments[0].basis, report.json.model_judgments[0].sentence_basis], ['shown', 'absence']);
+    assert.ok(report.json.composed.conditions.lines.some(x => x.label === '날짜·운영 주체 판정(fail)의 근거' && x.value === '페이지에 없다는 근거 1건, 인용한 글에서 직접 확인 0건'));
     forge(run, list => list.splice(list.findIndex(x => x.unit_key === unit_key), 1, { ...made, problem_messages: [{ message_key: 'model-fix.freshness-truth.shown', message_values: made.problem_messages[0].message_values }] }));
     assert.throws(() => buildReport(run.scenario.packet), /its problem message is not the one/, 'replay tells it as absence too');
   } finally { await run.site.close(); }
+});
+
+// T22 M-3: both guards the final review called dead are live, so they stay; these tests fail if either is removed.
+test('a page whose only text is a broken tag is not empty and needs no queue coverage to declare absence (judgments.mjs coversPage guard)', () => {
+  const bytes = Buffer.from('<a ');
+  assert.equal(isEmptyPage(bytes), false, 'the empty-page test sees text');
+  assert.deepEqual(candidateSpans(bytes, 'h'), [], 'and the span cutter finds none');
+  const verdict = { family_id: 'claim-support', state: 'not_applicable', condition: 'no_material_claims' };
+  assert.equal(acceptance(verdict, bytes, [], [], { chrome: new Set(), names: [], host: 'example.com' }), null, 'no text to cover: the absence stands');
 });
 
 test('an answer-clarity fail names the question it fails, and replay checks the text (R100, I-3)', { timeout: 120000 }, async () => {

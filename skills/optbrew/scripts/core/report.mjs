@@ -2,7 +2,7 @@ import { readFileSync, realpathSync } from 'node:fs';
 import { access, mkdir, rename, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { ContractError, validateEntity } from './contracts.mjs';
-import { endpoints, requestLimit, versions } from './config.mjs';
+import { endpoints, limits, requestLimit, versions } from './config.mjs';
 import { score } from './score.mjs';
 import { assertCurrentEvidence, MigrationRequired } from './migration.mjs';
 import { compare } from './compare.mjs';
@@ -170,8 +170,8 @@ function boundFailure(artifact, audit, requireRef) {
   const raw = requireRef(artifact.failure_ref, 'optbrew:collector');
   if (raw.sha256 !== entry.content_hash) throw new ContractError('failure record hash differs from the audit index');
   const record = JSON.parse(raw.text);
-  // At most ten redirects are followed, and the eleventh answer (a refused redirect) is the last hop that can be recorded.
-  if (record.kind !== 'failure' || ![0, 1].includes(record.unanswered) || !Array.isArray(record.redirect_chain) || record.redirect_chain.length > 11 ||
+  // At most `max_redirects` redirects are followed, and the answer after the last one (a refused redirect) is the last hop that can be recorded.
+  if (record.kind !== 'failure' || ![0, 1].includes(record.unanswered) || !Array.isArray(record.redirect_chain) || record.redirect_chain.length > limits().max_redirects + 1 ||
       record.redirect_chain.some((hop, index) => typeof hop?.url !== 'string' || !(hop.status >= 300 && hop.status <= 399) ||
         hop.url !== (index ? record.redirect_chain[index - 1].location : record.normalized_url)))
     throw new ContractError('failure record is malformed');
@@ -715,7 +715,7 @@ function modelJudgmentRows(phase, input, snapshot, requireRef, confirmedNames = 
       if (offered.text !== candidate.text) fail(obs, `the queued text of span ${span.start}-${span.end} differs from the text of the page`);
     }
     return { phase, family_id: obs.family_id, unit_key: obs.unit_key, state: obs.state, evidence_ref: obs.evidence_ref, evidence_span: obs.evidence_span, label: MODEL_JUDGMENT_LABEL,
-      ...(obs.measurement?.basis ? { basis: obs.measurement.basis } : {}),
+      ...(obs.measurement?.basis ? { basis: obs.measurement.basis, sentence_basis: sentenceBasis(failed, bytes, chrome) } : {}),
       ...(obs.measurement?.identity_basis ? { identity_basis: obs.measurement.identity_basis } : {}) };
   });
 }

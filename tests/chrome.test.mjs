@@ -3,7 +3,7 @@ import test, { after, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { createServer } from 'node:http';
-import { mkdir, mkdtemp, readdir, rm, stat, symlink } from 'node:fs/promises';
+import { mkdir, mkdtemp, readdir, rm, stat, symlink, utimes } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { PassThrough } from 'node:stream';
@@ -169,6 +169,39 @@ describe('chrome block', async () => {
       assert.deepEqual(await profiles(runDir), []);
       assert.deepEqual(await remaining(runDir), []);
     }
+  });
+
+  test('chrome gets a temp folder inside its own profile and leaves nothing in the temp folder it was started from (T22 M-7)', { skip }, async () => {
+    const hostTemp = path.join(root, 'host-temp');
+    await mkdir(hostTemp);
+    const names = ['TEMP', 'TMP', 'TMPDIR'], saved = names.map(name => process.env[name]);
+    for (const name of names) process.env[name] = hostTemp;
+    try {
+      await withChrome({}, async () => {
+        const [profile] = await profiles(runDir);
+        assert.ok((await stat(path.join(runDir, profile, 'tmp'))).isDirectory(), 'the run-scoped temp folder is inside the profile');
+        const running = await processesWith(path.join(runDir, profile));
+        assert.ok(running.length > 0, 'chrome runs on that profile');
+      });
+    } finally { names.forEach((name, index) => { if (saved[index] === undefined) delete process.env[name]; else process.env[name] = saved[index]; }); }
+    assert.deepEqual(await readdir(hostTemp), [], 'no scoped_dir or other folder in the user temp folder');
+    assert.deepEqual(await profiles(runDir), []);
+    assert.deepEqual(await remaining(runDir), []);
+  });
+
+  test('a forced kill of chrome still ends with its profile and temp folder removed, and the next start sweeps a profile a killed launcher left (T22 M-7)', { skip }, async () => {
+    const stale = path.join(runDir, 'optbrew-chrome-stale1');
+    await mkdir(path.join(stale, 'tmp', 'scoped_dir1'), { recursive: true });
+    const old = new Date(Date.now() - 10 * 60_000);
+    await utimes(stale, old, old);
+    const chrome = await launchChrome({ path: found.path, tmpRoot: runDir });
+    const swept = await stat(stale).then(() => false, () => true);
+    const [profile] = await profiles(runDir);
+    for (const entry of await processesWith(path.join(runDir, profile))) await killTreeByPid(entry.pid);
+    await chrome.close();
+    assert.equal(swept, true, 'the profile nobody uses was removed at the start');
+    assert.deepEqual(await profiles(runDir), []);
+    assert.deepEqual(await remaining(runDir), []);
   });
 
   test('launches chrome from a path with spaces and Hangul', { skip }, async () => {

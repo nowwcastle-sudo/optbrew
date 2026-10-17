@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { validateEntity, ContractError } from '../skills/optbrew/scripts/core/contracts.mjs';
 import { freezeProtocol } from '../skills/optbrew/scripts/core/protocol.mjs';
+import { checkRegistry } from '../skills/optbrew/scripts/core/config.mjs';
 import { environmentProbe } from './support/probe.mjs';
 
 const context = () => ({
@@ -212,4 +213,41 @@ test('document-title, canonical-consistency and naver-markup plan only the publi
   const allExcluded = planned('document-title', undefined);
   allExcluded.protocol.page_types[0].urls[0] = { ...about, original: 'https://example.com/', normalized: 'https://example.com/' };
   assert.throws(() => freezeProtocol(allExcluded), /document-title: applicable family has no public index target/);
+});
+
+// Task 22 (S2): the fixed applicability rules are read from the registry flags, not from lists of family names; this holds the two together.
+test('the fixed applicability rules agree with the registry public_only flags (S2)', () => {
+  const excluded = { condition: 'not_public_index_target', reason: 'documented exclusion', evidence_ref: 'e/index' };
+  const withFamily = (family, { publicPage = true, engines = ['google'] } = {}) => {
+    const changed = context();
+    changed.protocol.engines = engines;
+    if (!publicPage) Object.assign(changed.protocol.page_types[0].urls[0], { public_indexing: false, indexing_decision: excluded });
+    if (family.family_id === 'fetch-response') changed.protocol.families = [family]; else changed.protocol.families.push(family);
+    return changed;
+  };
+  const decision = condition => ({ condition, reason: 'fixed condition', evidence_ref: 'e/fixed' });
+  const families = checkRegistry().families;
+  assert.ok(families.filter(item => item.public_only === true).length >= 6, 'the registry still marks its public-only families');
+  for (const item of families) {
+    const publicOnly = item.public_only === true, id = item.family_id;
+    if (item.na_conditions.includes('no_public_index_target')) {
+      assert.equal(publicOnly, true, `${id} names no_public_index_target, so the registry must flag it public_only`);
+      // Public pages: the family is applicable, and calling it inapplicable is refused. Only non-index pages: it is inapplicable with exactly that condition.
+      assert.doesNotThrow(() => freezeProtocol(withFamily({ family_id: id, applicable: true })), `${id} applies to public pages`);
+      assert.throws(() => freezeProtocol(withFamily({ family_id: id, applicable: false, applicability_decision: decision('no_public_index_target') })), /contradicts fixed/, id);
+      assert.doesNotThrow(() => freezeProtocol(withFamily({ family_id: id, applicable: false, applicability_decision: decision('no_public_index_target') }, { publicPage: false })), `${id} has no unit without a public page`);
+      assert.throws(() => freezeProtocol(withFamily({ family_id: id, applicable: true }, { publicPage: false })), /no public index target|contradicts fixed/, id);
+      if (item.na_conditions.includes('no_target_engine')) {
+        assert.doesNotThrow(() => freezeProtocol(withFamily({ family_id: id, applicable: false, applicability_decision: decision('no_target_engine') }, { engines: [] })), `${id} without a target engine`);
+        assert.throws(() => freezeProtocol(withFamily({ family_id: id, applicable: false, applicability_decision: decision('no_public_index_target') }, { engines: [] })), /conflicts/, id);
+      }
+    } else if (publicOnly) {
+      // A flagged family with no fixed condition still has no unit without a public page: the generic refusal stands.
+      assert.throws(() => freezeProtocol(withFamily({ family_id: id, applicable: true }, { publicPage: false, engines: ['google', 'naver'] })), ContractError, `${id} cannot plan units with no public page`);
+    } else if (!item.na_conditions.length || item.na_conditions.every(code => !['no_fixed_questions', 'naver_not_target'].includes(code))) {
+      // An unflagged family does not follow the public pages.
+      const attempt = () => freezeProtocol(withFamily({ family_id: id, applicable: true }, { publicPage: false }));
+      try { attempt(); } catch (error) { assert.doesNotMatch(String(error.message), /public index target/, `${id} is not a public-only family`); }
+    }
+  }
 });

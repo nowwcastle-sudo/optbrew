@@ -7,9 +7,20 @@ const digest = bytes => createHash('sha256').update(bytes).digest('hex');
 /** Hash a file as committed: a checkout with core.autocrlf may turn LF into CRLF. A NUL byte marks a binary file, hashed as is. */
 export const fileDigest = bytes => digest(bytes.includes(0) ? bytes : Buffer.from(bytes.toString('latin1').replaceAll('\r\n', '\n'), 'latin1'));
 const manifestName = 'bundle-manifest.json';
+/**
+ * The files whose bytes decide a verdict or a score: the registry, profiles and scoring rules, the code that turns evidence into
+ * verdicts (derive, every check, the index-target, judgment, fact, link and page-selection rules, the vendored Naver audit) and the
+ * Korean catalog the verdict sentences come from. A bundle that changes any of them has a different `evaluation_hash` (T22 S1).
+ * `checks/*` is listed file by file; a test fails when a file is added to that folder and not here.
+ */
 export const evaluationSourcePaths = ['references/check-registry.json', 'references/profiles.json',
-  'references/scoring.md', 'references/measurement.md', 'scripts/core/score.mjs', 'scripts/core/weights.mjs',
-  'scripts/core/contracts.mjs', 'scripts/core/compare.mjs', 'scripts/core/metrics.mjs', 'scripts/core/bootstrap.mjs'];
+  'references/scoring.md', 'references/measurement.md', 'references/messages.ko.json', 'scripts/core/score.mjs', 'scripts/core/weights.mjs',
+  'scripts/core/contracts.mjs', 'scripts/core/compare.mjs', 'scripts/core/metrics.mjs', 'scripts/core/bootstrap.mjs',
+  'scripts/core/derive.mjs', 'scripts/core/index-targets.mjs', 'scripts/core/judgments.mjs', 'scripts/core/facts.mjs',
+  'scripts/core/link-graph.mjs', 'scripts/core/page-select.mjs', 'modules/naver-searchadvisor/scripts/audit.mjs',
+  ...['canonical-consistency', 'cwv-field', 'discovery', 'document-title', 'entity-identity', 'fact-consistency', 'fetch-response', 'index-policy',
+    'index', 'internal-navigation', 'locale-links', 'naver-markup', 'observation', 'prepare', 'render-content', 'search-crawl-policy',
+    'structured-data-truth'].map(name => `scripts/core/checks/${name}.mjs`)];
 export const protocolSourcePaths = ['references/schemas/contract.schema.json', 'references/limits.json', 'scripts/core/protocol.mjs'];
 
 /** Match the package.json skill exclusions for generated Python cache files. */
