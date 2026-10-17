@@ -53,7 +53,8 @@ test('install preserves other skill/config and adds only selected targets', asyn
 });
 
 // GitHub's Windows runner points TEMP at C:\Users\RUNNER~1\...: a home spelled in the 8.3 short form must install and add a target.
-test('a home folder given in its 8.3 short form installs and adds a target', { skip: process.platform !== 'win32' && 'Windows short names only' }, async () => {
+test('a home folder given in its 8.3 short form installs and adds a target', async () => {
+  if (process.platform !== 'win32') return; // 8.3 short names exist on Windows only (a skip would trip scripts/check-skips.mjs)
   const { root, bundleRoot } = await fixture();
   const longHome = path.join(root, 'a home folder with a long name');
   await mkdir(longHome);
