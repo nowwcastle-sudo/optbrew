@@ -32,7 +32,7 @@ export const structuredDataTruth = {
           applicability_decision: { condition: 'markup_not_used_or_selected', reason: NO_MARKUP, evidence_ref: artifact.evidence_ref } } });
       }
       const { matched, mismatched, unevaluated } = jsonLdTruth(html, factsOf.get(url));
-      const measurement = { jsonld_blocks: blocks, matched: matched.map(({ type, jsonld }) => ({ type, jsonld })), mismatched,
+      const measurement = { jsonld_blocks: blocks, matched: matched.map(({ type, jsonld, shown }) => ({ type, jsonld, ...(shown ? { shown } : {}) })), mismatched,
         unevaluated: unevaluated.map(({ type, jsonld }) => ({ type, jsonld })) };
       if (mismatched.length) return makeObservation({ ...observed, state: 'fail', extra: { measurement },
         problems: mismatched.map(({ type, jsonld, visible }) => problem(`JSON-LD ${type} "${jsonld}" differs from visible "${visible}"`, FACT_DIFFERS, { type, linked: jsonld, visible })) });

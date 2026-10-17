@@ -153,9 +153,15 @@ export function pageFacts(html, pageUrls = []) {
   // A sub-organization (a branch, a department) states facts of its own, not the page's. A sub-organization whose own url is this
   // page, or that this page names as what it is about, is the page's entity: the page is that branch's page, whatever else its
   // graph carries (the site's main organization is on every page of many sites). An @id counts only when it is the page address
-  // itself, because a fragment id on the home address (`/#annex`) is the home page's, not the annex's.
+  // itself. The site home never belongs to one branch: an address that is the root path, with or without a fragment (`/#annex`), is
+  // the home page's. What the page is about names a branch only when it names exactly one sub-organization (a locations page lists
+  // several).
   const ownKeys = new Set(pageUrls.map(canonicalUrl).filter(Boolean));
-  const isOwn = ({ node, org }) => org.branch && (ownKeys.has(canonicalUrl(node.url)) || pageUrls.includes(org.id) || aboutIds.has(org.id));
+  const atRoot = value => { try { return new URL(value).pathname === '/'; } catch { return false; } };
+  const claimsRoot = ({ node, org }) => [node.url, org.id].some(value => typeof value === 'string' && atRoot(value));
+  const aboutSubs = described.filter(item => item.org.branch && item.org.id && aboutIds.has(item.org.id));
+  const isOwn = item => item.org.branch && !claimsRoot(item) &&
+    (ownKeys.has(canonicalUrl(item.node.url)) || pageUrls.includes(item.org.id) || (aboutSubs.length === 1 && aboutSubs[0] === item));
   const own = described.filter(isOwn);
   // Otherwise, when the page also carries a node that is not a sub-organization, that node is the page's entity and only it
   // speaks for the page; a page whose every node is a sub-organization is a separate branch page.
@@ -278,21 +284,33 @@ const MONTHS = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', '
 const YEAR = '((?:19|20)\\d{2})';
 const MONTH_NAME = `(${MONTHS.join('|')})[a-z]*\\.?`;
 /**
- * The calendar dates the page shows, as yyyy-mm-dd, and the days it shows without a year, as --mm-dd: numeric (2026-09-16, 2026.9.16),
- * Korean (2026년 9월 16일, 9월 16일) and English month names (September 16, 2026; 16 Sep). A `<time datetime>` element counts as a shown date.
+ * The full calendar dates the page shows, by yyyy-mm-dd, each with the text it was read from and where: in the visible text
+ * (`text`: 2026-09-16, 2026.9.16, 2026년 9월 16일, September 16, 2026, 16 Sep 2026) or as the datetime of a `<time>` element that has
+ * visible text (`time`; not inside script, template, noscript or a hidden element). A day without a year is not a date, and a
+ * `time` element is close to circular, because the site writes it and its JSON-LD from one source: the source is recorded.
  */
 function datesIn(text, html) {
-  const found = new Set();
-  const pad = value => String(value).padStart(2, '0');
-  const add = (year, month, day) => found.add(`${year}-${pad(month)}-${pad(day)}`);
-  for (const m of html.matchAll(/<time\b[^>]*\bdatetime\s*=\s*["'](\d{4}-\d{2}-\d{2})/gi)) found.add(m[1]);
-  for (const m of text.matchAll(/(\d{1,2})\s*월\s*(\d{1,2})\s*일/g)) found.add(`--${pad(m[1])}-${pad(m[2])}`);
-  for (const m of text.matchAll(new RegExp(`\\b${MONTH_NAME}\\s+(\\d{1,2})(?:st|nd|rd|th)?\\b(?!,?\\s+${YEAR})`, 'gi'))) found.add(`--${pad(MONTHS.indexOf(m[1].toLowerCase()) + 1)}-${pad(m[2])}`);
-  for (const m of text.matchAll(new RegExp(`\\b${YEAR}\\s*[-./]\\s*(\\d{1,2})\\s*[-./]\\s*(\\d{1,2})\\b`, 'g'))) add(m[1], m[2], m[3]);
-  for (const m of text.matchAll(new RegExp(`${YEAR}\\s*년\\s*(\\d{1,2})\\s*월\\s*(\\d{1,2})\\s*일`, 'g'))) add(m[1], m[2], m[3]);
-  for (const m of text.matchAll(new RegExp(`\\b${MONTH_NAME}\\s+(\\d{1,2})(?:st|nd|rd|th)?,?\\s+${YEAR}\\b`, 'gi'))) add(m[3], MONTHS.indexOf(m[1].toLowerCase()) + 1, m[2]);
-  for (const m of text.matchAll(new RegExp(`\\b(\\d{1,2})(?:st|nd|rd|th)?\\s+${MONTH_NAME},?\\s+${YEAR}\\b`, 'gi'))) add(m[3], MONTHS.indexOf(m[2].toLowerCase()) + 1, m[1]);
+  const found = new Map();
+  const add = (year, month, day, shown, source) => {
+    const key = `${year}-${String(month).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+    if (!found.has(key)) found.set(key, { text: shown.replace(/\s+/g, ' ').trim(), source });
+  };
+  for (const m of text.matchAll(new RegExp(`\\b${YEAR}\\s*[-./]\\s*(\\d{1,2})\\s*[-./]\\s*(\\d{1,2})\\b`, 'g'))) add(m[1], m[2], m[3], m[0], 'text');
+  for (const m of text.matchAll(new RegExp(`${YEAR}\\s*년\\s*(\\d{1,2})\\s*월\\s*(\\d{1,2})\\s*일`, 'g'))) add(m[1], m[2], m[3], m[0], 'text');
+  for (const m of text.matchAll(new RegExp(`\\b${MONTH_NAME}\\s+(\\d{1,2})(?:st|nd|rd|th)?,?\\s+${YEAR}\\b`, 'gi'))) add(m[3], MONTHS.indexOf(m[1].toLowerCase()) + 1, m[2], m[0], 'text');
+  for (const m of text.matchAll(new RegExp(`\\b(\\d{1,2})(?:st|nd|rd|th)?\\s+${MONTH_NAME},?\\s+${YEAR}\\b`, 'gi'))) add(m[3], MONTHS.indexOf(m[2].toLowerCase()) + 1, m[1], m[0], 'text');
+  const rendered = stripInert(String(html).replace(/<(template|noscript)\b[^>]*>[\s\S]*?<\/\1\s*>/gi, ''));
+  for (const m of rendered.matchAll(/<time\b([^>]*)>([\s\S]*?)<\/time\s*>/gi)) {
+    const shown = decodeEntities(m[2].replace(/<[^>]*>/g, ' ')).replace(/\s+/g, ' ').trim();
+    const datetime = /\bdatetime\s*=\s*["'](\d{4})-(\d{2})-(\d{2})/i.exec(m[1]);
+    if (shown && datetime && !/\bhidden\b|display\s*:\s*none/i.test(m[1])) add(datetime[1], datetime[2], datetime[3], shown, 'time');
+  }
   return found;
+}
+/** True when two headings are the same words: one holds the other and is at least four fifths of its length, in letters and digits only. */
+function sameHeadline(a, b) {
+  const [short, long] = [squash(a), squash(b)].sort((x, y) => x.length - y.length);
+  return short.length > 2 && short.length * 5 >= long.length * 4 && long.includes(short);
 }
 const ARTICLE_TYPES = /^(?:[A-Za-z]*Article|BlogPosting|LiveBlogPosting|Report)$/;
 /** The texts of the page's h1 elements, then of its title: where a headline is expected to appear. */
@@ -319,7 +337,9 @@ export function jsonLdTruth(html, facts) {
   const addressWords = addressKey(text).split(' ');
   const labelled = [...facts.visible.address.keys()];
   const found = new Map();
-  const note = (list, type, jsonld, visible) => found.has(`${type}|${jsonld}`) || found.set(`${type}|${jsonld}`, { list, type, jsonld, ...(visible ? { visible } : {}) });
+  // `visible` is the value the page shows in the field that contradicts; `shown` is the text a matched date or headline was read from, and where.
+  const note = (list, type, jsonld, visible, shown) => found.has(`${type}|${jsonld}`) ||
+    found.set(`${type}|${jsonld}`, { list, type, jsonld, ...(visible ? { visible } : {}), ...(list === 'matched' && shown ? { shown } : {}) });
   for (const node of facts.entities) {
     if (typeof node.name === 'string' && squash(node.name)) note(showsName(node.name, squashed, words) ? 'matched' : 'unevaluated', 'name', node.name);
     const key = typeof node.telephone === 'string' ? phoneKey(node.telephone) : null;
@@ -341,12 +361,12 @@ export function jsonLdTruth(html, facts) {
     if (!typesOf(node).some(type => ARTICLE_TYPES.test(type))) continue;
     const headline = typeof node.headline === 'string' ? node.headline.trim() : '';
     if (squash(headline).length > 2) {
-      const same = headings.some(heading => squash(heading).includes(squash(headline)) || squash(headline).includes(squash(heading)) && squash(heading).length > 2);
+      const same = headings.find(heading => sameHeadline(heading, headline));
       // A title often differs from the headline on purpose, so only a page that has an h1 can contradict it.
-      note(same ? 'matched' : hasH1 ? 'mismatched' : 'unevaluated', 'headline', headline, headings[0]);
+      note(same ? 'matched' : hasH1 ? 'mismatched' : 'unevaluated', 'headline', headline, headings[0], same && { text: same, source: 'text' });
     }
     const published = /^(\d{4}-\d{2}-\d{2})/.exec(String(node.datePublished ?? ''))?.[1];
-    if (published) note(shownDates.has(published) || shownDates.has(`--${published.slice(5)}`) ? 'matched' : 'unevaluated', 'date', published);
+    if (published) note(shownDates.has(published) ? 'matched' : 'unevaluated', 'date', published, undefined, shownDates.get(published));
   }
   const listed = list => [...found.values()].filter(item => item.list === list).map(({ list: _, ...fact }) => fact);
   return { matched: listed('matched'), mismatched: listed('mismatched'), unevaluated: listed('unevaluated') };

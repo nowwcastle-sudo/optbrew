@@ -14,7 +14,7 @@
     },
     {
       "path": "references/scoring.md",
-      "sha256": "8cd3fad0d011f06774f8723a7c7ecfc8524ced51e47bf761edf9aba24a4125d6"
+      "sha256": "f94e6c571cba7e02dfef72058cb61b34e24fc48d4fa14850c4f43a3f43d02bcd"
     },
     {
       "path": "references/measurement.md",
@@ -45,7 +45,7 @@
       "sha256": "703d5c16878c526114afb540e4a6d54bd74831f35a824c03a839e2480097d279"
     }
   ],
-  "evaluation_hash": "7883fc5cf4ea32e1527282744d85a994a0ba0a15e8260cceffe0e1c1c6be0d95",
+  "evaluation_hash": "29788e9734713f5911729bbe9ec83128467b78d3382ce8b79b60653190df2b1d",
   "protocol_sources": [
     {
       "path": "references/schemas/contract.schema.json",
@@ -672,7 +672,7 @@
     },
     {
       "path": "references/scoring.md",
-      "sha256": "8cd3fad0d011f06774f8723a7c7ecfc8524ced51e47bf761edf9aba24a4125d6"
+      "sha256": "f94e6c571cba7e02dfef72058cb61b34e24fc48d4fa14850c4f43a3f43d02bcd"
     },
     {
       "path": "references/source-analysis.md",
@@ -780,7 +780,7 @@
     },
     {
       "path": "scripts/core/checks/structured-data-truth.mjs",
-      "sha256": "e13ce44f858cf10d7610ff287d7fbe8713987d0c3e41730513bc17d132c34578"
+      "sha256": "7b41a2f2039735e35b1f015ac3f3e8cf7ab9383dbbc758c15fcaa9149874575d"
     },
     {
       "path": "scripts/core/chrome.mjs",
@@ -824,7 +824,7 @@
     },
     {
       "path": "scripts/core/facts.mjs",
-      "sha256": "1a3d1dfc23e2d41c878e69184010b0e9ca2b1a16886d0489e62808320213ba42"
+      "sha256": "b33fab1b929b2ce7f089456c7bcbcc7fbc88e976482ed9064401a90b06abc384"
     },
     {
       "path": "scripts/core/findings.mjs",
@@ -931,5 +931,5 @@
       "sha256": "dca0bbd03fbf591c4aca6a568be76615eb48d69f7df0c634886f652b54f3f46d"
     }
   ],
-  "bundle_hash": "fb2569a031f9e2dc233906e897bd828f8dd07d3f8e8c1118ac3b4f94cf549082"
+  "bundle_hash": "7be9b73ae1417ead0b317b08cde12304de0f436f6caea6e1f21b2ba471961e29"
 }

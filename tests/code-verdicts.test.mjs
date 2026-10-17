@@ -53,14 +53,15 @@ test('a page whose every organization node is a sub-organization is a separate b
 });
 
 test('a branch page that carries the site\'s main organization in its graph is still the branch\'s page (R74)', () => {
-  const graph = extra => ld({ '@graph': [node({ '@id': `${ORIGIN}/#organization` }), subOrganization('Brew Gangnam', extra), ...(extra.page ? [extra.page] : [])] });
+  const graph = extra => ld({ '@graph': [node({ '@id': `${ORIGIN}/#organization` }), subOrganization('Brew Gangnam', { '@id': `${ORIGIN}/branches/gangnam#org`, ...extra }), ...(extra.page ? [extra.page] : [])] });
   const html = extra => doc('<p>Phone: 031-111-2222</p>', graph(extra));
   const byUrl = pageFacts(html({ url: url('/gangnam') }), [url('/gangnam')]);
   assert.equal(byUrl.branch, true, 'the sub-organization\'s own url is this page');
   assert.deepEqual([...byUrl.linked.phone.values()], ['031-111-2222'], 'the branch speaks for the page, not the main organization');
   const byId = pageFacts(html({ '@id': url('/gangnam') }), [url('/gangnam')]);
   assert.equal(byId.branch, true, 'an @id that is the page address');
-  const byAbout = pageFacts(html({ page: { '@type': 'WebPage', about: { '@id': `${ORIGIN}/#Brew Gangnam` } } }), [url('/gangnam')]);
+  const branchId = `${ORIGIN}/branches/gangnam#org`;
+  const byAbout = pageFacts(html({ '@id': branchId, page: { '@type': 'WebPage', about: { '@id': branchId } } }), [url('/gangnam')]);
   assert.equal(byAbout.branch, true, 'the page names the sub-organization as what it is about');
   const elsewhere = pageFacts(html({ url: url('/gangnam') }), [url('/about')]);
   assert.equal(elsewhere.branch, false, 'on another page the brief rule holds: the main organization is the entity');
@@ -71,6 +72,29 @@ test('a branch page that carries the site\'s main organization in its graph is s
   assert.deepEqual([...shared.comparison.separate], [url('/gangnam')]);
   assert.deepEqual(shared.comparison.deviations.get(url('/gangnam')), []);
   assert.notEqual(block('structured-data-truth').derive(shared).find(x => x.unit_key.endsWith('/gangnam')).state, 'fail');
+});
+
+test('a sub-organization at the site home address never makes the home page a branch page (N-2)', () => {
+  for (const address of [url('/'), `${url('/')}#annex`, `${url('/')}?x=1`]) {
+    const home = doc('<p>Brew Cafe. Phone: 02-555-0142</p>', ld({ '@graph': [node({ '@id': `${ORIGIN}/#organization` }), subOrganization('Brew Annex', { url: address })] }));
+    const facts = pageFacts(home, [url('/')]);
+    assert.equal(facts.branch, false, address);
+    assert.deepEqual([...facts.linked.phone.values()], ['02-555-0142']);
+    assert.equal(judge('structured-data-truth', { '/': home })['/'].state, 'pass', 'the home page is compared on the main organization');
+  }
+  const byId = pageFacts(doc('', ld({ '@graph': [node({ '@id': `${ORIGIN}/#organization` }), subOrganization('Brew Annex', { '@id': url('/') })] })), [url('/')]);
+  assert.equal(byId.branch, false, 'an @id that is the home address');
+});
+
+test('about and mainEntity name a branch only when they name exactly one sub-organization (N-3)', () => {
+  const idOf = name => `${ORIGIN}/branches/${name}#org`;
+  const page = (...names) => doc('<p>Phone: 031-111-2222</p>', ld({ '@graph': [node({ '@id': `${ORIGIN}/#organization` }),
+    subOrganization('Gangnam', { '@id': idOf('gangnam') }), subOrganization('Busan', { '@id': idOf('busan'), telephone: '032-222-3333' }),
+    { '@type': 'CollectionPage', mainEntity: names.map(name => ({ '@id': name === 'main' ? `${ORIGIN}/#organization` : idOf(name) })) }] }));
+  assert.equal(pageFacts(page('gangnam', 'busan'), [url('/locations-page')]).branch, false, 'a page that lists two branches is nobody\'s branch page');
+  assert.equal(pageFacts(page('gangnam'), [url('/locations-page')]).branch, true);
+  assert.equal(pageFacts(page('main', 'gangnam'), [url('/locations-page')]).branch, true, 'the main organization is not a sub-organization');
+  assert.deepEqual([...pageFacts(page('gangnam', 'busan'), [url('/locations-page')]).linked.phone.values()], ['02-555-0142'], 'the brief rule: the main organization speaks');
 });
 
 test('real branch site: the home page with department nodes is compared, the branch page is not', () => {
@@ -202,15 +226,49 @@ test('structured-data-truth: a publisher name alone never passes an Article, its
     publisher: { '@type': 'Organization', name: 'Brew Cafe' }, ...extra });
   const only = judge('structured-data-truth', { '/': doc('<p>Brew Cafe, 2026 menu</p>', article({ headline: undefined, datePublished: undefined })) });
   assert.equal(only['/'].state, 'unknown', 'a nested publisher is not the page\'s entity and its name proves nothing');
-  const shown = judge('structured-data-truth', { '/': doc('<h1>Spring menu announced</h1><time datetime="2026-03-04T09:00">Mar 4</time>', article()), '/ko': doc('<h1>Spring menu announced</h1><p>3월 4일</p>', article()) });
+  const shown = judge('structured-data-truth', { '/': doc('<h1>Spring menu announced</h1><time datetime="2026-03-04T09:00">Mar 4</time>', article()),
+    '/ko': doc('<h1>Spring menu announced</h1><p>2026년 3월 4일</p>', article()) });
   assert.deepEqual(states(shown), { '/': 'pass', '/ko': 'pass' });
   assert.deepEqual(shown['/'].measurement.matched.map(x => x.type), ['headline', 'date']);
+  assert.deepEqual(shown['/'].measurement.matched[1].shown, { text: 'Mar 4', source: 'time' }, 'the matched text and where it came from are recorded');
+  assert.deepEqual(shown['/ko'].measurement.matched[1].shown, { text: '2026년 3월 4일', source: 'text' });
   const wrong = judge('structured-data-truth', { '/': doc('<h1>Autumn menu</h1><p>3월 4일</p>', article()) });
   assert.equal(wrong['/'].state, 'fail');
   assert.equal(wrong['/'].reason, 'JSON-LD headline "Spring menu announced" differs from visible "Autumn menu"');
   const undated = judge('structured-data-truth', { '/': doc('<h1>Spring menu announced</h1>', article()) });
   assert.equal(undated['/'].state, 'unknown', 'a date the page does not show is not confirmed');
   assert.deepEqual(undated['/'].measurement.unevaluated.map(x => x.type), ['date']);
+});
+
+test('structured-data-truth: a date matches only when year, month and day all match, and a time element must show text (N-1)', () => {
+  const article = ld({ '@type': 'Article', headline: 'Spring menu announced', datePublished: '2026-03-04T09:00:00+09:00' });
+  const head = '<h1>Spring menu announced</h1>';
+  const dateState = body => {
+    const result = judge('structured-data-truth', { '/': doc(head + body, article) })['/'];
+    return [result.state, result.measurement.matched.some(x => x.type === 'date')];
+  };
+  assert.deepEqual(dateState('<p>2026년 3월 4일</p>'), ['pass', true]);
+  assert.deepEqual(dateState('<p>2025년 3월 4일</p>'), ['unknown', false], 'a different year');
+  assert.deepEqual(dateState('<p>3월 4일</p>'), ['unknown', false], 'a month and day without a year is not a date');
+  assert.deepEqual(dateState('<p>Mar 4</p>'), ['unknown', false]);
+  assert.deepEqual(dateState('<p>2026.03.05</p><p>Posted 2026-02-04</p>'), ['unknown', false], 'unrelated dates on the page');
+  assert.deepEqual(dateState('<p>March 4, 2026</p>'), ['pass', true]);
+  assert.deepEqual(dateState('<time datetime="2026-03-04">March</time>'), ['pass', true], 'a time element with visible text and a full datetime');
+  assert.deepEqual(dateState('<time datetime="2026-03-04"></time>'), ['unknown', false], 'a time element with no visible text');
+  assert.deepEqual(dateState('<time datetime="2026-03">March 2026</time>'), ['unknown', false], 'a datetime without a day');
+  assert.deepEqual(dateState('<time hidden datetime="2026-03-04">March 4</time>'), ['unknown', false], 'a hidden element');
+  assert.deepEqual(dateState('<template><time datetime="2026-03-04">March 4</time></template><script>var t = \'<time datetime="2026-03-04">x</time>\'</script>'),
+    ['unknown', false], 'inside template or script');
+});
+
+test('structured-data-truth: a headline matches the h1 or title only at four fifths of its length or more (N-4)', () => {
+  const article = ld({ '@type': 'Article', headline: 'Brew Cafe news about roasting', datePublished: '2026-03-04' });
+  const state = (h1, title) => judge('structured-data-truth', { '/': doc(`<h1>${h1}</h1><p>2026-03-04</p>`, article, title) })['/'];
+  assert.equal(state('Brew Cafe news about roasting', 'Brew').state, 'pass');
+  assert.equal(state('Totally different story', 'Brew').state, 'fail', 'a short title no longer excuses an h1 that differs');
+  assert.equal(state('Brew Cafe news about roasting today', 'x').state, 'pass', 'the headline is more than four fifths of the h1');
+  assert.equal(state('Brew Cafe news about roasting and the long history of coffee in town', 'x').state, 'fail', 'the headline is a small part of the h1');
+  assert.equal(state('Roasting', 'x').state, 'fail');
 });
 
 test('structured-data-truth: a nested parent organization is not the entity of its branch page (R74, review I-1)', () => {
