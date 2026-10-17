@@ -5,11 +5,13 @@ const FAMILY = 'discovery';
 const ORPHAN = 'discovery.orphan';
 const SITEMAP_UNUSABLE = 'discovery.orphan-sitemap-unusable';
 
-/** A page listed in a declared sitemap or linked from another collected page passes; a proven orphan fails. */
+const UNPROVEN = 'Not in a read sitemap and not linked from a collected page, but the evidence cannot show that nothing else leads to it';
+
+/** A page listed in a declared sitemap or linked from another collected page passes; a proven orphan fails; the rest is unknown. */
 export const discovery = {
   family_id: FAMILY,
   message_keys: [ORPHAN, SITEMAP_UNUSABLE],
-  derive({ pageRows, linkGraph, orphans, sitemaps }) {
+  derive({ pageRows, linkGraph, orphans, sitemaps, crawlComplete, htmlPages }) {
     const out = [];
     for (const row of pageRows) {
       if (!row.publicIndexing) continue;
@@ -24,6 +26,11 @@ export const discovery = {
         const broken = sitemaps.broken.join(', ');
         out.push(makeObservation({ family_id: FAMILY, unit_key: unitKey(FAMILY, url), state: 'fail', evidence_ref: artifact.evidence_ref,
           problems: [broken ? problem(`${unlinked}; declared sitemap unusable: ${broken}`, SITEMAP_UNUSABLE, { broken }) : problem(unlinked, ORPHAN)] }));
+      } else {
+        // Reaching a page because the run selected it is not discoverability, and an orphan is only proven on complete evidence
+        // (see findOrphans). A page neither listed nor linked that cannot be proven an orphan is unknown, and says what leaves it open.
+        out.push(makeObservation({ family_id: FAMILY, unit_key: unitKey(FAMILY, url), state: 'unknown', evidence_ref: artifact.evidence_ref,
+          reason: UNPROVEN, extra: { measurement: { crawl_complete: crawlComplete, sitemap_index_unread: sitemaps.index, script_gap: linkGraph.scriptGap, collected_pages: htmlPages } } }));
       }
     }
     return out;

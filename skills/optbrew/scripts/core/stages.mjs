@@ -393,7 +393,8 @@ async function readStored(state) {
   const renders = [];
   const doms = new Map();
   for (const entry of index.renders) {
-    const record = JSON.parse(await text(entry.evidence_ref, entry.sha256));
+    // The record carries the evidence ref it was read from, so a verdict inherited from a rendered page can cite it.
+    const record = { ...JSON.parse(await text(entry.evidence_ref, entry.sha256)), evidence_ref: entry.evidence_ref };
     if (record.dom_ref) doms.set(record, await text(record.dom_ref, record.dom_sha256));
     renders.push(record);
   }
@@ -466,7 +467,7 @@ const scoreStage = {
 
 /** Where each file of the evidence folder belongs in the report packet's evidence list: its kind, and whether the collector wrote it. */
 const EVIDENCE_KINDS = [[/\.html$/, 'raw_html', true], [/\.bin$/, 'raw_response', true], [/\.response\.json$/, 'response_record', true],
-  [/\.failure\.json$/, 'failure_record', true], [/\.render-dom$/, 'render_dom', false], [/\.render\.json$/, 'render', false],
+  [/\.failure\.json$/, 'failure_record', true], [/\.render-dom$/, 'render_dom', false], [/\.render\.json$/, 'render', true],
   [/\.cwv\.json$/, 'cwv', true], [/\.judge-queue\.json$/, 'judge-queue', false], [/\.owner-export$/, 'owner_export', false], [/^(?:collection|ledger)\.json$/, 'record', true]];
 
 const RUN_FILE = /^(?:[0-9a-f]{64}\..+|(?:collection|ledger|modules|observations)\.json|.*\.tmp)$/;

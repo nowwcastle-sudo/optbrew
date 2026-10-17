@@ -38,6 +38,16 @@ Every selected URL is a public audit target and always gets `fetch-response`. It
 
 These codes identify a condition and point to evidence; the reference alone does not verify the evidence's truth. The collecting agent must preserve the actual evidence. A missing approved fact list for `fact-consistency`, or missing field performance data, is `unknown`, not an exclusion.
 
+Where the collector's own checks give a verdict instead of leaving a unit blank (each re-derived on replay, and each names its basis in `reason` or `measurement`):
+
+- `render-content`: a page outside the render sample takes the verdict of the sampled page of its page type, only when that verdict is a pass or `not_render_dependent`; the reason names the sampled page and the evidence is that page's render record. A not-applicable is inherited only by a page whose own raw HTML has body text. With no usable sample of its type the page stays unknown.
+- `structured-data-truth`: no JSON-LD, microdata or RDFa is `markup_not_used_or_selected`. JSON-LD whose Organization or LocalBusiness name, phone or street address the page shows, with none contradicted by a labelled value, passes; a labelled value that differs fails. A name only ever matches. JSON-LD with nothing to compare is unknown.
+- `document-title`: a title that is present, unique among the audited pages and not only the site's host name or a word of `generic_titles` (registry thresholds) passes. Whether it describes the page is not established, and the pass says so.
+- `fact-consistency`: a page that states no name, phone, address or founding year is `no_evaluable_facts`. A page that states a fact but meets no reference value stays unknown (that is the missing fact list).
+- `canonical-consistency`: no canonical and no redirect is `no_representative_url_policy`; no canonical and exactly one redirect hop passes.
+- `discovery`: a page neither listed in a read sitemap nor linked, and not provable as an orphan (crawl cut short, unread sitemap index, script-built links, one page), is unknown; its measurement says which of these applies. Being selected for the audit is not discoverability.
+- `entity-identity`: a page is a separate branch only when every Organization node on it is a sub-organization (`parentOrganization`, `branchOf` or a branch word in its name). On a page that also has a node that is not one, only that node speaks for the page.
+
 `question_panel` contains fixed `{id,question,category,goal?}` entries. Category is `brand` or `non_brand`; IDs are unique. `question-coverage` and `answer-clarity` require a nonempty panel. A partial `question-coverage` ratio uses the fixed panel length as its denominator.
 
 Each page type has a stable ID and an array of `{original,normalized}` HTTP(S) URLs. Normalized URLs must be unique across types. Unit keys are deterministic:

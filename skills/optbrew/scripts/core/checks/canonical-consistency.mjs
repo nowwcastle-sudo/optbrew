@@ -4,6 +4,7 @@ const FAMILY = 'canonical-consistency';
 const REDIRECT_CHAIN = problem('Redirect chain of two or more hops', 'canonical-consistency.redirect-chain');
 const TARGET_STATUS = problem('canonical target does not return a successful status', 'canonical-consistency.target-status');
 const INVALID_URL = problem('canonical is not a valid URL', 'canonical-consistency.invalid-url');
+const NO_POLICY = 'The page declares no canonical URL and does not redirect';
 
 /** Redirect depth, and whether the declared canonical points at this page or at a reachable one. */
 export const canonicalConsistency = {
@@ -30,6 +31,11 @@ export const canonicalConsistency = {
       const problems = [...(hops >= 2 ? [REDIRECT_CHAIN] : []), ...(canonicalProblem ? [canonicalProblem] : [])];
       if (problems.length) observe('fail', { problems, extra: { measurement: { ...measurement, problems: problems.map(item => item.text) } } });
       else if (canonicalState === 'pass') observe('pass', { reason: 'Canonical target is this page or a reachable page and redirects stay within one hop', extra: { measurement } });
+      // With no canonical tag the page declares no representative URL: after one redirect hop the redirect is that policy and nothing
+      // disagrees with it; with no redirect either, there is no policy to be consistent with.
+      else if (!info.canonical && hops === 1) observe('pass', { reason: 'No canonical is declared; the one redirect hop is the page\'s URL policy and stays within the limit', extra: { measurement } });
+      else if (!info.canonical && hops === 0) observe('not_applicable', { reason: NO_POLICY, extra: { measurement,
+        applicability_decision: { condition: 'no_representative_url_policy', reason: NO_POLICY, evidence_ref: artifact.evidence_ref } } });
     }
     return out;
   },

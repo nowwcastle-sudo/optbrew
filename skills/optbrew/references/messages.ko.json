@@ -14,6 +14,7 @@
   "internal-navigation.too-deep": "홈 페이지에서 이 페이지까지 클릭이 너무 많이 필요합니다. 홈 페이지나 메뉴에서 더 가까운 링크를 만드세요.",
   "internal-navigation.weak-anchors": "링크 글자가 비어 있거나 '더보기'처럼 뜻이 없는 링크가 많습니다. 링크 글자에 가는 곳을 쓰세요.",
   "structured-data-truth.parse-error": "JSON-LD가 문법 오류로 읽히지 않습니다. 쉼표와 따옴표를 확인해 올바른 JSON으로 고치세요.",
+  "structured-data-truth.fact-differs": "JSON-LD의 {type:fact-type} 값과 화면 글이 다릅니다. JSON-LD는 \"{linked}\", 화면은 \"{visible}\"입니다. 두 값을 맞추세요.",
   "locale-links.no-x-default": "hreflang에 x-default가 없습니다. 기본으로 보여 줄 언어 페이지를 x-default로 추가하세요.",
   "locale-links.no-return": "이 페이지가 가리킨 언어별 페이지에 이 페이지로 돌아오는 hreflang이 없습니다. 두 페이지가 서로를 가리키게 하세요.",
   "locale-links.not-listed-back": "다른 페이지가 이 페이지를 언어별 페이지로 가리키는데, 이 페이지는 그 페이지를 가리키지 않습니다. 서로 가리키게 하세요.",

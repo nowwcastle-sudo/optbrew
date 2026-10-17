@@ -35,6 +35,7 @@ const factList = pages => Object.entries(pages).map(([url, html]) => ({ url, row
 const factPage = (body, telephone) => `<html><head><title>x</title>${telephone ? `<script type="application/ld+json">${JSON.stringify({ '@type': 'LocalBusiness', name: 'Brew', telephone })}</script>` : ''}</head><body>${body}</body></html>`;
 const conflicting = factList({ '/': factPage('<p>Phone: 02-555-0142</p>'), '/a': factPage('<p>Phone: 02-555-0142</p>'), '/b': factPage('<p>Phone: 02-555-0199</p>') });
 const jsonLdOff = factList({ '/': factPage('<p>Phone: 02-555-0142</p>', '02-555-0199') });
+const jsonLdMismatch = factPage('<p>Phone: 02-555-0142</p>', '02-555-0199');
 const cwvRecord = { source: 'crux', origin: 'https://s.test', status: 200, evidence_ref: 'evidence/c.json', body: { record: { metrics: {
   largest_contentful_paint: { percentiles: { p75: 9000 } }, interaction_to_next_paint: { percentiles: { p75: 900 } }, cumulative_layout_shift: { percentiles: { p75: '0.9' } } } } } };
 const fieldInput = { context: { evidence_ref: 'context.json' }, artifacts: [], selected: new Map([[PAGE, {}]]), cwv: [cwvRecord] };
@@ -47,7 +48,9 @@ const naverRuns = () => block('naver-markup').derive({ context: { protocol: { en
   naverRow(markup('<html><head><title>Brew</title></head><body></body></html>'))] });
 
 const runs = [
-  () => block('render-content').derive({ pageRows: [row(PAGE)], renders: [{ url: PAGE, final_url: PAGE, status: 200, dom_ref: 'd', title: '', links: [] }],
+  () => block('structured-data-truth').derive({ pageRows: [row(PAGE, { html: jsonLdMismatch, info: { title: '', jsonld_parse_errors: 0 } }), row(OTHER, { html: '<html></html>', info: { title: '', jsonld_parse_errors: 2 } })],
+    facts: factList({ [PAGE]: jsonLdMismatch, [OTHER]: '<html></html>' }) }),
+  () => block('render-content').derive({ context: { protocol: { page_types: [] } }, pageRows: [row(PAGE)], renders: [{ url: PAGE, final_url: PAGE, status: 200, dom_ref: 'd', title: '', links: [] }],
     renderTextOf: () => '', chrome: { found: true }, renderSample: new Set([canonicalUrl(PAGE)]) }),
   () => block('discovery').derive({ pageRows: [row(PAGE)], linkGraph: { inbound: () => false }, orphans: new Set([PAGE]),
     sitemaps: { urls: new Set(), broken: ['https://s.test/sitemap.xml (404)'] } }),

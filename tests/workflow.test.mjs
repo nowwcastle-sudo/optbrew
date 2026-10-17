@@ -157,9 +157,9 @@ test('real local HTTP baseline, authorized edit and same-condition rescan clear 
   mislabeled.run_context.evaluation_version = '9.9.9';
   assert.throws(() => score(mislabeled), /evaluation version|identity/i);
   assert.deepEqual(baseline.observations.filter(x => x.state === 'fail').map(x => x.family_id).sort(), ['document-title', 'index-policy']);
-  assert.deepEqual(followup.observations.filter(x => x.state === 'pass').map(x => x.family_id).sort(), ['fetch-response', 'index-policy']);
-  assert.equal(followup.observations.find(x => x.family_id === 'document-title').state, 'unknown',
-    'a present title proves existence only; uniqueness and descriptiveness stay unknown');
+  assert.deepEqual(followup.observations.filter(x => x.state === 'pass').map(x => x.family_id).sort(), ['document-title', 'fetch-response', 'index-policy']);
+  assert.equal(followup.observations.find(x => x.family_id === 'document-title').state, 'pass',
+    'a present title that no other audited page shares and that is more than a name passes; its basis is in the measurement');
   assert.equal(score(beforeInput).find(x => x.profile === 'SEO').readiness_status, 'blocked');
   assert.equal(score(afterInput).find(x => x.profile === 'SEO').blockers.length, 0);
   const delta = compare(beforeInput, afterInput);

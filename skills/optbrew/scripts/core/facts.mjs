@@ -16,6 +16,8 @@ const squash = value => String(value).toLowerCase().replace(/[^\p{L}\p{N}]+/gu, 
 const BRANCH = /\b(?:branch)\b|지점|지사/i;
 // URL path segments that list branches: /branch/, /branches/, /locations/, /stores/, /지점/.
 const BRANCH_PATH = /^(?:branch|branches|locations|stores|지점)$/i;
+/** A node that states a sub-organization: a branch or department of another entity, by its own link or by a branch word in its name. */
+const isBranchNode = node => Boolean(node.branchOf || node.parentOrganization || BRANCH.test(typeof node.name === 'string' ? node.name : ''));
 const branchPath = url => {
   try { return new URL(url, endpoints().relative_url_base).pathname.split('/').some(part => BRANCH_PATH.test(decodeURIComponent(part))); }
   catch { return false; }
@@ -129,29 +131,36 @@ export function pageFacts(html) {
     put(visible, 'year', match[1] ?? match[2], match[1] ?? match[2]);
   for (const match of text.matchAll(/\bAddress\b\s*[:：]\s*([^\n]+?)(?=\.\s|\.?\s*$|\n)/gim)) put(visible, 'address', match[1], addressKey(match[1]));
   for (const match of text.matchAll(/주소\s*[:：]\s*([^\n.]+)/g)) put(visible, 'address', match[1], addressKey(match[1]));
-  const orgs = [];
+  const described = [];
   for (const block of jsonLdBlocks(live)) {
     if (!block.ok) continue;
     for (const node of nodesOf(block.value)) {
       if (!typesOf(node).some(type => ORG_TYPES.test(type))) continue;
       const name = typeof node.name === 'string' ? node.name : '';
-      const org = { name, id: typeof node['@id'] === 'string' ? node['@id'] : null,
+      described.push({ node, org: { name, id: typeof node['@id'] === 'string' ? node['@id'] : null,
         sameAs: [].concat(node.sameAs ?? []).some(x => typeof x === 'string' && x.trim()),
-        branch: Boolean(node.branchOf || node.parentOrganization || BRANCH.test(name)) };
-      if (name) put(linked, 'name', name, squash(name));
-      if (typeof node.telephone === 'string') put(linked, 'phone', node.telephone, phoneKey(node.telephone));
-      const address = addressText(node.address);
-      if (address) put(linked, 'address', address, addressKey(address));
-      const year = /\b((?:19|20)\d{2})\b/.exec(String(node.foundingDate ?? ''))?.[1];
-      if (year) put(linked, 'year', year, year);
-      orgs.push(org);
+        branch: isBranchNode(node) } });
     }
+  }
+  // A sub-organization (a branch, a department) states facts of its own, not the page's. When the page also carries a node that is
+  // not a sub-organization, that node is the page's entity and only it speaks for the page; a page whose every node is a
+  // sub-organization is a separate branch page.
+  const speaking = described.some(item => !item.org.branch) ? described.filter(item => !item.org.branch) : described;
+  const orgs = [];
+  for (const { node, org } of speaking) {
+    if (org.name) put(linked, 'name', org.name, squash(org.name));
+    if (typeof node.telephone === 'string') put(linked, 'phone', node.telephone, phoneKey(node.telephone));
+    const address = addressText(node.address);
+    if (address) put(linked, 'address', address, addressKey(address));
+    const year = /\b((?:19|20)\d{2})\b/.exec(String(node.foundingDate ?? ''))?.[1];
+    if (year) put(linked, 'year', year, year);
+    orgs.push(org);
   }
   // A branch word in the title or first heading is only a hint (titleBranch). A page is a separate entity when its
   // JSON-LD says so (branch), when its URL is a branch list, or when the hint comes with an address of its own.
   const heading = /<(?:title|h1)\b[^>]*>([\s\S]*?)<\/(?:title|h1)>/gi;
   const headings = [...live.matchAll(heading)].map(match => match[1]).join(' ');
-  return { visible, linked, tel, orgs, branch: orgs.some(org => org.branch), titleBranch: BRANCH.test(headings) };
+  return { visible, linked, tel, orgs, branch: orgs.length > 0 && orgs.every(org => org.branch), titleBranch: BRANCH.test(headings) };
 }
 
 /**
@@ -222,4 +231,61 @@ export function compareFacts(allPages) {
     }
   }
   return { references, deviations, deviation_messages, separate: new Set(allPages.filter(separate).map(page => page.url)) };
+}
+
+/** Every object of a JSON-LD value at any depth: a publisher or organizer inside an Article is a node too. */
+function deepNodes(value, out = []) {
+  if (Array.isArray(value)) value.forEach(item => deepNodes(item, out));
+  else if (value && typeof value === 'object') { out.push(value); Object.values(value).forEach(item => deepNodes(item, out)); }
+  return out;
+}
+
+// A phone number with its separators is never longer than this, so a number is read from this many characters after its first digit.
+const PHONE_SPAN = 32;
+/** The phone keys of every number `text` shows, read with the same rules as a labelled number. */
+function numbersIn(text) {
+  const keys = new Set();
+  for (const match of text.matchAll(/(?<!\d)[+(]?\d/g)) {
+    const number = readPhone(text.slice(match.index, match.index + PHONE_SPAN));
+    const key = number && phoneKey(number);
+    if (key) keys.add(key);
+  }
+  return keys;
+}
+/** True when `tokens` (at least two, one of them a word) stand next to each other, in that order, among `words`. */
+const hasRun = (words, tokens) => tokens.length > 1 && tokens.some(token => /^\p{L}/u.test(token)) &&
+  words.some((_, i) => tokens.every((token, k) => words[i + k] === token));
+
+/**
+ * How the entity facts a page's JSON-LD states stand against the page's visible text. They come from the Organization and
+ * LocalBusiness nodes at any depth, leaving out sub-organizations when the page also names another entity. A name, a phone number
+ * or a street address is `matched` when the page shows it. It is `mismatched` only when the page labels a value of that type
+ * (Phone:, Address:, 전화, 주소) and none of the labelled values agrees. A fact the page neither shows nor contradicts is in
+ * neither list, because nothing about it could be evaluated; the name has no labelled field, so a name can only match.
+ */
+export function jsonLdTruth(html, facts = pageFacts(html)) {
+  const live = stripComments(html);
+  const nodes = [];
+  for (const block of jsonLdBlocks(live)) if (block.ok) for (const node of deepNodes(block.value))
+    if (typesOf(node).some(type => ORG_TYPES.test(type)) && (node.name || node.telephone || node.address)) nodes.push(node);
+  const speaking = nodes.some(node => !isBranchNode(node)) ? nodes.filter(node => !isBranchNode(node)) : nodes;
+  const text = visibleText(live);
+  const squashed = squash(text);
+  const numbers = new Set([...numbersIn(hardText(live)), ...facts.visible.phone.keys(), ...facts.tel.phone.keys()]);
+  const words = addressKey(text).split(' ');
+  const labelled = [...facts.visible.address.keys()];
+  const found = new Map();
+  const note = (list, type, jsonld, visible) => found.has(`${list}|${type}|${jsonld}`) || found.set(`${list}|${type}|${jsonld}`, { list, type, jsonld, ...(visible ? { visible } : {}) });
+  for (const node of speaking) {
+    if (typeof node.name === 'string' && squash(node.name).length > 1 && squashed.includes(squash(node.name))) note('matched', 'name', node.name);
+    const key = typeof node.telephone === 'string' ? phoneKey(node.telephone) : null;
+    if (key && numbers.has(key)) note('matched', 'phone', node.telephone);
+    else if (key && facts.visible.phone.size) note('mismatched', 'phone', node.telephone, [...facts.visible.phone.values()].join(' / '));
+    const street = typeof node.address === 'string' ? node.address : node.address?.streetAddress;
+    const streetKey = typeof street === 'string' ? addressKey(street) : '';
+    if (streetKey && (hasRun(words, streetKey.split(' ')) || labelled.some(other => sameAddress(other, streetKey)))) note('matched', 'address', street);
+    else if (streetKey && labelled.length) note('mismatched', 'address', street, [...facts.visible.address.values()].join(' / '));
+  }
+  const listed = list => [...found.values()].filter(item => item.list === list).map(({ list: _, ...fact }) => fact);
+  return { matched: listed('matched'), mismatched: listed('mismatched') };
 }
