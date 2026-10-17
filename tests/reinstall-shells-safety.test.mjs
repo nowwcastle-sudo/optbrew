@@ -6,6 +6,7 @@ import { doctor } from '../lib/doctor.mjs';
 import { readInstallRecord } from '../lib/records.mjs';
 import { agents, assertNothingDeleted, runBlock, sandbox, shellNamed, shells, tamperRecord } from './support/reinstall-shells.mjs';
 import { releasePublished, skipUnreachable } from './support/published.mjs';
+import { versions } from '../skills/optbrew/scripts/core/config.mjs';
 
 after(releasePublished);
 
@@ -32,7 +33,7 @@ describe('documented reinstall blocks refuse tampering, follow the CLI home and 
       await writeFile(path.join(decoy, '.optbrew/installs/user/install-record.json'), '{}');
       const run = await runBlock({ shell, command, scope: 'user', f, env: { HOME: f.home, USERPROFILE: decoy } });
       assert.equal(run.status, 0, `${run.stdout}\n${run.stderr}`);
-      assert.equal((await readInstallRecord(f.recordRoot)).release_version, '0.1.3');
+      assert.equal((await readInstallRecord(f.recordRoot)).release_version, versions().release);
       assert.equal(await readFile(path.join(decoy, '.optbrew/installs/user/install-record.json'), 'utf8'), '{}', 'the decoy is untouched');
     });
     // PowerShell leaves the environment alone, so node falls back to USERPROFILE. (Git Bash would invent a HOME of its own.)
@@ -40,7 +41,7 @@ describe('documented reinstall blocks refuse tampering, follow the CLI home and 
       const f = await sandbox(t, { scope: 'user' });
       const run = await runBlock({ shell, command, scope: 'user', f, env: { HOME: undefined, USERPROFILE: f.home } });
       assert.equal(run.status, 0, `${run.stdout}\n${run.stderr}`);
-      assert.equal((await readInstallRecord(f.recordRoot)).release_version, '0.1.3');
+      assert.equal((await readInstallRecord(f.recordRoot)).release_version, versions().release);
     });
   }
 
@@ -53,7 +54,7 @@ describe('documented reinstall blocks refuse tampering, follow the CLI home and 
       assert.equal(run.status, 0, `${run.stdout}\n${run.stderr}`);
       const report = await doctor({ agents, ...f.where });
       assert.ok(report.targets.every(x => x.registered && x.hash_ok), JSON.stringify(report));
-      assert.equal((await readInstallRecord(f.recordRoot)).release_version, '0.1.3');
+      assert.equal((await readInstallRecord(f.recordRoot)).release_version, versions().release);
       assert.equal(await readFile(path.join(f.project, '.optbrew/runs/run.json'), 'utf8'), 'private run evidence');
     });
   }

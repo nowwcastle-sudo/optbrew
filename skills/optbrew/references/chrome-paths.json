@@ -1,0 +1,31 @@
+{
+  "win32": [
+    { "path": "%ProgramFiles%\\Google\\Chrome\\Application\\chrome.exe", "kind": "chrome" },
+    { "path": "%ProgramFiles(x86)%\\Google\\Chrome\\Application\\chrome.exe", "kind": "chrome" },
+    { "path": "%LocalAppData%\\Google\\Chrome\\Application\\chrome.exe", "kind": "chrome" },
+    { "path": "%ProgramFiles(x86)%\\Microsoft\\Edge\\Application\\msedge.exe", "kind": "edge" },
+    { "path": "%ProgramFiles%\\Microsoft\\Edge\\Application\\msedge.exe", "kind": "edge" }
+  ],
+  "darwin": [
+    { "path": "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome", "kind": "chrome" },
+    { "path": "/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge", "kind": "edge" }
+  ],
+  "linux": [
+    { "path": "/opt/google/chrome/chrome", "kind": "chrome" },
+    { "path": "/opt/microsoft/msedge/msedge", "kind": "edge" }
+  ],
+  "path_names": [
+    { "name": "chrome", "kind": "chrome" },
+    { "name": "google-chrome-stable", "kind": "chrome" },
+    { "name": "google-chrome", "kind": "chrome" },
+    { "name": "chromium-browser", "kind": "chromium" },
+    { "name": "chromium", "kind": "chromium" },
+    { "name": "msedge", "kind": "edge" },
+    { "name": "microsoft-edge-stable", "kind": "edge" }
+  ],
+  "playwright_chromium": {
+    "win32": ["chrome-win64\\chrome.exe"],
+    "darwin": ["chrome-mac-arm64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing", "chrome-mac-x64/Google Chrome for Testing.app/Contents/MacOS/Google Chrome for Testing"],
+    "linux": ["chrome-linux64/chrome", "chrome-linux-arm64/chrome"]
+  }
+}

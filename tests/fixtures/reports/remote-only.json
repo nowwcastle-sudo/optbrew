@@ -1,7 +1,7 @@
 {
-  "schema_version": "1.0.0",
+  "schema_version": "2.0.0",
   "run_context": {
-    "schema_version": "1.0.0",
+    "schema_version": "2.0.0",
     "run_id": "synthetic-report",
     "target": "example.com",
     "environment": "local",
@@ -10,10 +10,25 @@
     ],
     "allowed_changes": [],
     "scope": {},
-    "evaluation_version": "0.3.0",
-    "protocol_version": "0.1.0",
+    "evaluation_version": "0.4.0",
+    "protocol_version": "0.2.0",
     "data_sources": [],
     "cost_decision": {},
+    "environment_probe": {
+      "harness": "other",
+      "transport": "direct",
+      "address_vetting": "direct",
+      "proxy": null,
+      "block_reason": null,
+      "chrome": {
+        "found": true,
+        "kind": "chrome",
+        "reason": null
+      },
+      "google_key": false,
+      "source_tools": [],
+      "sitemap_pages": null
+    },
     "evidence_ref": "context.json",
     "protocol": {
       "page_types": [
@@ -50,6 +65,11 @@
       "surfaces": [],
       "models": [],
       "search_enabled": null,
+      "render": {
+        "enabled": false,
+        "pages": [],
+        "max_render_requests": 300
+      },
       "question_panel": [],
       "families": [
         {
@@ -215,9 +235,9 @@
   },
   "baseline": {
     "input": {
-      "schema_version": "1.0.0",
+      "schema_version": "2.0.0",
       "run_context": {
-        "schema_version": "1.0.0",
+        "schema_version": "2.0.0",
         "run_id": "synthetic-report",
         "target": "example.com",
         "environment": "local",
@@ -226,10 +246,25 @@
         ],
         "allowed_changes": [],
         "scope": {},
-        "evaluation_version": "0.3.0",
-        "protocol_version": "0.1.0",
+        "evaluation_version": "0.4.0",
+        "protocol_version": "0.2.0",
         "data_sources": [],
         "cost_decision": {},
+        "environment_probe": {
+          "harness": "other",
+          "transport": "direct",
+          "address_vetting": "direct",
+          "proxy": null,
+          "block_reason": null,
+          "chrome": {
+            "found": true,
+            "kind": "chrome",
+            "reason": null
+          },
+          "google_key": false,
+          "source_tools": [],
+          "sitemap_pages": null
+        },
         "evidence_ref": "context.json",
         "protocol": {
           "page_types": [
@@ -266,6 +301,11 @@
           "surfaces": [],
           "models": [],
           "search_enabled": null,
+          "render": {
+            "enabled": false,
+            "pages": [],
+            "max_render_requests": 300
+          },
           "question_panel": [],
           "families": [
             {
@@ -431,7 +471,7 @@
       },
       "observations": [
         {
-          "schema_version": "1.0.0",
+          "schema_version": "2.0.0",
           "observation_id": "fetch-pass",
           "check_id": "fetch-response",
           "family_id": "fetch-response",
@@ -445,7 +485,7 @@
           "evidence_ref": "raw.html"
         },
         {
-          "schema_version": "1.0.0",
+          "schema_version": "2.0.0",
           "observation_id": "noindex",
           "check_id": "index-policy",
           "family_id": "index-policy",
@@ -462,8 +502,8 @@
     },
     "scores": [
       {
-        "schema_version": "1.0.0",
-        "evaluation_version": "0.3.0",
+        "schema_version": "2.0.0",
+        "evaluation_version": "0.4.0",
         "profile": "SEO",
         "A": 100,
         "M": 5.769230769230769,
@@ -514,11 +554,11 @@
             "unit_key": "index-policy|https://example.com/help"
           }
         ],
-        "source_ref": "optbrew:scoring:0.1.0"
+        "source_ref": "optbrew:scoring:0.4.0"
       },
       {
-        "schema_version": "1.0.0",
-        "evaluation_version": "0.3.0",
+        "schema_version": "2.0.0",
+        "evaluation_version": "0.4.0",
         "profile": "AEO",
         "A": 100,
         "M": 5,
@@ -569,11 +609,11 @@
             "unit_key": "index-policy|https://example.com/help"
           }
         ],
-        "source_ref": "optbrew:scoring:0.1.0"
+        "source_ref": "optbrew:scoring:0.4.0"
       },
       {
-        "schema_version": "1.0.0",
-        "evaluation_version": "0.3.0",
+        "schema_version": "2.0.0",
+        "evaluation_version": "0.4.0",
         "profile": "GEO",
         "A": 100,
         "M": 6.944444444444445,
@@ -624,11 +664,11 @@
             "unit_key": "index-policy|https://example.com/help"
           }
         ],
-        "source_ref": "optbrew:scoring:0.1.0"
+        "source_ref": "optbrew:scoring:0.4.0"
       },
       {
-        "schema_version": "1.0.0",
-        "evaluation_version": "0.3.0",
+        "schema_version": "2.0.0",
+        "evaluation_version": "0.4.0",
         "profile": "LLMO",
         "A": 100,
         "M": 6.25,
@@ -679,7 +719,7 @@
             "unit_key": "index-policy|https://example.com/help"
           }
         ],
-        "source_ref": "optbrew:scoring:0.1.0"
+        "source_ref": "optbrew:scoring:0.4.0"
       }
     ]
   },
@@ -694,7 +734,7 @@
   "metrics": [],
   "findings": [
     {
-      "schema_version": "1.0.0",
+      "schema_version": "2.0.0",
       "finding_id": "module:a",
       "check_id": "index-policy",
       "unit_key": "index-policy|https://example.com/",
@@ -709,7 +749,7 @@
       "status": "confirmed"
     },
     {
-      "schema_version": "1.0.0",
+      "schema_version": "2.0.0",
       "finding_id": "module:b",
       "check_id": "index-policy",
       "unit_key": "index-policy|https://example.com/",
@@ -726,7 +766,7 @@
   ],
   "changes": [],
   "costs": {
-    "schema_version": "1.0.0",
+    "schema_version": "2.0.0",
     "run_id": "synthetic-report",
     "budgets": [],
     "reservations": [],
@@ -764,13 +804,13 @@
   "evidence_index": [
     {
       "ref": "context.json",
-      "sha256": "c17e49a327f58e2c838609c0d4378fc22c98f1e68fd944fc3114a1595770d4eb",
+      "sha256": "1189ecbcfe78d5097562ea556ced5df4f8d48841dca67fa2ccf22ba69188489b",
       "kind": "context",
       "run_id": "synthetic-report"
     },
     {
       "ref": "intake.json",
-      "sha256": "05cc2727e51813056ef6033f582ed16b500fad2cd7115910962c3d2b48f96f5a",
+      "sha256": "1f7bf489c6c8ba806c39cc5978162a157a439eadd9e8154baa0373e014940255",
       "kind": "intake",
       "run_id": "synthetic-report"
     },
@@ -797,7 +837,7 @@
     },
     {
       "ref": "cost-ledger.json",
-      "sha256": "eda77ea2cf29671f6cf447f10f12ab0f7df662c5fee83cf1c4d516d34a8188dc",
+      "sha256": "8b612284cafdad8c9886acd0d4300e07bb2b2e0c57bfba09777fa0f8dffdf800",
       "kind": "raw_html",
       "run_id": "synthetic-report"
     }

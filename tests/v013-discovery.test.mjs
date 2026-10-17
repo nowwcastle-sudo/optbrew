@@ -33,7 +33,7 @@ test('L3 D2: an orphan next to a script-only widget page that never mentions it 
 
 test('L3: an orphan whose path an inline script mentions stays unknown (the script can build the link)', async t => {
   const s = await build(t, widget('<script>go("/orphan")</script>'), paths);
-  assert.equal(discovery(s, '/orphan'), undefined);
+  assert.equal(discovery(s, '/orphan')?.state, 'unknown', 'neither listed nor linked, and not provable as an orphan');
   assert.equal(discovery(s, '/widget')?.state, 'pass');
   assert.doesNotThrow(() => buildReport(s.packet));
 });

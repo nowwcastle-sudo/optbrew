@@ -159,7 +159,7 @@ test('I1: report replay re-derives crawl-policy pass and fail from the bound raw
   assert.throws(() => buildReport(wrongEvidence.packet), /crawl verdict differs from bound robots evidence|collector observation is not bound/);
 });
 
-test('I9: missing title is a confirmed failure and a present title stays unknown without uniqueness evidence', async t => {
+test('I9: missing title is a confirmed failure and a present title stays unknown without uniqueness evidence (one audited page)', async t => {
   const scenario = await run(t, ['/notitle', '/service', '/ok']);
   assert.equal(stateOf(scenario, 'document-title', '/notitle'), 'fail');
   for (const urlPath of ['/service', '/ok']) {
@@ -170,6 +170,7 @@ test('I9: missing title is a confirmed failure and a present title stays unknown
   const titled = await run(t, ['/ok']);
   assert.equal(stateOf(titled, 'document-title', '/ok'), 'unknown');
   assert.equal(titled.observation('document-title', '/ok').q, null);
+  assert.equal(titled.observation('document-title', '/ok').measurement.audited_pages, 1, 'why it is unknown is in the measurement');
   assert.doesNotThrow(() => buildReport(unique.packet));
   assert.doesNotThrow(() => buildReport(scenario.packet));
   await titled.forgeObservations(list => Object.assign(list.find(x => x.check_id === 'document-title'),

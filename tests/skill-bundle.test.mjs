@@ -17,7 +17,8 @@ test('one discoverable skill and closed progressive references', async () => {
   const files = await walk(skill);
   assert.deepEqual(files.filter(file => path.basename(file) === 'SKILL.md'), [path.join(skill, 'SKILL.md')]);
   const entry = await readFile(path.join(skill, 'SKILL.md'), 'utf8');
-  assert.match(entry, /^---\nname: optbrew\ndescription:/);
+  // skills/ has no .gitattributes, so a core.autocrlf checkout reads CRLF here.
+  assert.match(entry, /^---\r?\nname: optbrew\r?\ndescription:/);
   assert.ok(entry.split('\n').length < 500);
   const metadata = await readFile(path.join(skill, 'agents/openai.yaml'), 'utf8');
   assert.match(metadata, /\$optbrew/);
@@ -43,4 +44,96 @@ test('final review M5: the distributed Magnus guide does not instruct a pytest r
     assert.match(text, /source-maintenance/, name);
   }
   assert.equal(guide, patch);
+});
+
+const text = async name => (await readFile(path.join(skill, name), 'utf8')).replaceAll('\r\n', '\n');
+const json = async name => JSON.parse(await text(name));
+
+test('SKILL.md walks the one-call flow in order and links the new references', async () => {
+  const entry = await text('SKILL.md');
+  const order = ['scripts/preflight.mjs', 'start_runbooks.blocking', '## 6단계', 'scripts/run.mjs', 'judge-queue.json', '--judgments', '## 9단계', '## 10단계', '## 11단계'];
+  const positions = order.map(marker => entry.indexOf(marker));
+  assert.ok(positions.every(position => position >= 0), `missing: ${order.filter((_, i) => positions[i] < 0)}`);
+  assert.deepEqual(positions, [...positions].sort((a, b) => a - b));
+  for (const link of ['references/intake.md', 'references/judging.md', 'references/source-analysis.md']) assert.ok(entry.includes(`](${link})`), link);
+});
+
+test('the docs quote the limits that code reads from limits.json', async () => {
+  const limit = await json('references/limits.json');
+  const entry = await text('SKILL.md');
+  assert.ok(entry.includes(`표본 ${limit.max_urls_default}페이지`) && entry.includes(`최대 ${limit.max_urls_cap}페이지`));
+  assert.ok(entry.includes(`${limit.max_urls_default}을 넘거나`));
+  const judging = await text('references/judging.md');
+  assert.ok(judging.includes(`\`judge_span_min_bytes\` ${limit.judge_span_min_bytes}, \`judge_spans_per_unit\` ${limit.judge_spans_per_unit}`));
+});
+
+test('judging.md covers exactly the families the judge queue offers, with the states the merge accepts', async () => {
+  const { isModelJudged } = await import('../skills/optbrew/scripts/core/judgments.mjs');
+  const { families } = await json('references/check-registry.json');
+  const offered = families.filter(family => isModelJudged(family.family_id));
+  const judging = await text('references/judging.md');
+  const rows = [...judging.matchAll(/^\| `([a-z-]+)` \|/gm)].map(match => match[1]);
+  assert.deepEqual(rows.sort(), offered.map(family => family.family_id).sort());
+  for (const family of offered) {
+    const row = judging.split('\n').find(line => line.startsWith(`| \`${family.family_id}\``));
+    assert.equal(row.includes('`partial`'), family.verdict_mode !== 'binary', `${family.family_id}: partial allowed only for non-binary families`);
+  }
+});
+
+const jsonBlocks = entry => [...entry.matchAll(/```json\n([\s\S]*?)\n```/g)].map(match => JSON.parse(match[1]));
+
+test('the ChangeRecord template in SKILL.md passes the contract schema', async () => {
+  const { validateEntity } = await import('../skills/optbrew/scripts/core/contracts.mjs');
+  const { versions } = await import('../skills/optbrew/scripts/core/config.mjs');
+  const record = jsonBlocks(await text('SKILL.md')).find(block => block.change_id);
+  assert.ok(record, 'SKILL.md has no ChangeRecord template');
+  validateEntity('ChangeRecord', { ...record, schema_version: versions().contract_schema });
+});
+
+test('the intake-answers template in SKILL.md has exactly the documented fields', async () => {
+  const answers = jsonBlocks(await text('SKILL.md')).find(block => block.guidance_level);
+  const intake = await text('references/intake.md');
+  const documented = [...intake.matchAll(/^\| `([a-z_]+)` \|/gm)].map(match => match[1]).filter(field => field in answers);
+  assert.deepEqual(Object.keys(answers).sort(), documented.sort());
+});
+
+test('the runbooks SKILL.md names exist and fit the harness they are chosen for', async () => {
+  const { loadRunbook } = await import('../skills/optbrew/scripts/core/runbooks.mjs');
+  const { runbookHarnesses } = await import('../skills/optbrew/scripts/core/probe.mjs');
+  const entry = await text('SKILL.md');
+  const keyRunbook = { 'claude-code': 'key-set-local', other: 'key-set-local', codex: 'key-set-codex', 'claude-code-cloud': 'key-set-claude-cloud' };
+  for (const [harness, id] of Object.entries(keyRunbook)) {
+    assert.ok(entry.includes(`\`${id}\``), id);
+    assert.ok(runbookHarnesses(harness).includes(loadRunbook(id, 'beginner', { skillRoot: skill }).harness), `${id} does not serve ${harness}`);
+  }
+  for (const id of ['google-api-key', 'chrome-install', 'gsc-export', 'naver-searchadvisor-export', 'network-codex-approval']) {
+    assert.ok(entry.includes(`\`${id}\``), id);
+    loadRunbook(id, 'beginner', { skillRoot: skill });
+  }
+});
+
+test('the start screen shows at most one blocking runbook and three improving lines for any probe', async () => {
+  const { startRunbooks } = await import('../skills/optbrew/scripts/core/runbooks.mjs');
+  const { runbookHarnesses } = await import('../skills/optbrew/scripts/core/probe.mjs');
+  for (const block_reason of [null, 'site_down', 'codex_sandbox', 'cloud_network_level']) for (const found of [true, false]) for (const google_key of [true, false])
+    for (const harness of ['claude-code', 'codex', 'claude-code-cloud', 'other']) {
+      const result = startRunbooks({ block_reason, chrome: { found }, google_key }, { level: 'beginner', skillRoot: skill, harnesses: runbookHarnesses(harness) });
+      assert.ok(result.blocking.length <= 1 && result.improving.length <= 3, JSON.stringify({ block_reason, found, google_key, harness }));
+    }
+});
+
+test('every error phrase judging.md lists is one the merge code can throw', async () => {
+  const code = await readFile(path.join(skill, 'scripts/core/judgments.mjs'), 'utf8');
+  const table = (await text('references/judging.md')).split('| 오류 내용')[1];
+  const phrases = [...table.matchAll(/^\| `([^`]+)` \|/gm)].map(match => match[1]);
+  assert.ok(phrases.length >= 10);
+  for (const phrase of phrases) assert.ok(code.includes(phrase), phrase);
+});
+
+test('the preflight failure codes SKILL.md reacts to are codes the code raises', async () => {
+  const code = (await Promise.all(['probe.mjs', 'scope.mjs', 'collector.mjs'].map(name => readFile(path.join(skill, 'scripts/core', name), 'utf8')))).join('\n');
+  for (const name of ['scope_rejected', 'redirect_outside_scope']) {
+    assert.ok((await text('SKILL.md')).includes(`\`${name}\``), name);
+    assert.ok(code.includes(name), name);
+  }
 });

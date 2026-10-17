@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, mkdir, writeFile, readFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, writeFile, readFile, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
@@ -7,8 +7,9 @@ import { createBundleManifest } from '../skills/optbrew/scripts/core/bundle.mjs'
 import { install } from '../lib/install.mjs';
 import { doctor } from '../lib/doctor.mjs';
 
-test('doctor separates disk, record, discovery and invocation evidence', async () => {
+test('doctor separates disk, record, discovery and invocation evidence', async t => {
   const root = await mkdtemp(path.join(os.tmpdir(), 'optbrew-doctor-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
   const bundleRoot = path.join(root, 'bundle');
   const home = path.join(root, 'home');
   await mkdir(bundleRoot);

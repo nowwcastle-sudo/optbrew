@@ -1,3 +1,0 @@
-# Files are committed with LF and checked out unchanged. Marketplace validators reject
-# attributes that rewrite files at checkout (text, eol, filter, ident, working-tree-encoding).
-* -text

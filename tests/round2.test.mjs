@@ -4,7 +4,8 @@ import { spawnSync } from 'node:child_process';
 import { rm } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { buildReport, scoreHeadline } from '../skills/optbrew/scripts/core/report.mjs';
+import { buildReport } from '../skills/optbrew/scripts/core/report.mjs';
+import { headlineOf } from './support/compose.mjs';
 import { buildScenario, startSite } from './support/review-scenario.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -179,22 +180,22 @@ test('P3/P4: rewriting the reason or the evaluator of a collector observation is
   assert.throws(() => buildReport(reason.packet), /collector verdict differs from raw evidence|title\/index verdict differs/);
   const evaluator = await forge(t);
   await evaluator.forgeObservations(list => Object.assign(list.find(x => x.family_id === 'index-policy' && x.state === 'fail'), { evaluator_type: 'human' }));
-  assert.throws(() => buildReport(evaluator.packet), /collector verdict differs from raw evidence|title\/index verdict differs/);
+  assert.throws(() => buildReport(evaluator.packet), /index-policy is judged by code; a human observation/);
 });
 
 test('an audit index from an older release is refused with a message that says what to do', async t => {
   const s = await forge(t);
   await s.rewrite(s.evidence('evidence-index.json'), v => { delete v.ledger_ref; delete v.modules; });
-  assert.throws(() => buildReport(s.packet), /produced by an older optbrew release.*re-run the audit/i);
+  assert.throws(() => buildReport(s.packet), /migration_required.*older optbrew release.*run the audit again/i);
 });
 
 test('headline: unresolved core checks and 79.95% coverage never read as sufficient', () => {
   const result = (over = {}) => ({ profile: 'SEO', score: 90, coverage: 80, A: 100, M: 80, N: 72, missing_bounds: [72, 92], readiness_status: 'unverified', unknown_core: [], ...over });
-  assert.equal(scoreHeadline(result()).status, 'sufficient');
-  const core = scoreHeadline(result({ unknown_core: [{ family_id: 'fetch-response', unit_key: 'fetch-response|x' }] }));
+  assert.equal(headlineOf(result()).status, 'sufficient');
+  const core = headlineOf(result({ unknown_core: [{ family_id: 'fetch-response', unit_key: 'fetch-response|x' }] }));
   assert.equal(core.status, 'insufficient_core');
   assert.equal(core.headline_score, null);
-  const near = scoreHeadline(result({ M: 79.95, coverage: 80 }));
+  const near = headlineOf(result({ M: 79.95, coverage: 80 }));
   assert.equal(near.status, 'insufficient_coverage');
   assert.equal(near.coverage_exact, 79.95);
 });

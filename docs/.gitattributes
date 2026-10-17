@@ -1,0 +1,3 @@
+# Checked out unchanged (LF as committed): fixtures, evidence hashes and the shell blocks the tests run depend on exact bytes.
+# Kept out of the root and skills/: the Claude plugin directory refuses a .gitattributes there.
+* -text

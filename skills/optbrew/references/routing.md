@@ -1,6 +1,6 @@
 # Situation routing
 
-필요한 분기의 GUIDE만 연다. 모든 모듈 출력은 관찰 후보이며 한 URL·문제·검사는 한 번만 채점한다. 무료 경로는 허용된 공개 HTTP/HTML과 사용 가능한 호스트 도구를 사용한다. 원본 HTML, 렌더, 소유자 패널과 AI 제공자 응답의 출처를 각각 기록한다.
+이 표는 SKILL.md 10단계에서 수정안의 근거 가이드를 고를 때 쓴다. 수집, 판정, 채점은 `run.mjs`가 한 번에 하므로, 표의 모듈을 감사 단계에서 따로 돌리지 않는다. 필요한 분기의 GUIDE만 연다. 모든 모듈 출력은 관찰 후보이며 한 URL·문제·검사는 한 번만 채점한다. 무료 경로는 허용된 공개 HTTP/HTML과 사용 가능한 호스트 도구를 사용한다. 원본 HTML, 렌더, 소유자 패널과 AI 제공자 응답의 출처를 각각 기록한다.
 
 | 상황 | 주력 | 보완·입력 | 산출물 |
 |---|---|---|---|
@@ -12,4 +12,4 @@
 | AI 인용·경쟁 비교 | [SE Ranking](../modules/seranking-seo/skills/seo-ai-search-share-of-voice/GUIDE.md) | 승인된 API 또는 날짜가 있는 내보내기, Magnus 질문 프로토콜 | 엔진별 인용 실측; 무료 감사의 필수 조건 아님 |
 | 유입·전환 비교 | [mblode monitoring](../modules/mblode-seo/references/monitoring.md), [analytics](../modules/marketing-search/skills/analytics/GUIDE.md) | 같은 소유 속성·필터·완결된 28일 창 | 실제 성과와 비교 가능성 |
 
-호스트 도구의 경계·비용 강제가 확인되지 않으면 사용하지 않는다. 직접 Anthropic v0.1.0은 [api.md](api.md)의 텍스트 전용 Messages 형태와 정확한 모델 ID 네 개만 지원한다. 다른 API와 SE Ranking 실행은 각자의 승인·상한·능력 근거가 있어야 한다. 호스트 정책만 비용을 강제하면 그 한계를 보고한다.
+호스트 도구의 경계·비용 강제가 확인되지 않으면 사용하지 않는다. 직접 Anthropic은 [api.md](api.md)의 텍스트 전용 Messages 형태와 정확한 모델 ID 네 개만 지원한다. 다른 API와 SE Ranking 실행은 각자의 승인·상한·능력 근거가 있어야 한다. 호스트 정책만 비용을 강제하면 그 한계를 보고한다.

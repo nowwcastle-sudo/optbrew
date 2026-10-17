@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { mergeFindings, selectRemediations } from '../skills/optbrew/scripts/core/findings.mjs';
 
-const finding = (source_ref, evidence_ref) => ({ schema_version: '1.0.0', finding_id: source_ref,
+const finding = (source_ref, evidence_ref) => ({ schema_version: '2.0.0', finding_id: source_ref,
   check_id: 'index-policy', unit_key: 'index-policy|https://example.com/', priority: 'P0', blocker: true,
   message: 'Unexpected noindex', source_ref, evidence_ref, remediation_ids: [], status: 'confirmed' });
 

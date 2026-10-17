@@ -1,27 +1,32 @@
-import { createHash } from 'node:crypto';
 import { readFileSync, realpathSync } from 'node:fs';
 import { access, mkdir, rename, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { ContractError, validateEntity } from './contracts.mjs';
+import { endpoints, limits, requestLimit, versions } from './config.mjs';
 import { score } from './score.mjs';
+import { assertCurrentEvidence, MigrationRequired } from './migration.mjs';
 import { compare } from './compare.mjs';
 import { freezeProtocol } from './protocol.mjs';
 import { measurePanel } from './metrics.mjs';
 import { normalizeImport } from '../adapters/imports.mjs';
-import { mergeFindings, selectRemediations } from './findings.mjs';
+import { mergeFindings, pageNeutral, problemsOf, selectRemediations } from './findings.mjs';
 import { auditCollected, indexingDirectives } from '../../modules/naver-searchadvisor/scripts/audit.mjs';
 import { deriveObservations } from './derive.mjs';
+import { isDerivedIndexDecision, notIndexTargets } from './index-targets.mjs';
+import { readVerified } from './evidence-store.mjs';
 import { links } from './collector.mjs';
+import { checkRenderLedger } from './render.mjs';
 import { assertUrlInScope } from './scope.mjs';
+import { composeReport, pagesLabel, renderReport } from './report-compose.mjs';
+import { messageOf } from './messages.mjs';
+import { runbookEntry } from './runbooks.mjs';
+import { sensitive } from './secrets.mjs';
+import { ENTITY_UNIT, OBSERVATION_SOURCES, QUEUE_KIND, QUESTION_UNIT, acceptance, alsoQuestionIds, basisAllowed, candidateSpans, modelFailMessages, sentenceBasis, checkSpan, deriveQuestionCoverage, homeOf, identityBasisOf, isCodeJudged, isEmptyPage, isEntityFallback, isModelJudged, operatorNames, queuedSpan, siteChrome } from './judgments.mjs';
 import { parseRobots, robotsVerdict } from '../../modules/naver-searchadvisor/scripts/robots.mjs';
 
 const catalog = JSON.parse(readFileSync(new URL('../../references/remediations.json', import.meta.url))).items;
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 const named = value => typeof value === 'string' && value.trim().length > 0;
-const sensitive = /(?:sk-ant-api03-[A-Za-z0-9_-]{32,}|sk-proj-[A-Za-z0-9_-]{32,}|ghp_[A-Za-z0-9]{36,}|AKIA[A-Z0-9]{16}|\b\d{6}-[1-8]\d{6}\b)/;
-const html = value => String(value ?? 'unknown').replace(/\\/g, '\\\\').replace(/&/g, '&amp;').replace(/</g, '&lt;')
-  .replace(/>/g, '&gt;').replace(/\|/g, '\\|').replace(/\r?\n/g, '<br>');
-const table = (columns, rows) => `| ${columns.join(' | ')} |\n| ${columns.map(() => '---').join(' | ')} |\n${rows.map(row => `| ${row.map(html).join(' | ')} |`).join('\n') || `| ${columns.map(() => '—').join(' | ')} |`}`;
 const days = window => (Date.parse(`${window.end}T00:00:00Z`) - Date.parse(`${window.start}T00:00:00Z`)) / 86400000 + 1;
 const dayBefore = date => new Date(Date.parse(`${date}T00:00:00Z`) - 86400000).toISOString().slice(0, 10);
 function completeWindow(metric) {
@@ -35,28 +40,6 @@ function completeWindow(metric) {
   const localCollectionDate = `${parts.year}-${parts.month}-${parts.day}`;
   return completeDate <= dayBefore(localCollectionDate) && metric.window.end <= completeDate;
 }
-
-/** The optbrew operating rule (design spec, scoring.md): at least 80% of the applicable weight must be measured. */
-export const COVERAGE_THRESHOLD = 80;
-
-/** One headline per profile. Below the coverage threshold the single number is withheld and only the measured subset is shown. */
-export function scoreHeadline(result) {
-  const exact = result.A > 0 ? 100 * result.M / result.A : null;
-  const coverageOk = result.score !== null && exact !== null && exact >= COVERAGE_THRESHOLD - 1e-9;
-  // The design spec also asks for verdicts on the core access and indexing checks before a score counts as sufficient.
-  const coreOk = (result.unknown_core ?? []).length === 0;
-  const status = !coverageOk ? 'insufficient_coverage' : !coreOk ? 'insufficient_core' : 'sufficient';
-  return { profile: result.profile, status, headline_score: status === 'sufficient' ? result.score : null,
-    measured_subset_score: result.score, coverage: result.coverage, coverage_exact: exact, coverage_threshold: COVERAGE_THRESHOLD,
-    unresolved_core: (result.unknown_core ?? []).length, missing_bounds: result.missing_bounds, readiness_status: result.readiness_status };
-}
-const floorTenth = value => value === null ? 'unknown' : Math.floor(value * 10 + 1e-9) / 10;
-const headlineCell = result => {
-  const headline = scoreHeadline(result);
-  return headline.status === 'sufficient' ? `${headline.headline_score} (coverage ${headline.coverage}%)` :
-    headline.status === 'insufficient_core' ? `insufficient core checks (${headline.unresolved_core} unresolved; measured subset ${headline.measured_subset_score ?? 'unknown'}; coverage ${headline.coverage ?? 'unknown'}%; bounds ${headline.missing_bounds?.join('–') ?? 'unknown'})` :
-    `insufficient coverage (measured subset ${headline.measured_subset_score ?? 'unknown'}; coverage ${headline.coverage ?? 'unknown'}%; bounds ${headline.missing_bounds?.join('–') ?? 'unknown'})`;
-};
 
 function metricRows(metrics) {
   const groups = new Map();
@@ -97,18 +80,16 @@ function indexedEvidence(packet) {
     if (!entry || typeof entry.ref !== 'string' || !entry.ref || !/^[a-f0-9]{64}$/.test(entry.sha256) ||
         typeof entry.kind !== 'string' || !entry.kind || entry.run_id !== packet.run_context.run_id || index.has(entry.ref))
       throw new ContractError('invalid or duplicate run evidence entry');
-    const file = path.resolve(root, entry.ref);
-    const actual = realpathSync(file);
-    if (actual !== root && !actual.startsWith(`${root}${path.sep}`)) throw new ContractError(`evidence path outside run directory: ${entry.ref}`);
-    const bytes = readFileSync(actual);
+    let bytes;
+    try { bytes = readVerified(root, entry.ref, entry.sha256); }
+    catch (error) { throw new ContractError(error.message); }
     if (sensitive.test(bytes.toString('utf8'))) throw new ContractError('private identifier or secret in report evidence');
-    if (createHash('sha256').update(bytes).digest('hex') !== entry.sha256)
-      throw new ContractError(`evidence hash mismatch: ${entry.ref}`);
-    index.set(entry.ref, { ...entry, text: bytes.toString('utf8') });
+    index.set(entry.ref, { ...entry, text: bytes.toString('utf8'), bytes });
   }
-  const requireRef = (ref, sourceRef) => {
+  /** `source` is the `source_ref` the entry must carry, or `{ anySource: true }` for evidence cited from another source. */
+  const requireRef = (ref, source) => {
     const entry = index.get(ref);
-    if (!entry || sourceRef && entry.source_ref !== sourceRef) throw new ContractError(`evidence/source link missing: ${ref}`);
+    if (!entry || source && !source.anySource && entry.source_ref !== source) throw new ContractError(`evidence/source link missing: ${ref}`);
     return entry;
   };
   const context = requireRef(packet.run_context.evidence_ref);
@@ -168,8 +149,9 @@ function exportPath(value, host) {
   }
   if (!text.startsWith('/') || /^\/[/\\]/.test(text)) return null;
   try {
-    const url = new URL(text, 'http://path.invalid');
-    return url.host === 'path.invalid' ? url.pathname : null;
+    const base = new URL(endpoints().relative_url_base);
+    const url = new URL(text, base);
+    return url.host === base.host ? url.pathname : null;
   } catch { return null; }
 }
 const pathWithin = (value, prefix, host) => {
@@ -188,8 +170,8 @@ function boundFailure(artifact, audit, requireRef) {
   const raw = requireRef(artifact.failure_ref, 'optbrew:collector');
   if (raw.sha256 !== entry.content_hash) throw new ContractError('failure record hash differs from the audit index');
   const record = JSON.parse(raw.text);
-  // At most ten redirects are followed, and the eleventh answer (a refused redirect) is the last hop that can be recorded.
-  if (record.kind !== 'failure' || ![0, 1].includes(record.unanswered) || !Array.isArray(record.redirect_chain) || record.redirect_chain.length > 11 ||
+  // At most `max_redirects` redirects are followed, and the answer after the last one (a refused redirect) is the last hop that can be recorded.
+  if (record.kind !== 'failure' || ![0, 1].includes(record.unanswered) || !Array.isArray(record.redirect_chain) || record.redirect_chain.length > limits().max_redirects + 1 ||
       record.redirect_chain.some((hop, index) => typeof hop?.url !== 'string' || !(hop.status >= 300 && hop.status <= 399) ||
         hop.url !== (index ? record.redirect_chain[index - 1].location : record.normalized_url)))
     throw new ContractError('failure record is malformed');
@@ -234,13 +216,31 @@ function checkDecisions(input, requireRef, collectedFor) {
           item.condition === decision.condition && item.reason === decision.reason))
       throw new ContractError(`applicability decision record does not match ${scope} ${identity.value}`);
   };
-  for (const type of input.run_context.protocol.page_types) for (const url of type.urls)
-    if (url.indexing_decision) decisionRecord(url.indexing_decision, 'url', { key: 'normalized_url', value: url.normalized });
+  for (const type of input.run_context.protocol.page_types) for (const url of type.urls) {
+    if (!url.indexing_decision) continue;
+    // A page the audit found deliberately not indexed has no approval record: checkAuditPhase derives the decision again from the
+    // stored bytes, which exist only for an audited phase.
+    if (!isDerivedIndexDecision(url.indexing_decision)) decisionRecord(url.indexing_decision, 'url', { key: 'normalized_url', value: url.normalized });
+    else if (input.run_context.audited !== true) throw new ContractError(`indexing decision of ${url.normalized} is derived from an audit this phase does not have`);
+  }
   for (const family of input.run_context.protocol.families)
     if (family.applicability_decision) decisionRecord(family.applicability_decision, 'family', { key: 'family_id', value: family.family_id });
   for (const observation of input.observations) {
-    const evidence = requireRef(observation.evidence_ref, observation.source_ref);
-    if (observation.applicability_decision) decisionRecord(observation.applicability_decision, 'unit', { key: 'unit_key', value: observation.unit_key });
+    // A model's verdict cites evidence the collector stored; modelJudgmentRows binds it to that page's raw evidence.
+    const anySource = observation.evaluator_type === 'host_model' || observation.source_ref === OBSERVATION_SOURCES.derived;
+    const evidence = requireRef(observation.evidence_ref, anySource ? { anySource: true } : observation.source_ref);
+    // A collector verdict's own N/A decision cites the page evidence it was derived from, and replay re-derives it (the audit
+    // phase compares the decision too). A model's N/A decision cites its verdict's page evidence the same way; its condition is one of
+    // the family's registry conditions (the schema check) and its spans are replayed against the judge queue (modelJudgmentRows).
+    // Only an outside decision needs an approved decision record.
+    if (observation.applicability_decision) {
+      const own = observation.evaluator_type === 'code' && observation.source_ref === OBSERVATION_SOURCES.code ||
+        observation.evaluator_type === 'host_model' && observation.source_ref === OBSERVATION_SOURCES.host_model;
+      if (own) {
+        if (observation.applicability_decision.evidence_ref !== observation.evidence_ref)
+          throw new ContractError(`N/A decision does not cite the verdict's evidence: ${observation.unit_key}`);
+      } else decisionRecord(observation.applicability_decision, 'unit', { key: 'unit_key', value: observation.unit_key });
+    }
     if (observation.check_id === 'index-policy' && observation.state === 'fail') {
       if (evidence.kind !== 'raw_html' && evidence.kind !== 'http_response')
         throw new ContractError('index-policy failure requires raw HTML or response-header evidence');
@@ -336,9 +336,15 @@ function checkMetricEvidence(metric, packet, requireRef) {
     observed = measurePanel(source.panel, source.responses, source.evaluations);
   } else throw new ContractError('unsupported metric evidence kind');
   if (!observed.some(item => same(item, metric))) throw new ContractError('metric differs from bound export or panel evidence');
-  return source.kind === 'native_export' ? 'owner export origin and provider completeness are not independently authenticated' :
-    'provider response origin and semantic evaluations are attributed to indexed receipts, not independently authenticated';
+  return source.kind === 'native_export' ? ['owner export origin and provider completeness are not independently authenticated', 'metric-origin.owner-export'] :
+    ['provider response origin and semantic evaluations are attributed to indexed receipts, not independently authenticated', 'metric-origin.panel'];
 }
+
+/**
+ * A verdict that replay re-derived against its phase's audit snapshot: the collector's own pair, in a phase whose context
+ * records an audit (the report refuses a packet whose snapshots differ from that record). Only such a verdict can verify a change.
+ */
+const replayed = (obs, input) => input.run_context.audited === true && obs.evaluator_type === 'code' && obs.source_ref === OBSERVATION_SOURCES.code;
 
 function statusFor(finding, changes, afterInput, target, requireRef) {
   const linked = changes.filter(change => change.finding_ids.some(id => finding.finding_ids.includes(id)));
@@ -350,7 +356,7 @@ function statusFor(finding, changes, afterInput, target, requireRef) {
     afterInput?.run_context.environment === 'production' && linked.every(change => afterInput.observations.some(obs => {
       if (obs.check_id !== finding.check_id || obs.unit_key !== finding.unit_key ||
           !['pass', 'partial'].includes(obs.state) || obs.observation_id !== change.verification.observation_id ||
-          obs.evidence_ref !== change.verification.observation_evidence_ref) return false;
+          obs.evidence_ref !== change.verification.observation_evidence_ref || !replayed(obs, afterInput)) return false;
       const source = requireRef(obs.evidence_ref, obs.source_ref);
       return source.phase === 'after' && source.environment === 'production' && same(source.target, target);
     }));
@@ -363,7 +369,7 @@ function statusFor(finding, changes, afterInput, target, requireRef) {
     linked.every(change => change.environment === 'local' && change.verification.observation_id &&
       change.verification.observation_evidence_ref && afterInput.observations.some(obs => {
         if (obs.check_id !== finding.check_id || obs.unit_key !== finding.unit_key || !['pass', 'partial'].includes(obs.state) ||
-            obs.source_ref !== 'optbrew:collector' || obs.observation_id !== change.verification.observation_id ||
+            !replayed(obs, afterInput) || obs.observation_id !== change.verification.observation_id ||
             obs.evidence_ref !== change.verification.observation_evidence_ref) return false;
         const source = requireRef(obs.evidence_ref, obs.source_ref);
         return source.phase === 'after' && source.environment === 'local' && same(source.target, target);
@@ -381,7 +387,7 @@ function checkLedger(input, audit, collection, artifacts, requireRef) {
   const entries = ledger.entries;
   const fail = message => { throw new ContractError(`request ledger: ${message}`); };
   if (!Array.isArray(entries)) fail('entries missing');
-  const limit = Math.min(input.run_context.scope?.max_urls ?? 50, 50);
+  const limit = requestLimit(input.run_context.scope);
   if (ledger.limit !== limit) fail('request limit differs from the run scope');
   const total = entries.reduce((sum, entry) => sum + entry.requests, 0);
   // The limit is a hard ceiling: every request, redirect hops included, takes one slot before it is sent.
@@ -440,6 +446,50 @@ function checkLedger(input, audit, collection, artifacts, requireRef) {
       entries.some(x => x.requests > 0 && !planned.has(x.url))) fail('a selected page is skipped for the request limit although a discovered page was fetched');
 }
 
+/**
+ * The render records of an audit index, read through the run's evidence (hash and secret checked): every record against the
+ * hash the index lists, its DOM against the hash the record holds, and the render ledger against each record's own requests.
+ * An index from before rendering has none of these sections. `renderTextOf` returns the stored DOM of a record.
+ */
+function storedRenders(audit, renderBudget, requireRef) {
+  const fail = message => { throw new ContractError(message); };
+  const dom = new Map();
+  const records = (audit.renders ?? []).map(entry => {
+    const stored = requireRef(entry.evidence_ref);
+    if (stored.sha256 !== entry.sha256) fail('render record hash differs from the audit index');
+    let record;
+    try { record = JSON.parse(stored.text); } catch { fail('render record is not JSON'); }
+    if (typeof record.url !== 'string' || !Array.isArray(record.requests)) fail('render record is malformed');
+    // The ref it was read from, as the audit's own reading gives it, so a verdict inherited from a rendered page cites the same record.
+    record.evidence_ref = entry.evidence_ref;
+    if (record.dom_ref) {
+      const rendered = requireRef(record.dom_ref);
+      if (rendered.sha256 !== record.dom_sha256) fail('render DOM hash differs from its record');
+      dom.set(record, rendered.text);
+    }
+    return record;
+  });
+  const ledger = audit.render_ledger ?? [];
+  for (const record of records) checkRenderLedger(ledger, record, renderBudget);
+  if (ledger.some(entry => !records.some(record => record.url === entry.page))) fail('render ledger: an entry names a page that was not rendered');
+  return { records, renderTextOf: record => dom.get(record) ?? '' };
+}
+
+/**
+ * The field CWV answers of an audit index, read through the run's evidence (hash and secret checked), each one with the ref
+ * it was read from. An index from before field data has no `cwv` section.
+ */
+function storedCwv(audit, requireRef) {
+  return (audit.cwv ?? []).map(entry => {
+    const stored = requireRef(entry.evidence_ref);
+    if (stored.sha256 !== entry.sha256) throw new ContractError('CWV record hash differs from the audit index');
+    let record;
+    try { record = JSON.parse(stored.text); } catch { throw new ContractError('CWV record is not JSON'); }
+    if (record.source !== entry.source || typeof record.origin !== 'string') throw new ContractError('CWV record is malformed');
+    return { ...record, evidence_ref: entry.evidence_ref };
+  });
+}
+
 function checkAuditPhase(input, phase, snapshot, requireRef) {
   if (!input) return;
   const observations = input.observations.filter(x => x.source_ref === 'optbrew:collector');
@@ -455,7 +505,7 @@ function checkAuditPhase(input, phase, snapshot, requireRef) {
   if (!Array.isArray(collection.artifacts) || !Array.isArray(audit.raw) || !Array.isArray(savedObservations))
     throw new ContractError('audit snapshot files incomplete');
   if (!Array.isArray(audit.modules) || !audit.ledger_ref || !Array.isArray(audit.responses) || !Array.isArray(audit.failures))
-    throw new ContractError('audit evidence was produced by an older optbrew release (it lacks the request ledger, module list or failure records); re-run the audit with optbrew 0.1.3 and build a new packet');
+    throw new MigrationRequired('report packet', 'comes from an older optbrew release (it lacks the request ledger, module list or failure records)');
   for (const name of audit.modules) if (!Array.isArray(moduleOutputs[name])) throw new ContractError(`planned module output missing: ${name}`);
   const naverPlanned = audit.modules.includes('naver-searchadvisor');
   const rawRefs = new Set();
@@ -470,9 +520,21 @@ function checkAuditPhase(input, phase, snapshot, requireRef) {
       throw new ContractError('audit raw content hash mismatch');
     rawRefs.add(raw.evidence_ref);
   }
+  // Field CWV answers are collected evidence too; their hashes are checked where the verdicts are re-derived below.
+  for (const entry of audit.cwv ?? []) rawRefs.add(entry.evidence_ref);
+  // So are the render records: a verdict inherited from a rendered page cites that page's record (the replay compares the exact ref).
+  for (const entry of audit.renders ?? []) rawRefs.add(entry.evidence_ref);
   // Final URL, redirect chain and header lines come from the hashed response records, not from collection.json alone.
   const artifacts = collection.artifacts.map(x => boundArtifact(x, audit, requireRef));
   checkLedger(input, audit, collection, artifacts, requireRef);
+  // A page marked as deliberately not indexed must be one the stored bytes show so (noindex, not in the sitemap the run read).
+  const marked = input.run_context.protocol.page_types.flatMap(type => type.urls).filter(url => isDerivedIndexDecision(url.indexing_decision));
+  if (marked.length) {
+    const found = new Map(notIndexTargets({ context: input.run_context, artifacts,
+      textOf: artifact => artifact.content_hash ? requireRef(artifact.evidence_ref).text : null }).map(target => [target.url, target.evidence_ref]));
+    for (const url of marked) if (url.public_indexing !== false || found.get(url.normalized) !== url.indexing_decision.evidence_ref)
+      throw new ContractError(`indexing decision is not derivable from the raw evidence: ${url.normalized}`);
+  }
   for (const obs of observations) {
     if (!savedObservations.some(x => same(x, obs)) || !rawRefs.has(obs.evidence_ref))
       throw new ContractError('collector observation is not bound to audit index and raw evidence');
@@ -532,10 +594,18 @@ function checkAuditPhase(input, phase, snapshot, requireRef) {
       throw new ContractError(`selected page missing from the collection and its skipped list: ${url}`);
   // Re-derive every collector verdict from the hashed raw evidence. Each derived observation must be present in the
   // packet and in the saved observation file, and no collector observation may lack a derivation.
+  const { records, renderTextOf } = storedRenders(audit, input.run_context.protocol.render?.max_render_requests, requireRef);
   const derived = deriveObservations({ context: input.run_context, artifacts, collection,
-    textOf: artifact => artifact.content_hash ? requireRef(artifact.evidence_ref).text : null });
-  const shape = x => [x.state, x.q, x.partial_basis, x.evidence_ref, x.reason, x.evaluator_type, x.source_ref];
+    textOf: artifact => artifact.content_hash ? requireRef(artifact.evidence_ref).text : null,
+    renders: records, renderTextOf, chrome: audit.chrome ?? null, cwv: storedCwv(audit, requireRef) });
+  const shape = x => [x.state, x.q, x.partial_basis, x.evidence_ref, x.reason, x.evaluator_type, x.source_ref, x.applicability_decision ?? null, x.measurement ?? null, x.problem_messages ?? null];
+  // The site's identity is the one code-judged unit a model may judge, and only where code gave no verdict: its placeholder is replaced by
+  // the model's verdict (modelJudgmentRows replays that one), and a model verdict next to a code verdict of the unit is refused.
+  const modelEntity = input.observations.some(x => x.unit_key === ENTITY_UNIT && x.evaluator_type === 'host_model');
+  if (modelEntity && derived.some(x => x.unit_key === ENTITY_UNIT && x.state !== 'unknown'))
+    throw new ContractError(`${ENTITY_UNIT} has a collector verdict; a model verdict cannot stand beside it`);
   for (const expected of derived) {
+    if (modelEntity && expected.unit_key === ENTITY_UNIT) continue;
     if (!observations.some(x => x.unit_key === expected.unit_key) || !savedObservations.some(x => x.unit_key === expected.unit_key))
       throw new ContractError(`planned collector observation missing: ${expected.unit_key}`);
     const have = observations.find(x => x.unit_key === expected.unit_key);
@@ -548,10 +618,129 @@ function checkAuditPhase(input, phase, snapshot, requireRef) {
     throw new ContractError(`collector observation is not derivable from raw evidence: ${have.unit_key}`);
 }
 
+const MODEL_JUDGMENT_LABEL = '근거 확인됨, 판정은 모델';
+
+/**
+ * A verdict of the derived source is the question coverage that code computes from the answer-clarity judgments and the fixed
+ * panel. Compute it again from the same input: a verdict that does not follow from them, or any other unit with that source, is refused.
+ */
+function replayedQuestionCoverage(obs, input, fail) {
+  const rest = input.observations.filter(x => x !== obs);
+  const expected = obs.unit_key === QUESTION_UNIT && obs.evaluator_type === 'code' ?
+    deriveQuestionCoverage({ observations: rest, panel: input.run_context.protocol.question_panel, evidence_ref: input.run_context.evidence_ref }).find(x => x.unit_key === QUESTION_UNIT) : null;
+  const shape = x => [x.family_id, x.state, x.q, x.partial_basis, x.evidence_ref, x.reason, x.evaluator_type, x.source_ref, x.measurement ?? null, x.problem_messages ?? null];
+  if (!expected || expected.source_ref !== OBSERVATION_SOURCES.derived || !same(shape(obs), shape(expected)))
+    fail(obs, 'it does not follow from the answer-clarity judgments and the fixed question list');
+}
+
+/**
+ * The model judgments of one score input, each replayed against the run's audit evidence. A `host_model` observation is
+ * refused for a code-judged family and unless it carries the model source. Its evidence must be the audit raw entry of
+ * the page its unit names. A verdict other than unknown cites ranges that are candidates of the queue stored in the audit
+ * index, each with that raw entry's hash and a byte range inside it on character boundaries. The label says the evidence was
+ * checked and the verdict is the model's.
+ */
+function modelJudgmentRows(phase, input, snapshot, requireRef, confirmedNames = []) {
+  const fail = (obs, message) => { throw new ContractError(`verdict ${obs.unit_key}: ${message}`); };
+  for (const obs of input?.observations ?? []) {
+    const type = obs.evaluator_type;
+    const entityFallback = isEntityFallback(obs.family_id, obs.unit_key) && type === 'host_model' && obs.source_ref === OBSERVATION_SOURCES.host_model;
+    // Next to an audit, a code-judged family is the collector's alone and is re-derived; without one, only a model is refused (an outside source stays unverified).
+    // The one exception is the site's identity judged by the model, which checkAuditPhase allows only where code gave no verdict.
+    if (isCodeJudged(obs.family_id) && !entityFallback && (type === 'host_model' || snapshot && (type !== 'code' || obs.source_ref !== OBSERVATION_SOURCES.code)))
+      fail(obs, `${obs.family_id} is judged by code; a ${type} observation with source_ref ${obs.source_ref} cannot stand for it`);
+    if (obs.source_ref === OBSERVATION_SOURCES.derived) replayedQuestionCoverage(obs, input, fail);
+    // A content family has exactly one allowed pair: the model's, bound to the judge queue.
+    if (isModelJudged(obs.family_id) && (type !== 'host_model' || obs.source_ref !== OBSERVATION_SOURCES.host_model))
+      fail(obs, `${obs.family_id} is judged by a model through the judge queue; evaluator_type ${type} with source_ref ${obs.source_ref} is not allowed`);
+    if (type === 'host_model' && obs.source_ref !== OBSERVATION_SOURCES.host_model) fail(obs, `source_ref must be ${OBSERVATION_SOURCES.host_model}`);
+    // The collector's and the model's source stand for replayed work; without the phase's audit there is nothing to replay against.
+    if (!snapshot && Object.values(OBSERVATION_SOURCES).includes(obs.source_ref))
+      fail(obs, `source_ref ${obs.source_ref} needs the ${phase} audit snapshot; without an audit only outside inputs are accepted, and they stay unverified`);
+  }
+  const judgments = (input?.observations ?? []).filter(obs => obs.evaluator_type === 'host_model');
+  if (!judgments.length) return [];
+  if (!snapshot) throw new ContractError(`${phase} model judgments require their audit snapshot`);
+  const audit = JSON.parse(requireRef(snapshot.audit_ref).text);
+  const queues = (audit.judge_queue ?? []).map(entry => {
+    const stored = requireRef(entry.evidence_ref);
+    if (stored.sha256 !== entry.sha256) throw new ContractError('judge queue hash differs from the audit index');
+    if (stored.kind !== QUEUE_KIND) throw new ContractError(`judge queue evidence has kind ${stored.kind}, not ${QUEUE_KIND}`);
+    return JSON.parse(stored.text);
+  });
+  // The site's identity is judged on the home page, chosen as the queue chose it: from the pages whose fetch verdict passed.
+  const audited = input.observations.filter(x => x.family_id === 'fetch-response' && x.state === 'pass')
+    .filter(x => (audit.raw ?? []).some(entry => entry.content_hash && entry.evidence_ref === x.evidence_ref && entry.normalized_url === unitUrl(x.unit_key)));
+  const home = homeOf(audited.map(x => unitUrl(x.unit_key)));
+  // What the gates of an absence fail need, derived here and not read from the queue: the lines most audited pages repeat, and (below) the names the owner confirmed in the intake answers, the code identity check and the host.
+  const chrome = siteChrome([...new Map(audited.map(x => [unitUrl(x.unit_key), requireRef(x.evidence_ref).bytes])).values()]);
+  return judgments.filter(obs => obs.state !== 'unknown').map(obs => {
+    if (obs.state === 'not_applicable' && !isModelJudged(obs.family_id)) fail(obs, `${obs.family_id} is not a family a model may declare not applicable`);
+    if (obs.family_id === 'answer-clarity') {
+      const named = obs.measurement?.question_id;
+      if (obs.state === 'not_applicable' ? named !== undefined : !(input.run_context.protocol.question_panel ?? []).some(question => question.id === named))
+        fail(obs, obs.state === 'not_applicable' ? 'a not applicable answer-clarity verdict names no question' : 'an answer-clarity verdict names a question of the fixed panel');
+      // The other questions it says the page answers: other, distinct questions of the fixed panel, on a pass or partial only.
+      const also = obs.measurement?.also_question_ids;
+      if (also !== undefined && (!['pass', 'partial'].includes(obs.state) || alsoQuestionIds({ question_id: named, also_question_ids: also }, new Set(input.run_context.protocol.question_panel.map(question => question.id))) === null))
+        fail(obs, 'its other questions are not other, distinct questions of the fixed panel on a pass or partial verdict');
+    }
+    if (isEntityFallback(obs.family_id, obs.unit_key) && obs.measurement?.identity_basis !== identityBasisOf(obs.state)) fail(obs, 'its identity basis is not the one its state records');
+    const raw = (audit.raw ?? []).find(x => x.evidence_ref === obs.evidence_ref && x.normalized_url === (isEntityFallback(obs.family_id, obs.unit_key) ? home : unitUrl(obs.unit_key)));
+    if (!raw) fail(obs, 'its evidence is not the audit raw entry of the unit page');
+    // Candidates are recomputed from the raw bytes, so a consistently forged queue cannot widen what a model may cite.
+    const candidates = candidateSpans(requireRef(obs.evidence_ref).bytes, raw.content_hash);
+    // A verdict that rests on something missing from the page needs a queue that offered enough of it and a page that does not show it; a fail of an absence family names its basis; the empty-page mark is true of the page.
+    const bytes = requireRef(obs.evidence_ref).bytes;
+    if (!basisAllowed({ family_id: obs.family_id, state: obs.state, basis: obs.measurement?.basis })) fail(obs, 'its basis is not the one this verdict must carry');
+    const cited = (obs.evidence_span ?? []).map(span => candidates.find(x => x.start === span.start && x.end === span.end)).filter(Boolean);
+    const unaccepted = acceptance({ family_id: obs.family_id, state: obs.state, condition: obs.applicability_decision?.condition, basis: obs.measurement?.basis }, bytes, cited, candidates,
+      { chrome, ...operatorNames({ confirmed: confirmedNames, observations: input.observations, url: unitUrl(obs.unit_key) }) });
+    if (unaccepted) fail(obs, `its verdict is not accepted: ${unaccepted.reason}`);
+    // What the owner reads for a fail is the catalog sentence of its family and basis with the text it cites; any other verdict states no problem.
+    const failed = { family_id: obs.family_id, state: obs.state, basis: obs.measurement?.basis };
+    const question = obs.family_id === 'answer-clarity' ? input.run_context.protocol.question_panel.find(item => item.id === obs.measurement?.question_id)?.question : null;
+    if (!same(obs.problem_messages ?? null, obs.state === 'fail' ? modelFailMessages({ family_id: obs.family_id, basis: sentenceBasis(failed, bytes, chrome) }, cited, chrome, question) : null))
+      fail(obs, 'its problem message is not the one its family, basis and cited text give');
+    if (Boolean(obs.measurement?.empty_page) !== isEmptyPage(bytes)) fail(obs, 'its empty-page mark differs from the page');
+    for (const span of obs.evidence_span ?? []) {
+      if (span.evidence_sha256 !== raw.content_hash) fail(obs, 'a span names evidence other than the unit page');
+      try { checkSpan(requireRef(obs.evidence_ref).bytes, span); } catch (error) { fail(obs, error.message); }
+      const candidate = candidates.find(x => x.start === span.start && x.end === span.end);
+      if (!candidate) fail(obs, `span ${span.start}-${span.end} is not a text run of the page`);
+      if (!queues.some(queue => queuedSpan(queue, obs, span))) fail(obs, `span ${span.start}-${span.end} is not a candidate of the stored judge queue`);
+      // The text the model read is the text of that range, with inline tags left out: the queue cannot show it something else.
+      const offered = queues.flatMap(queue => queue.items.filter(x => x.unit_key === obs.unit_key && x.family_id === obs.family_id && x.evidence_ref === obs.evidence_ref))
+        .flatMap(x => x.spans).find(x => x.evidence_sha256 === span.evidence_sha256 && x.start === span.start && x.end === span.end);
+      if (offered.text !== candidate.text) fail(obs, `the queued text of span ${span.start}-${span.end} differs from the text of the page`);
+    }
+    return { phase, family_id: obs.family_id, unit_key: obs.unit_key, state: obs.state, evidence_ref: obs.evidence_ref, evidence_span: obs.evidence_span, label: MODEL_JUDGMENT_LABEL,
+      ...(obs.measurement?.basis ? { basis: obs.measurement.basis, sentence_basis: sentenceBasis(failed, bytes, chrome) } : {}),
+      ...(obs.measurement?.identity_basis ? { identity_basis: obs.measurement.identity_basis } : {}) };
+  });
+}
+
+/**
+ * The audited pages that show no text, for the phase the report describes: the pages the judge queue lists as empty, each checked
+ * against the raw bytes the audit stored, so a queue cannot name a page that has text.
+ */
+function emptyPagesOf(snapshot, requireRef) {
+  if (!snapshot) return [];
+  const audit = JSON.parse(requireRef(snapshot.audit_ref).text);
+  const listed = new Set((audit.judge_queue ?? []).flatMap(entry => JSON.parse(requireRef(entry.evidence_ref).text).empty_pages ?? []));
+  return [...listed].filter(url => {
+    const raw = (audit.raw ?? []).find(entry => entry.content_hash && entry.normalized_url === url);
+    return raw && isEmptyPage(requireRef(raw.evidence_ref).bytes);
+  }).sort();
+}
+
 /** Recompute scores and metrics from contained run evidence; render four design tables. */
 export function buildReport(packet) {
+  assertCurrentEvidence(packet, 'report packet');
+  assertCurrentEvidence(packet?.after?.input, 'report packet (follow-up phase)');
   validateEntity('ReportPacket', packet);
   if (sensitive.test(JSON.stringify(packet))) throw new ContractError('private identifier or secret in report packet');
+  for (const id of packet.answered_runbooks ?? []) if (!runbookEntry(id)) throw new ContractError(`answered_runbooks names an unknown runbook: ${id}`);
   if (packet.baseline.input.run_context.run_id !== packet.run_context.run_id ||
       !same(packet.baseline.input.run_context, packet.run_context) || packet.costs.run_id !== packet.run_context.run_id)
     throw new ContractError('report run context or cost ledger mismatch');
@@ -562,9 +751,12 @@ export function buildReport(packet) {
       snapshots.some(x => !['baseline', 'after'].includes(x.phase) || !x.audit_ref || !x.context_ref))
     throw new ContractError('audit snapshot phase or reference invalid');
   const snapshotFor = phase => snapshots.find(x => x.phase === phase);
-  // Dropping the audit reference must not downgrade collector evidence to an unaudited packet.
-  if (!snapshotFor('baseline') && packet.evidence_index.some(x => x.source_ref === 'optbrew:collector'))
-    throw new ContractError('collector evidence is indexed but the baseline audit snapshot is missing');
+  // Each phase's run context, hashed as run evidence, records whether the phase was audited. A packet cannot add or drop a
+  // snapshot to change how its phase is judged: the snapshot must exist exactly when the context says the phase was audited.
+  for (const [phase, input] of [['baseline', packet.baseline.input], ['after', packet.after?.input]]) {
+    if (input && (input.run_context.audited === true) !== Boolean(snapshotFor(phase)))
+      throw new ContractError(`${phase} audit snapshot differs from the audit recorded in its run context`);
+  }
   const baselineScores = score(packet.baseline.input);
   if (!same(packet.baseline.scores, baselineScores)) throw new ContractError('baseline score differs from raw observations');
   const collectedIn = phase => collectedResponses(snapshotFor(phase) ? [snapshotFor(phase)] : [], requireRef);
@@ -572,7 +764,8 @@ export function buildReport(packet) {
   let afterScores = null;
   if (packet.after) {
     if (packet.after.input.run_context.run_id !== packet.run_context.run_id) throw new ContractError('after run ID mismatch');
-    if (!same(JSON.parse(requireRef(packet.after.input.run_context.evidence_ref).text), packet.after.input.run_context))
+    const afterContext = requireRef(packet.after.input.run_context.evidence_ref);
+    if (afterContext.kind !== 'context' || !same(JSON.parse(afterContext.text), packet.after.input.run_context))
       throw new ContractError('after context evidence differs from input');
     afterScores = score(packet.after.input);
     if (!same(packet.after.scores, afterScores)) throw new ContractError('after score differs from raw observations');
@@ -580,11 +773,24 @@ export function buildReport(packet) {
   }
   const comparison = compare(packet.baseline.input, packet.after?.input ?? null);
   if (!same(packet.comparison, comparison)) throw new ContractError('comparison differs from raw inputs');
-  const metricOriginLimitations = [...new Set(packet.metrics.map(metric => checkMetricEvidence(metric, packet, requireRef)))];
+  const originNotes = [...new Map(packet.metrics.map(metric => checkMetricEvidence(metric, packet, requireRef))).entries()];
+  const metricOriginLimitations = originNotes.map(([text]) => text);
   if (!packet.costs.evidence_ref || !same(JSON.parse(requireRef(packet.costs.evidence_ref).text), packet.costs))
     throw new ContractError('cost ledger snapshot evidence differs from report');
+  // Model verdicts are replayed first, so a host_model observation never reaches the collector replay under a collector source.
+  const intakeEntry = packet.evidence_index.find(x => x.kind === 'intake');
+  const intake = intakeEntry ? JSON.parse(requireRef(intakeEntry.ref).text) : null;
+  const confirmedNames = (intake?.answers?.facts ?? []).filter(fact => fact.key === 'name').map(fact => fact.value);
+  const modelRows = [['baseline', packet.baseline.input], ['after', packet.after?.input]].flatMap(([phase, input]) => modelJudgmentRows(phase, input, snapshotFor(phase), requireRef, confirmedNames));
+  const emptyPages = emptyPagesOf(snapshotFor(packet.after ? 'after' : 'baseline'), requireRef);
   checkAuditPhase(packet.baseline.input, 'baseline', snapshotFor('baseline'), requireRef);
   checkAuditPhase(packet.after?.input, 'after', snapshotFor('after'), requireRef);
+  // An adopted start address is said in the run conditions, so it must match the intake record and the run's target.
+  const startRedirect = packet.start_redirect ?? null;
+  if (startRedirect || intake?.selection?.start_redirect) {
+    if (startRedirect?.to !== packet.run_context.target || !same(intake?.selection?.start_redirect ?? null, startRedirect))
+      throw new ContractError('start redirect differs from the intake record or the run target');
+  }
   const merged = mergeFindings(packet.findings);
   const observations = [...packet.baseline.input.observations, ...(packet.after?.input.observations ?? [])];
   const collectedAny = collectedResponses(snapshots, requireRef);
@@ -595,8 +801,27 @@ export function buildReport(packet) {
     if (finding.blocker && !observations.some(obs => obs.check_id === finding.check_id &&
         obs.unit_key === finding.unit_key && obs.state === 'fail'))
       throw new ContractError('blocker requires confirmed failed check observation');
+    // A finding that carries the model's source must rest on a model verdict of its unit; its evidence is the page the collector stored.
+    const modelFinding = finding.source_ref === OBSERVATION_SOURCES.host_model;
+    // A finding that groups several pages names each of them, and each must itself be a failed verdict of the same problem (the same text
+    // once its own address is left out, among the problems the verdict states) by the same kind of judge: a listed page cannot be one
+    // that was not measured.
+    for (const unit of finding.unit_keys ?? []) if (!observations.some(obs => obs.check_id === finding.check_id && obs.unit_key === unit && obs.state === 'fail' &&
+        problemsOf(obs).some(problem => pageNeutral(problem, unit) === pageNeutral(finding.message, finding.unit_key)) &&
+        (obs.evaluator_type === 'host_model') === modelFinding))
+      throw new ContractError(`finding names a page that is not a failed verdict of the same problem: ${unit}`);
+    // The Korean text rests on the same verdict as the English message: its key and values are the ones the verdict recorded for this problem.
+    if (finding.message_key !== undefined || finding.message_values !== undefined) {
+      const stated = { message_key: finding.message_key ?? null, message_values: finding.message_values ?? {} };
+      if (!observations.some(obs => obs.check_id === finding.check_id && obs.unit_key === finding.unit_key && obs.state === 'fail' &&
+          problemsOf(obs).some((problem, index) => pageNeutral(problem, obs.unit_key) === pageNeutral(finding.message, finding.unit_key) && same(obs.problem_messages?.[index] ?? null, stated))))
+        throw new ContractError(`finding message key differs from its verdict: ${finding.finding_id}`);
+    }
+    if (modelFinding && !observations.some(obs => obs.check_id === finding.check_id && obs.unit_key === finding.unit_key &&
+        obs.evaluator_type === 'host_model' && obs.state === 'fail'))
+      throw new ContractError(`model finding has no model verdict: ${finding.finding_id}`);
     for (const source of finding.sources) {
-      const evidence = requireRef(source.evidence_ref, source.source_ref);
+      const evidence = requireRef(source.evidence_ref, [OBSERVATION_SOURCES.host_model, OBSERVATION_SOURCES.derived].includes(source.source_ref) ? { anySource: true } : source.source_ref);
       // The same HTML plus response-header replay as the observation, bound to the finding's own unit.
       if (finding.check_id === 'index-policy' && finding.blocker &&
           !evidenceBlocksIndexing(evidence, packet.run_context.protocol.engines, collectedAny, unitUrl(finding.unit_key)))
@@ -616,7 +841,7 @@ export function buildReport(packet) {
     const resolution = resolving.length ? { observation_id: resolving[0].observation_id,
       evaluator_type: [...new Set(resolving.map(obs => obs.evaluator_type))].join(', '),
       source_ref: [...new Set(resolving.map(obs => obs.source_ref))].join(', ') } : null;
-    return { ...finding, remediation: selected ?? null, status, resolution };
+    return { ...finding, remediation: selected ?? null, status, resolution, ...(modelFinding ? { label: MODEL_JUDGMENT_LABEL } : {}) };
   });
   for (const change of packet.changes) {
     validateEntity('ChangeRecord', change);
@@ -673,91 +898,71 @@ export function buildReport(packet) {
         problem: `Production application and observation pending for ${finding.unit_key}`,
         reason: 'production_deployment_pending', required_input_or_authority: 'site owner deployment authority and production target',
         next_action: 'Deploy the locally verified change, then fetch the production response',
-        reobserve_when: 'after authorized production deployment and a new raw response' });
-    } else remaining.push({ finding_id: finding.finding_id, problem: `${finding.message} ${finding.unit_key}`,
+        reobserve_when: 'after authorized production deployment and a new raw response', ...messageOf('follow-up.production-pending', { pages: pagesLabel(finding) }) });
+    } else remaining.push({ finding_id: finding.finding_id, problem: `${finding.message} ${pagesLabel(finding)}`,
       reason: finding.status, required_input_or_authority: finding.remediation?.required_authority ?? 'source evidence and owner review',
       next_action: finding.remediation?.mechanism ?? 'Confirm the issue from raw evidence',
-      reobserve_when: finding.remediation?.validation ?? 'after new evidence is collected' });
+      reobserve_when: finding.remediation?.validation ?? 'after new evidence is collected', ...messageOf('follow-up.finding') });
   }
-  const costIssues = [
+  // Each cost note keeps its English text beside the catalog key and values of its Korean sentence.
+  const costNote = (text, message) => ({ text, ...message });
+  const costNotes = [
     ...packet.costs.reservations.filter(x => ['unknown', 'overrun'].includes(x.status)).map(x => {
       const settlement = packet.costs.settlements.find(item => item.reservation_id === x.reservation_id);
-      const format = amounts => amounts?.map(item => `${item.amount} ${item.currency ?? item.unit}`).join(', ') ?? 'unknown';
-      return `${x.provider}: ${x.status} (reserved ${format(x.upperBounds)}; actual ${format(settlement?.actual)})`;
+      const format = amounts => amounts?.map(item => `${item.amount} ${item.currency ?? item.unit}`).join(', ');
+      return costNote(`${x.provider}: ${x.status} (reserved ${format(x.upperBounds) ?? 'unknown'}; actual ${format(settlement?.actual) ?? 'unknown'})`,
+        messageOf('cost.reservation', { provider: x.provider, status: x.status, reserved: format(x.upperBounds), actual: format(settlement?.actual) }));
     }),
-    ...(packet.capabilities?.selected ?? []).filter(x => x.cost_enforcement === 'host_policy').map(x => `${x.provider}: host_policy`),
-    ...(packet.capabilities?.limitations ?? []),
+    ...(packet.capabilities?.selected ?? []).filter(x => x.cost_enforcement === 'host_policy').map(x => costNote(`${x.provider}: host_policy`, messageOf('cost.host-policy', { provider: x.provider }))),
+    ...(packet.capabilities?.limitations ?? []).map((text, index) => costNote(text, packet.capabilities.limitation_messages?.[index] ?? messageOf(null))),
   ];
   if (packet.costs.reservations.some(x => x.provider === 'anthropic') ||
       (packet.capabilities?.selected ?? []).some(x => x.provider === 'anthropic'))
-    costIssues.push('Anthropic direct v0.1.0: text-only; claude-fable-5-1, claude-opus-5-5, claude-sonnet-5-5, claude-haiku-5-5; max output 128000; one token reserve >=1000000+max_tokens per attempt; tools/search and currency-only or mixed bounds unsupported; reservation is capacity, not actual billing');
-  const result = { schema_version: '1.0.0', run_context: packet.run_context,
+    // The direct adapter ships with the release, so this label is the release version (the panel label in metrics.mjs is the evaluation version).
+    costNotes.push(costNote(`Anthropic direct v${versions().release}: text-only; claude-fable-5-1, claude-opus-5-5, claude-sonnet-5-5, claude-haiku-5-5; max output 128000; one token reserve >=1000000+max_tokens per attempt; tools/search and currency-only or mixed bounds unsupported; reservation is capacity, not actual billing`,
+      messageOf('cost.anthropic', { version: versions().release })));
+  const verified = { schema_version: versions().contract_schema, run_context: packet.run_context,
     data_class: packet.data_class ?? 'unknown', baseline: { input: packet.baseline.input, scores: baselineScores },
     after: packet.after ? { input: packet.after.input, scores: afterScores } : null, comparison,
     metrics: packet.metrics, findings, changes: packet.changes, costs: packet.costs,
-    capabilities: packet.capabilities ?? null, cost_issues: costIssues, metric_origin_limitations: metricOriginLimitations, remaining,
+    capabilities: packet.capabilities ?? null, cost_issues: costNotes.map(item => item.text),
+    cost_issue_messages: costNotes.map(({ message_key, message_values }) => ({ message_key, message_values })), metric_origin_limitations: metricOriginLimitations,
+    metric_origin_limitation_messages: originNotes.map(([, key]) => messageOf(key)), follow_ups: remaining,
     evidence_root: packet.evidence_root, evidence_index: packet.evidence_index,
-    audit_ref: packet.audit_ref ?? null, audit_snapshots: snapshots, source_ref: packet.source_ref };
-  const byProfile = new Map(afterScores?.map(x => [x.profile, x]) ?? []);
-  const scoreRows = baselineScores.map(before => {
-    const after = byProfile.get(before.profile);
-    const delta = comparison.score_deltas.find(x => x.profile === before.profile);
-    const cautious = scoreHeadline(before).status !== 'sufficient' || (after && scoreHeadline(after).status !== 'sufficient');
-    return [before.profile, headlineCell(before), after ? headlineCell(after) : 'unknown',
-      `${delta?.percentage_point_delta ?? 'unknown'}${cautious && delta ? ' (between measured subsets)' : ''}`,
-      `${before.coverage ?? 'unknown'} → ${after?.coverage ?? 'unknown'}`,
-      `${before.missing_bounds?.join('–') ?? 'unknown'} → ${after?.missing_bounds?.join('–') ?? 'unknown'}`,
-      `${before.readiness_status} → ${after?.readiness_status ?? 'unknown'}`];
-  });
-  const headlines = baselineScores.map(scoreHeadline);
-  result.headline = headlines;
-  const headlineText = headlines.map(h => h.status === 'sufficient' ? `${h.profile}: ${h.headline_score} (coverage ${h.coverage}%)` :
-    h.status === 'insufficient_core' ? `${h.profile}: insufficient core checks (${h.unresolved_core} access or indexing check(s) have no verdict, although ${h.coverage}% is measured); measured subset ${h.measured_subset_score ?? 'unknown'}, bounds ${h.missing_bounds?.join('–') ?? 'unknown'}` :
-    `${h.profile}: insufficient coverage (${floorTenth(h.coverage_exact)}% of the applicable weight is measured; at least ${h.coverage_threshold}% is needed); measured subset ${h.measured_subset_score ?? 'unknown'}, bounds ${h.missing_bounds?.join('–') ?? 'unknown'}`);
-  const remediationRows = findings.map(f => [f.priority, `${f.message} ${f.unit_key}`, f.sources.map(x => `${x.source_ref} ${x.evidence_ref}`).join('; '),
-    f.remediation ? `${f.remediation.mechanism} (${f.remediation.source_url}, checked ${f.remediation.checked_date})` : 'unknown',
-    packet.changes.filter(x => x.finding_ids.some(id => f.finding_ids.includes(id))).map(x => x.path).join('; ') || f.remediation?.location_hint || 'owner implementation location required',
-    f.remediation ? `${f.remediation.cost}; ${f.remediation.effort}` : 'unknown', f.remediation?.validation ?? 'unknown',
-    f.resolution ? `${f.status} (resolved by ${f.resolution.evaluator_type} observation from ${f.resolution.source_ref})` : f.status]);
-  const outcomeRows = metricRows(packet.metrics);
-  const remainingRows = remaining.map(x => [x.problem, x.reason, x.required_input_or_authority, x.next_action, x.reobserve_when]);
-  const markdown = `# optbrew report\n\n${packet.data_class === 'synthetic' ? '**Synthetic example — no real site or provider outcome.**\n\n' : ''}` +
-    `Target: ${html(packet.run_context.target)}  \nEnvironment: ${html(packet.run_context.environment)}  \nGoals: ${html(packet.run_context.goals.join(', '))}  \n` +
-    `Comparison: ${html(comparison.status)} (${html(comparison.reasons.join(', ') || 'none')})  \n` +
-    `Headline:  \n${headlineText.map(line => `- ${html(line)}  \n`).join('')}` +
-    `Baseline blockers: ${html(baselineScores[0]?.blockers.length ?? 0)} (${html(baselineScores[0]?.blockers.map(x => `${x.family_id} ${x.unit_key}`).join('; ') || 'none')}) → ` +
-    `After blockers: ${afterScores ? html(afterScores[0]?.blockers.length ?? 0) : 'unknown'} (${afterScores ? html(afterScores[0]?.blockers.map(x => `${x.family_id} ${x.unit_key}`).join('; ') || 'none') : 'after not observed'}); ` +
-    `after core unknown: ${afterScores ? html(afterScores[0]?.unknown_core.length ?? 0) : 'unknown'}; actual outcomes: ${packet.metrics.length ? 'see measured and missing states below' : 'not_connected / unknown'}  \n` +
-    `Cost and capability limitations: ${html(costIssues.join('; ') || 'none recorded')}  \n` +
-    `Metric source limitations: ${html(metricOriginLimitations.join('; ') || 'no measured provider input')}\n\n` +
-    `## Score\n\n${table(['Area', 'Before', 'After', 'Difference', 'Coverage before → after', 'Missing bounds', 'Status'], scoreRows)}\n\n` +
-    `## Remediation\n\n${table(['Priority', 'Problem / URL', 'Evidence', 'Selected remedy', 'Change path or owner location', 'Cost / effort', 'Verification', 'Status'], remediationRows)}\n\n` +
-    `## Actual outcomes\n\n${table(['Engine / property', 'Metric', 'Window / sample', 'Before raw', 'After raw', 'Difference', 'Completion', 'Limitations'], outcomeRows)}\n\n` +
-    `## Remaining work\n\n${table(['Problem', 'Reason', 'Needed input / authority', 'Next action', 'Reobserve when'], remainingRows)}\n\n` +
-    `Evidence root: ${html(packet.evidence_root)}; run ID: ${html(packet.run_context.run_id)}. Read report.json to replay raw score inputs.\n`;
-  result.tables = { score: scoreRows, remediation: remediationRows, actual_outcomes: outcomeRows, remaining_work: remainingRows };
-  return { json: result, markdown };
+    audit_ref: packet.audit_ref ?? null, audit_snapshots: snapshots, model_judgments: modelRows, empty_pages: emptyPages, source_ref: packet.source_ref,
+    outcome_rows: metricRows(packet.metrics), lab_cwv: packet.lab_cwv ?? null, start_redirect: startRedirect, answered_runbooks: packet.answered_runbooks ?? [] };
+  const composed = composeReport(verified);
+  const { markdown, tables } = renderReport(composed, verified);
+  // The composed report leads; the checked data it was built from follows. `findings` is the sorted fixes again, for readers of earlier reports.
+  const checked = { ...verified };
+  for (const key of ['schema_version', 'data_class', 'outcome_rows', 'lab_cwv', 'answered_runbooks']) delete checked[key];
+  return { json: { schema_version: verified.schema_version, data_class: verified.data_class, composed, ...checked,
+    findings: composed.fixes, tables }, markdown };
 }
 
-/** Write both outputs after all validation; temporary files stay in the destination. */
-export async function writeReport(packet, outputDir) {
+/**
+ * Write the outputs after all validation; temporary files stay in the destination. `renderHtml`, when given, turns the composed
+ * report into the page written as `report.html` beside the other two. All files appear or none does.
+ */
+export async function writeReport(packet, outputDir, { renderHtml = null } = {}) {
   const built = buildReport(packet);
+  const html = renderHtml ? renderHtml(built.json.composed) : null;
   await mkdir(outputDir, { recursive: true });
   const jsonPath = path.resolve(outputDir, 'report.json'), markdownPath = path.resolve(outputDir, 'report.md');
-  for (const file of [jsonPath, markdownPath]) {
+  const htmlPath = html === null ? null : path.resolve(outputDir, 'report.html');
+  const outputs = [[jsonPath, `${JSON.stringify(built.json, null, 2)}\n`], [markdownPath, built.markdown], ...(html === null ? [] : [[htmlPath, html]])];
+  for (const [file] of outputs) {
     try { await access(file); throw new ContractError(`report output already exists: ${file}`); }
     catch (error) { if (error.code !== 'ENOENT') throw error; }
   }
-  const temporary = [`${jsonPath}.${process.pid}.tmp`, `${markdownPath}.${process.pid}.tmp`];
-  let jsonWritten = false;
+  const temporary = outputs.map(([file]) => `${file}.${process.pid}.tmp`);
+  const written = [];
   try {
-    await writeFile(temporary[0], `${JSON.stringify(built.json, null, 2)}\n`, { flag: 'wx' });
-    await writeFile(temporary[1], built.markdown, { flag: 'wx' });
-    await rename(temporary[0], jsonPath); jsonWritten = true;
-    await rename(temporary[1], markdownPath);
+    for (const [index, [, text]] of outputs.entries()) await writeFile(temporary[index], text, { flag: 'wx' });
+    for (const [index, [file]] of outputs.entries()) { await rename(temporary[index], file); written.push(file); }
   } catch (error) {
-    if (jsonWritten) await rm(jsonPath, { force: true });
+    await Promise.all(written.map(file => rm(file, { force: true })));
     throw error;
   } finally { await Promise.all(temporary.map(file => rm(file, { force: true }))); }
-  return { jsonPath, markdownPath };
+  return { jsonPath, markdownPath, ...(htmlPath ? { htmlPath } : {}) };
 }

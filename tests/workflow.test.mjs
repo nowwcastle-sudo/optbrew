@@ -65,7 +65,7 @@ test('installed junction and physical entrypoints both audit and score; imports 
     const observations = JSON.parse(await readFile(path.join(outputDir, 'evidence/observations.json'), 'utf8'));
     assert.ok(observations.some(x => x.check_id === 'index-policy' && x.state === 'fail'));
     const input = path.join(root, `input-${index}.json`), result = path.join(root, `score-${index}.json`);
-    await writeFile(input, JSON.stringify({ schema_version: '1.0.0', run_context: context, observations }));
+    await writeFile(input, JSON.stringify({ schema_version: '2.0.0', run_context: context, observations }));
     const scored = await runNode([path.join(skillRoot, 'scripts/cli.mjs'), 'score', '--input', input, '--output', result], projectRoot);
     assert.equal(scored.code, 0, scored.stderr);
     const scores = JSON.parse(await readFile(result, 'utf8'));
@@ -140,6 +140,7 @@ test('real local HTTP baseline, authorized edit and same-condition rescan clear 
   context.scope = { allowed: [{ origin: `http://127.0.0.1:${port}`, path_prefix: '/' }],
     local_targets: [{ host: '127.0.0.1', port }] };
   context.evidence_ref = 'context.json';
+  context.audited = true;
   context.protocol.page_types = [{ id: 'primary', urls: [{ original: url, normalized: url }] }];
   context.protocol.engines = ['google'];
   for (const family of context.protocol.families)
@@ -150,7 +151,7 @@ test('real local HTTP baseline, authorized edit and same-condition rescan clear 
   await writeFile(siteFile, after);
   assert.deepEqual(await readFile(backupFile), before);
   const followup = await scan('after');
-  const input = result => ({ schema_version: '1.0.0', run_context: context, observations: result.observations });
+  const input = result => ({ schema_version: '2.0.0', run_context: context, observations: result.observations });
   const beforeInput = input(baseline), afterInput = input(followup);
   const mislabeled = structuredClone(beforeInput);
   mislabeled.run_context.evaluation_version = '9.9.9';
@@ -158,7 +159,7 @@ test('real local HTTP baseline, authorized edit and same-condition rescan clear 
   assert.deepEqual(baseline.observations.filter(x => x.state === 'fail').map(x => x.family_id).sort(), ['document-title', 'index-policy']);
   assert.deepEqual(followup.observations.filter(x => x.state === 'pass').map(x => x.family_id).sort(), ['fetch-response', 'index-policy']);
   assert.equal(followup.observations.find(x => x.family_id === 'document-title').state, 'unknown',
-    'a present title proves existence only; uniqueness and descriptiveness stay unknown');
+    'a present title of the only audited page proves existence only; uniqueness and descriptiveness stay unknown');
   assert.equal(score(beforeInput).find(x => x.profile === 'SEO').readiness_status, 'blocked');
   assert.equal(score(afterInput).find(x => x.profile === 'SEO').blockers.length, 0);
   const delta = compare(beforeInput, afterInput);
@@ -194,7 +195,7 @@ test('real local HTTP baseline, authorized edit and same-condition rescan clear 
     }
   }
   const beforeRaw = baseline.artifacts[0].evidence_ref, afterRaw = followup.artifacts[0].evidence_ref;
-  const costs = { schema_version: '1.0.0', run_id: context.run_id, budgets: [], reservations: [], settlements: [],
+  const costs = { schema_version: '2.0.0', run_id: context.run_id, budgets: [], reservations: [], settlements: [],
     approval_ref: null, source_ref: 'local-fixture', evidence_ref: 'costs.json' };
   await record('costs.json', costs, 'record');
   const resolved = afterInput.observations.find(x => x.check_id === 'index-policy');
@@ -204,14 +205,14 @@ test('real local HTTP baseline, authorized edit and same-condition rescan clear 
     checks: [{ id: 'raw-response', status: 'passed', observed: 'Same URL served changed local HTML',
       evidence_ref: afterRaw, after_hash: followup.artifacts[0].content_hash }] };
   await record('verification.json', verification, 'verification');
-  const packet = { schema_version: '1.0.0', run_context: context,
+  const packet = { schema_version: '2.0.0', run_context: context,
     baseline: { input: beforeInput, scores: score(beforeInput) },
     after: { input: afterInput, scores: score(afterInput) }, comparison: delta, metrics: [],
-    findings: ['index-policy', 'document-title'].map(family => ({ schema_version: '1.0.0', finding_id: family,
+    findings: ['index-policy', 'document-title'].map(family => ({ schema_version: '2.0.0', finding_id: family,
       check_id: family, unit_key: `${family}|${url}`, priority: family === 'index-policy' ? 'P0' : 'P1',
       blocker: family === 'index-policy', message: family === 'index-policy' ? 'Unexpected noindex' : 'Missing title',
       source_ref: 'optbrew:collector', evidence_ref: beforeRaw, remediation_ids: [], status: 'confirmed' })),
-    changes: [{ schema_version: '1.0.0', change_id: 'local-html-edit', finding_ids: ['index-policy', 'document-title'],
+    changes: [{ schema_version: '2.0.0', change_id: 'local-html-edit', finding_ids: ['index-policy', 'document-title'], analysis: { tools: [], queries: [], self_analysis: true },
       environment: 'local', path: 'site.html', before_hash: baseline.artifacts[0].content_hash,
       after_hash: followup.artifacts[0].content_hash, backup_ref: beforeRaw,
       evidence_ref: afterRaw, verification: { status: 'passed', deployed: false, evidence_ref: 'verification.json',
@@ -242,13 +243,24 @@ test('real local HTTP baseline, authorized edit and same-condition rescan clear 
   assert.equal(indexStatus(copy => { afterEntry(copy).target = 'http://other.example/'; }), 'modified_unverified', 'other target');
   assert.equal(report.after.scores.find(x => x.profile === 'SEO').blockers.length, 0);
   assert.equal(report.metrics.length, 0);
-  assert.equal(report.remaining.filter(x => x.reason === 'verified_local').length, 0);
+  assert.equal(report.follow_ups.filter(x => x.reason === 'verified_local').length, 0);
   assert.equal(report.findings.find(x => x.check_id === 'document-title').status, 'modified_unverified');
-  assert.equal(report.remaining.filter(x => x.reason === 'production_deployment_pending').length, 1);
-  assert.equal(report.remaining.filter(x => x.reason === 'modified_unverified').length, 1);
-  assert.match(markdown, /Baseline blockers: 1 .*After blockers: 0/);
-  assert.match(markdown, /actual outcomes: not_connected \/ unknown/);
-  assert.match(markdown, /verified_local/);
+  assert.equal(report.follow_ups.filter(x => x.reason === 'production_deployment_pending').length, 1);
+  assert.equal(report.follow_ups.filter(x => x.reason === 'modified_unverified').length, 1);
+  assert.match(markdown, /이전 막는 문제: 1건 [\s\S]*이후 막는 문제: 0건/);
+  assert.match(markdown, /실제 결과: 연결 안 됨 \/ 알 수 없음/);
+  assert.match(markdown, /내 컴퓨터에서 해결 확인됨/);
+  await t.test('stripping the after snapshot cannot upgrade a result', () => {
+    const stripped = structuredClone(packet);
+    stripped.audit_snapshots = stripped.audit_snapshots.filter(x => x.phase !== 'after');
+    assert.throws(() => buildReport(stripped), /after audit snapshot differs from the audit recorded in its run context/);
+    // Also claiming the phase was not audited contradicts the hashed context evidence.
+    stripped.after.input.run_context.audited = false;
+    assert.throws(() => buildReport(stripped), /context evidence differs/);
+    const unaudited = structuredClone(packet);
+    unaudited.audit_snapshots = unaudited.audit_snapshots.filter(x => x.phase !== 'baseline');
+    assert.throws(() => buildReport(unaudited), /baseline audit snapshot differs from the audit recorded in its run context/);
+  });
   const moduleRef = path.join(path.dirname(followup.evidence_ref), 'modules.json');
   const modules = JSON.parse(await readFile(moduleRef, 'utf8'));
   modules['naver-searchadvisor'][0].title = null;

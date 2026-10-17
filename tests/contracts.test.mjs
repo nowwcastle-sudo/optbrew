@@ -2,16 +2,18 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { validateEntity, ContractError } from '../skills/optbrew/scripts/core/contracts.mjs';
 import { freezeProtocol } from '../skills/optbrew/scripts/core/protocol.mjs';
+import { checkRegistry } from '../skills/optbrew/scripts/core/config.mjs';
+import { environmentProbe } from './support/probe.mjs';
 
 const context = () => ({
-  schema_version: '1.0.0', run_id: 'run-a', target: 'example.com', environment: 'local',
-  goals: ['SEO'], allowed_changes: [], scope: {}, evaluation_version: '0.3.0',
-  protocol_version: '0.1.0', data_sources: [], cost_decision: {}, evidence_ref: 'evidence/context.json',
+  schema_version: '2.0.0', run_id: 'run-a', target: 'example.com', environment: 'local',
+  goals: ['SEO'], allowed_changes: [], scope: {}, evaluation_version: '0.4.0',
+  protocol_version: '0.2.0', data_sources: [], cost_decision: {}, environment_probe: environmentProbe(), evidence_ref: 'evidence/context.json',
   protocol: {
     page_types: [{ id: 'primary', urls: [{ original: 'https://example.com/', normalized: 'https://example.com/' }] }],
     engines: ['google'], families: [{ family_id: 'fetch-response', applicable: true }],
     locale: 'ko-KR', region: 'KR', browser: 'Chrome', device: 'mobile',
-    question_panel: [], surfaces: [], models: [], search_enabled: null,
+    question_panel: [], surfaces: [], models: [], search_enabled: null, render: { enabled: false, pages: [], max_render_requests: 300 },
   },
 });
 
@@ -48,7 +50,7 @@ test('robots and sitemap documents cannot be scored page URLs', () => {
 });
 
 test('invalid q, ratio, duplicate URL and nonfinite JSON values are rejected', () => {
-  const observation = { schema_version: '1.0.0', observation_id: 'o1', check_id: 'fetch-response',
+  const observation = { schema_version: '2.0.0', observation_id: 'o1', check_id: 'fetch-response',
     family_id: 'fetch-response', unit_key: 'fetch-response|google|https://example.com/',
     state: 'unknown', q: 0.7, partial_basis: null, reason: 'timeout',
     evaluator_type: 'code', source_ref: 'local', evidence_ref: 'e1' };
@@ -56,7 +58,7 @@ test('invalid q, ratio, duplicate URL and nonfinite JSON values are rejected', (
   assert.throws(() => validateEntity('CheckObservation', { ...observation, state: 'fail', q: null }), ContractError);
   assert.throws(() => validateEntity('CheckObservation', { ...observation, state: 'partial', q: 0.3,
     partial_basis: { kind: 'ratio', numerator: 1, denominator: 3 } }), ContractError);
-  assert.throws(() => validateEntity('ScoreInput', { schema_version: '1.0.0', run_context: context(),
+  assert.throws(() => validateEntity('ScoreInput', { schema_version: '2.0.0', run_context: context(),
     observations: [], extra: Infinity }), ContractError);
   const invalidContext = context();
   invalidContext.scope = new Date('2026-10-14T00:00:00Z');
@@ -105,7 +107,7 @@ test('selected URLs cannot opt out of fetch or public index policy with bare fla
 });
 
 test('family-specific verdict modes reject partial core policy and invented ratios', () => {
-  const base = { schema_version: '1.0.0', observation_id: 'policy', check_id: 'index-policy',
+  const base = { schema_version: '2.0.0', observation_id: 'policy', check_id: 'index-policy',
     family_id: 'index-policy', unit_key: 'index-policy|https://example.com/',
     state: 'partial', q: 0.5, partial_basis: { kind: 'threshold_half' },
     reason: 'confirmed noindex', evaluator_type: 'code', source_ref: 'synthetic', evidence_ref: 'e/policy' };
@@ -147,4 +149,105 @@ test('a fixed question panel cannot be called absent to remove question coverage
   changed.protocol.families.push({ family_id: 'question-coverage', applicable: false,
     applicability_decision: { condition: 'no_fixed_questions', reason: 'claimed absent', evidence_ref: 'e/panel' } });
   assert.throws(() => freezeProtocol(changed), ContractError);
+});
+
+test('the render plan is a fixed comparison input bounded by the selected pages and the render limits', () => {
+  const [page] = context().protocol.page_types[0].urls;
+  const about = { original: 'https://example.com/about', normalized: 'https://example.com/about' };
+  const planned = (pages, extra = {}) => {
+    const changed = context();
+    changed.protocol.page_types[0].urls.push(about);
+    changed.protocol.render = { enabled: true, pages, max_render_requests: 300, ...extra };
+    return changed;
+  };
+  const baseline = freezeProtocol(context()).protocol_hash;
+  const hash = freezeProtocol(planned([page, about])).protocol_hash;
+  assert.notEqual(hash, freezeProtocol(planned([])).protocol_hash, 'the pages are part of the protocol');
+  assert.equal(freezeProtocol(planned([about, page])).protocol_hash, hash, 'page order is immaterial');
+  assert.notEqual(freezeProtocol(planned([page], { max_render_requests: 200 })).protocol_hash, freezeProtocol(planned([page])).protocol_hash);
+  assert.notEqual(freezeProtocol(planned([], { enabled: false })).protocol_hash, freezeProtocol(planned([])).protocol_hash);
+  assert.equal(baseline.length, 64);
+  assert.throws(() => freezeProtocol(planned([{ original: 'https://example.com/other', normalized: 'https://example.com/other' }])), /not a selected URL/);
+  assert.throws(() => freezeProtocol(planned([page, page])), /duplicate/);
+  assert.throws(() => freezeProtocol(planned([page], { max_render_requests: 301 })), /above maximum/);
+  assert.throws(() => freezeProtocol(planned([page], { max_render_requests: 2.5 })), /expected integer/);
+  assert.throws(() => freezeProtocol(planned([page], { max_render_requests: 0 })), ContractError);
+  const missing = context();
+  delete missing.protocol.render;
+  assert.throws(() => validateEntity('RunContext', missing), /render/);
+  const extra = planned([page]);
+  extra.protocol.render.timeout = 1;
+  assert.throws(() => freezeProtocol(extra), /unexpected field/);
+  const tooMany = context();
+  tooMany.protocol.page_types[0].urls = Array.from({ length: 11 }, (_, i) => ({ original: `https://example.com/${i}`, normalized: `https://example.com/${i}` }));
+  tooMany.protocol.render = { enabled: true, pages: tooMany.protocol.page_types[0].urls, max_render_requests: 300 };
+  assert.throws(() => freezeProtocol(tooMany), /render page limit/);
+});
+
+test('indexing decision evidence paths on a render page do not change the protocol hash', () => {
+  const make = evidence => {
+    const changed = context();
+    const url = { ...changed.protocol.page_types[0].urls[0], public_indexing: false,
+      indexing_decision: { condition: 'not_public_index_target', reason: 'documented', evidence_ref: evidence } };
+    changed.protocol.page_types[0].urls[0] = url;
+    changed.protocol.render = { enabled: true, pages: [url], max_render_requests: 300 };
+    return changed;
+  };
+  assert.equal(freezeProtocol(make('e/one')).protocol_hash, freezeProtocol(make('e/two')).protocol_hash);
+});
+
+// Task 21e (R94): families that matter only for indexed pages have no unit for a page that is not an index target.
+test('document-title, canonical-consistency and naver-markup plan only the public index targets, like the index families (R94)', () => {
+  const about = { original: 'https://example.com/about', normalized: 'https://example.com/about', public_indexing: false,
+    indexing_decision: { condition: 'not_public_index_target', reason: 'documented exclusion', evidence_ref: 'e/index' } };
+  const planned = (familyId, urls) => {
+    const changed = context();
+    changed.protocol.page_types[0].urls.push(about);
+    changed.protocol.families.push({ family_id: familyId, applicable: true, ...(urls ? { urls } : {}) });
+    return changed;
+  };
+  for (const familyId of ['document-title', 'canonical-consistency']) {
+    assert.doesNotThrow(() => freezeProtocol(planned(familyId, ['https://example.com/'])), `${familyId} lists the public page only`);
+    assert.throws(() => freezeProtocol(planned(familyId, ['https://example.com/', 'https://example.com/about'])), ContractError, `${familyId} cannot list the excluded page`);
+  }
+  const allExcluded = planned('document-title', undefined);
+  allExcluded.protocol.page_types[0].urls[0] = { ...about, original: 'https://example.com/', normalized: 'https://example.com/' };
+  assert.throws(() => freezeProtocol(allExcluded), /document-title: applicable family has no public index target/);
+});
+
+// Task 22 (S2): the fixed applicability rules are read from the registry flags, not from lists of family names; this holds the two together.
+test('the fixed applicability rules agree with the registry public_only flags (S2)', () => {
+  const excluded = { condition: 'not_public_index_target', reason: 'documented exclusion', evidence_ref: 'e/index' };
+  const withFamily = (family, { publicPage = true, engines = ['google'] } = {}) => {
+    const changed = context();
+    changed.protocol.engines = engines;
+    if (!publicPage) Object.assign(changed.protocol.page_types[0].urls[0], { public_indexing: false, indexing_decision: excluded });
+    if (family.family_id === 'fetch-response') changed.protocol.families = [family]; else changed.protocol.families.push(family);
+    return changed;
+  };
+  const decision = condition => ({ condition, reason: 'fixed condition', evidence_ref: 'e/fixed' });
+  const families = checkRegistry().families;
+  assert.ok(families.filter(item => item.public_only === true).length >= 6, 'the registry still marks its public-only families');
+  for (const item of families) {
+    const publicOnly = item.public_only === true, id = item.family_id;
+    if (item.na_conditions.includes('no_public_index_target')) {
+      assert.equal(publicOnly, true, `${id} names no_public_index_target, so the registry must flag it public_only`);
+      // Public pages: the family is applicable, and calling it inapplicable is refused. Only non-index pages: it is inapplicable with exactly that condition.
+      assert.doesNotThrow(() => freezeProtocol(withFamily({ family_id: id, applicable: true })), `${id} applies to public pages`);
+      assert.throws(() => freezeProtocol(withFamily({ family_id: id, applicable: false, applicability_decision: decision('no_public_index_target') })), /contradicts fixed/, id);
+      assert.doesNotThrow(() => freezeProtocol(withFamily({ family_id: id, applicable: false, applicability_decision: decision('no_public_index_target') }, { publicPage: false })), `${id} has no unit without a public page`);
+      assert.throws(() => freezeProtocol(withFamily({ family_id: id, applicable: true }, { publicPage: false })), /no public index target|contradicts fixed/, id);
+      if (item.na_conditions.includes('no_target_engine')) {
+        assert.doesNotThrow(() => freezeProtocol(withFamily({ family_id: id, applicable: false, applicability_decision: decision('no_target_engine') }, { engines: [] })), `${id} without a target engine`);
+        assert.throws(() => freezeProtocol(withFamily({ family_id: id, applicable: false, applicability_decision: decision('no_public_index_target') }, { engines: [] })), /conflicts/, id);
+      }
+    } else if (publicOnly) {
+      // A flagged family with no fixed condition still has no unit without a public page: the generic refusal stands.
+      assert.throws(() => freezeProtocol(withFamily({ family_id: id, applicable: true }, { publicPage: false, engines: ['google', 'naver'] })), ContractError, `${id} cannot plan units with no public page`);
+    } else if (!item.na_conditions.length || item.na_conditions.every(code => !['no_fixed_questions', 'naver_not_target'].includes(code))) {
+      // An unflagged family does not follow the public pages.
+      const attempt = () => freezeProtocol(withFamily({ family_id: id, applicable: true }, { publicPage: false }));
+      try { attempt(); } catch (error) { assert.doesNotMatch(String(error.message), /public index target/, `${id} is not a public-only family`); }
+    }
+  }
 });

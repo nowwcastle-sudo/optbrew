@@ -9,8 +9,9 @@ import { doctor } from '../lib/doctor.mjs';
 import { main } from '../lib/cli.mjs';
 import { readInstallRecord } from '../lib/records.mjs';
 import { isDistributedBundlePath } from '../skills/optbrew/scripts/core/bundle.mjs';
+import { versions } from '../skills/optbrew/scripts/core/config.mjs';
 import { seal } from './fixtures/releases/create.mjs';
-import { extractPublished, releasePublished, root, skipUnreachable } from './support/published.mjs';
+import { extractPublished, extractPublished013, releasePublished, root, skipUnreachable, skipUnreachable013 } from './support/published.mjs';
 
 after(releasePublished);
 
@@ -37,16 +38,16 @@ test('managed update of the published 0.1.2 install is refused with migration_re
   t.after(() => rm(temp, { recursive: true, force: true }));
   const old = await extractPublished();
   const next = await currentManifest();
-  assert.equal(next.release_version, '0.1.3');
-  assert.equal(next.evaluation_version, '0.3.0');
-  assert.equal(next.protocol_version, old.manifest.protocol_version, 'protocol sources are unchanged');
+  assert.equal(next.release_version, versions().release);
+  assert.equal(next.evaluation_version, versions().evaluation);
+  assert.notEqual(next.protocol_version, old.manifest.protocol_version);
   assert.notEqual(next.evaluation_version, old.manifest.evaluation_version);
   const f = await oldInstall(temp, old);
 
   await assert.rejects(update({ bundleRoot: currentBundle, recordRoot: f.recordRoot }), error => {
     const text = error.message;
     assert.match(text, /^migration_required: evaluation_version changed/);
-    assert.ok(text.includes('0.1.2') && text.includes('0.1.3'), text);
+    assert.ok(text.includes('0.1.2') && text.includes(versions().release), text);
     assert.ok(text.includes(f.recordRoot), 'names the managed root to delete');
     for (const target of f.record.targets) assert.ok(text.includes(target.path), `names ${target.path}`);
     assert.match(text, /Remove-Item -Recurse -Force -LiteralPath/);
@@ -79,16 +80,45 @@ test('managed update of the published 0.1.2 install is refused with migration_re
   assert.match(err, /^migration_required: evaluation_version changed/);
 });
 
-test('updates and rollbacks keep working inside 0.1.3', { timeout: 540000 }, async t => {
-  const temp = await mkdtemp(path.join(os.tmpdir(), 'optbrew update within 0.1.3 '));
+test('managed update of the published 0.1.3 install is refused: the contract schema and the evaluation and protocol versions changed', { skip: skipUnreachable013, timeout: 540000 }, async t => {
+  const temp = await mkdtemp(path.join(os.tmpdir(), 'optbrew update from 0.1.3 '));
+  t.after(() => rm(temp, { recursive: true, force: true }));
+  const old = await extractPublished013(temp);
+  const next = await currentManifest();
+  assert.notEqual(next.evaluation_version, old.manifest.evaluation_version);
+  assert.notEqual(next.protocol_version, old.manifest.protocol_version);
+  const f = await oldInstall(temp, old);
+
+  await assert.rejects(update({ bundleRoot: currentBundle, recordRoot: f.recordRoot }), error => {
+    const text = error.message;
+    assert.match(text, /^migration_required: evaluation_version changed/);
+    assert.ok(text.includes('0.1.3') && text.includes(versions().release), text);
+    assert.match(text, /optbrew reinstall-plan --scope user --home/);
+    assert.match(text, /docs\/platforms\.md/);
+    return true;
+  });
+
+  // The refusal changed nothing; the current CLI cannot vouch for a bundle built for another evaluation version.
+  const record = await readInstallRecord(f.recordRoot);
+  assert.equal(record.release_version, '0.1.3');
+  assert.equal(record.bundle_hash, old.manifest.bundle_hash);
+  const report = await doctor({ home: f.home, scope: 'user', agents });
+  assert.ok(report.targets.every(x => x.file_present && x.registered && !x.hash_ok));
+  assert.ok(report.warnings.some(w => /migration_required/.test(w) && /Reinstall after a migration_required update/.test(w)), report.warnings.join('\n'));
+  assert.equal(await readFile(path.join(f.home, '.optbrew/runs/run.json'), 'utf8'), 'private run evidence');
+});
+
+test('updates and rollbacks keep working inside the current release', { timeout: 540000 }, async t => {
+  const temp = await mkdtemp(path.join(os.tmpdir(), 'optbrew update within the release '));
   t.after(() => rm(temp, { recursive: true, force: true }));
   const home = path.join(temp, 'home');
   await mkdir(home);
   const current = await currentManifest();
+  const followUp = current.release_version.replace(/\d+$/, patch => Number(patch) + 1);
   const next = path.join(temp, 'next');
   await cp(currentBundle, next, { recursive: true, filter: p => isDistributedBundlePath(path.relative(currentBundle, p)) });
   await writeFile(path.join(next, 'SKILL.md'), `${await readFile(path.join(next, 'SKILL.md'), 'utf8')}\nSynthetic follow-up release.\n`);
-  await seal(next, '0.1.4');
+  await seal(next, followUp);
   const installed = await install({ bundleRoot: currentBundle, home, scope: 'user', agents: ['codex'], strategy: 'copy' });
   const recordRoot = installed.record.managed_root;
   await mkdir(path.join(home, '.optbrew/runs'), { recursive: true });
@@ -96,12 +126,12 @@ test('updates and rollbacks keep working inside 0.1.3', { timeout: 540000 }, asy
 
   const updated = await update({ bundleRoot: next, recordRoot });
   assert.equal(updated.status, 'updated');
-  assert.equal(updated.record.release_version, '0.1.4');
-  assert.equal(updated.record.previous_releases.at(-1).release_version, '0.1.3');
+  assert.equal(updated.record.release_version, followUp);
+  assert.equal(updated.record.previous_releases.at(-1).release_version, current.release_version);
   assert.ok((await doctor({ home, scope: 'user', agents: ['codex'] })).targets.every(x => x.hash_ok));
-  const restored = await rollback({ recordRoot, releaseVersion: '0.1.3' });
+  const restored = await rollback({ recordRoot, releaseVersion: current.release_version });
   assert.equal(restored.status, 'rolled_back');
-  assert.equal(restored.record.release_version, '0.1.3');
+  assert.equal(restored.record.release_version, current.release_version);
   assert.equal(restored.record.bundle_hash, current.bundle_hash);
   assert.ok((await doctor({ home, scope: 'user', agents: ['codex'] })).targets.every(x => x.hash_ok));
   assert.equal(await readFile(path.join(home, '.optbrew/runs/run.json'), 'utf8'), 'private run evidence');

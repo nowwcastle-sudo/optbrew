@@ -1,15 +1,17 @@
 import { ContractError, validateEntity } from './contracts.mjs';
+import { versions } from './config.mjs';
 
 function ratio(id, numerator, denominator, definition, panel, selection, evaluable = true) {
   const measured = evaluable && denominator > 0;
-  const observation = { schema_version: '1.0.0', metric_id: id,
+  const observation = { schema_version: versions().contract_schema, metric_id: id,
     value_state: measured ? 'measured' : 'unknown', value: measured ? numerator / denominator : null,
     numerator: measured ? numerator : null, denominator: measured ? denominator : null,
     definition, filters: { engine: panel.engine, surface: panel.surface, model: panel.model,
       search_enabled: panel.search_enabled, locale: panel.locale, region: panel.region,
       ...(panel.collected_at ? { collected_at: panel.collected_at } : {}),
       ...(panel.last_complete_date ? { last_complete_date: panel.last_complete_date } : {}) },
-    window: panel.window, panel_hash: panel.panel_hash, provider_definition: 'optbrew fixed AI response panel v0.1.0',
+    // The panel is a measurement definition, so its label is the evaluation version.
+    window: panel.window, panel_hash: panel.panel_hash, provider_definition: `optbrew fixed AI response panel v${versions().evaluation}`,
     sample_selection: selection, source_ref: panel.source_ref, evidence_ref: panel.evidence_ref };
   return validateEntity('MetricObservation', observation);
 }

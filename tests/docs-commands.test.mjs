@@ -1,13 +1,15 @@
 import assert from 'node:assert/strict';
-import { readFile, writeFile, mkdtemp, mkdir, cp, access } from 'node:fs/promises';
+import { readFile, writeFile, mkdir, cp, access } from 'node:fs/promises';
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import os from 'node:os';
 import path from 'node:path';
+import { PassThrough } from 'node:stream';
 import { fileURLToPath } from 'node:url';
 import { test } from 'node:test';
 import { fixture } from './fixtures/releases/create.mjs';
+import { tempDir } from './support/temp-dir.mjs';
 import { main } from '../lib/cli.mjs';
+import { versions } from '../skills/optbrew/scripts/core/config.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const cli = path.join(root, 'bin/optbrew.mjs');
@@ -28,7 +30,7 @@ test('documented local commands parse and operate in isolated project', async ()
     'doctor --agents codex,claude-code,cursor,opencode,pi --scope project --project ./site --json',
     'check-updates --json',
     'update --scope project --project ./site --json',
-    'rollback --scope project --project ./site --release-version 0.1.0 --json',
+    `rollback --scope project --project ./site --release-version ${versions().release} --json`,
     'score --input ./before.json --output ./score.json',
     'compare --before ./before.json --after ./after.json --output ./comparison.json',
     'report --input ./remote-only.json --output-dir ./report-output',
@@ -38,7 +40,7 @@ test('documented local commands parse and operate in isolated project', async ()
   const withoutReinstallBlocks = text.replace(/```(?:powershell|bash) (?:user|project)\n[\s\S]*?```/g, '');
   const documented = [...new Set([...withoutReinstallBlocks.matchAll(/^node bin\/optbrew\.mjs (.+)$/gm)].map(match => match[1]))].sort();
   assert.deepEqual(documented, [...required].sort(), 'every checkout CLI example must have an isolated execution case');
-  const temp = await mkdtemp(path.join(os.tmpdir(), 'optbrew-docs-'));
+  const temp = await tempDir('optbrew-docs-');
   await mkdir(path.join(temp, 'site'));
   await cp(path.join(root, 'tests/fixtures/scoring/before.json'), path.join(temp, 'before.json'));
   await cp(path.join(root, 'tests/fixtures/scoring/after.json'), path.join(temp, 'after.json'));
@@ -88,7 +90,7 @@ test('README install routes pin the release that carries them', async () => {
 });
 
 test('documented user scope and backup policy parse in isolated locations', async () => {
-  const temp = await mkdtemp(path.join(os.tmpdir(), 'optbrew-docs-scope-'));
+  const temp = await tempDir('optbrew-docs-scope-');
   const args = ['install', '--agents', 'codex', '--scope', 'user', '--home', './home', '--strategy', 'copy', '--dry-run', '--json'];
   const dryRun = run(args, temp);
   assert.equal(dryRun.code, 0, dryRun.stderr);
@@ -132,4 +134,28 @@ test('README relative links resolve and package includes the linked documentatio
       if (file.startsWith('docs/')) assert.ok(pkg.files.includes(file) || pkg.files.includes('docs/'), `${file} is linked from ${name} but absent from npm files`);
     }
   }
+});
+
+test('documented key commands run against an isolated home and keep the key out of the output', async () => {
+  const documentedKey = async name => [...(await readFile(path.join(root, name), 'utf8')).matchAll(/^optbrew key (.+)$/gm)].map(match => match[1]);
+  const required = ['set google', 'status', 'remove google'];
+  for (const name of ['README.md', 'README.ko.md']) assert.deepEqual(await documentedKey(name), required, `${name} must document exactly the key commands that are executed here`);
+  const home = path.join(await tempDir('optbrew-docs-key-'), 'home');
+  const key = ['docs', 'fake', 'key', 'value'].join('-');
+  const call = async (args, input) => {
+    const stdin = new PassThrough();
+    stdin.end(input);
+    let stdout = '', stderr = '';
+    const code = await main(['key', ...args.split(' ')], { stdin, stdout: { write: s => { stdout += s; } }, stderr: { write: s => { stderr += s; } }, env: { HOME: home, USERPROFILE: home } });
+    return { code, stdout, stderr };
+  };
+  const saved = await call('set google', `${key}\n`);
+  assert.equal(saved.code, 0, saved.stderr);
+  const present = JSON.parse((await call('status', '')).stdout).google;
+  assert.equal(present.present, true);
+  assert.match(present.sha256_8, /^[0-9a-f]{8}$/);
+  const removed = await call('remove google', '');
+  assert.equal(removed.code, 0, removed.stderr);
+  assert.equal(JSON.parse((await call('status', '')).stdout).google.present, false);
+  for (const result of [saved, removed]) assert.ok(!`${result.stdout}${result.stderr}`.includes(key), 'a key command never prints the key');
 });

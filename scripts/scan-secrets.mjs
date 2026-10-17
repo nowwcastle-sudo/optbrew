@@ -8,6 +8,10 @@ const rules = [
   ['openai_project_key', /sk-proj-[A-Za-z0-9_-]{32,}/g],
   ['github_token', /ghp_[A-Za-z0-9]{36,}/g],
   ['aws_access_key', /AKIA[A-Z0-9]{16}/g],
+  // 'AIza' plus 35 characters of [0-9A-Za-z_-] (39 in all), per Microsoft Purview's Google API key definition.
+  // Keys with the newer 'AQ.' prefix are not scanned: Google has not documented their format
+  // (announcement: discuss.ai.google.dev, 2026-06-12), so no pattern is guessed.
+  ['google_api_key', /AIza[0-9A-Za-z_-]{35}/g],
 ];
 
 function scanInputs(inputs) {
