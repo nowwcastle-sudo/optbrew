@@ -1,5 +1,5 @@
 ---
-checked: 2026-10-16
+checked: 2026-10-17
 source: https://support.google.com/chrome/answer/95346
 harness: local
 ---
@@ -12,14 +12,14 @@ harness: local
 
 1. 브라우저 주소창에 `google.com/chrome`을 입력하고 Enter를 누릅니다.
 2. 열린 사이트의 주소창에 `google.com`이 보이는지 확인합니다. 다른 이름이면 닫고 1번부터 다시 합니다.
-3. **Chrome 다운로드**(Download Chrome) 버튼을 누릅니다. (화면 확인 필요: 버튼 글자)
+3. **Chrome 다운로드**(Download Chrome) 버튼을 누릅니다.
 4. 내 운영체제에 맞는 아래 목록 하나만 따라 합니다.
 
 Windows:
 
 1. 받은 설치 파일을 두 번 누릅니다.
-2. "이 파일을 실행하시겠습니까?"라고 물으면 **실행**(Run)을 누릅니다. (화면 확인 필요: 한글 문구)
-3. "이 앱이 디바이스를 변경하도록 허용하시겠어요?"라고 물으면 방금 내가 받은 파일일 때만 **예**(Yes)를 누릅니다. (화면 확인 필요: 한글 문구)
+2. "이 파일을 실행하시겠습니까?"라고 물으면 **실행**(Run)을 누릅니다.
+3. 사용자 계정 컨트롤 창이 "…변경할 수 있도록 허용하시겠…?"라고 물으면, 창에 보이는 이름이 Google Chrome일 때만 **예**(Yes)를 누릅니다.
 4. 설치가 끝나면 크롬 창이 저절로 열립니다. Windows 10 이상 기준입니다.
 
 macOS:
@@ -40,8 +40,8 @@ Linux:
 6. 에이전트가 크롬을 찾았다고 하면 끝입니다.
 7. 에이전트가 크롬을 못 찾았다고 하면, 크롬을 표준 위치가 아닌 곳에 설치한 것입니다. 이때 크롬 실행 파일의 전체 경로를 에이전트에게 알려 줍니다. Windows의 표준 경로는 `C:\Program Files\Google\Chrome\Application\chrome.exe`, macOS는 `/Applications/Google Chrome.app/Contents/MacOS/Google Chrome`, Linux는 `/opt/google/chrome/chrome`입니다.
 8. 에이전트가 그 경로를 환경 변수 `OPTBREW_CHROME`에 넣고 감사를 이어 갑니다. 에이전트가 하지 못하면 아래 9번부터 직접 합니다.
-9. Windows에서 직접 하려면 시작 메뉴에서 `환경 변수`를 검색해 **계정에 대한 환경 변수 편집**을 엽니다. (화면 확인 필요: 한글 이름)
-10. **새로 만들기**(New)를 누릅니다.
+9. Windows에서 직접 하려면 키보드에서 Windows 키와 R을 함께 누릅니다. 열린 칸에 `rundll32 sysdm.cpl,EditEnvironmentVariables`를 적고 Enter를 누릅니다. 환경 변수 창이 열립니다.
+10. 위쪽 사용자 변수 칸 아래의 **새로 만들기**(New)를 누릅니다.
 11. 변수 이름에 `OPTBREW_CHROME`을 적습니다.
 12. 변수 값에 크롬 실행 파일의 전체 경로를 적고 **확인**을 누릅니다. 열려 있는 터미널과 에이전트를 닫았다 다시 켭니다.
 13. macOS·Linux에서 직접 하려면 터미널에서 쓰는 셸 설정 파일에 `export OPTBREW_CHROME="크롬 실행 파일의 전체 경로"` 한 줄을 넣습니다. 파일 위치가 셸마다 다르므로 에이전트에게 내 셸에 맞는 파일을 묻습니다.
