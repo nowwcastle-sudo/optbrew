@@ -467,7 +467,7 @@ const scoreStage = {
 
 /** Where each file of the evidence folder belongs in the report packet's evidence list: its kind, and whether the collector wrote it. */
 const EVIDENCE_KINDS = [[/\.html$/, 'raw_html', true], [/\.bin$/, 'raw_response', true], [/\.response\.json$/, 'response_record', true],
-  [/\.failure\.json$/, 'failure_record', true], [/\.render-dom$/, 'render_dom', false], [/\.render\.json$/, 'render', true],
+  [/\.failure\.json$/, 'failure_record', true], [/\.render-dom$/, 'render_dom', true], [/\.render\.json$/, 'render', true],
   [/\.cwv\.json$/, 'cwv', true], [/\.judge-queue\.json$/, 'judge-queue', false], [/\.owner-export$/, 'owner_export', false], [/^(?:collection|ledger)\.json$/, 'record', true]];
 
 const RUN_FILE = /^(?:[0-9a-f]{64}\..+|(?:collection|ledger|modules|observations)\.json|.*\.tmp)$/;

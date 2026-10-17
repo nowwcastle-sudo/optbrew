@@ -58,10 +58,10 @@
     "check_id": "document-title",
     "family_id": "document-title",
     "unit_key": "document-title|http://127.0.0.1:PORT/",
-    "state": "pass",
-    "q": 1,
+    "state": "unknown",
+    "q": null,
     "partial_basis": null,
-    "reason": "The title is present, differs from the title of every other audited page, and is not only the site name or a generic word",
+    "reason": "Raw HTML has a title; uniqueness and descriptiveness are not established",
     "evaluator_type": "code",
     "source_ref": "optbrew:collector",
     "evidence_ref": "<out>/evidence/239b66f2f58e6d41d966cb7da2240e8415189925030bd5b8a3ed957fb3717d77.html",
@@ -80,7 +80,7 @@
     "state": "not_applicable",
     "q": null,
     "partial_basis": null,
-    "reason": "The page states no name, phone number, address or founding year to compare",
+    "reason": "The page has no labelled, marked-up or tel: contact fact (name, phone number, address, founding year) that this check can compare",
     "evaluator_type": "code",
     "source_ref": "optbrew:collector",
     "evidence_ref": "<out>/evidence/239b66f2f58e6d41d966cb7da2240e8415189925030bd5b8a3ed957fb3717d77.html",
@@ -89,7 +89,7 @@
     },
     "applicability_decision": {
       "condition": "no_evaluable_facts",
-      "reason": "The page states no name, phone number, address or founding year to compare",
+      "reason": "The page has no labelled, marked-up or tel: contact fact (name, phone number, address, founding year) that this check can compare",
       "evidence_ref": "<out>/evidence/239b66f2f58e6d41d966cb7da2240e8415189925030bd5b8a3ed957fb3717d77.html"
     },
     "site": "after"
@@ -366,7 +366,7 @@
     "state": "not_applicable",
     "q": null,
     "partial_basis": null,
-    "reason": "The page states no name, phone number, address or founding year to compare",
+    "reason": "The page has no labelled, marked-up or tel: contact fact (name, phone number, address, founding year) that this check can compare",
     "evaluator_type": "code",
     "source_ref": "optbrew:collector",
     "evidence_ref": "<out>/evidence/c79271fb4d98447734a702cd72feb167ec5dd825e82817cfc672f24045e1d7a0.html",
@@ -375,7 +375,7 @@
     },
     "applicability_decision": {
       "condition": "no_evaluable_facts",
-      "reason": "The page states no name, phone number, address or founding year to compare",
+      "reason": "The page has no labelled, marked-up or tel: contact fact (name, phone number, address, founding year) that this check can compare",
       "evidence_ref": "<out>/evidence/c79271fb4d98447734a702cd72feb167ec5dd825e82817cfc672f24045e1d7a0.html"
     },
     "site": "before"
@@ -1153,14 +1153,20 @@
     "state": "unknown",
     "q": null,
     "partial_basis": null,
-    "reason": "The JSON-LD parses, but it states no name, phone number or address that the page text could confirm",
+    "reason": "The JSON-LD states a fact that the page text neither shows nor contradicts, so not every fact is confirmed",
     "evaluator_type": "code",
     "source_ref": "optbrew:collector",
     "evidence_ref": "<out>/evidence/947ad3ecd2d39c1fb45e87fb89ecf4e871b1ff74aaa4d4af9a7acb14a216fc5e.html",
     "measurement": {
       "jsonld_blocks": 1,
       "matched": [],
-      "mismatched": []
+      "mismatched": [],
+      "unevaluated": [
+        {
+          "type": "name",
+          "jsonld": "Brew Cafe"
+        }
+      ]
     },
     "site": "clean"
   },
@@ -1291,22 +1297,26 @@
     "check_id": "canonical-consistency",
     "family_id": "canonical-consistency",
     "unit_key": "canonical-consistency|http://127.0.0.1:PORT/bare",
-    "state": "not_applicable",
+    "state": "unknown",
     "q": null,
     "partial_basis": null,
-    "reason": "The page declares no canonical URL and does not redirect",
+    "reason": "Another audited page has the same title or body text, so whether this page needs a representative URL is not established",
     "evaluator_type": "code",
     "source_ref": "optbrew:collector",
     "evidence_ref": "<out>/evidence/02cb3482406e7d0256280bbdf6f300ca959146a425c1729a7615e3017e147e91.html",
     "measurement": {
       "redirect_hops": 0,
       "canonical_target": null,
-      "canonical_status": null
-    },
-    "applicability_decision": {
-      "condition": "no_representative_url_policy",
-      "reason": "The page declares no canonical URL and does not redirect",
-      "evidence_ref": "<out>/evidence/02cb3482406e7d0256280bbdf6f300ca959146a425c1729a7615e3017e147e91.html"
+      "canonical_status": null,
+      "repeated_with": [
+        "http://127.0.0.1:PORT/about",
+        "http://127.0.0.1:PORT/noindex",
+        "http://127.0.0.1:PORT/private",
+        "http://127.0.0.1:PORT/orphan",
+        "http://127.0.0.1:PORT/dup",
+        "http://127.0.0.1:PORT/badcanon",
+        "http://127.0.0.1:PORT/badld"
+      ]
     },
     "site": "defect"
   },
@@ -3072,14 +3082,20 @@
     "state": "unknown",
     "q": null,
     "partial_basis": null,
-    "reason": "The JSON-LD parses, but it states no name, phone number or address that the page text could confirm",
+    "reason": "The JSON-LD states a fact that the page text neither shows nor contradicts, so not every fact is confirmed",
     "evaluator_type": "code",
     "source_ref": "optbrew:collector",
     "evidence_ref": "<out>/evidence/260ba0e7e892c57fcef46111d4a877daff635a4cf6df79c757ffdc076ee0cedc.html",
     "measurement": {
       "jsonld_blocks": 1,
       "matched": [],
-      "mismatched": []
+      "mismatched": [],
+      "unevaluated": [
+        {
+          "type": "name",
+          "jsonld": "Brew Cafe"
+        }
+      ]
     },
     "site": "defect"
   },

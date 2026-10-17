@@ -10,9 +10,11 @@ const OTHER_MARKUP = /<[a-z][^>]*\s(?:itemscope|vocab\s*=|typeof\s*=)/i;
 const NO_MARKUP = 'The page has no JSON-LD, microdata or RDFa markup';
 
 /**
- * JSON-LD that does not parse fails. A page with no markup at all is not applicable. A page whose JSON-LD states a name, phone number
- * or street address passes when the page shows one it can be compared on and contradicts none, and fails when the page labels a
- * different value. What the JSON-LD says about itself is otherwise not checked for truth, so a page with nothing to compare stays unknown.
+ * JSON-LD that does not parse fails. A page with no markup at all is not applicable. A page whose own JSON-LD (an organization's name,
+ * phone number and street address; an article's headline and publication date) states facts passes when the page shows every one and
+ * contradicts none, and fails when the page shows a different value in the field that holds it. A fact the page neither shows nor
+ * contradicts leaves the page unknown, and so does JSON-LD of a type that states nothing this compares. A publisher or author name
+ * alone never passes.
  */
 export const structuredDataTruth = {
   family_id: FAMILY,
@@ -29,14 +31,16 @@ export const structuredDataTruth = {
         return makeObservation({ ...observed, state: 'not_applicable', reason: NO_MARKUP, extra: { measurement: { jsonld_blocks: 0 },
           applicability_decision: { condition: 'markup_not_used_or_selected', reason: NO_MARKUP, evidence_ref: artifact.evidence_ref } } });
       }
-      const { matched, mismatched } = jsonLdTruth(html, factsOf.get(url));
-      const measurement = { jsonld_blocks: blocks, matched: matched.map(({ type, jsonld }) => ({ type, jsonld })), mismatched };
+      const { matched, mismatched, unevaluated } = jsonLdTruth(html, factsOf.get(url));
+      const measurement = { jsonld_blocks: blocks, matched: matched.map(({ type, jsonld }) => ({ type, jsonld })), mismatched,
+        unevaluated: unevaluated.map(({ type, jsonld }) => ({ type, jsonld })) };
       if (mismatched.length) return makeObservation({ ...observed, state: 'fail', extra: { measurement },
         problems: mismatched.map(({ type, jsonld, visible }) => problem(`JSON-LD ${type} "${jsonld}" differs from visible "${visible}"`, FACT_DIFFERS, { type, linked: jsonld, visible })) });
-      if (matched.length) return makeObservation({ ...observed, state: 'pass', extra: { measurement },
-        reason: 'The name, phone number or address the JSON-LD states is shown on the page, and none is contradicted' });
-      return makeObservation({ ...observed, state: 'unknown', extra: { measurement },
-        reason: 'The JSON-LD parses, but it states no name, phone number or address that the page text could confirm' });
+      if (matched.length && !unevaluated.length) return makeObservation({ ...observed, state: 'pass', extra: { measurement },
+        reason: 'Every name, phone number, address, headline and date the JSON-LD states is shown on the page, and none is contradicted' });
+      return makeObservation({ ...observed, state: 'unknown', extra: { measurement }, reason: unevaluated.length
+        ? 'The JSON-LD states a fact that the page text neither shows nor contradicts, so not every fact is confirmed'
+        : 'The JSON-LD states no organization or article fact that the page text could confirm' });
     });
   },
 };

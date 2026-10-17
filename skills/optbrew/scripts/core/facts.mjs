@@ -1,5 +1,6 @@
 import { decodeEntities, jsonLdBlocks, stripComments, stripInert, visibleText } from './html.mjs';
 import { endpoints } from './config.mjs';
+import { canonicalUrl } from './link-graph.mjs';
 import { messageOf } from './messages.mjs';
 
 /**
@@ -109,8 +110,11 @@ function readPhone(rest) {
   return null;
 }
 
-/** Facts on one page: visible labelled values and JSON-LD / tel: values, keyed by fact type. */
-export function pageFacts(html) {
+/**
+ * Facts on one page: visible labelled values and JSON-LD / tel: values, keyed by fact type. `pageUrls` are the addresses the page
+ * was requested at and served from; `entities` are the JSON-LD nodes that speak for the page.
+ */
+export function pageFacts(html, pageUrls = []) {
   const live = stripComments(html);
   const visible = Object.fromEntries(FACT_TYPES.map(type => [type, new Map()]));
   const linked = Object.fromEntries(FACT_TYPES.map(type => [type, new Map()]));
@@ -132,9 +136,13 @@ export function pageFacts(html) {
   for (const match of text.matchAll(/\bAddress\b\s*[:：]\s*([^\n]+?)(?=\.\s|\.?\s*$|\n)/gim)) put(visible, 'address', match[1], addressKey(match[1]));
   for (const match of text.matchAll(/주소\s*[:：]\s*([^\n.]+)/g)) put(visible, 'address', match[1], addressKey(match[1]));
   const described = [];
+  // The @id values a node of the page names as what it is about (WebPage.about, mainEntity).
+  const aboutIds = new Set();
   for (const block of jsonLdBlocks(live)) {
     if (!block.ok) continue;
     for (const node of nodesOf(block.value)) {
+      for (const key of ['about', 'mainEntity']) for (const ref of [].concat(node[key] ?? []))
+        if (typeof ref === 'string' ? ref : ref?.['@id']) aboutIds.add(typeof ref === 'string' ? ref : ref['@id']);
       if (!typesOf(node).some(type => ORG_TYPES.test(type))) continue;
       const name = typeof node.name === 'string' ? node.name : '';
       described.push({ node, org: { name, id: typeof node['@id'] === 'string' ? node['@id'] : null,
@@ -142,10 +150,16 @@ export function pageFacts(html) {
         branch: isBranchNode(node) } });
     }
   }
-  // A sub-organization (a branch, a department) states facts of its own, not the page's. When the page also carries a node that is
-  // not a sub-organization, that node is the page's entity and only it speaks for the page; a page whose every node is a
-  // sub-organization is a separate branch page.
-  const speaking = described.some(item => !item.org.branch) ? described.filter(item => !item.org.branch) : described;
+  // A sub-organization (a branch, a department) states facts of its own, not the page's. A sub-organization whose own url is this
+  // page, or that this page names as what it is about, is the page's entity: the page is that branch's page, whatever else its
+  // graph carries (the site's main organization is on every page of many sites). An @id counts only when it is the page address
+  // itself, because a fragment id on the home address (`/#annex`) is the home page's, not the annex's.
+  const ownKeys = new Set(pageUrls.map(canonicalUrl).filter(Boolean));
+  const isOwn = ({ node, org }) => org.branch && (ownKeys.has(canonicalUrl(node.url)) || pageUrls.includes(org.id) || aboutIds.has(org.id));
+  const own = described.filter(isOwn);
+  // Otherwise, when the page also carries a node that is not a sub-organization, that node is the page's entity and only it
+  // speaks for the page; a page whose every node is a sub-organization is a separate branch page.
+  const speaking = own.length ? own : described.some(item => !item.org.branch) ? described.filter(item => !item.org.branch) : described;
   const orgs = [];
   for (const { node, org } of speaking) {
     if (org.name) put(linked, 'name', org.name, squash(org.name));
@@ -160,7 +174,8 @@ export function pageFacts(html) {
   // JSON-LD says so (branch), when its URL is a branch list, or when the hint comes with an address of its own.
   const heading = /<(?:title|h1)\b[^>]*>([\s\S]*?)<\/(?:title|h1)>/gi;
   const headings = [...live.matchAll(heading)].map(match => match[1]).join(' ');
-  return { visible, linked, tel, orgs, branch: orgs.length > 0 && orgs.every(org => org.branch), titleBranch: BRANCH.test(headings) };
+  return { visible, linked, tel, orgs, entities: speaking.map(item => item.node), branch: orgs.length > 0 && orgs.every(org => org.branch),
+    titleBranch: BRANCH.test(headings) };
 }
 
 /**
@@ -233,13 +248,6 @@ export function compareFacts(allPages) {
   return { references, deviations, deviation_messages, separate: new Set(allPages.filter(separate).map(page => page.url)) };
 }
 
-/** Every object of a JSON-LD value at any depth: a publisher or organizer inside an Article is a node too. */
-function deepNodes(value, out = []) {
-  if (Array.isArray(value)) value.forEach(item => deepNodes(item, out));
-  else if (value && typeof value === 'object') { out.push(value); Object.values(value).forEach(item => deepNodes(item, out)); }
-  return out;
-}
-
 // A phone number with its separators is never longer than this, so a number is read from this many characters after its first digit.
 const PHONE_SPAN = 32;
 /** The phone keys of every number `text` shows, read with the same rules as a labelled number. */
@@ -252,40 +260,94 @@ function numbersIn(text) {
   }
   return keys;
 }
+/** True when `tokens` stand next to each other, in that order, among `words`. */
+const runIn = (words, tokens) => words.some((_, i) => tokens.every((token, k) => words[i + k] === token));
 /** True when `tokens` (at least two, one of them a word) stand next to each other, in that order, among `words`. */
-const hasRun = (words, tokens) => tokens.length > 1 && tokens.some(token => /^\p{L}/u.test(token)) &&
-  words.some((_, i) => tokens.every((token, k) => words[i + k] === token));
+const hasRun = (words, tokens) => tokens.length > 1 && tokens.some(token => /^\p{L}/u.test(token)) && runIn(words, tokens);
+const wordsOf = text => String(text).toLowerCase().match(/\p{L}+|\p{N}+/gu) ?? [];
+// Scripts written without spaces between words: a name in them is found as a run of characters, not of words.
+const UNSPACED = /[\p{Script=Hangul}\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}]/u;
+/** True when the page text shows the name: as whole words (three letters at least), or for an unspaced script as a run of characters. */
+function showsName(name, squashed, words) {
+  if (UNSPACED.test(name)) return squash(name).length > 1 && squashed.includes(squash(name));
+  const tokens = wordsOf(name);
+  return tokens.join('').length > 2 && runIn(words, tokens);
+}
+
+const MONTHS = ['jan', 'feb', 'mar', 'apr', 'may', 'jun', 'jul', 'aug', 'sep', 'oct', 'nov', 'dec'];
+const YEAR = '((?:19|20)\\d{2})';
+const MONTH_NAME = `(${MONTHS.join('|')})[a-z]*\\.?`;
+/**
+ * The calendar dates the page shows, as yyyy-mm-dd, and the days it shows without a year, as --mm-dd: numeric (2026-09-16, 2026.9.16),
+ * Korean (2026년 9월 16일, 9월 16일) and English month names (September 16, 2026; 16 Sep). A `<time datetime>` element counts as a shown date.
+ */
+function datesIn(text, html) {
+  const found = new Set();
+  const pad = value => String(value).padStart(2, '0');
+  const add = (year, month, day) => found.add(`${year}-${pad(month)}-${pad(day)}`);
+  for (const m of html.matchAll(/<time\b[^>]*\bdatetime\s*=\s*["'](\d{4}-\d{2}-\d{2})/gi)) found.add(m[1]);
+  for (const m of text.matchAll(/(\d{1,2})\s*월\s*(\d{1,2})\s*일/g)) found.add(`--${pad(m[1])}-${pad(m[2])}`);
+  for (const m of text.matchAll(new RegExp(`\\b${MONTH_NAME}\\s+(\\d{1,2})(?:st|nd|rd|th)?\\b(?!,?\\s+${YEAR})`, 'gi'))) found.add(`--${pad(MONTHS.indexOf(m[1].toLowerCase()) + 1)}-${pad(m[2])}`);
+  for (const m of text.matchAll(new RegExp(`\\b${YEAR}\\s*[-./]\\s*(\\d{1,2})\\s*[-./]\\s*(\\d{1,2})\\b`, 'g'))) add(m[1], m[2], m[3]);
+  for (const m of text.matchAll(new RegExp(`${YEAR}\\s*년\\s*(\\d{1,2})\\s*월\\s*(\\d{1,2})\\s*일`, 'g'))) add(m[1], m[2], m[3]);
+  for (const m of text.matchAll(new RegExp(`\\b${MONTH_NAME}\\s+(\\d{1,2})(?:st|nd|rd|th)?,?\\s+${YEAR}\\b`, 'gi'))) add(m[3], MONTHS.indexOf(m[1].toLowerCase()) + 1, m[2]);
+  for (const m of text.matchAll(new RegExp(`\\b(\\d{1,2})(?:st|nd|rd|th)?\\s+${MONTH_NAME},?\\s+${YEAR}\\b`, 'gi'))) add(m[3], MONTHS.indexOf(m[2].toLowerCase()) + 1, m[1]);
+  return found;
+}
+const ARTICLE_TYPES = /^(?:[A-Za-z]*Article|BlogPosting|LiveBlogPosting|Report)$/;
+/** The texts of the page's h1 elements, then of its title: where a headline is expected to appear. */
+const headingTexts = html => ['h1', 'title'].flatMap(tag => [...stripInert(html).matchAll(new RegExp(`<${tag}\\b[^>]*>([\\s\\S]*?)</${tag}>`, 'gi'))]
+  .map(match => decodeEntities(match[1].replace(/<[^>]*>/g, ' ')).replace(/\s+/g, ' ').trim()).filter(Boolean));
 
 /**
- * How the entity facts a page's JSON-LD states stand against the page's visible text. They come from the Organization and
- * LocalBusiness nodes at any depth, leaving out sub-organizations when the page also names another entity. A name, a phone number
- * or a street address is `matched` when the page shows it. It is `mismatched` only when the page labels a value of that type
- * (Phone:, Address:, 전화, 주소) and none of the labelled values agrees. A fact the page neither shows nor contradicts is in
- * neither list, because nothing about it could be evaluated; the name has no labelled field, so a name can only match.
+ * How the facts a page's JSON-LD states about its own selected type stand against the page's visible text. Only the page's own
+ * nodes are read: top-level and @graph nodes, never an organization nested inside another node (a publisher, a parent). An
+ * Organization or LocalBusiness that speaks for the page (`facts.entities`) states a name, a phone number and a street address;
+ * an Article-family node states a headline and a publication date. Every fact is in exactly one list.
+ *
+ * `matched`: the page shows it (a name as whole words, a phone number, a street run, a headline in the page's h1 or title, a date).
+ * `mismatched`: the page shows a different value in the field that would hold it (a labelled phone or address, or an h1/title that
+ * does not contain the headline). `unevaluated`: the page neither shows nor contradicts it. Other types (Service, FAQPage, Event, ...)
+ * state nothing this compares. The date and the name have no contradicting field, so they only match or stay unevaluated.
  */
-export function jsonLdTruth(html, facts = pageFacts(html)) {
+export function jsonLdTruth(html, facts) {
   const live = stripComments(html);
-  const nodes = [];
-  for (const block of jsonLdBlocks(live)) if (block.ok) for (const node of deepNodes(block.value))
-    if (typesOf(node).some(type => ORG_TYPES.test(type)) && (node.name || node.telephone || node.address)) nodes.push(node);
-  const speaking = nodes.some(node => !isBranchNode(node)) ? nodes.filter(node => !isBranchNode(node)) : nodes;
   const text = visibleText(live);
   const squashed = squash(text);
+  const words = wordsOf(text);
   const numbers = new Set([...numbersIn(hardText(live)), ...facts.visible.phone.keys(), ...facts.tel.phone.keys()]);
-  const words = addressKey(text).split(' ');
+  const addressWords = addressKey(text).split(' ');
   const labelled = [...facts.visible.address.keys()];
   const found = new Map();
-  const note = (list, type, jsonld, visible) => found.has(`${list}|${type}|${jsonld}`) || found.set(`${list}|${type}|${jsonld}`, { list, type, jsonld, ...(visible ? { visible } : {}) });
-  for (const node of speaking) {
-    if (typeof node.name === 'string' && squash(node.name).length > 1 && squashed.includes(squash(node.name))) note('matched', 'name', node.name);
+  const note = (list, type, jsonld, visible) => found.has(`${type}|${jsonld}`) || found.set(`${type}|${jsonld}`, { list, type, jsonld, ...(visible ? { visible } : {}) });
+  for (const node of facts.entities) {
+    if (typeof node.name === 'string' && squash(node.name)) note(showsName(node.name, squashed, words) ? 'matched' : 'unevaluated', 'name', node.name);
     const key = typeof node.telephone === 'string' ? phoneKey(node.telephone) : null;
-    if (key && numbers.has(key)) note('matched', 'phone', node.telephone);
-    else if (key && facts.visible.phone.size) note('mismatched', 'phone', node.telephone, [...facts.visible.phone.values()].join(' / '));
+    if (key) {
+      if (numbers.has(key)) note('matched', 'phone', node.telephone);
+      else note(facts.visible.phone.size ? 'mismatched' : 'unevaluated', 'phone', node.telephone, [...facts.visible.phone.values()].join(' / '));
+    }
     const street = typeof node.address === 'string' ? node.address : node.address?.streetAddress;
     const streetKey = typeof street === 'string' ? addressKey(street) : '';
-    if (streetKey && (hasRun(words, streetKey.split(' ')) || labelled.some(other => sameAddress(other, streetKey)))) note('matched', 'address', street);
-    else if (streetKey && labelled.length) note('mismatched', 'address', street, [...facts.visible.address.values()].join(' / '));
+    if (streetKey) {
+      if (hasRun(addressWords, streetKey.split(' ')) || labelled.some(other => sameAddress(other, streetKey))) note('matched', 'address', street);
+      else note(labelled.length ? 'mismatched' : 'unevaluated', 'address', street, [...facts.visible.address.values()].join(' / '));
+    }
+  }
+  const headings = headingTexts(live);
+  const hasH1 = /<h1[\s>]/i.test(stripInert(live));
+  const shownDates = datesIn(text, live);
+  for (const block of jsonLdBlocks(live)) if (block.ok) for (const node of nodesOf(block.value)) {
+    if (!typesOf(node).some(type => ARTICLE_TYPES.test(type))) continue;
+    const headline = typeof node.headline === 'string' ? node.headline.trim() : '';
+    if (squash(headline).length > 2) {
+      const same = headings.some(heading => squash(heading).includes(squash(headline)) || squash(headline).includes(squash(heading)) && squash(heading).length > 2);
+      // A title often differs from the headline on purpose, so only a page that has an h1 can contradict it.
+      note(same ? 'matched' : hasH1 ? 'mismatched' : 'unevaluated', 'headline', headline, headings[0]);
+    }
+    const published = /^(\d{4}-\d{2}-\d{2})/.exec(String(node.datePublished ?? ''))?.[1];
+    if (published) note(shownDates.has(published) || shownDates.has(`--${published.slice(5)}`) ? 'matched' : 'unevaluated', 'date', published);
   }
   const listed = list => [...found.values()].filter(item => item.list === list).map(({ list: _, ...fact }) => fact);
-  return { matched: listed('matched'), mismatched: listed('mismatched') };
+  return { matched: listed('matched'), mismatched: listed('mismatched'), unevaluated: listed('unevaluated') };
 }

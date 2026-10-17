@@ -7,22 +7,31 @@ const DUPLICATE = 'document-title.duplicate';
 
 /** A title or host name as letters and digits only, so case, spacing and punctuation never tell two spellings apart. */
 const plain = value => String(value).toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '');
-/** The forms of the site's own name a title can consist of alone: its host, and the host's first label. */
-function siteNames(finalUrl) {
-  const host = new URL(finalUrl).hostname.replace(/^www\./, '');
-  return [plain(host), plain(host.split('.')[0])];
+const OG_SITE_NAME = [/<meta\b[^>]*\bproperty\s*=\s*["']og:site_name["'][^>]*\bcontent\s*=\s*["']([^"']*)["']/i, /<meta\b[^>]*\bcontent\s*=\s*["']([^"']*)["'][^>]*\bproperty\s*=\s*["']og:site_name["']/i];
+/**
+ * The forms of the site's own name a title can consist of alone: the host and its first label, the `og:site_name` of any audited
+ * page, and the name of the organization any audited page's JSON-LD speaks for.
+ */
+function siteNames(pageRows, facts) {
+  const names = pageRows.flatMap(({ artifact, html }) => {
+    const host = new URL(artifact.final_url).hostname.replace(/^www\./, '');
+    return [host, host.split('.')[0], ...OG_SITE_NAME.map(pattern => pattern.exec(html)?.[1])];
+  });
+  for (const { facts: page } of facts) names.push(...page.linked.name.values());
+  return new Set(names.filter(Boolean).map(plain).filter(Boolean));
 }
 
 /**
- * A missing or duplicated title fails. A title that is present, differs from every other audited page's title and is not only the
- * site's name or a generic word passes, on those three facts alone; a title that is only a name or a generic word stays unknown,
- * because whether it describes the page is not established by code.
+ * A missing or duplicated title fails. A title that is present, shared with no other audited page (and there are at least two audited
+ * pages) and not only the site's name or a generic word passes, on those facts alone. With a single audited page, or a title that is
+ * only a name or a generic word, it stays unknown, because whether it describes the page is not established by code.
  */
 export const documentTitle = {
   family_id: FAMILY,
   message_keys: [MISSING, DUPLICATE],
-  derive({ pageRows, titleCounts }) {
+  derive({ pageRows, titleCounts, facts }) {
     const generic = new Set(thresholds(FAMILY).generic_titles.map(plain));
+    const names = siteNames(pageRows, facts);
     return pageRows.map(row => {
       const { url, artifact, info } = row;
       const duplicates = info.title ? titleCounts.get(row.titleKey).filter(other => other !== row && other.artifact.final_url !== artifact.final_url) : [];
@@ -32,8 +41,9 @@ export const documentTitle = {
       if (duplicates.length) return makeObservation({ ...observed, state: 'fail', problems: [problem('Title duplicates the title of other pages', DUPLICATE)],
         extra: { measurement: { duplicate_pages: duplicates.map(x => x.url) } } });
       const key = plain(info.title);
-      const measurement = { title: info.title, audited_pages: pageRows.length, site_name_only: siteNames(artifact.final_url).includes(key), generic_word_only: key === '' || generic.has(key) };
-      if (measurement.site_name_only || measurement.generic_word_only) return makeObservation({ ...observed, state: 'unknown', extra: { measurement },
+      const measurement = { title: info.title, audited_pages: pageRows.length, site_name_only: names.has(key), generic_word_only: key === '' || generic.has(key) };
+      // With one audited page, "no other page has this title" is true of any title and proves nothing.
+      if (pageRows.length < 2 || measurement.site_name_only || measurement.generic_word_only) return makeObservation({ ...observed, state: 'unknown', extra: { measurement },
         reason: 'Raw HTML has a title; uniqueness and descriptiveness are not established' });
       return makeObservation({ ...observed, state: 'pass', extra: { measurement },
         reason: 'The title is present, differs from the title of every other audited page, and is not only the site name or a generic word' });

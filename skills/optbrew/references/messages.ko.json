@@ -37,6 +37,7 @@
   "fact-type.phone": "전화번호",
   "fact-type.year": "연도",
   "fact-type.address": "주소",
+  "fact-type.headline": "글 제목(headline)",
   "cwv-source.crux": "Google의 Chrome UX Report(CrUX)",
   "cwv-source.psi": "PageSpeed Insights",
   "remediation.restore-http-access.mechanism": "오류를 내는 응답이나 잘못된 리다이렉트를 고쳐서, 이 주소가 원래 보여 줄 페이지를 돌려주게 합니다.",

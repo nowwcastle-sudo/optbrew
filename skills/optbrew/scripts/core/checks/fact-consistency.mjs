@@ -3,7 +3,7 @@ import { makeObservation, problem, unitKey } from './observation.mjs';
 
 const FAMILY = 'fact-consistency';
 const PREFIX = 'Cross-page fact comparison (no approved fact list): ';
-const NO_FACTS = 'The page states no name, phone number, address or founding year to compare';
+const NO_FACTS = 'The page has no labelled, marked-up or tel: contact fact (name, phone number, address, founding year) that this check can compare';
 
 /** Contact facts compared across pages. Agreement is consistency, not accuracy, and a branch page is never compared. */
 export const factConsistency = {

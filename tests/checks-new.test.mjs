@@ -219,8 +219,9 @@ test('the three new thresholds are pinned', () => {
  */
 async function replayable() {
   let origin = '';
+  // Both pages load the one stylesheet and script, so they are made by one template.
   const hreflang = () => [['en', '/'], ['ko', '/ko'], ['x-default', '/']]
-    .map(([lang, route]) => `<link rel="alternate" hreflang="${lang}" href="${origin}${route}">`).join('');
+    .map(([lang, route]) => `<link rel="alternate" hreflang="${lang}" href="${origin}${route}">`).join('') + '<link rel="stylesheet" href="/site.css"><script src="/site.js"></script>';
   const site = await startSite({
     '/': () => ({ body: page(hreflang(), `<div id="app"></div>${link('/ko', 'Korean site')}`, 'Brew') }),
     '/ko': () => ({ body: page(hreflang(), RICH + link('/', 'English site'), '브루') }),
@@ -283,6 +284,11 @@ test('report replay recomputes the three new families from stored evidence', { t
     assert.throws(() => buildReport(run.scenario.packet), /collector verdict differs from raw evidence: render-content\|.*\/ko/);
     await run.forged();
     await run.scenario.forgeObservations(alter(row => { row.measurement.inherited_from.url = `${run.origin}/ko`; return row; }));
+    assert.throws(() => buildReport(run.scenario.packet), /collector verdict differs from raw evidence: render-content\|.*\/ko/);
+    // Citing the page's own raw HTML instead of the sampled page's render record is refused too.
+    await run.forged();
+    const ownRaw = run.derived.find(x => x.family_id === 'internal-navigation' && x.unit_key.endsWith('/ko')).evidence_ref;
+    await run.scenario.forgeObservations(alter(row => ({ ...row, evidence_ref: ownRaw })));
     assert.throws(() => buildReport(run.scenario.packet), /collector verdict differs from raw evidence: render-content\|.*\/ko/);
   } finally { await run.site.close(); }
 });

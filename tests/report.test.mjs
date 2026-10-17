@@ -738,10 +738,8 @@ test('review P2-8: before and after collector snapshots use their own evidence r
     run.packet.baseline.scores = score(run.packet.baseline.input);
     const afterInput = structuredClone(run.packet.baseline.input);
     for (const obs of afterInput.observations) obs.evidence_ref = obs.evidence_ref === 'b-collection.json' ? 'a-collection.json' : 'after.html';
-    // The after page's title is not the site's name (the before page's is), so the title check passes there.
-    Object.assign(afterInput.observations.find(x => x.check_id === 'document-title'), { state: 'pass', q: 1,
-      reason: 'The title is present, differs from the title of every other audited page, and is not only the site name or a generic word',
-      measurement: { title: 'After', audited_pages: 1, site_name_only: false, generic_word_only: false } });
+    // The after page has its own title, which the measurement records.
+    afterInput.observations.find(x => x.check_id === 'document-title').measurement = { title: 'After', audited_pages: 1, site_name_only: false, generic_word_only: false };
     run.packet.after = { input: afterInput, scores: score(afterInput) };
     run.packet.comparison = compare(run.packet.baseline.input, afterInput);
     for (const [phase] of [['baseline'], ['after']]) {
