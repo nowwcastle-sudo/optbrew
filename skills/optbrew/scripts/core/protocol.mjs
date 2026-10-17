@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { ContractError, validateEntity, validateApplicabilityDecision } from './contracts.mjs';
 import { assertUrlInScope } from './scope.mjs';
-import { limits, requestLimit } from './config.mjs';
+import { limits, publicOnlyFamily, requestLimit } from './config.mjs';
 
 const registry = JSON.parse(readFileSync(new URL('../../references/check-registry.json', import.meta.url)));
 const knownFamilies = new Map(registry.families.map(x => [x.family_id, x]));
@@ -72,7 +72,7 @@ export function freezeProtocol(context) {
   for (const family of p.families) {
     const definition = knownFamilies.get(family.family_id);
     if (!definition) throw new ContractError(`unregistered family: ${family.family_id}`);
-    const requiredUrls = ['index-policy', 'search-crawl-policy', 'discovery'].includes(family.family_id) ? publicUrls : urls;
+    const requiredUrls = publicOnlyFamily(family.family_id) ? publicUrls : urls;
     if (family.urls) {
       unique(family.urls, `${family.family_id}.urls`);
       if (definition.unit_scope === 'site' || !sameSet(family.urls, requiredUrls))
@@ -84,6 +84,9 @@ export function freezeProtocol(context) {
       if (definition.unit_scope !== 'engine_url' || !sameSet(family.engines, requiredEngines))
         throw new ContractError(`${family.family_id}: target engine units cannot be omitted`);
     }
+    // A family that only matters for indexed pages has no unit when every selected page is a non-index target.
+    if (publicOnlyFamily(family.family_id) && family.applicable && !publicUrls.length)
+      throw new ContractError(`${family.family_id}: applicable family has no public index target`);
     const expected = family.family_id === 'fetch-response' ? true :
       ['index-policy', 'discovery'].includes(family.family_id) ? publicUrls.length > 0 :
       family.family_id === 'search-crawl-policy' ? publicUrls.length > 0 && p.engines.length > 0 :

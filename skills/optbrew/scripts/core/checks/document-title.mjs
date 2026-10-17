@@ -1,9 +1,11 @@
 import { thresholds } from '../config.mjs';
+import { messageOf } from '../messages.mjs';
 import { makeObservation, problem, unitKey } from './observation.mjs';
 
 const FAMILY = 'document-title';
 const MISSING = 'document-title.missing';
 const DUPLICATE = 'document-title.duplicate';
+const SAME_DOCUMENT = 'document-title.same-document';
 
 /** A title or host name as letters and digits only, so case, spacing and punctuation never tell two spellings apart. */
 const plain = value => String(value).toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '');
@@ -34,7 +36,10 @@ export const documentTitle = {
     const names = siteNames(pageRows, facts);
     return pageRows.map(row => {
       const { url, artifact, info } = row;
-      const duplicates = info.title ? titleCounts.get(row.titleKey).filter(other => other !== row && other.artifact.final_url !== artifact.final_url) : [];
+      const others = info.title ? titleCounts.get(row.titleKey).filter(other => other !== row && other.artifact.final_url !== artifact.final_url) : [];
+      // Query variants of one page (same document, R98) share their title by being one page; they are not duplicates of each other.
+      const variants = others.filter(other => row.documentKey && other.documentKey === row.documentKey);
+      const duplicates = others.filter(other => !variants.includes(other));
       const observed = { family_id: FAMILY, unit_key: unitKey(FAMILY, url), evidence_ref: artifact.evidence_ref };
       if (!info.title) return makeObservation({ ...observed, state: 'fail', problems: [problem('Raw HTML has no title', MISSING)] });
       // The other pages are page-specific, so they travel in the measurement and the reason stays the same for every page with the problem.
@@ -45,6 +50,11 @@ export const documentTitle = {
       // With one audited page, "no other page has this title" is true of any title and proves nothing.
       if (pageRows.length < 2 || measurement.site_name_only || measurement.generic_word_only) return makeObservation({ ...observed, state: 'unknown', extra: { measurement },
         reason: 'Raw HTML has a title; uniqueness and descriptiveness are not established' });
+      // A title shared only with query variants of the same page says so: it is not "different from every other page".
+      if (variants.length) return makeObservation({ ...observed, state: 'pass',
+        extra: { measurement: { ...measurement, same_document: { document: row.documentKey, pages: variants.map(x => x.url) },
+          ...messageOf(SAME_DOCUMENT, { pages: variants.map(x => x.url).join(', ') }) } },
+        reason: 'The title is present, shared only with query variants of the same page (the same canonical URL), and is not only the site name or a generic word' });
       return makeObservation({ ...observed, state: 'pass', extra: { measurement },
         reason: 'The title is present, differs from the title of every other audited page, and is not only the site name or a generic word' });
     });

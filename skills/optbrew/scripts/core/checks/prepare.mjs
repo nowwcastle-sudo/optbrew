@@ -3,11 +3,35 @@ import { alternateLinks, decodeEntities } from '../html.mjs';
 import { declaredRobotsIndex } from '../collector.mjs';
 import { compareFacts, pageFacts } from '../facts.mjs';
 import { canonicalUrl, findOrphans, linkGraph } from '../link-graph.mjs';
+import { sameSite } from '../page-select.mjs';
 import { selectRenderPages } from '../render.mjs';
 
 const SKIP_REASONS = ['depth_limit', 'url_limit', 'request_limit'];
 const NOT_COLLECTED = 'not_collected';
 const normalizeTitle = title => title.toLowerCase().replace(/\s+/g, ' ').trim();
+const BASE_HREF = /<base\b[^>]*\bhref\s*=\s*["']([^"']*)["']/i;
+const pathOf = url => url.pathname.length > 1 ? url.pathname.replace(/\/+$/, '') || '/' : url.pathname;
+/** A page's address as its site and path, and its query when asked: the spelling documents are compared by. */
+const documentAddress = (url, withQuery) => `${url.origin}${pathOf(url)}${withQuery ? url.search : ''}`;
+/**
+ * The document a page stands for (R95, R98). A page whose canonical link names the same site (`www.` and http/https folded) and the same
+ * path is one document with every page that names the same canonical, query included: `/bookings?service=x` -> `/bookings` groups with
+ * `/bookings`, while `/products?cat=shoes` and `/products?cat=bags` that each name themselves stay two documents.
+ * Any other canonical (the home page, another path, another site), an unusable one, or none leaves the page its own document.
+ * The canonical is resolved against `<base href>` when the head has one, else against where the page was served.
+ */
+function documentKeyOf(artifact, info, html) {
+  const own = new URL(artifact.final_url);
+  if (info.canonical) {
+    try {
+      const live = String(html ?? '').replace(/<!--[\s\S]*?(?:-->|$)/g, '').replace(/<(script|style|template|noscript)\b[\s\S]*?(?:<\/\1\s*>|$)/gi, '');
+      const baseHref = BASE_HREF.exec(/<head\b[\s\S]*?<\/head\s*>/i.exec(live)?.[0] ?? live)?.[1];
+      const target = new URL(info.canonical, baseHref ? new URL(baseHref, own).href : own.href);
+      if (sameSite(target, own) && pathOf(target) === pathOf(own)) return `${documentAddress(own, false)}${target.search}`;
+    } catch { /* an unusable canonical declares nothing */ }
+  }
+  return documentAddress(own, true);
+}
 /** The pages the run renders: the ones its protocol fixed (none when rendering is off), else, before render plans existed, the default sample. */
 const renderPlan = protocol => protocol.render ? (protocol.render.enabled ? protocol.render.pages : []) : selectRenderPages(protocol.page_types);
 
@@ -57,10 +81,11 @@ export function prepare({ context, artifacts, collection = {}, textOf, renders =
     const info = auditCollected({ artifact, html, engines: protocol.engines,
       robotsArtifact: robots?.status === 200 ? { ...robots, body: textOf(robots) } : null });
     pageRows.push({ url, artifact, html, info, robots, publicIndexing: selected.get(url).public_indexing !== false,
-      titleKey: info.title ? normalizeTitle(info.title) : null });
+      titleKey: info.title ? normalizeTitle(info.title) : null, documentKey: documentKeyOf(artifact, info, html) });
   }
   const titleCounts = new Map();
-  for (const row of pageRows) if (row.titleKey !== null) titleCounts.set(row.titleKey, [...titleCounts.get(row.titleKey) ?? [], row]);
+  // A title shared with a page that is not meant to be indexed is no duplicate: only indexed pages compete for a title.
+  for (const row of pageRows) if (row.titleKey !== null && row.publicIndexing) titleCounts.set(row.titleKey, [...titleCounts.get(row.titleKey) ?? [], row]);
   const facts = pageRows.map(row => ({ url: row.url, row, facts: pageFacts(row.html, [row.url, row.artifact.final_url]) }));
   const htmlRows = artifacts.filter(x => x.capability === 'raw_html' && x.status === 200)
     .map(artifact => ({ url: artifact.normalized_url, artifact, html: textOf(artifact) }));

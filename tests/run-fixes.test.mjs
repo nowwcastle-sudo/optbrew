@@ -2,6 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { appendFile, mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
@@ -10,6 +11,8 @@ import { limits } from '../skills/optbrew/scripts/core/config.mjs';
 import { pageBudget } from '../skills/optbrew/scripts/core/page-select.mjs';
 import { mergeFindings } from '../skills/optbrew/scripts/core/findings.mjs';
 import { buildReport } from '../skills/optbrew/scripts/core/report.mjs';
+import { freezeProtocol } from '../skills/optbrew/scripts/core/protocol.mjs';
+import { score } from '../skills/optbrew/scripts/core/score.mjs';
 import { stages } from '../skills/optbrew/scripts/core/stages.mjs';
 import { answersFor, bigSite, brewPage, brewPages, memorySite, passJudgments, preflightOf, queuedUnits, quietEnv, SITE, workspace } from './support/run-scenario.mjs';
 
@@ -265,6 +268,7 @@ test('duplicate titles on three pages are one finding, not three', async () => {
 test('a grouped finding cannot list a page that did not fail the same way', async () => {
   const pages = brewPages();
   pages['/about'] = { body: brewPage('About Brew', ['/']).body.replace('<head>', '<head><meta name="robots" content="noindex">') };
+  pages['/sitemap.xml'] = { type: 'application/xml', body: `<urlset><url><loc>${SITE}/</loc></url><url><loc>${SITE}/about</loc></url></urlset>` };
   const facts = [{ key: 'phone', value: '02-555-0142', source_url: `${SITE}/about` }];
   const site = memorySite(pages);
   const ws = await workspace(answersFor(`${SITE}/`, { facts }));
@@ -467,4 +471,160 @@ test('a folder left by a first call that stopped before its first index save is 
   await mkdir(path.join(other.out, 'evidence'), { recursive: true });
   await writeFile(path.join(other.out, 'context.json'), '{"run_id":"somebody-else"}');
   await assert.rejects(run({ answersPath: other.answersPath, out: other.out }, overridesOf(site, other)), { message: /^This folder holds files this audit did not make/ });
+});
+
+// Task 21e (R89): a page the site itself keeps out of the index (noindex, absent from its own sitemap) is not an index target.
+const NOINDEX_PAGE = (title, links = ['/']) => ({ body: brewPage(title, links).body.replace('<head>', '<head><meta name="robots" content="noindex">') });
+const sitemapOf = paths => ({ type: 'application/xml', body: `<urlset>${paths.map(p => `<url><loc>${SITE}${p}</loc></url>`).join('')}</urlset>` });
+const HOME_LINKS = ['/about', '/contact', '/inquiry'];
+const inquirySite = (over = {}) => ({ ...brewPages(), '/': brewPage('Brew Home', HOME_LINKS), '/inquiry': NOINDEX_PAGE('Inquiry'),
+  '/sitemap.xml': sitemapOf(['/', '/about', '/contact']), ...over });
+const auditOf = site => twoCalls(site, answersFor(`${SITE}/`), { before: ws => preflightOf(site, `${SITE}/`, ws.out) });
+const urlsOf = context => context.protocol.page_types.flatMap(type => type.urls);
+const unitsOf = (report, url) => report.baseline.input.observations.filter(x => x.unit_key.endsWith(`|${url}`)).map(x => x.family_id);
+
+test('a noindex page the sitemap does not list gets no index checks, no blocker and no fix; the report says so in one line (R89)', async () => {
+  const { report, context, ws } = await auditOf(memorySite(inquirySite()));
+  const inquiry = urlsOf(context).find(url => url.normalized === `${SITE}/inquiry`);
+  assert.equal(inquiry.public_indexing, false);
+  assert.deepEqual([inquiry.indexing_decision.condition, inquiry.indexing_decision.reason], ['not_public_index_target', 'noindex and not listed in the sitemap']);
+  assert.ok(report.evidence_index.some(entry => entry.ref === inquiry.indexing_decision.evidence_ref), 'the decision cites the stored raw page');
+  assert.equal(urlsOf(context).filter(url => url.public_indexing === false).length, 1, 'the listed pages stay public targets');
+  const families = unitsOf(report, `${SITE}/inquiry`);
+  assert.ok(families.includes('fetch-response'), 'the page is still fetched and judged');
+  for (const gone of ['index-policy', 'discovery', 'search-crawl-policy']) assert.equal(families.includes(gone), false, `${gone} is not a unit of the page`);
+  assert.equal(report.findings.some(item => item.check_id === 'index-policy'), false);
+  assert.deepEqual(report.baseline.scores.flatMap(result => result.blockers), []);
+  const intake = await readJson(path.join(ws.out, 'intake.json'));
+  assert.deepEqual(intake.selection.not_indexed, [`${SITE}/inquiry`]);
+  const line = report.composed.conditions.lines.find(item => item.label === '색인하지 않는 쪽');
+  assert.equal(line.value, `1쪽은 noindex이고 사이트맵에도 없어, 사이트가 일부러 검색에 내지 않는 쪽으로 보았습니다. 이 쪽들은 검색 색인 허용, 검색 봇 허용, 사이트맵·링크로 찾을 수 있는지, 제목, 대표 주소(canonical), 네이버 표시 검사에서 뺐습니다: ${SITE}/inquiry`);
+  assert.deepEqual([report.composed.conditions.not_indexed.message_key, report.composed.conditions.not_indexed.message_values],
+    ['conditions.not-indexed', { count: 1, pages: `${SITE}/inquiry` }]);
+  for (const name of ['report.md', 'report.html']) assert.match(await readFile(path.join(ws.out, name), 'utf8'), /일부러 검색에 내지 않는 쪽/);
+});
+
+test('a noindex stays a blocker on the home page, on a listed page, and when no sitemap lists any page (R89)', async () => {
+  const blocked = async pages => {
+    const { report } = await auditOf(memorySite(pages));
+    return report.findings.filter(item => item.check_id === 'index-policy' && item.blocker).flatMap(item => item.unit_keys.map(key => key.split('|')[1])).sort();
+  };
+  assert.deepEqual(await blocked(inquirySite({ '/': NOINDEX_PAGE('Brew Home', HOME_LINKS) })), [`${SITE}/`], 'the home page is never a deliberate non-index target');
+  assert.deepEqual(await blocked(inquirySite({ '/sitemap.xml': sitemapOf(['/', '/about', '/contact', '/inquiry']) })), [`${SITE}/inquiry`], 'the sitemap lists it');
+  assert.deepEqual(await blocked(inquirySite({ '/sitemap.xml': { type: 'text/plain', body: 'gone' } })), [`${SITE}/inquiry`], 'no sitemap lists any page');
+});
+
+test('replay refuses a page marked deliberately not indexed that the stored bytes do not show so (R89)', async () => {
+  const site = memorySite();
+  const ws = await workspace(answersFor(`${SITE}/`));
+  await preflightOf(site, `${SITE}/`, ws.out);
+  const overrides = overridesOf(site, ws);
+  const first = await run({ answersPath: ws.answersPath, out: ws.out }, overrides);
+  const judgmentsPath = path.join(ws.dir, 'judgments.json');
+  await writeFile(judgmentsPath, JSON.stringify(passJudgments(await readJson(first.judge_queue))));
+  const probe = { name: 'probe', run: async state => {
+    const forged = structuredClone(state.context);
+    const about = urlsOf(forged).find(url => url.normalized === `${SITE}/about`);
+    const evidence_ref = state.input.observations.find(x => x.unit_key === `fetch-response|${SITE}/about`).evidence_ref;
+    Object.assign(about, { public_indexing: false, indexing_decision: { condition: 'not_public_index_target', reason: 'noindex and not listed in the sitemap', evidence_ref } });
+    const text = `${JSON.stringify(forged, null, 2)}\n`;
+    await writeFile(path.join(state.out, 'context.json'), text);
+    // The intake record follows the context's protocol hash, as the audit's own rewrite does, so only the derivation can refuse the page.
+    const intake = `${JSON.stringify({ ...await readJson(path.join(state.out, 'intake.json')), protocol_hash: freezeProtocol(forged).protocol_hash }, null, 2)}\n`;
+    await writeFile(path.join(state.out, 'intake.json'), intake);
+    const sha = value => createHash('sha256').update(value).digest('hex');
+    const packet = structuredClone(state.packet);
+    const dropped = new Set(['index-policy', 'discovery', 'search-crawl-policy', 'document-title', 'canonical-consistency', 'naver-markup']);
+    packet.run_context = forged;
+    packet.baseline.input = { ...packet.baseline.input, run_context: forged,
+      observations: packet.baseline.input.observations.filter(x => !(dropped.has(x.family_id) && x.unit_key.endsWith(`|${SITE}/about`))) };
+    packet.baseline.scores = score(packet.baseline.input);
+    packet.evidence_index = packet.evidence_index.map(entry => entry.kind === 'context' ? { ...entry, sha256: sha(text) } : entry.kind === 'intake' ? { ...entry, sha256: sha(intake) } : entry);
+    assert.throws(() => buildReport(packet), error => error.message === `indexing decision is not derivable from the raw evidence: ${SITE}/about`);
+    return { state };
+  } };
+  const done = await run({ answersPath: ws.answersPath, out: ws.out, judgmentsPath }, { ...overrides, stages: [...stages(), probe] });
+  assert.equal(done.status, 'done');
+});
+
+// Task 21e (R94): the families that only matter for indexed pages skip a page that is not an index target.
+test('a deliberate non-index page gets no naver-markup, document-title or canonical unit and no fix for them; without noindex it does (R94)', async () => {
+  const audit = async over => {
+    const site = memorySite(inquirySite(over));
+    return twoCalls(site, answersFor(`${SITE}/`, { goals: ['네이버 검색 노출'] }), { before: ws => preflightOf(site, `${SITE}/`, ws.out) });
+  };
+  const publicOnly = ['naver-markup', 'document-title', 'canonical-consistency'];
+  const fixUrls = (report, check) => report.findings.filter(item => item.check_id === check).flatMap(item => item.unit_keys.map(key => key.split('|').pop()));
+  // The form shares the title of /about and has no canonical link; noindex and absent from the sitemap.
+  const deliberate = await audit({ '/inquiry': NOINDEX_PAGE('About Brew') });
+  const families = unitsOf(deliberate.report, `${SITE}/inquiry`);
+  assert.ok(families.includes('fetch-response') && families.includes('claim-support'), 'the fetch and content families stay');
+  for (const gone of publicOnly) {
+    assert.equal(families.includes(gone), false, `${gone} is not a unit of the deliberate page`);
+    assert.equal(fixUrls(deliberate.report, gone).includes(`${SITE}/inquiry`), false, `no ${gone} fix lists it`);
+  }
+  assert.equal(fixUrls(deliberate.report, 'document-title').includes(`${SITE}/about`), false, 'a title shared with a non-index page is no duplicate');
+  assert.ok(publicOnly.every(id => unitsOf(deliberate.report, `${SITE}/about`).includes(id)), 'the indexed pages keep them');
+  // The same page without noindex is an index target again and gets every one of them.
+  const open = await audit({ '/inquiry': brewPage('About Brew', ['/']) });
+  const openFamilies = unitsOf(open.report, `${SITE}/inquiry`);
+  for (const id of publicOnly) assert.ok(openFamilies.includes(id), `${id} is a unit of the page without noindex`);
+  assert.ok(fixUrls(open.report, 'document-title').includes(`${SITE}/inquiry`) && fixUrls(open.report, 'document-title').includes(`${SITE}/about`), 'both pages with the title are the duplicate');
+  assert.ok(fixUrls(open.report, 'naver-markup').includes(`${SITE}/inquiry`), 'its missing canonical is a fix');
+});
+
+// Task 21e (R95): pages that declare one canonical URL are one document for the duplicate-title check.
+test('three query variants with one title and one canonical are no duplicates; two pages with different canonicals and one title still are (R95)', async () => {
+  const titled = (title, canonical, links = ['/']) => ({ body: brewPage(title, links).body.replace('<head>', `<head><link rel="canonical" href="${canonical}">`) });
+  const duplicateFix = report => report.findings.filter(item => item.check_id === 'document-title' && item.message.startsWith('Title duplicates')).flatMap(item => item.unit_keys.map(key => key.split('|').pop()));
+  const audit = async pages => {
+    const site = memorySite({ ...brewPages(), '/sitemap.xml': sitemapOf(['/']), ...pages });
+    return (await twoCalls(site, answersFor(`${SITE}/`), { before: ws => preflightOf(site, `${SITE}/`, ws.out) })).report;
+  };
+  const home = links => ({ '/': brewPage('Brew Home', links) });
+  const variants = await audit({ ...home(['/bookings', '/bookings?service=facility', '/bookings?service=home-visit']), '/bookings': titled('Bookings', `${SITE}/bookings`) });
+  assert.deepEqual(duplicateFix(variants), [], 'one canonical, one document');
+  const urls = variants.baseline.input.observations.filter(x => x.family_id === 'document-title').map(x => x.unit_key.split('|').pop());
+  assert.ok(urls.includes(`${SITE}/bookings?service=facility`) && urls.includes(`${SITE}/bookings?service=home-visit`), 'the variants were audited');
+  const apart = await audit({ ...home(['/a', '/b']), '/a': titled('Same title', `${SITE}/a`), '/b': titled('Same title', `${SITE}/b`) });
+  assert.deepEqual(duplicateFix(apart).sort(), [`${SITE}/a`, `${SITE}/b`], 'different canonicals, the same title: still a duplicate');
+  const missing = await audit({ ...home(['/a', '/b']), '/a': brewPage('Same title', ['/']), '/b': brewPage('Same title', ['/']) });
+  assert.deepEqual(duplicateFix(missing).sort(), [`${SITE}/a`, `${SITE}/b`], 'no canonical: each page is its own document');
+});
+
+// Task 21e (R98, R99): only query variants of one page are one document; the pass reason of a grouped page says so.
+test('only a page that differs from its canonical in the query string joins its document; a canonical to the home page or another path does not (R98, R99)', async () => {
+  const titled = (title, head, links = ['/']) => ({ body: brewPage(title, links).body.replace('<head>', `<head>${head}`) });
+  const canonical = href => `<link rel="canonical" href="${href}">`;
+  const audit = async pages => {
+    const site = memorySite({ ...brewPages(), '/sitemap.xml': sitemapOf(['/']), ...pages });
+    return (await twoCalls(site, answersFor(`${SITE}/`), { before: ws => preflightOf(site, `${SITE}/`, ws.out) })).report;
+  };
+  const home = links => ({ '/': brewPage('Brew Home', links) });
+  const titleOf = (report, url) => report.baseline.input.observations.find(x => x.unit_key === `document-title|${url}`);
+  const duplicates = report => report.findings.filter(item => item.check_id === 'document-title' && item.message.startsWith('Title duplicates')).flatMap(item => item.unit_keys.map(key => key.split('|').pop())).sort();
+  // A site-wide canonical to the home page: four pages with one title are four duplicates, not one document.
+  const toHome = await audit({ ...home(['/a', '/b', '/c', '/d']), ...Object.fromEntries(['/a', '/b', '/c', '/d'].map(path => [path, titled('Same title', canonical(`${SITE}/`))])) });
+  assert.deepEqual(duplicates(toHome), ['/a', '/b', '/c', '/d'].map(path => `${SITE}${path}`));
+  // Another path, another site: each page stays its own document.
+  const elsewhere = await audit({ ...home(['/a', '/b']), '/a': titled('Same title', canonical(`${SITE}/x`)), '/b': titled('Same title', canonical('https://other.test/a')) });
+  assert.deepEqual(duplicates(elsewhere), [`${SITE}/a`, `${SITE}/b`]);
+  // Query variants of one page (canonical on the page without the query, www and http folded) are one document, and say so.
+  const variants = await audit({ ...home(['/bookings', '/bookings?service=facility', '/bookings?service=home-visit']), '/bookings': titled('Bookings', canonical('http://www.brew.test/bookings/')) });
+  assert.deepEqual(duplicates(variants), []);
+  const grouped = titleOf(variants, `${SITE}/bookings?service=facility`);
+  assert.equal(grouped.state, 'pass');
+  assert.match(grouped.reason, /^The title is present, shared only with query variants of the same page/);
+  assert.deepEqual(grouped.measurement.same_document.pages.sort(), [`${SITE}/bookings`, `${SITE}/bookings?service=home-visit`]);
+  assert.equal(grouped.measurement.message_key, 'document-title.same-document');
+  // Query pages that each name themselves as canonical are different documents: one title on both is a duplicate (review N-1).
+  const selfQuery = await audit({ ...home(['/products?cat=shoes', '/products?cat=bags']),
+    [`${SITE}/products?cat=shoes`]: titled('Products', canonical(`${SITE}/products?cat=shoes`)), [`${SITE}/products?cat=bags`]: titled('Products', canonical(`${SITE}/products?cat=bags`)) });
+  assert.deepEqual(duplicates(selfQuery), [`${SITE}/products?cat=bags`, `${SITE}/products?cat=shoes`]);
+  const unique = titleOf(await audit({ ...home(['/a', '/b']), '/a': titled('Alpha', ''), '/b': titled('Beta', '') }), `${SITE}/a`);
+  assert.match(unique.reason, /differs from the title of every other audited page/, 'a unique title keeps its own reason');
+  // <base href> decides what a relative canonical means.
+  const relative = base => audit({ ...home(['/x/bookings?s=1', '/x/bookings?s=2']), '/x/bookings': titled('Bookings', `${base}${canonical('bookings')}`) });
+  assert.deepEqual(duplicates(await relative('')), [], 'without a base the canonical is /x/bookings, the page itself');
+  assert.deepEqual(duplicates(await relative('<base href="/y/">')), [`${SITE}/x/bookings?s=1`, `${SITE}/x/bookings?s=2`], 'with a base it is /y/bookings, another path');
 });

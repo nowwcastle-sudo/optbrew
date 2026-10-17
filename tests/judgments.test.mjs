@@ -1288,3 +1288,37 @@ test('a fail labelled shown must cite the page\'s own text; on an empty page rep
     assert.throws(() => buildReport(empty.scenario.packet), /verdict is not accepted: page shows no text/);
   } finally { await empty.site.close(); }
 });
+
+// Task 21e (R90-R92): the false fixes the fourth real-flow run found.
+const BOOKINGS = '<p>금액은 <!-- -->2026<!-- -->년 보건복지부 고시 장기요양 수가와 더청춘이 정한 비급여 금액으로 계산합니다</p>';
+
+test('an HTML comment is not a text boundary: React hydration markers do not cut a sentence (R90)', () => {
+  const bytes = Buffer.from(bare(BOOKINGS));
+  const [span, ...rest] = candidateSpans(bytes, 'h');
+  assert.equal(rest.length, 0, 'one sentence, one span');
+  assert.equal(span.text, '금액은 2026년 보건복지부 고시 장기요양 수가와 더청춘이 정한 비급여 금액으로 계산합니다', 'the text has the comments left out');
+  const range = bytes.subarray(span.start, span.end).toString('utf8');
+  assert.ok(range.startsWith('금액은 <!-- -->2026') && range.endsWith('계산합니다'), 'the byte range covers the comments');
+  assert.doesNotThrow(() => checkSpan(bytes, span), 'the range is a valid span for checkSpan and replay');
+  assert.deepEqual(candidateSpans(bytes, 'h'), [span]);
+  const apart = candidateSpans(Buffer.from(bare(`<p>${FIRST}</p><!-- 보이지 않는 글 --><p>${LAST}</p>`)), 'h');
+  assert.deepEqual(apart.map(x => x.text), [FIRST, LAST], 'a comment between two blocks still leaves two spans');
+  const script = candidateSpans(Buffer.from(`${FIRST}<script>var a = 1;</script>${LAST}`), 'h');
+  assert.deepEqual(script.map(x => x.text), [FIRST, LAST], 'a script body still splits the text around it');
+});
+
+test('a year with 년 shows currentness: the /bookings fragment refutes a freshness absence fail; a year outside 1990-2099 does not (R91)', async () => {
+  const outcome = async line => (await mergeOne(bare(`${LONG_LINE}<p>${'m'.repeat(60)}</p>${line}`), failFor('freshness-truth', { basis: 'absence' }))).made;
+  const shown = await outcome(BOOKINGS);
+  assert.deepEqual([shown.state, shown.measurement], ['unknown', { not_accepted: 'visible' }], 'the page shows 2026년');
+  for (const line of ['<p>2026 년 기준</p>', '<p>2099년 고시</p>']) assert.equal((await outcome(line)).state, 'unknown', line);
+  for (const line of ['<p>1985년 개원</p>', '<p>12026년</p>', '<p>2100년</p>']) assert.equal((await outcome(line)).state, 'fail', `${line} is not a current year`);
+  assert.deepEqual(candidateSpans(Buffer.from(bare('<p>2026년</p>')), 'h'), [], 'a year alone is not offered as a short line');
+});
+
+test('a short line that marks a deprecation is offered, like a date or a contact (R92)', () => {
+  const texts = html => candidateSpans(Buffer.from(bare(html)), 'h').map(span => span.text);
+  assert.deepEqual(texts('<p>hx-on (deprecated)</p><p>obsolete</p><p>사용 중단</p><p>폐지 예정</p><p>더 이상 지원</p><p>짧은 글</p>'),
+    ['hx-on (deprecated)', 'obsolete', '사용 중단', '폐지 예정', '더 이상 지원']);
+  assert.deepEqual(texts('<p>Deprecated</p><p>더이상 지원하지</p>'), ['Deprecated', '더이상 지원하지'], 'case and spacing do not matter');
+});
