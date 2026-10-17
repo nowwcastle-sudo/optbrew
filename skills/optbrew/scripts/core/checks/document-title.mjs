@@ -34,7 +34,8 @@ export const documentTitle = {
     const names = siteNames(pageRows, facts);
     return pageRows.map(row => {
       const { url, artifact, info } = row;
-      const duplicates = info.title ? titleCounts.get(row.titleKey).filter(other => other !== row && other.artifact.final_url !== artifact.final_url) : [];
+      const duplicates = info.title ? titleCounts.get(row.titleKey)
+        .filter(other => other !== row && other.artifact.final_url !== artifact.final_url && !(row.documentKey && other.documentKey === row.documentKey)) : [];
       const observed = { family_id: FAMILY, unit_key: unitKey(FAMILY, url), evidence_ref: artifact.evidence_ref };
       if (!info.title) return makeObservation({ ...observed, state: 'fail', problems: [problem('Raw HTML has no title', MISSING)] });
       // The other pages are page-specific, so they travel in the measurement and the reason stays the same for every page with the problem.

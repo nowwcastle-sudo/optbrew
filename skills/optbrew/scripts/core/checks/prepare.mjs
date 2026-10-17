@@ -8,6 +8,16 @@ import { selectRenderPages } from '../render.mjs';
 const SKIP_REASONS = ['depth_limit', 'url_limit', 'request_limit'];
 const NOT_COLLECTED = 'not_collected';
 const normalizeTitle = title => title.toLowerCase().replace(/\s+/g, ' ').trim();
+/**
+ * The document a page stands for: the URL its canonical link declares (resolved against where the page was served, fragment off),
+ * else the page itself. Pages that declare one canonical are one document, so they never make each other duplicates (R95).
+ */
+function documentKeyOf(artifact, info) {
+  if (info.canonical) {
+    try { return canonicalUrl(new URL(info.canonical, artifact.final_url).href); } catch { /* an unusable canonical declares nothing */ }
+  }
+  return canonicalUrl(artifact.final_url) ?? artifact.final_url;
+}
 /** The pages the run renders: the ones its protocol fixed (none when rendering is off), else, before render plans existed, the default sample. */
 const renderPlan = protocol => protocol.render ? (protocol.render.enabled ? protocol.render.pages : []) : selectRenderPages(protocol.page_types);
 
@@ -57,7 +67,7 @@ export function prepare({ context, artifacts, collection = {}, textOf, renders =
     const info = auditCollected({ artifact, html, engines: protocol.engines,
       robotsArtifact: robots?.status === 200 ? { ...robots, body: textOf(robots) } : null });
     pageRows.push({ url, artifact, html, info, robots, publicIndexing: selected.get(url).public_indexing !== false,
-      titleKey: info.title ? normalizeTitle(info.title) : null });
+      titleKey: info.title ? normalizeTitle(info.title) : null, documentKey: documentKeyOf(artifact, info) });
   }
   const titleCounts = new Map();
   // A title shared with a page that is not meant to be indexed is no duplicate: only indexed pages compete for a title.

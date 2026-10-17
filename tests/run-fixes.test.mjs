@@ -572,3 +572,22 @@ test('a deliberate non-index page gets no naver-markup, document-title or canoni
   assert.ok(fixUrls(open.report, 'document-title').includes(`${SITE}/inquiry`) && fixUrls(open.report, 'document-title').includes(`${SITE}/about`), 'both pages with the title are the duplicate');
   assert.ok(fixUrls(open.report, 'naver-markup').includes(`${SITE}/inquiry`), 'its missing canonical is a fix');
 });
+
+// Task 21e (R95): pages that declare one canonical URL are one document for the duplicate-title check.
+test('three query variants with one title and one canonical are no duplicates; two pages with different canonicals and one title still are (R95)', async () => {
+  const titled = (title, canonical, links = ['/']) => ({ body: brewPage(title, links).body.replace('<head>', `<head><link rel="canonical" href="${canonical}">`) });
+  const duplicateFix = report => report.findings.filter(item => item.check_id === 'document-title' && item.message.startsWith('Title duplicates')).flatMap(item => item.unit_keys.map(key => key.split('|').pop()));
+  const audit = async pages => {
+    const site = memorySite({ ...brewPages(), '/sitemap.xml': sitemapOf(['/']), ...pages });
+    return (await twoCalls(site, answersFor(`${SITE}/`), { before: ws => preflightOf(site, `${SITE}/`, ws.out) })).report;
+  };
+  const home = links => ({ '/': brewPage('Brew Home', links) });
+  const variants = await audit({ ...home(['/bookings', '/bookings?service=facility', '/bookings?service=home-visit']), '/bookings': titled('Bookings', `${SITE}/bookings`) });
+  assert.deepEqual(duplicateFix(variants), [], 'one canonical, one document');
+  const urls = variants.baseline.input.observations.filter(x => x.family_id === 'document-title').map(x => x.unit_key.split('|').pop());
+  assert.ok(urls.includes(`${SITE}/bookings?service=facility`) && urls.includes(`${SITE}/bookings?service=home-visit`), 'the variants were audited');
+  const apart = await audit({ ...home(['/a', '/b']), '/a': titled('Same title', `${SITE}/a`), '/b': titled('Same title', `${SITE}/b`) });
+  assert.deepEqual(duplicateFix(apart).sort(), [`${SITE}/a`, `${SITE}/b`], 'different canonicals, the same title: still a duplicate');
+  const missing = await audit({ ...home(['/a', '/b']), '/a': brewPage('Same title', ['/']), '/b': brewPage('Same title', ['/']) });
+  assert.deepEqual(duplicateFix(missing).sort(), [`${SITE}/a`, `${SITE}/b`], 'no canonical: each page is its own document');
+});

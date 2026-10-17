@@ -604,7 +604,7 @@
     },
     {
       "path": "references/report.md",
-      "sha256": "03a75586cd23476e6ce8a48947a602ecc0b191b7f811f1b29f53a328e4f2446e"
+      "sha256": "5dc142525098b9c15d270af49464d0e3a627b90a19ed48f52ab5dc80debf04e2"
     },
     {
       "path": "references/routing.md",
@@ -728,7 +728,7 @@
     },
     {
       "path": "scripts/core/checks/document-title.mjs",
-      "sha256": "d5bd49c3baf9a0e778a132540ba1db2bee97b71b0b39e17717ef2529a6197a6b"
+      "sha256": "8c5a829af9879222e243a473d9fdd778746bf447ca6cf79afc52fd05364501fb"
     },
     {
       "path": "scripts/core/checks/entity-identity.mjs",
@@ -768,7 +768,7 @@
     },
     {
       "path": "scripts/core/checks/prepare.mjs",
-      "sha256": "b5f5511a8bad179a81977a83d2d8e685146d242d6f2c898f803a92eaae7c4067"
+      "sha256": "2ef81299e9d071b31844597a5e523aa71453c4978bfc47ecdc7f2d34e748d16c"
     },
     {
       "path": "scripts/core/checks/render-content.mjs",
@@ -935,5 +935,5 @@
       "sha256": "dca0bbd03fbf591c4aca6a568be76615eb48d69f7df0c634886f652b54f3f46d"
     }
   ],
-  "bundle_hash": "c7f22ec209660ff62f9555bfb32ca5d6b50dad1771fe33825c0e709a4719fb56"
+  "bundle_hash": "65826652b639a6e41c4f780f993ad480360c9730efc6fb68300b2068d6b701bb"
 }
