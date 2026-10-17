@@ -97,8 +97,24 @@ const REMEDIATION_FIELDS = ['mechanism', 'validation', 'effort', 'cost', 'locati
  * remediation's fields. Anything the catalog has no entry for (a model's finding, a remediation of someone's own catalog) keeps its own words.
  */
 const fixTextKo = finding => ({ message: koText(finding.message_key, finding.message_values, finding.message),
+  cited: citedOf(finding),
   remediation: finding.remediation ? Object.fromEntries(REMEDIATION_FIELDS.map(field =>
-    [field, koText(`remediation.${finding.remediation.remediation_id}.${field}`, {}, finding.remediation[field])])) : null });
+    [field, koText(`remediation.${finding.remediation.remediation_id}.${field}`, {}, finding.remediation[field])])) : stepsOf(finding) });
+
+/** A model's fix (and the question coverage's) has no catalogued remediation; the catalog gives its steps under the key of its problem (R100). */
+const MODEL_FIX_STEPS = ['mechanism', 'validation', 'effort'];
+const stepsOf = finding => {
+  const steps = Object.fromEntries(MODEL_FIX_STEPS.map(field => [field, koText(finding.message_key && `${finding.message_key}.${field}`, finding.message_values, null)]));
+  return steps.mechanism ? { ...steps, cost: null, location_hint: null } : null;
+};
+/** Where to look for a model's fix: the body text of the page it names (every page it names, for a grouped one). */
+const modelWhere = finding => finding.message_key?.startsWith('model-fix.') ? koText('model-fix.where', { pages: pagesLabel(finding) }, null) : null;
+/** The text a model's verdict cites, as the page shows it, so the owner sees where to look. */
+const citedOf = finding => finding.message_values?.quote ? koText('model-fix.cited', { quote: finding.message_values.quote }, null) : null;
+/** What a fix row says in each column: the problem with its pages and cited text, the method, and the effort. */
+const fixProblem = fix => [fix.text_ko.message, pagesLabel(fix), fix.text_ko.cited].filter(Boolean).join(' ');
+export const fixMethod = fix => fix.remediation ? `${fix.text_ko.remediation.mechanism} (${fix.remediation.source_url}, 확인일 ${fix.remediation.checked_date})` : fix.text_ko.remediation?.mechanism ?? UNKNOWN;
+export const fixEffort = fix => fix.remediation ? `${fix.text_ko.remediation.cost}; ${fix.text_ko.remediation.effort}` : fix.text_ko.remediation?.effort ?? UNKNOWN;
 
 /** Open before resolved, then blocking, then priority (P0 first, an unknown one last), then the problem on the most pages, then the unit. */
 function sortedFixes(findings, changes) {
@@ -107,7 +123,7 @@ function sortedFixes(findings, changes) {
   const withPaths = findings.map(finding => {
     const change_paths = changes.filter(change => change.finding_ids.some(id => finding.finding_ids.includes(id))).map(change => change.path);
     const text_ko = fixTextKo(finding);
-    return { ...finding, change_paths, text_ko, where: change_paths.join('; ') || text_ko.remediation?.location_hint || LOCATION_NEEDED,
+    return { ...finding, change_paths, text_ko, where: change_paths.join('; ') || modelWhere(finding) || text_ko.remediation?.location_hint || LOCATION_NEEDED,
       priority_label: PRIORITY_LABELS[finding.priority] ?? finding.priority, status_label: STATUS_LABELS[finding.status] ?? finding.status };
   });
   return withPaths.sort((a, b) => Number(resolved(a)) - Number(resolved(b)) || Number(b.blocker) - Number(a.blocker) ||
@@ -139,7 +155,7 @@ function followUpText(row, fixes) {
   if (fix) {
     const { remediation } = fix.text_ko;
     const authority = fix.remediation && koText(`authority.${fix.remediation.required_authority}`, {}, row.required_input_or_authority);
-    return { problem: `${fix.text_ko.message} ${pagesLabel(fix)}`, reason: fix.status_label,
+    return { problem: fixProblem(fix), reason: fix.status_label,
       required_input_or_authority: authority ?? koText(`${FINDING_ROW}.input`, {}, row.required_input_or_authority),
       next_action: remediation?.mechanism ?? koText(`${FINDING_ROW}.next`, {}, row.next_action),
       reobserve_when: remediation?.validation ?? koText(`${FINDING_ROW}.when`, {}, row.reobserve_when) };
@@ -177,7 +193,7 @@ function absenceBasisCounts(verified) {
   for (const row of verified.model_judgments) if (row.phase === phase && row.basis) counts[row.basis]++;
   return counts;
 }
-const NOT_ACCEPTED_REASONS = { queue_coverage: '조각이 쪽을 충분히 덮지 못함', visible: '쪽에 날짜나 운영 주체가 보임', chrome: '인용한 조각이 모두 사이트 공통 글', empty_page: '쪽에 글이 없음' };
+const NOT_ACCEPTED_REASONS = { queue_coverage: '조각이 페이지를 충분히 덮지 못함', visible: '페이지에 날짜나 운영 주체가 보임', chrome: '인용한 조각이 모두 사이트 공통 글', empty_page: '페이지에 글이 없음' };
 /** The model verdicts of the latest phase that rested on absence and were turned into unknown by the code, by reason. */
 function notAcceptedCounts(input) {
   const counts = {};
@@ -287,9 +303,8 @@ function tableRows(composed, verified) {
     `${percent(coverageOf(before.headline))} → ${after ? percent(coverageOf(after.headline)) : UNKNOWN}`,
     `${before.missing_bounds?.join('–') ?? UNKNOWN} → ${after?.missing_bounds?.join('–') ?? UNKNOWN}`,
     `${wordFor('readiness', before.readiness_status)} → ${after ? wordFor('readiness', after.readiness_status) : UNKNOWN}`, percent(withoutField)]);
-  const remediation = composed.fixes.map(f => [f.priority_label, `${f.text_ko.message} ${pagesLabel(f)}`, f.sources.map(x => `${x.source_ref} ${x.evidence_ref}`).join('; '),
-    f.remediation ? `${f.text_ko.remediation.mechanism} (${f.remediation.source_url}, 확인일 ${f.remediation.checked_date})` : UNKNOWN,
-    f.where, f.remediation ? `${f.text_ko.remediation.cost}; ${f.text_ko.remediation.effort}` : UNKNOWN, f.text_ko.remediation?.validation ?? UNKNOWN,
+  const remediation = composed.fixes.map(f => [f.priority_label, fixProblem(f), f.sources.map(x => `${x.source_ref} ${x.evidence_ref}`).join('; '),
+    fixMethod(f), f.where, fixEffort(f), f.text_ko.remediation?.validation ?? UNKNOWN,
     f.resolution ? `${f.status_label} (${f.resolution.source_ref}의 ${f.resolution.evaluator_type} 관찰로 해결 확인)` : f.status_label]);
   return { score, remediation,
     actual_outcomes: verified.outcome_rows.map(cells => cells.map(outcomeCell)),
@@ -310,12 +325,12 @@ function conditionLines(conditions, verified) {
     { label: '분석 도구', value: probe.source_tools.join(', ') || '지정 없음' },
     { label: '확인한 모델 판단', value: count(conditions.model_judgments.length) },
     { label: '모델이 해당 없음으로 판정한 단위', value: notApplicableText(conditions.model_not_applicable) },
-    ...(conditions.empty_pages.length ? [{ label: '본문이 빈 쪽', value: `${conditions.empty_pages.length}쪽 (${conditions.empty_pages.join(', ')})` }] : []),
+    ...(conditions.empty_pages.length ? [{ label: '본문이 빈 페이지', value: `${conditions.empty_pages.length}페이지 (${conditions.empty_pages.join(', ')})` }] : []),
     ...(conditions.absence_basis.absence + conditions.absence_basis.shown ? [{ label: '날짜·운영 주체 판정(fail)의 근거',
-      value: `쪽에 없다는 근거 ${conditions.absence_basis.absence}건, 인용한 글에서 직접 확인 ${conditions.absence_basis.shown}건` }] : []),
-    ...(Object.keys(conditions.not_accepted).length ? [{ label: '쪽에 없다는 판정 중 받아들이지 않은 것',
+      value: `페이지에 없다는 근거 ${conditions.absence_basis.absence}건, 인용한 글에서 직접 확인 ${conditions.absence_basis.shown}건` }] : []),
+    ...(Object.keys(conditions.not_accepted).length ? [{ label: '페이지에 없다는 판정 중 받아들이지 않은 것',
       value: Object.entries(conditions.not_accepted).map(([code, n]) => `${NOT_ACCEPTED_REASONS[code]} ${n}건`).join(', ') }] : []),
-    ...(conditions.not_indexed ? [{ label: '색인하지 않는 쪽', value: koText(conditions.not_indexed.message_key, conditions.not_indexed.message_values) }] : []),
+    ...(conditions.not_indexed ? [{ label: '색인하지 않는 페이지', value: koText(conditions.not_indexed.message_key, conditions.not_indexed.message_values) }] : []),
     { label: '이전 막는 문제', value: listed(before) },
     { label: '이후 막는 문제', value: after ? listed(after) : `${UNKNOWN} (이후 단계를 보지 않음)` },
     { label: '이후 결과 없는 핵심 검사', value: count(after?.core_unknown ?? null) },
@@ -328,7 +343,8 @@ function conditionLines(conditions, verified) {
 }
 
 /** The questions of the fixed panel and the pages that answer each, as a table for the model-judgment section; empty when there is no coverage verdict. */
-const questionLines = list => list ? `${table(['질문', '답하는 페이지'], list.map(item => [item.question, item.pages.join(', ') || '없음']))}\n\n` : '';
+const questionLines = list => list ? `${table(['질문', '답하는 페이지'], list.map(item => [item.question, item.pages.join(', ') || koText('question-coverage.not-found')]))}\n\n` +
+  `${list.some(item => !item.pages.length) ? `${html(koText('question-coverage.note'))}\n\n` : ''}` : '';
 
 /** `report.md` and the table rows `report.json` carries, both rendered from the composed report. */
 export function renderReport(composed, verified) {

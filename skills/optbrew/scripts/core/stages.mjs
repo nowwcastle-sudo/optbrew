@@ -454,7 +454,7 @@ const deriveStage = {
 /**
  * The queue as the model reads it: the fixed question list, then one entry per page, with the page's candidate spans once and the
  * units to judge on it. The stored queue keeps one item per unit (each repeating the page's spans); this file is only the shorter
- * view of it. A unit that has names and facts to judge against (the site's identity) keeps them.
+ * view of it. A unit that has names and facts to judge against (the site's identity) keeps them. The site's repeated lines come once, before the pages.
  */
 function queueByPage(queue, panel) {
   const pages = new Map();
@@ -463,7 +463,8 @@ function queueByPage(queue, panel) {
     if (!pages.has(item.url)) pages.set(item.url, { url: item.url, evidence_ref: item.evidence_ref, evidence_sha256: item.evidence_sha256, spans: item.spans, ...(item.empty_page ? { empty_page: true } : {}), families: [] });
     pages.get(item.url).families.push({ family_id: item.family_id, unit_key: item.unit_key, ...(item.identity ? { identity: item.identity } : {}) });
   }
-  return { questions: panel.map(({ id, question }) => ({ id, question })), pages: [...pages.values()] };
+  // The lines the pages repeat (menus, headers, footers) are listed once up front: a line there that answers a question (a phone number, an address, opening hours) answers it for the site.
+  return { questions: panel.map(({ id, question }) => ({ id, question })), ...(queue.site_chrome?.length ? { site_chrome: queue.site_chrome } : {}), pages: [...pages.values()] };
 }
 
 /** Judge: build the queue the model works from; with the model's judgments, merge them in and go on. */
@@ -539,7 +540,8 @@ function findingsOf(observations, evidence) {
     const model = observation.evaluator_type === 'host_model';
     const blocker = observation.blocker === true || blocking.has(observation.family_id);
     for (const [position, problem] of problemsOf(observation).entries()) {
-      const key = JSON.stringify([observation.check_id, pageNeutral(problem, observation.unit_key), model, blocker]);
+      // A model's fix is told page by page: each page has its own cited text, which the owner needs to find the place.
+      const key = JSON.stringify([observation.check_id, pageNeutral(problem, observation.unit_key), model, blocker, ...(model ? [observation.unit_key] : [])]);
       if (!groups.has(key)) groups.set(key, { observation, problem, position, model, blocker, stated: observation.problem_messages?.[position], unit_keys: [] });
       groups.get(key).unit_keys.push(observation.unit_key);
     }

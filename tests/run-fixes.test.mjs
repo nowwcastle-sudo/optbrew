@@ -497,11 +497,11 @@ test('a noindex page the sitemap does not list gets no index checks, no blocker 
   assert.deepEqual(report.baseline.scores.flatMap(result => result.blockers), []);
   const intake = await readJson(path.join(ws.out, 'intake.json'));
   assert.deepEqual(intake.selection.not_indexed, [`${SITE}/inquiry`]);
-  const line = report.composed.conditions.lines.find(item => item.label === '색인하지 않는 쪽');
-  assert.equal(line.value, `1쪽은 noindex이고 사이트맵에도 없어, 사이트가 일부러 검색에 내지 않는 쪽으로 보았습니다. 이 쪽들은 검색 색인 허용, 검색 봇 허용, 사이트맵·링크로 찾을 수 있는지, 제목, 대표 주소(canonical), 네이버 표시 검사에서 뺐습니다: ${SITE}/inquiry`);
+  const line = report.composed.conditions.lines.find(item => item.label === '색인하지 않는 페이지');
+  assert.equal(line.value, `1페이지는 noindex이고 사이트맵에도 없어, 사이트가 일부러 검색에 내지 않는 페이지로 보았습니다. 이 페이지들은 검색 색인 허용, 검색 봇 허용, 사이트맵·링크로 찾을 수 있는지, 제목, 대표 주소(canonical), 네이버 표시 검사에서 뺐습니다: ${SITE}/inquiry`);
   assert.deepEqual([report.composed.conditions.not_indexed.message_key, report.composed.conditions.not_indexed.message_values],
     ['conditions.not-indexed', { count: 1, pages: `${SITE}/inquiry` }]);
-  for (const name of ['report.md', 'report.html']) assert.match(await readFile(path.join(ws.out, name), 'utf8'), /일부러 검색에 내지 않는 쪽/);
+  for (const name of ['report.md', 'report.html']) assert.match(await readFile(path.join(ws.out, name), 'utf8'), /일부러 검색에 내지 않는 페이지/);
 });
 
 test('a noindex stays a blocker on the home page, on a listed page, and when no sitemap lists any page (R89)', async () => {
