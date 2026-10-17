@@ -170,10 +170,22 @@ function modelNotApplicable(verified) {
   for (const row of verified.model_judgments) if (row.phase === phase && row.state === 'not_applicable') counts[row.family_id] = (counts[row.family_id] ?? 0) + 1;
   return counts;
 }
-/** The audited pages whose main text is empty, in the latest phase: a verdict on one of them rests on a page with nothing to read, not on a missed passage. */
-function emptyPages(verified) {
+/** How many fails of the absence families (a missing operator or date) rest on absence and how many on text the verdict cites, in the latest phase. */
+function absenceBasisCounts(verified) {
   const phase = verified.after ? 'after' : 'baseline';
-  return [...new Set(verified.model_judgments.filter(row => row.phase === phase && row.empty_page).map(row => addressOf(row.unit_key)))];
+  const counts = { absence: 0, shown: 0 };
+  for (const row of verified.model_judgments) if (row.phase === phase && row.basis) counts[row.basis]++;
+  return counts;
+}
+const NOT_ACCEPTED_REASONS = { queue_coverage: '조각이 쪽을 충분히 덮지 못함', visible: '쪽에 날짜나 운영 주체가 보임' };
+/** The model verdicts of the latest phase that rested on absence and were turned into unknown by the code, by reason. */
+function notAcceptedCounts(input) {
+  const counts = {};
+  for (const obs of input.observations) {
+    const code = obs.evaluator_type === 'host_model' && obs.state === 'unknown' ? obs.measurement?.not_accepted : undefined;
+    if (NOT_ACCEPTED_REASONS[code]) counts[code] = (counts[code] ?? 0) + 1;
+  }
+  return counts;
 }
 /** Which audited pages answer which question of the fixed panel, from the derived question-coverage verdict of a phase; null when it has none. */
 function questionCoverageList(input) {
@@ -233,7 +245,7 @@ export function composeReport(verified) {
   const fixes = sortedFixes(verified.findings, verified.changes);
   const completeness = completenessOf(verified);
   const afterRender = latest.observations.some(obs => obs.family_id === 'render-content' && obs.state === 'pass' && obs.reason.startsWith(CONTENT_AFTER_RENDER));
-  const conditions = { probe: latest.run_context.environment_probe, model_judgments: verified.model_judgments, model_not_applicable: modelNotApplicable(verified), empty_pages: emptyPages(verified), question_coverage: questionCoverageList(latest), lab_cwv: verified.lab_cwv, start_redirect: verified.start_redirect ?? null,
+  const conditions = { probe: latest.run_context.environment_probe, model_judgments: verified.model_judgments, model_not_applicable: modelNotApplicable(verified), empty_pages: verified.empty_pages ?? [], absence_basis: absenceBasisCounts(verified), not_accepted: notAcceptedCounts(latest), question_coverage: questionCoverageList(latest), lab_cwv: verified.lab_cwv, start_redirect: verified.start_redirect ?? null,
     blockers: { before: blockerSummary(verified.baseline.scores), after: verified.after ? blockerSummary(verified.after.scores) : null },
     notes: afterRender ? [JAVASCRIPT_NOTE] : [] };
   conditions.lines = conditionLines(conditions, verified);
@@ -292,6 +304,10 @@ function conditionLines(conditions, verified) {
     { label: '확인한 모델 판단', value: count(conditions.model_judgments.length) },
     { label: '모델이 해당 없음으로 판정한 단위', value: notApplicableText(conditions.model_not_applicable) },
     ...(conditions.empty_pages.length ? [{ label: '본문이 빈 쪽', value: `${conditions.empty_pages.length}쪽 (${conditions.empty_pages.join(', ')})` }] : []),
+    ...(conditions.absence_basis.absence + conditions.absence_basis.shown ? [{ label: '날짜·운영 주체 판정(fail)의 근거',
+      value: `쪽에 없다는 근거 ${conditions.absence_basis.absence}건, 인용한 글에서 직접 확인 ${conditions.absence_basis.shown}건` }] : []),
+    ...(Object.keys(conditions.not_accepted).length ? [{ label: '쪽에 없다는 판정 중 받아들이지 않은 것',
+      value: Object.entries(conditions.not_accepted).map(([code, n]) => `${NOT_ACCEPTED_REASONS[code]} ${n}건`).join(', ') }] : []),
     { label: '이전 막는 문제', value: listed(before) },
     { label: '이후 막는 문제', value: after ? listed(after) : `${UNKNOWN} (이후 단계를 보지 않음)` },
     { label: '이후 결과 없는 핵심 검사', value: count(after?.core_unknown ?? null) },

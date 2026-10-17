@@ -20,7 +20,7 @@ import { composeReport, pagesLabel, renderReport } from './report-compose.mjs';
 import { messageOf } from './messages.mjs';
 import { runbookEntry } from './runbooks.mjs';
 import { sensitive } from './secrets.mjs';
-import { ABSENCE_UNCOVERED, ENTITY_UNIT, OBSERVATION_SOURCES, QUEUE_KIND, QUESTION_UNIT, candidateSpans, checkSpan, coversPage, deriveQuestionCoverage, homeOf, identityBasisOf, isCodeJudged, isEmptyPage, isEntityFallback, isModelJudged, queuedSpan, restsOnAbsence } from './judgments.mjs';
+import { ABSENCE_UNCOVERED, ENTITY_UNIT, OBSERVATION_SOURCES, QUEUE_KIND, QUESTION_UNIT, absenceRefuted, basisAllowed, candidateSpans, checkSpan, coversPage, deriveQuestionCoverage, homeOf, identityBasisOf, isCodeJudged, isEmptyPage, isEntityFallback, isModelJudged, queuedSpan, restsOnAbsence, siteChrome } from './judgments.mjs';
 import { parseRobots, robotsVerdict } from '../../modules/naver-searchadvisor/scripts/robots.mjs';
 
 const catalog = JSON.parse(readFileSync(new URL('../../references/remediations.json', import.meta.url))).items;
@@ -655,8 +655,12 @@ function modelJudgmentRows(phase, input, snapshot, requireRef) {
     return JSON.parse(stored.text);
   });
   // The site's identity is judged on the home page, chosen as the queue chose it: from the pages whose fetch verdict passed.
-  const home = homeOf(input.observations.filter(x => x.family_id === 'fetch-response' && x.state === 'pass')
-    .filter(x => (audit.raw ?? []).some(entry => entry.content_hash && entry.evidence_ref === x.evidence_ref && entry.normalized_url === unitUrl(x.unit_key))).map(x => unitUrl(x.unit_key)));
+  const audited = input.observations.filter(x => x.family_id === 'fetch-response' && x.state === 'pass')
+    .filter(x => (audit.raw ?? []).some(entry => entry.content_hash && entry.evidence_ref === x.evidence_ref && entry.normalized_url === unitUrl(x.unit_key)));
+  const home = homeOf(audited.map(x => unitUrl(x.unit_key)));
+  // What the gates of an absence fail need, derived here from the audited pages and not read from the queue: the lines most pages repeat, and the names the owner confirmed.
+  const chrome = siteChrome([...new Map(audited.map(x => [unitUrl(x.unit_key), requireRef(x.evidence_ref).bytes])).values()]);
+  const names = queues.flatMap(queue => queue.items).find(item => item.identity)?.identity.names ?? [];
   return judgments.filter(obs => obs.state !== 'unknown').map(obs => {
     if (obs.state === 'not_applicable' && !isModelJudged(obs.family_id)) fail(obs, `${obs.family_id} is not a family a model may declare not applicable`);
     if (obs.family_id === 'answer-clarity') {
@@ -669,11 +673,13 @@ function modelJudgmentRows(phase, input, snapshot, requireRef) {
     if (!raw) fail(obs, 'its evidence is not the audit raw entry of the unit page');
     // Candidates are recomputed from the raw bytes, so a consistently forged queue cannot widen what a model may cite.
     const candidates = candidateSpans(requireRef(obs.evidence_ref).bytes, raw.content_hash);
-    // A verdict that rests on something missing from the page needs a queue that offered enough of it; a basis or an empty-page mark must be true of the page.
+    // A verdict that rests on something missing from the page needs a queue that offered enough of it and a page that does not show it; a fail of an absence family names its basis; the empty-page mark is true of the page.
+    const bytes = requireRef(obs.evidence_ref).bytes;
     const absence = restsOnAbsence({ family_id: obs.family_id, state: obs.state, condition: obs.applicability_decision?.condition, basis: obs.measurement?.basis });
-    if (obs.measurement?.basis !== undefined && !absence) fail(obs, 'its absence basis is not one this verdict may carry');
-    if (absence && !coversPage(requireRef(obs.evidence_ref).bytes, candidates)) fail(obs, ABSENCE_UNCOVERED);
-    if (obs.measurement?.empty_page !== undefined && (obs.measurement.empty_page !== true || !isEmptyPage(requireRef(obs.evidence_ref).bytes))) fail(obs, 'it names the page empty, but the page holds text');
+    if (!basisAllowed({ family_id: obs.family_id, state: obs.state, basis: obs.measurement?.basis })) fail(obs, 'its basis is not the one this verdict must carry');
+    if (absence && !coversPage(bytes, candidates)) fail(obs, ABSENCE_UNCOVERED);
+    if (absence && obs.state === 'fail') { const shown = absenceRefuted(obs.family_id, bytes, candidates, { chrome, names }); if (shown) fail(obs, `its absence fail is not accepted: ${shown}`); }
+    if (Boolean(obs.measurement?.empty_page) !== isEmptyPage(bytes)) fail(obs, 'its empty-page mark differs from the page');
     for (const span of obs.evidence_span ?? []) {
       if (span.evidence_sha256 !== raw.content_hash) fail(obs, 'a span names evidence other than the unit page');
       try { checkSpan(requireRef(obs.evidence_ref).bytes, span); } catch (error) { fail(obs, error.message); }
@@ -687,8 +693,23 @@ function modelJudgmentRows(phase, input, snapshot, requireRef) {
     }
     return { phase, family_id: obs.family_id, unit_key: obs.unit_key, state: obs.state, evidence_ref: obs.evidence_ref, evidence_span: obs.evidence_span, label: MODEL_JUDGMENT_LABEL,
       ...(obs.measurement?.empty_page ? { empty_page: true } : {}),
+      ...(obs.measurement?.basis ? { basis: obs.measurement.basis } : {}),
       ...(obs.measurement?.identity_basis ? { identity_basis: obs.measurement.identity_basis } : {}) };
   });
+}
+
+/**
+ * The audited pages that show no text, for the phase the report describes: the pages the judge queue lists as empty, each checked
+ * against the raw bytes the audit stored, so a queue cannot name a page that has text.
+ */
+function emptyPagesOf(snapshot, requireRef) {
+  if (!snapshot) return [];
+  const audit = JSON.parse(requireRef(snapshot.audit_ref).text);
+  const listed = new Set((audit.judge_queue ?? []).flatMap(entry => JSON.parse(requireRef(entry.evidence_ref).text).empty_pages ?? []));
+  return [...listed].filter(url => {
+    const raw = (audit.raw ?? []).find(entry => entry.content_hash && entry.normalized_url === url);
+    return raw && isEmptyPage(requireRef(raw.evidence_ref).bytes);
+  }).sort();
 }
 
 /** Recompute scores and metrics from contained run evidence; render four design tables. */
@@ -736,6 +757,7 @@ export function buildReport(packet) {
     throw new ContractError('cost ledger snapshot evidence differs from report');
   // Model verdicts are replayed first, so a host_model observation never reaches the collector replay under a collector source.
   const modelRows = [['baseline', packet.baseline.input], ['after', packet.after?.input]].flatMap(([phase, input]) => modelJudgmentRows(phase, input, snapshotFor(phase), requireRef));
+  const emptyPages = emptyPagesOf(snapshotFor(packet.after ? 'after' : 'baseline'), requireRef);
   checkAuditPhase(packet.baseline.input, 'baseline', snapshotFor('baseline'), requireRef);
   checkAuditPhase(packet.after?.input, 'after', snapshotFor('after'), requireRef);
   // An adopted start address is said in the run conditions, so it must match the intake record and the run's target.
@@ -884,7 +906,7 @@ export function buildReport(packet) {
     cost_issue_messages: costNotes.map(({ message_key, message_values }) => ({ message_key, message_values })), metric_origin_limitations: metricOriginLimitations,
     metric_origin_limitation_messages: originNotes.map(([, key]) => messageOf(key)), follow_ups: remaining,
     evidence_root: packet.evidence_root, evidence_index: packet.evidence_index,
-    audit_ref: packet.audit_ref ?? null, audit_snapshots: snapshots, model_judgments: modelRows, source_ref: packet.source_ref,
+    audit_ref: packet.audit_ref ?? null, audit_snapshots: snapshots, model_judgments: modelRows, empty_pages: emptyPages, source_ref: packet.source_ref,
     outcome_rows: metricRows(packet.metrics), lab_cwv: packet.lab_cwv ?? null, start_redirect: startRedirect, answered_runbooks: packet.answered_runbooks ?? [] };
   const composed = composeReport(verified);
   const { markdown, tables } = renderReport(composed, verified);

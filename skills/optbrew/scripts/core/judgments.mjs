@@ -28,10 +28,18 @@ const naConditions = new Map(registry.families.map(family => [family.family_id, 
 // The not_applicable conditions that mean "the page has no X", and the families whose fail may rest on something missing from the page.
 const absenceConditions = new Map(registry.families.map(family => [family.family_id, new Set(family.na_absence_conditions ?? [])]));
 const absenceFamilies = new Set(registry.families.filter(family => family.absence_fail).map(family => family.family_id));
-/** What a model marks (`basis`) on a fail that rests on something missing from the page, as opposed to a fail the cited text shows directly. */
+/** What a model marks (`basis`) on every fail of an absence family: the fail rests on something missing from the page, or on something the cited text shows. */
 const ABSENCE_BASIS = 'absence';
+const SHOWN_BASIS = 'shown';
 /** Why a verdict that rests on absence becomes unknown when the queue offered too little of the page. */
 export const ABSENCE_UNCOVERED = 'queue covers too little of the page to declare absence';
+const DATE_OUTSIDE = 'a date is visible outside the queued spans';
+const DATE_INSIDE = 'a date is visible in the queued spans';
+const OPERATOR_OUTSIDE = 'the operator is named outside the queued spans';
+const OPERATOR_INSIDE = 'the operator is named in the queued spans';
+const FRESHNESS_FAMILY = 'freshness-truth';
+const SOURCE_FAMILY = 'source-transparency';
+const COPYRIGHT = /©|\(c\)|copyright/i;
 const SPACE = '[ \\t\\r\\n\\f]';
 const LEADING = new RegExp(`^${SPACE}*`);
 const TRAILING = new RegExp(`${SPACE}+$`);
@@ -47,19 +55,32 @@ const SENTENCE_TAIL = /[.!?。！？]+["'”’」)\]]*\s*$/u;
 // Tags inside a line of text: they do not end a span, and the text shown to the model has them taken out.
 const INLINE_TAGS = new Set(['a', 'abbr', 'b', 'br', 'code', 'em', 'i', 'mark', 'small', 'span', 'strong', 'sub', 'sup', 'time']);
 // Short text that is still worth offering: a date, a way to reach the owner (and, by element, an author line in <address>). The floor in limits.json does not drop these.
-const SHORT_TEXT_EXCEPTIONS = [
+// A full date names a day, a month and a year. A long line that holds one is kept ahead of other long lines when the cap is full.
+const FULL_DATES = [
   /\d{4}\s*[-./년]\s*\d{1,2}\s*[-./월]\s*\d{1,2}/u,
-  /\d{4}\s*년\s*\d{1,2}\s*월/u,
+  /\d{4}\s+\d{1,2}\s*월\s*\d{1,2}\s*일/u,
   /\d{1,2}\s*[-./]\s*\d{1,2}\s*[-./]\s*\d{4}/u,
   /\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+\d{1,2},?\s+\d{4}/iu,
   /\b\d{1,2}\s+(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?,?\s+\d{4}/iu,
+];
+const SHORT_TEXT_EXCEPTIONS = [
+  ...FULL_DATES,
+  /\d{4}\s*년\s*\d{1,2}\s*월/u,
   /[\w.+-]+@[\w-]+(?:\.[\w-]+)+/u,
   /(?:\+?\d{1,3}[\s.-]?)?\(?\d{2,4}\)?[\s.-]\d{3,4}[\s.-]\d{4}/u,
   /\b1[568]\d{2}[-\s]\d{4}\b/u,
 ];
+// Any text that shows a date, a month or a day of a month: a page that has one is not "without a visible date". Broad on purpose.
+const BROAD_DATES = [
+  ...FULL_DATES,
+  /\d{4}\s*[-./]\s*\d{1,2}\b/u,
+  /\d{4}\s*(?:년\s*)?\d{1,2}\s*월/u,
+  /\d{1,2}\s*월\s*\d{1,2}\s*일/u,
+  /\b(?:jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?,?\s+(?:\d{1,2}\b|\d{4}\b)/iu,
+];
 const ADDRESS_ELEMENT = /<address\b[^>]*>([\s\S]*?)<\/address\s*>/gi;
-const MAIN_ELEMENT = /<main\b[^>]*>([\s\S]*?)<\/main\s*>/i;
-const BODY_ELEMENT = /<body\b[^>]*>([\s\S]*)/i;
+const BODY_ELEMENT = /<body(?=[\s>/])[^>]*>([\s\S]*)/i;
+const HEAD_ELEMENT = /<head(?=[\s>/])[\s\S]*?<\/head\s*>/i;
 // What is left of an element once its tags and blank entities are gone.
 const NO_TEXT = /^(?:\s|&nbsp;|&#160;|&#xa0;)*$/i;
 
@@ -73,6 +94,13 @@ export const isModelJudged = family_id => modelFamilies().includes(family_id);
 
 /** Whether a family has a code check block, so only code may judge it. */
 export const isCodeJudged = family_id => blocks.some(block => block.family_id === family_id);
+
+/**
+ * Whether a judgment's `basis` is allowed: a fail of an absence family names `absence` (it rests on something missing from the page)
+ * or `shown` (the cited text shows it); every other verdict names none.
+ */
+export const basisAllowed = ({ family_id, state, basis }) =>
+  state === 'fail' && absenceFamilies.has(family_id) ? basis === ABSENCE_BASIS || basis === SHOWN_BASIS : basis === undefined;
 
 /** Whether a judgment rests on something being absent from the page: a not_applicable under an absence condition, or a fail marked with the absence basis in a family that allows it. */
 export const restsOnAbsence = ({ family_id, state, condition, basis }) =>
@@ -280,7 +308,8 @@ function textLines(bytes) {
  * offsets are byte offsets and a span can only start or end next to an ASCII character, never inside a multi-byte one. A line shorter
  * than the floor is dropped unless it is a date, a contact or a line inside an <address> element; those (one of each text) have an
  * allowance of their own beside the cap. A line longer than the maximum is cut at sentence ends (or a space, or a character) into
- * several spans of at most that size. Lines with a secret are dropped; the longest lines are kept, in document order.
+ * several spans of at most that size. Lines with a secret are dropped; the longest lines are kept, in document order, but a long line
+ * that holds a full date comes before the others when the cap is full.
  */
 export function candidateSpans(bytes, evidence_sha256) {
   const { judge_spans_per_unit: cap, judge_span_min_bytes: minimum, judge_short_spans_per_unit: shortCap } = limits();
@@ -290,23 +319,54 @@ export function candidateSpans(bytes, evidence_sha256) {
     if (sensitive.test(line.text)) continue;
     const span = { span_id: `${line.start}-${line.end}`, evidence_sha256, start: line.start, end: line.end, text: line.text };
     const size = Buffer.byteLength(line.text);
-    if (size >= minimum) long.push({ span, size });
+    if (size >= minimum) long.push({ span, size, dated: FULL_DATES.some(pattern => pattern.test(line.text)) });
     else if (!short.has(line.text) && (line.address || SHORT_TEXT_EXCEPTIONS.some(pattern => pattern.test(line.text)))) short.set(line.text, span);
   }
-  const kept = long.sort((a, b) => b.size - a.size || a.span.start - b.span.start).slice(0, cap).map(x => x.span);
+  const kept = long.sort((a, b) => b.dated - a.dated || b.size - a.size || a.span.start - b.span.start).slice(0, cap).map(x => x.span);
   return [...kept, ...[...short.values()].slice(0, shortCap)].sort((a, b) => a.start - b.start);
 }
 
-/** Whether the page's main text is empty: its <main> element holds no text, or, without one, its <body> does not. A fragment with neither is not empty. */
+/** Whether the page shows no text: its <body> holds none or, with no <body>, nothing outside <head> does. Script, style and comments are not text. */
 export function isEmptyPage(bytes) {
   const { masked } = maskedBody(bytes);
-  const region = MAIN_ELEMENT.exec(masked) ?? BODY_ELEMENT.exec(masked);
-  return region ? NO_TEXT.test(region[1].replace(/<[^>]*>/g, '')) : false;
+  const body = BODY_ELEMENT.exec(masked)?.[1] ?? masked.replace(HEAD_ELEMENT, '');
+  return NO_TEXT.test(body.replace(/<[^>]*>/g, ''));
+}
+
+/**
+ * The lines of text that repeat across most of the audited pages (menus, headers, footers): a line on more than `site_chrome.min_share`
+ * of the pages, when at least `site_chrome.min_pages` pages were audited. They belong to the site, not to a page. Queue building and
+ * report replay both derive the set from the pages' bytes.
+ */
+export function siteChrome(pages) {
+  const { min_share: share, min_pages: minimum } = limits().site_chrome;
+  const counts = new Map();
+  if (pages.length < minimum) return new Set();
+  for (const bytes of pages) for (const text of new Set(textLines(bytes).map(line => line.text))) counts.set(text, (counts.get(text) ?? 0) + 1);
+  return new Set([...counts].filter(([, n]) => n / pages.length > share).map(([text]) => text));
+}
+
+/**
+ * Why an absence fail is not accepted although the queue covered the page: the page shows what the fail says is missing, in lines the
+ * model may not have read. A date: any line with a date (menus and footers included). The operator: a line of the page's own text (not
+ * site chrome) inside <address>, with a copyright mark, or naming one of `names`. Returns the reason, or null when the page shows nothing.
+ * `spans` are the spans the queue offered, to tell a line the model could read from one it could not.
+ */
+export function absenceRefuted(family_id, bytes, spans, { chrome, names }) {
+  const inSpans = line => spans.some(span => span.start <= line.start && line.end <= span.end);
+  const lines = textLines(bytes);
+  if (family_id === FRESHNESS_FAMILY) {
+    const hits = lines.filter(line => BROAD_DATES.some(pattern => pattern.test(line.text)));
+    return hits.length ? (hits.every(inSpans) ? DATE_INSIDE : DATE_OUTSIDE) : null;
+  }
+  if (family_id !== SOURCE_FAMILY) return null;
+  const hits = lines.filter(line => !chrome.has(line.text) && (line.address || COPYRIGHT.test(line.text) || names.some(name => line.text.includes(name))));
+  return hits.length ? (hits.every(inSpans) ? OPERATOR_INSIDE : OPERATOR_OUTSIDE) : null;
 }
 
 /**
  * Whether the queue's `spans` cover enough of the page to show that something is absent from it: the spans make up at least
- * `judge_absence_min_coverage` of the page's visible text (bytes of text), or the page's main text is empty. Queue building, merge
+ * `judge_absence_min_coverage` of the page's visible text (bytes of text), or the page shows no text. Queue building, merge
  * and report replay all ask this one question.
  */
 export function coversPage(bytes, spans) {
@@ -341,14 +401,19 @@ export async function buildJudgeQueue({ observations, store, context = null, nam
   const offered = family_id => !planned || planned.has(family_id);
   const families = modelFamilies().filter(offered);
   const items = [];
-  const queue = { items };
-  const spansOf = new Map();
+  const loaded = new Map();
   for (const [url, entry] of pages) {
     const bytes = await store.read(entry.evidence_ref, entry.content_hash);
-    const spans = candidateSpans(bytes, entry.content_hash);
-    spansOf.set(url, spans);
+    loaded.set(url, { bytes, spans: candidateSpans(bytes, entry.content_hash), empty: isEmptyPage(bytes) });
+  }
+  // A line that most audited pages repeat is the site's, not the page's: the spans that hold one say so.
+  const chrome = siteChrome([...loaded.values()].map(page => page.bytes));
+  const spansOf = new Map();
+  for (const [url, page] of loaded) spansOf.set(url, page.spans.map(span => chrome.has(span.text) ? { ...span, site_chrome: true } : span));
+  for (const [url, entry] of pages) {
+    const spans = spansOf.get(url);
     if (!spans.length) continue;
-    const empty = isEmptyPage(bytes) ? { empty_page: true } : {};
+    const empty = loaded.get(url).empty ? { empty_page: true } : {};
     for (const family_id of families) {
       const unit_key = unitKey(family_id, url);
       if (!judged.has(unit_key)) items.push({ family_id, unit_key, url, evidence_ref: entry.evidence_ref, evidence_sha256: entry.content_hash, spans, ...empty });
@@ -358,8 +423,10 @@ export async function buildJudgeQueue({ observations, store, context = null, nam
   if (home && spansOf.get(home).length && offered(ENTITY_FAMILY) && !judged.has(ENTITY_UNIT)) {
     const entry = pages.get(home);
     items.push({ family_id: ENTITY_FAMILY, unit_key: ENTITY_UNIT, url: home, evidence_ref: entry.evidence_ref, evidence_sha256: entry.content_hash,
-      spans: spansOf.get(home), identity: { names, facts, host: new URL(home).host } });
+      spans: spansOf.get(home), ...(loaded.get(home).empty ? { empty_page: true } : {}), identity: { names, facts, host: new URL(home).host } });
   }
+  const emptyPages = [...loaded].filter(([, page]) => page.empty).map(([url]) => url);
+  const queue = { items, ...(chrome.size ? { site_chrome: [...chrome].sort() } : {}), ...(emptyPages.length ? { empty_pages: emptyPages } : {}) };
   const { ref, sha256 } = await store.write(QUEUE_KIND, `${JSON.stringify(queue, null, 2)}\n`);
   if (!(index[QUEUE_SECTION] ?? []).some(entry => entry.sha256 === sha256)) await store.append(QUEUE_SECTION, { evidence_ref: ref, sha256 });
   return queue;
@@ -404,6 +471,7 @@ function partialBasis(judgment) {
 export async function mergeJudgments({ observations, judgments, store, questions = [] }) {
   const queue = await storedQueue(store);
   const items = new Map(queue.items.map(item => [item.unit_key, item]));
+  const names = queue.items.find(item => item.identity)?.identity.names ?? [];
   const questionIds = new Set(questions.map(question => question.id));
   const made = [];
   for (const judgment of judgments) {
@@ -418,8 +486,10 @@ export async function mergeJudgments({ observations, judgments, store, questions
     if (sensitive.test(judgment.reason ?? '')) throw new Error(`judgment reason for ${unit_key} contains a secret`);
     const extra = { evaluator_type: MODEL_EVALUATOR, source_ref: OBSERVATION_SOURCES[MODEL_EVALUATOR] };
     let evidence = null;
-    if (judgment.basis !== undefined && !(state === 'fail' && judgment.basis === ABSENCE_BASIS && absenceFamilies.has(family_id)))
-      throw new Error(`basis "${judgment.basis}" is allowed only as "absence" on a fail of ${[...absenceFamilies].join(' or ')} (${unit_key})`);
+    if (state === 'fail' && absenceFamilies.has(family_id) && judgment.basis === undefined)
+      throw new Error(`a fail of ${family_id} needs basis "absence" (something is missing from the page) or "shown" (the cited text shows it) (${unit_key})`);
+    if (!basisAllowed(judgment))
+      throw new Error(`basis "${judgment.basis}" is allowed only as "absence" or "shown" on a fail of ${[...absenceFamilies].join(' or ')} (${unit_key})`);
     if (state === 'not_applicable') {
       if (site) throw new Error(`${unit_key} is a site unit and cannot be not_applicable`);
       if (!naConditions.get(family_id).includes(judgment.condition))
@@ -449,12 +519,19 @@ export async function mergeJudgments({ observations, judgments, store, questions
     }
     // A verdict that rests on something missing from the page needs a queue that offered enough of the page; otherwise it is unknown.
     const absence = restsOnAbsence(judgment);
-    if (absence && !coversPage(evidence, item.spans)) {
-      made.push(makeObservation({ family_id, unit_key, state: 'unknown', reason: ABSENCE_UNCOVERED, evidence_ref: item.evidence_ref, extra: { evaluator_type: MODEL_EVALUATOR, source_ref: extra.source_ref } }));
+    let notAccepted = null;
+    if (absence && !coversPage(evidence, item.spans)) notAccepted = { reason: ABSENCE_UNCOVERED, code: 'queue_coverage' };
+    else if (absence && state === 'fail') {
+      const reason = absenceRefuted(family_id, evidence, item.spans, { chrome: new Set(queue.site_chrome ?? []), names });
+      if (reason) notAccepted = { reason, code: 'visible' };
+    }
+    if (notAccepted) {
+      made.push(makeObservation({ family_id, unit_key, state: 'unknown', reason: notAccepted.reason, evidence_ref: item.evidence_ref,
+        extra: { evaluator_type: MODEL_EVALUATOR, source_ref: extra.source_ref, measurement: { not_accepted: notAccepted.code } } }));
       continue;
     }
-    if (absence && state === 'fail') extra.measurement = { ...extra.measurement, basis: ABSENCE_BASIS };
-    if (item.empty_page && state !== 'unknown') extra.measurement = { ...extra.measurement, empty_page: true };
+    if (state === 'fail' && absenceFamilies.has(family_id)) extra.measurement = { ...extra.measurement, basis: judgment.basis };
+    if (state !== 'unknown' && isEmptyPage(evidence)) extra.measurement = { ...extra.measurement, empty_page: true };
     if (site && state !== 'unknown') extra.measurement = { identity_basis: IDENTITY_BASIS[state] };
     if (state === 'not_applicable') extra.applicability_decision = { condition: judgment.condition, reason: judgment.reason, evidence_ref: item.evidence_ref };
     const partial = state === 'partial' ? partialBasis(judgment) : { basis: null, q: undefined };
