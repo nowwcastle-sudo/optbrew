@@ -652,9 +652,14 @@ function modelJudgmentRows(phase, input, snapshot, requireRef) {
   });
   // The site's identity is judged on the home page, chosen as the queue chose it: from the pages whose fetch verdict passed.
   const home = homeOf(input.observations.filter(x => x.family_id === 'fetch-response' && x.state === 'pass')
-    .filter(x => (audit.raw ?? []).some(entry => entry.evidence_ref === x.evidence_ref && entry.normalized_url === unitUrl(x.unit_key))).map(x => unitUrl(x.unit_key)));
+    .filter(x => (audit.raw ?? []).some(entry => entry.content_hash && entry.evidence_ref === x.evidence_ref && entry.normalized_url === unitUrl(x.unit_key))).map(x => unitUrl(x.unit_key)));
   return judgments.filter(obs => obs.state !== 'unknown').map(obs => {
     if (obs.state === 'not_applicable' && !isModelJudged(obs.family_id)) fail(obs, `${obs.family_id} is not a family a model may declare not applicable`);
+    if (obs.family_id === 'answer-clarity') {
+      const named = obs.measurement?.question_id;
+      if (obs.state === 'not_applicable' ? named !== undefined : !(input.run_context.protocol.question_panel ?? []).some(question => question.id === named))
+        fail(obs, obs.state === 'not_applicable' ? 'a not applicable answer-clarity verdict names no question' : 'an answer-clarity verdict names a question of the fixed panel');
+    }
     const raw = (audit.raw ?? []).find(x => x.evidence_ref === obs.evidence_ref && x.normalized_url === (isEntityFallback(obs.family_id, obs.unit_key) ? home : unitUrl(obs.unit_key)));
     if (!raw) fail(obs, 'its evidence is not the audit raw entry of the unit page');
     // Candidates are recomputed from the raw bytes, so a consistently forged queue cannot widen what a model may cite.
@@ -662,8 +667,13 @@ function modelJudgmentRows(phase, input, snapshot, requireRef) {
     for (const span of obs.evidence_span ?? []) {
       if (span.evidence_sha256 !== raw.content_hash) fail(obs, 'a span names evidence other than the unit page');
       try { checkSpan(requireRef(obs.evidence_ref).bytes, span); } catch (error) { fail(obs, error.message); }
-      if (!candidates.some(x => x.start === span.start && x.end === span.end)) fail(obs, `span ${span.start}-${span.end} is not a text run of the page`);
+      const candidate = candidates.find(x => x.start === span.start && x.end === span.end);
+      if (!candidate) fail(obs, `span ${span.start}-${span.end} is not a text run of the page`);
       if (!queues.some(queue => queuedSpan(queue, obs, span))) fail(obs, `span ${span.start}-${span.end} is not a candidate of the stored judge queue`);
+      // The text the model read is the text of that range, with inline tags left out: the queue cannot show it something else.
+      const offered = queues.flatMap(queue => queue.items.filter(x => x.unit_key === obs.unit_key && x.family_id === obs.family_id)).flatMap(x => x.spans)
+        .find(x => x.start === span.start && x.end === span.end);
+      if (offered.text !== candidate.text) fail(obs, `the queued text of span ${span.start}-${span.end} differs from the text of the page`);
     }
     return { phase, family_id: obs.family_id, unit_key: obs.unit_key, state: obs.state, evidence_ref: obs.evidence_ref, evidence_span: obs.evidence_span, label: MODEL_JUDGMENT_LABEL };
   });

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { readFileSync, writeFileSync } from 'node:fs';
-import { ENTITY_UNIT, QUESTION_UNIT, buildJudgeQueue, candidateSpans, checkSpan, deriveQuestionCoverage, mergeJudgments } from '../skills/optbrew/scripts/core/judgments.mjs';
+import { ENTITY_UNIT, QUESTION_UNIT, buildJudgeQueue, candidateSpans, checkSpan, deriveQuestionCoverage, homeOf, mergeJudgments } from '../skills/optbrew/scripts/core/judgments.mjs';
 import { blocks } from '../skills/optbrew/scripts/core/checks/index.mjs';
 import { makeObservation, unitKey } from '../skills/optbrew/scripts/core/checks/observation.mjs';
 import { openStore } from '../skills/optbrew/scripts/core/evidence-store.mjs';
@@ -450,6 +450,39 @@ test('text outside any tag, around inert bodies, and an unterminated tag are han
   assert.deepEqual(candidateSpans(Buffer.from(html), 'h').map(span => span.text), [lead, FIRST]);
 });
 
+test('inline tags do not split a sentence: the span covers them and its text has them left out (R78)', () => {
+  const html = '<p>이 문장 안에는 <a href="/x" class="y">링크</a>와 <code>코드</code>가 들어 있어서 <b>한 문장으로</b> 읽혀야 하며<br>태그는 보이지 않는다</p>';
+  const bytes = Buffer.from(html);
+  const spans = candidateSpans(bytes, 'h');
+  assert.equal(spans.length, 1, 'one sentence, one span');
+  assert.equal(spans[0].text, '이 문장 안에는 링크와 코드가 들어 있어서 한 문장으로 읽혀야 하며 태그는 보이지 않는다', 'no tag in the text; a line break reads as a space');
+  const range = bytes.subarray(spans[0].start, spans[0].end).toString('utf8');
+  assert.ok(range.startsWith('이 문장') && range.endsWith('보이지 않는다'), 'the range runs from the first to the last text byte');
+  assert.ok(range.includes('<a href'), 'and covers the inline tags');
+  assert.deepEqual(candidateSpans(bytes, 'h'), spans, 'the same bytes give the same spans and text');
+  const blocks = `<p>${FIRST}</p><div>${MIDDLE}</div><li>${LAST}</li>`;
+  assert.deepEqual(candidateSpans(Buffer.from(blocks), 'h').map(span => span.text), [FIRST, MIDDLE, LAST], 'p, div and li still end a span');
+});
+
+test('date and contact spans have their own allowance beside the cap of long spans (R78)', () => {
+  const long = Array.from({ length: 31 }, (_, n) => `<p>${n}번째 문단은 길이 순서로 상한을 채우기 위한 글이며 마흔 바이트를 넘도록 충분히 길게 쓴 글입니다</p>`).join('');
+  const shorts = Array.from({ length: 12 }, (_, n) => `<p>2026-10-${String(n + 10).padStart(2, '0')}</p>`).join('') + '<p>2026-10-10</p><p>문의 02-555-0142</p>';
+  const spans = candidateSpans(Buffer.from(long + shorts), 'h');
+  const texts = spans.map(span => span.text);
+  assert.equal(texts.filter(text => text.includes('번째 문단')).length, 30, 'the long spans keep their cap');
+  assert.equal(texts.filter(text => text.length < 20).length, 10, 'the short date and contact spans keep a cap of their own');
+  assert.equal(texts.filter(text => text === '2026-10-10').length, 1, 'the same short text once');
+  assert.ok(spans.every((span, i) => i === 0 || spans[i - 1].start < span.start), 'in document order');
+});
+
+test('the home page is chosen the same way whatever the order of the pages', () => {
+  const urls = ['https://example.com/ko/about', 'https://example.com/ko', 'https://example.com/en/'];
+  assert.equal(homeOf(urls), 'https://example.com/ko');
+  assert.equal(homeOf([...urls].reverse()), 'https://example.com/ko');
+  assert.equal(homeOf(['https://example.com/b', 'https://example.com/']), 'https://example.com/');
+  assert.equal(homeOf([]), null);
+});
+
 const naFor = (family, condition, span_ids, extra = {}) => ({ family_id: family, unit_key: unit(family), state: 'not_applicable', condition,
   reason: '쪽이 안내 문구뿐이라 항목이 적용되지 않는다', span_ids, ...extra });
 
@@ -549,13 +582,13 @@ test('question coverage exists only once a page was judged against a question, a
 
 test('the queue offers the site identity to the model only where code gave no verdict, with the names to judge against (F3)', async () => {
   const { store, observations, ref, sha256 } = await fixtureStore();
-  const queue = await buildJudgeQueue({ observations, store, names: ['옵트브루 센터'] });
+  const queue = await buildJudgeQueue({ observations, store, names: ['옵트브루 센터'], facts: [{ key: 'phone', value: '02-555-0142' }] });
   const item = queuedItem(queue, 'entity-identity');
   assert.equal(item.unit_key, ENTITY_UNIT);
   assert.equal(item.url, URL_A);
   assert.equal(item.evidence_ref, ref);
   assert.equal(item.evidence_sha256, sha256);
-  assert.deepEqual(item.identity, { names: ['옵트브루 센터'], host: 'example.com' });
+  assert.deepEqual(item.identity, { names: ['옵트브루 센터'], facts: [{ key: 'phone', value: '02-555-0142' }], host: 'example.com' });
   assert.deepEqual(item.spans.map(span => span.text), [FIRST, MIDDLE, LAST]);
   for (const state of ['pass', 'fail']) {
     const code = makeObservation({ family_id: 'entity-identity', unit_key: ENTITY_UNIT, state, reason: 'x', evidence_ref: ref });
@@ -590,6 +623,38 @@ test('a model judges the site identity from the home page spans, and only when i
   await assert.rejects(mergeJudgments({ observations: [...observations, code], store, judgments: [judgment] }), /already has a verdict/);
   const sameUnitOtherPage = { ...judgment, unit_key: unit('entity-identity') };
   await assert.rejects(mergeJudgments({ observations, store, judgments: [sameUnitOtherPage] }), /judged by code/);
+});
+
+test('the model\'s identity verdict: pass needs the name and another fact, name only is partial, no name is fail (R77)', async () => {
+  const { store, observations, ref } = await fixtureStore();
+  const queue = await buildJudgeQueue({ observations, store });
+  const spans = queuedItem(queue, 'entity-identity').spans.map(span => span.span_id);
+  const verdict = (state, extra = {}) => ({ family_id: 'entity-identity', unit_key: ENTITY_UNIT, state, reason: '홈 글을 읽고 판단했다', span_ids: spans.slice(0, 2), ...extra });
+  const made = async judgment => (await mergeJudgments({ observations, store, judgments: [judgment] })).find(x => x.unit_key === ENTITY_UNIT);
+  const named = await made(verdict('partial'));
+  assert.deepEqual([named.state, named.q, named.partial_basis, named.measurement], ['partial', 0.5, { kind: 'threshold_half' }, { identity_basis: 'name only' }], 'the name alone is half');
+  assert.deepEqual((await made(verdict('pass'))).measurement, { identity_basis: 'name and identifying fact' });
+  const missing = await made(verdict('fail'));
+  assert.deepEqual([missing.state, missing.q, missing.measurement], ['fail', 0, { identity_basis: 'no matching name' }]);
+  assert.equal(Object.hasOwn(await made(verdict('unknown', { span_ids: [] })), 'measurement'), false, 'nothing to compare: unknown');
+  assert.equal(named.evidence_ref, ref);
+  await assert.rejects(mergeJudgments({ observations, store, judgments: [{ family_id: 'freshness-truth', unit_key: unit('freshness-truth'), state: 'partial', reason: 'x', span_ids: spans.slice(0, 1) }] }), /is binary/, 'the other binary families still refuse a partial');
+});
+
+test('answer-clarity: a page about a question that does not answer it is a fail; not applicable names no question and needs the registry condition (R79)', async () => {
+  const { store, observations } = await fixtureStore();
+  const queue = await buildJudgeQueue({ observations, store });
+  const span = [queuedItem(queue, 'answer-clarity').spans[0].span_id];
+  const merge = judgment => mergeJudgments({ observations, store, questions: PANEL, judgments: [{ family_id: 'answer-clarity', unit_key: unit('answer-clarity'), reason: '판단했다', span_ids: span, ...judgment }] });
+  const failed = (await merge({ state: 'fail', question_id: 'q1' })).find(x => x.family_id === 'answer-clarity');
+  assert.deepEqual([failed.state, failed.q, failed.measurement], ['fail', 0, { question_id: 'q1' }], 'relevant but unanswered');
+  await assert.rejects(merge({ state: 'fail' }), /needs question_id from the question list/, 'a fail names the question it fails');
+  const free = (await merge({ state: 'not_applicable', condition: 'no_matching_questions' })).find(x => x.family_id === 'answer-clarity');
+  assert.deepEqual([free.state, free.applicability_decision.condition, Object.hasOwn(free, 'measurement')], ['not_applicable', 'no_matching_questions', false]);
+  await assert.rejects(merge({ state: 'not_applicable', condition: 'no_matching_questions', question_id: 'q1' }), /names no question/, 'naming a question means pass, partial or fail');
+  await assert.rejects(merge({ state: 'not_applicable' }), /needs a condition of the family/);
+  await assert.rejects(merge({ state: 'not_applicable', condition: 'no_material_claims' }), /needs a condition of the family/);
+  assert.match(readFileSync(new URL('../skills/optbrew/references/judging.md', import.meta.url), 'utf8'), /질문에 관련된 쪽이 답하지 않으면 `fail`이지 `not_applicable`이 아니다/);
 });
 
 const SITE_BODY = route => `<p>페이지 ${route} 에만 있는 고유한 문장이며 다른 쪽과 바이트가 달라지도록 쓴 글입니다</p>`;
@@ -646,6 +711,9 @@ test('report replay recomputes the question coverage from the answers and refuse
     put(withCoverage);
     const report = buildReport(run.scenario.packet);
     assert.equal(report.json.model_judgments.length, 2, 'the derived verdict is code\'s, not a model judgment row');
+    assert.deepEqual(report.json.composed.conditions.question_coverage.map(x => [x.question_id, x.pages.length]), [['q1', 2], ['q2', 0]]);
+    const section = report.markdown.slice(report.markdown.indexOf('## 모델 판단'));
+    assert.ok(section.includes('| 운영 시간은 언제인가? |') && section.includes('| 비용은 얼마인가? | 없음 |'), 'the model-judgment section lists each question with the pages that answer it');
     assert.ok(run.scenario.packet.baseline.input.observations.some(x => x.unit_key === QUESTION_UNIT));
     const swapped = change => put(withCoverage.map(x => x.unit_key === QUESTION_UNIT ? { ...x, ...change } : x));
     const follows = /does not follow from the answer-clarity judgments/;
@@ -658,9 +726,35 @@ test('report replay recomputes the question coverage from the answers and refuse
     put(withCoverage.filter(x => x.family_id !== 'answer-clarity'));
     assert.throws(() => buildReport(run.scenario.packet), follows, 'a figure with no answers behind it');
     put(withCoverage.map(({ evidence_span, ...x }) => x.unit_key === clarity('/') ? { ...x, evaluator_type: 'code', source_ref: 'optbrew:judgment-derived' } : { ...x, ...(evidence_span ? { evidence_span } : {}) }));
-    assert.throws(() => buildReport(run.scenario.packet), /./, 'the derived source on any other unit');
+    assert.throws(() => buildReport(run.scenario.packet), /does not follow from the answer-clarity judgments|is judged by a model through the judge queue/, 'the derived source on any other unit');
     put(withCoverage);
     buildReport(run.scenario.packet);
+  } finally { await run.site.close(); }
+});
+
+test('replay refuses an answer-clarity verdict whose question is not on the panel, and a queue that shows other text than the page has (R79, R78)', { timeout: 120000 }, async () => {
+  const inline = '<p>이 문장 안에는 <a href="/x">링크</a>와 <code>코드</code>가 들어 있어서 한 문장으로 읽혀야 하며 태그는 보이지 않는다</p>';
+  const run = await modelRun('judge-inline', ['/'], { enable: ['answer-clarity', 'question-coverage'], questions: PANEL, bodyOf: () => inline, withContext: true });
+  try {
+    const unit_key = unitKey('answer-clarity', `${run.site.origin}/`);
+    const item = run.queue.items.find(x => x.unit_key === unit_key);
+    const sentence = item.spans.find(span => span.text.includes('링크와 코드가'));
+    assert.equal(sentence.text, '이 문장 안에는 링크와 코드가 들어 있어서 한 문장으로 읽혀야 하며 태그는 보이지 않는다');
+    const made = (await run.merge([answerPass(unit_key, 'q1', { span_ids: [sentence.span_id] })])).find(x => x.unit_key === unit_key);
+    forge(run, list => list.push(made));
+    buildReport(run.scenario.packet);
+    forge(run, list => list.pop());
+    forge(run, list => list.push({ ...made, measurement: { question_id: 'q9' } }));
+    assert.throws(() => buildReport(run.scenario.packet), /names a question of the fixed panel/);
+    forge(run, list => list.pop());
+    const { measurement, ...bare } = made;
+    assert.ok(measurement);
+    forge(run, list => list.push(bare));
+    assert.throws(() => buildReport(run.scenario.packet), /names a question of the fixed panel/);
+    forge(run, list => list.pop());
+    await forgeQueue(run, queue => { queue.items.find(x => x.unit_key === unit_key).spans.find(span => span.span_id === sentence.span_id).text = '다른 글을 읽었다고 속인 문장'; });
+    forge(run, list => list.push(made));
+    assert.throws(() => buildReport(run.scenario.packet), /queued text of span .* differs from the text of the page/);
   } finally { await run.site.close(); }
 });
 

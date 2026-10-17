@@ -19,6 +19,8 @@ export const QUEUE_KIND = 'judge-queue';
 export const ENTITY_UNIT = unitKey(ENTITY_FAMILY, 'site');
 export const QUESTION_UNIT = unitKey(QUESTION_FAMILY, 'site');
 const QUEUE_SECTION = 'judge_queue';
+/** What the model's identity verdict rests on, by state (recorded in its measurement): the name with another fact, the name alone, or no matching name. */
+const IDENTITY_BASIS = { pass: 'name and identifying fact', partial: 'name only', fail: 'no matching name' };
 const NONE_ANSWERED = problem('Question coverage: no audited page answers a question of the fixed list', 'question-coverage.none-answered');
 const registry = JSON.parse(readFileSync(new URL('../../references/check-registry.json', import.meta.url)));
 const verdictMode = new Map(registry.families.map(family => [family.family_id, family.verdict_mode]));
@@ -31,6 +33,9 @@ const INERT = /<!--[\s\S]*?(?:-->|$)|<(script|style|template|noscript)\b[\s\S]*?
 // An inert run is blanked to this character between its angle brackets, so it still reads as one tag and splits the text around it.
 const BLANK = '\0';
 const TAG_OPENER = /[A-Za-z/!?\0]/;
+const TAG_NAME = /^<\/?([A-Za-z][A-Za-z0-9]*)/;
+// Tags inside a line of text: they do not end a span, and the text shown to the model has them taken out.
+const INLINE_TAGS = new Set(['a', 'abbr', 'b', 'br', 'code', 'em', 'i', 'mark', 'small', 'span', 'strong', 'sub', 'sup', 'time']);
 // Short text that is still worth offering: a date or a way to reach the owner. The floor in limits.json does not drop these.
 const SHORT_TEXT_EXCEPTIONS = [
   /\d{4}\s*[-./년]\s*\d{1,2}\s*[-./월]\s*\d{1,2}/u,
@@ -57,8 +62,15 @@ export const isCodeJudged = family_id => blocks.some(block => block.family_id ==
 /** The one code-judged unit a model may judge: the site's identity, when code produced no verdict for it. */
 export const isEntityFallback = (family_id, unit_key) => family_id === ENTITY_FAMILY && unit_key === ENTITY_UNIT;
 
-/** The home page among fetched pages: the one at the root of the site, else the first. Queue building and report replay both choose it. */
-export const homeOf = urls => urls.find(url => new URL(url).pathname === '/') ?? urls[0] ?? null;
+/**
+ * The home page among fetched pages: a page at the root of the site, else the page with the shortest path; ties go to the smaller address,
+ * so the choice does not depend on the order the pages were fetched in. Queue building and report replay both choose it.
+ */
+export const homeOf = urls => {
+  const keyed = urls.map(url => ({ url, path: new URL(url).pathname }));
+  keyed.sort((a, b) => (a.path === '/' ? 0 : 1) - (b.path === '/' ? 0 : 1) || a.path.length - b.path.length || (a.url < b.url ? -1 : a.url > b.url ? 1 : 0));
+  return keyed[0]?.url ?? null;
+};
 
 /**
  * Throw unless `{ start, end }` is a non-empty UTF-8 byte range (end exclusive) of `bytes` that begins and ends on character
@@ -89,16 +101,36 @@ function tagEnd(text, from) {
   return first < 0 ? text.length : first + 1;
 }
 
-/** The `[start, end)` ranges of `masked` that lie between tags. */
+/** The ranges of `[from, to)` that lie outside every tag. */
+function piecesOf(masked, from, to) {
+  const pieces = [];
+  let index = from;
+  let piece = from;
+  while (index < to) {
+    if (masked[index] === '<' && TAG_OPENER.test(masked[index + 1] ?? '')) {
+      if (index > piece) pieces.push([piece, index]);
+      index = Math.min(tagEnd(masked, index), to);
+      piece = index;
+    } else index++;
+  }
+  if (to > piece) pieces.push([piece, to]);
+  return pieces;
+}
+
+/** The `[start, end)` ranges of `masked` that lie between tags that break a line of text; an inline tag (a, code, em, ...) does not break it. */
 function textRuns(masked) {
   const runs = [];
   let from = 0;
   let index = 0;
   while (index < masked.length) {
     if (masked[index] === '<' && TAG_OPENER.test(masked[index + 1] ?? '')) {
-      if (index > from) runs.push([from, index]);
-      index = tagEnd(masked, index);
-      from = index;
+      const name = TAG_NAME.exec(masked.slice(index, index + 24))?.[1].toLowerCase();
+      const end = tagEnd(masked, index);
+      if (!INLINE_TAGS.has(name)) {
+        if (index > from) runs.push([from, index]);
+        from = end;
+      }
+      index = end;
     } else index++;
   }
   if (masked.length > from) runs.push([from, masked.length]);
@@ -106,36 +138,62 @@ function textRuns(masked) {
 }
 
 /**
- * Candidate spans of one HTML body: each run of text between tags, trimmed of ASCII whitespace, as UTF-8 byte offsets. Text inside a
- * tag (attribute values) and inside script and style is never offered. The body is scanned as bytes (latin1), so offsets are byte
- * offsets and a run can only start or end next to an ASCII character, never inside a multi-byte one. A run shorter than the floor is
- * dropped unless it is a date or a contact. Runs with a secret are dropped; the longest runs are kept, in document order.
+ * The text of a run: its pieces outside tags, with leading and trailing ASCII whitespace taken off the whole. Returns the byte range
+ * from the first to the last text byte (inline tags in between lie inside it) and the text those pieces hold, tags left out.
+ */
+function trimmedRun(masked, bytes, from, to) {
+  const pieces = piecesOf(masked, from, to);
+  while (pieces.length) {
+    const [start, end] = pieces[0];
+    const lead = LEADING.exec(masked.slice(start, end))[0].length;
+    if (start + lead >= end) pieces.shift(); else { pieces[0] = [start + lead, end]; break; }
+  }
+  while (pieces.length) {
+    const [start, end] = pieces.at(-1);
+    const trail = masked.slice(start, end).length - masked.slice(start, end).replace(TRAILING, '').length;
+    if (end - trail <= start) pieces.pop(); else { pieces[pieces.length - 1] = [start, end - trail]; break; }
+  }
+  if (!pieces.length) return null;
+  // A line break between two pieces reads as a space, so two words are not run together.
+  const text = pieces.map(([start, end], index) => (index && /<br\b/i.test(masked.slice(pieces[index - 1][1], start)) ? ' ' : '') +
+    bytes.subarray(start, end).toString('utf8')).join('');
+  return { start: pieces[0][0], end: pieces.at(-1)[1], text };
+}
+
+/**
+ * Candidate spans of one HTML body: each line of text between tags that break a line, as UTF-8 byte offsets. An inline tag (a, code,
+ * em, strong, ...) does not break the line: its span covers the tag, and its `text` is the text of the range with the tags left out.
+ * Text inside a tag (attribute values) and inside script and style is never offered. The body is scanned as bytes (latin1), so
+ * offsets are byte offsets and a span can only start or end next to an ASCII character, never inside a multi-byte one. A line shorter
+ * than the floor is dropped unless it is a date or a contact; those (one of each text) have an allowance of their own beside the
+ * cap. Lines with a secret are dropped; the longest lines are kept, in document order.
  */
 export function candidateSpans(bytes, evidence_sha256) {
-  const { judge_spans_per_unit: cap, judge_span_min_bytes: minimum } = limits();
+  const { judge_spans_per_unit: cap, judge_span_min_bytes: minimum, judge_short_spans_per_unit: shortCap } = limits();
   const masked = bytes.toString('latin1').replace(INERT, found => `<${BLANK.repeat(found.length - 2)}>`);
-  const spans = [];
+  const long = [];
+  const short = new Map();
   for (const [from, to] of textRuns(masked)) {
-    const run = masked.slice(from, to);
-    const start = from + LEADING.exec(run)[0].length;
-    const end = from + run.replace(TRAILING, '').length;
-    if (end <= start) continue;
-    const text = bytes.subarray(start, end).toString('utf8');
-    if (end - start < minimum && !SHORT_TEXT_EXCEPTIONS.some(pattern => pattern.test(text))) continue;
-    if (!sensitive.test(text)) spans.push({ span_id: `${start}-${end}`, evidence_sha256, start, end, text });
+    const run = trimmedRun(masked, bytes, from, to);
+    if (!run || sensitive.test(run.text)) continue;
+    const span = { span_id: `${run.start}-${run.end}`, evidence_sha256, start: run.start, end: run.end, text: run.text };
+    const size = Buffer.byteLength(run.text);
+    if (size >= minimum) long.push({ span, size });
+    else if (!short.has(run.text) && SHORT_TEXT_EXCEPTIONS.some(pattern => pattern.test(run.text))) short.set(run.text, span);
   }
-  return spans.sort((a, b) => (b.end - b.start) - (a.end - a.start) || a.start - b.start).slice(0, cap).sort((a, b) => a.start - b.start);
+  const kept = long.sort((a, b) => b.size - a.size || a.span.start - b.span.start).slice(0, cap).map(x => x.span);
+  return [...kept, ...[...short.values()].slice(0, shortCap)].sort((a, b) => a.start - b.start);
 }
 
 /**
  * The model's work list: for every page that was fetched and every model-judged family with no verdict yet, the page's
  * candidate spans. Evidence is read through the store, so a body that no longer matches its recorded hash fails here.
  * With the run's `context`, only the families the run plans are offered. When code gave no verdict on the site's identity, the
- * home page also carries that site unit, with the names the start answers confirmed (`names`) and the host.
+ * home page also carries that site unit, with the names and the other facts the start answers confirmed (`names`, `facts`) and the host.
  * Returns `{ items: [{ family_id, unit_key, url, evidence_ref, evidence_sha256, spans }] }` and stores it in the run evidence
  * (kind `judge-queue`, listed with its hash in the index section `judge_queue`); mergeJudgments and report replay read that copy.
  */
-export async function buildJudgeQueue({ observations, store, context = null, names = [] }) {
+export async function buildJudgeQueue({ observations, store, context = null, names = [], facts = [] }) {
   const index = await store.index();
   const { raw } = index;
   // Raw bodies are named by their hash, so pages with identical bytes share one evidence file; a raw entry is told apart by its address too.
@@ -168,7 +226,7 @@ export async function buildJudgeQueue({ observations, store, context = null, nam
   if (home && spansOf.get(home).length && offered(ENTITY_FAMILY) && !judged.has(ENTITY_UNIT)) {
     const entry = pages.get(home);
     items.push({ family_id: ENTITY_FAMILY, unit_key: ENTITY_UNIT, url: home, evidence_ref: entry.evidence_ref, evidence_sha256: entry.content_hash,
-      spans: spansOf.get(home), identity: { names, host: new URL(home).host } });
+      spans: spansOf.get(home), identity: { names, facts, host: new URL(home).host } });
   }
   const { ref, sha256 } = await store.write(QUEUE_KIND, `${JSON.stringify(queue, null, 2)}\n`);
   if (!(index[QUEUE_SECTION] ?? []).some(entry => entry.sha256 === sha256)) await store.append(QUEUE_SECTION, { evidence_ref: ref, sha256 });
@@ -231,6 +289,8 @@ export async function mergeJudgments({ observations, judgments, store, questions
       if (site) throw new Error(`${unit_key} is a site unit and cannot be not_applicable`);
       if (!naConditions.get(family_id).includes(judgment.condition))
         throw new Error(`a not_applicable judgment for ${unit_key} needs a condition of the family (${naConditions.get(family_id).join(', ')})`);
+      // A question named means the page is meant to answer it: the verdict is pass, partial or fail. Not applicable is for a page no question is about.
+      if (family_id === ANSWER_FAMILY && judgment.question_id !== undefined) throw new Error(`a not_applicable answer-clarity judgment for ${unit_key} names no question`);
     }
     if (family_id === ANSWER_FAMILY && ['pass', 'partial', 'fail'].includes(state)) {
       if (!questionIds.has(judgment.question_id)) throw new Error(`an answer-clarity judgment for ${unit_key} needs question_id from the question list`);
@@ -251,6 +311,7 @@ export async function mergeJudgments({ observations, judgments, store, questions
         checkSpan(bytes, part);
       }
     }
+    if (site && state !== 'unknown') extra.measurement = { identity_basis: IDENTITY_BASIS[state] };
     if (state === 'not_applicable') extra.applicability_decision = { condition: judgment.condition, reason: judgment.reason, evidence_ref: item.evidence_ref };
     const partial = state === 'partial' ? partialBasis(judgment) : { basis: null, q: undefined };
     // A q the model supplies is ignored: the state fixes it (pass 1, fail 0, unknown and not applicable none) and a partial takes the basis's q.

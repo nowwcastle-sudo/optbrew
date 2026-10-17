@@ -3,6 +3,7 @@ import { CWV_FAMILIES } from './checks/cwv-field.mjs';
 import { CONTENT_AFTER_RENDER } from './checks/render-content.mjs';
 import { messageKey } from './findings.mjs';
 import { koText } from './messages.mjs';
+import { OBSERVATION_SOURCES, QUESTION_UNIT } from './judgments.mjs';
 import { keySetRunbook, runbookHarnesses } from './probe.mjs';
 import { remainingRunbooks, runbookEntry, startRunbooks } from './runbooks.mjs';
 
@@ -42,7 +43,8 @@ const TRANSPORT_NAMES = { direct: '직접 연결', proxy: '프록시' };
 /** One headline per profile. Below the coverage threshold the single number is withheld and only the measured subset is shown. */
 function scoreHeadline(result) {
   const exact = result.A > 0 ? 100 * result.M / result.A : null;
-  const coverageOk = result.score !== null && exact !== null && exact >= COVERAGE_THRESHOLD - 1e-9;
+  // Sufficiency reads the value the report shows, so a shown 79.9% is never called sufficient.
+  const coverageOk = result.score !== null && exact !== null && floorTenth(exact) >= COVERAGE_THRESHOLD;
   // The design spec also asks for verdicts on the core access and indexing checks before a score counts as sufficient.
   const coreOk = (result.unknown_core ?? []).length === 0;
   const status = !coverageOk ? 'insufficient_coverage' : !coreOk ? 'insufficient_core' : 'sufficient';
@@ -168,6 +170,13 @@ function modelNotApplicable(verified) {
   for (const row of verified.model_judgments) if (row.phase === phase && row.state === 'not_applicable') counts[row.family_id] = (counts[row.family_id] ?? 0) + 1;
   return counts;
 }
+/** Which audited pages answer which question of the fixed panel, from the derived question-coverage verdict of a phase; null when it has none. */
+function questionCoverageList(input) {
+  const verdict = input.observations.find(obs => obs.unit_key === QUESTION_UNIT && obs.source_ref === OBSERVATION_SOURCES.derived);
+  if (!verdict) return null;
+  const questions = new Map(input.run_context.protocol.question_panel.map(question => [question.id, question.question]));
+  return verdict.measurement.list.map(({ question_id, answered_by }) => ({ question_id, question: questions.get(question_id) ?? question_id, pages: answered_by.map(addressOf) }));
+}
 const notApplicableText = counts => {
   const entries = Object.entries(counts);
   return entries.length ? `${count(entries.reduce((sum, [, n]) => sum + n, 0))} (${entries.map(([family, n]) => `${family} ${count(n)}`).join(', ')})` : '없음';
@@ -219,7 +228,7 @@ export function composeReport(verified) {
   const fixes = sortedFixes(verified.findings, verified.changes);
   const completeness = completenessOf(verified);
   const afterRender = latest.observations.some(obs => obs.family_id === 'render-content' && obs.state === 'pass' && obs.reason.startsWith(CONTENT_AFTER_RENDER));
-  const conditions = { probe: latest.run_context.environment_probe, model_judgments: verified.model_judgments, model_not_applicable: modelNotApplicable(verified), lab_cwv: verified.lab_cwv, start_redirect: verified.start_redirect ?? null,
+  const conditions = { probe: latest.run_context.environment_probe, model_judgments: verified.model_judgments, model_not_applicable: modelNotApplicable(verified), question_coverage: questionCoverageList(latest), lab_cwv: verified.lab_cwv, start_redirect: verified.start_redirect ?? null,
     blockers: { before: blockerSummary(verified.baseline.scores), after: verified.after ? blockerSummary(verified.after.scores) : null },
     notes: afterRender ? [JAVASCRIPT_NOTE] : [] };
   conditions.lines = conditionLines(conditions, verified);
@@ -288,6 +297,9 @@ function conditionLines(conditions, verified) {
   ];
 }
 
+/** The questions of the fixed panel and the pages that answer each, as a table for the model-judgment section; empty when there is no coverage verdict. */
+const questionLines = list => list ? `${table(['질문', '답하는 페이지'], list.map(item => [item.question, item.pages.join(', ') || '없음']))}\n\n` : '';
+
 /** `report.md` and the table rows `report.json` carries, both rendered from the composed report. */
 export function renderReport(composed, verified) {
   const tables = tableRows(composed, verified);
@@ -305,7 +317,7 @@ export function renderReport(composed, verified) {
     `## ${SECTION_TITLES.conditions}\n\n${[...composed.conditions.lines.map(({ label, value }) => `${label}: ${value}`), ...composed.conditions.notes].map(line => `- ${html(line)}\n`).join('')}\n` +
     `## ${SECTION_TITLES.remaining}\n\n${table(['문제', '이유', '필요한 입력 / 권한', '다음 행동', '다시 볼 때'], tables.remaining_work)}\n\n` +
     `## ${SECTION_TITLES.outcomes}\n\n${table(['검색 엔진 / 속성', '지표', '기간 / 표본', '이전 원값', '이후 원값', '차이', '완료 여부', '한계'], tables.actual_outcomes)}\n\n` +
-    (tables.model_judgments.length ? `## ${SECTION_TITLES.judgments}\n\n${table(['단계', '검사 / 대상', '상태', '근거 구간 (UTF-8 바이트, 끝 제외)', '근거'], tables.model_judgments)}\n\n` : '') +
+    (tables.model_judgments.length ? `## ${SECTION_TITLES.judgments}\n\n${html(`모델이 해당 없음으로 판정한 단위: ${notApplicableText(composed.conditions.model_not_applicable)}`)}\n\n${questionLines(composed.conditions.question_coverage)}${table(['단계', '검사 / 대상', '상태', '근거 구간 (UTF-8 바이트, 끝 제외)', '근거'], tables.model_judgments)}\n\n` : '') +
     `증거 폴더: ${html(verified.evidence_root)}; 실행 ID: ${html(context.run_id)}. 점수 계산에 쓴 원본 값은 report.json에서 다시 계산할 수 있습니다.\n`;
   return { markdown, tables };
 }

@@ -106,18 +106,19 @@ const sentenceOf = h => h.status === 'sufficient' ? `확인한 범위의 통과�
   h.status === 'insufficient_coverage' ? `${h.coverage_threshold}% 이상 확인해야 점수를 냅니다. 지금 ${percent(coverageOf(h))}입니다.` :
   h.status === 'insufficient_core' ? `접근·색인 검사 ${esc(h.unresolved_core)}건에 결과가 없어 점수를 내지 않습니다.` : '감사 기록이 없어 점수를 내지 않습니다.';
 
-const profileHtml = row => {
+const profileHtml = (row, excluded) => {
   const phase = row.after ?? row.before, h = phase.headline, shown = coverageOf(h);
   const difference = row.after ? `<p>확인 범위 이전 ${percent(coverageOf(row.before.headline))} → 이후 ${percent(coverageOf(row.after.headline))}; ${typeof row.difference === 'number' ? `이전 → 이후 차이 ${row.difference}점${row.between_measured_subsets ? ' (확인한 범위끼리의 비교)' : ''}` : '두 단계를 비교할 수 없어 차이는 알 수 없습니다'}</p>` : '';
   return `<li class="profile"><div class="head"><strong>${esc(row.profile)}</strong><span class="chip">${esc(VERDICTS[h.status])}</span></div>` +
     `${typeof shown === 'number' ? `<meter min="0" max="100" value="${shown}" aria-label="확인 범위 ${shown}%">${shown}%</meter>` : ''}` +
     `<p class="big">확인 범위 ${percent(shown)}</p><p>${sentenceOf(h)}</p>` +
+    `${excluded ? `<p class="note">모델이 해당 없음으로 뺀 단위 ${excluded}건이 이 확인 범위에서 빠져 있습니다.</p>` : ''}` +
     `<details><summary>자세히</summary><p>${esc(headlineLine(h))}</p>${difference}<p class="note">방문자 실측(CWV)을 뺀 확인 범위 ${percent(row.coverage_without_cwv)}</p></details></li>`;
 };
 
-const completenessSection = ({ completeness }) =>
+const completenessSection = ({ completeness, conditions }) =>
   `<section id="completeness"><h2>${SECTION_TITLES.completeness}</h2><p class="note">점수는 확인한 범위 안의 통과율입니다. 실제 검색 성과가 아닙니다.</p>` +
-  `${completeness.length ? `<ul class="profiles">${completeness.map(profileHtml).join('')}</ul>` : '<p>점수를 낼 영역이 없어 확인 범위를 알 수 없습니다.</p>'}</section>`;
+  `${completeness.length ? `<ul class="profiles">${completeness.map(row => profileHtml(row, Object.values(conditions.model_not_applicable).reduce((sum, n) => sum + n, 0))).join('')}</ul>` : '<p>점수를 낼 영역이 없어 확인 범위를 알 수 없습니다.</p>'}</section>`;
 
 const blankSection = (composed, runbooks, level) => {
   const byId = new Map(runbooks.map(runbook => [runbook.id, runbook]));

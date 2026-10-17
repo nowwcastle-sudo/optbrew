@@ -334,6 +334,24 @@ test('the three formats carry the same numbers', () => {
   assert.ok(page.indexOf('id="fixes"') < page.indexOf('id="completeness"') && page.indexOf('id="completeness"') < page.indexOf('id="blank"'), 'fixes, completeness, blanks, in the design order');
 });
 
+test('the units a model declared not applicable are counted under model judgments in md and on each profile card in html (M1)', () => {
+  const row = { phase: 'baseline', family_id: 'claim-support', unit_key: 'claim-support|https://s.test/', state: 'not_applicable', evidence_ref: 'e', evidence_span: [{ start: 0, end: 3 }], label: 'l' };
+  const verified = verifiedOf({ model_judgments: [row, { ...row, unit_key: 'claim-support|https://s.test/b' }, { ...row, family_id: 'freshness-truth', unit_key: 'freshness-truth|https://s.test/' }] });
+  const composed = composeReport(verified);
+  assert.deepEqual(composed.conditions.model_not_applicable, { 'claim-support': 2, 'freshness-truth': 1 });
+  const markdown = renderReport(composed, verified).markdown;
+  assert.ok(markdown.slice(markdown.indexOf('## 모델 판단')).includes('모델이 해당 없음으로 판정한 단위: 3건 (claim-support 2건, freshness-truth 1건)'));
+  assert.ok(htmlOf(composed).includes('모델이 해당 없음으로 뺀 단위 3건이 이 확인 범위에서 빠져 있습니다'));
+  assert.ok(!htmlOf(composeReport(verifiedOf())).includes('모델이 해당 없음으로 뺀 단위'), 'no note when the model declared none');
+});
+
+test('a coverage that shows as 79.9% is not sufficient (M12)', () => {
+  const verified = verifiedOf();
+  const at = M => composeReport({ ...verified, baseline: { ...verified.baseline, scores: [result({ A: 1000, M, N: M, score: 95, coverage: 80 })] } }).completeness[0].before.headline;
+  assert.deepEqual([at(799.99999).status, at(799.99999).coverage], ['insufficient_coverage', 79.9]);
+  assert.deepEqual([at(800).status !== 'insufficient_coverage', at(800).coverage], [true, 80], 'at 80.0 the coverage rule is met (the fixture is unaudited, so it is not called sufficient)');
+});
+
 test('one rounding rule shows every coverage', () => {
   const verified = verifiedOf();
   const changed = { ...verified, baseline: { ...verified.baseline, scores: [result({ A: 1000, M: 87.9, score: 50, coverage: 8.8 })] } };

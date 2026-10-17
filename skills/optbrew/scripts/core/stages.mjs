@@ -431,7 +431,7 @@ const deriveStage = {
 /**
  * The queue as the model reads it: the fixed question list, then one entry per page, with the page's candidate spans once and the
  * units to judge on it. The stored queue keeps one item per unit (each repeating the page's spans); this file is only the shorter
- * view of it. A unit that has names to judge against (the site's identity) keeps them.
+ * view of it. A unit that has names and facts to judge against (the site's identity) keeps them.
  */
 function queueByPage(queue, panel) {
   const pages = new Map();
@@ -449,8 +449,10 @@ const judgeStage = {
   async run(state) {
     const { store, out, context } = state;
     const panel = context.protocol.question_panel;
-    const names = (state.answers?.facts ?? []).filter(fact => fact.key === NAME_FACT).map(fact => fact.value);
-    const queue = await buildJudgeQueue({ observations: state.observations, store, context, names });
+    const confirmed = state.answers?.facts ?? [];
+    const names = confirmed.filter(fact => fact.key === NAME_FACT).map(fact => fact.value);
+    const facts = confirmed.filter(fact => fact.key !== NAME_FACT).map(({ key, value }) => ({ key, value }));
+    const queue = await buildJudgeQueue({ observations: state.observations, store, context, names, facts });
     await writeFile(path.join(out, QUEUE_FILE), json(queueByPage(queue, panel)));
     if (state.judgments) {
       const merged = await mergeJudgments({ observations: state.observations, judgments: state.judgments, store, questions: panel });
