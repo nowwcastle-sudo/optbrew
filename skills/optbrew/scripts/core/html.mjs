@@ -9,9 +9,11 @@ export function stripInert(html) {
 export const stripComments = html => String(html ?? '').replace(/<!--[\s\S]*?(?:-->|$)/g, '');
 
 const named = { amp: '&', lt: '<', gt: '>', quot: '"', apos: "'", nbsp: ' ' };
+// A numeric reference names a character only up to U+10FFFF and outside the surrogates; any other one stays as written (site text is untrusted).
+const codePoint = n => Number.isSafeInteger(n) && n <= 0x10ffff && !(n >= 0xd800 && n <= 0xdfff) ? String.fromCodePoint(n) : null;
 /** Decode the character references that appear in attribute values. */
 export const decodeEntities = value => String(value).replace(/&(?:#(\d+)|#x([0-9a-f]+)|(amp|lt|gt|quot|apos|nbsp));/gi,
-  (match, dec, hex, name) => dec ? String.fromCodePoint(Number(dec)) : hex ? String.fromCodePoint(parseInt(hex, 16)) : named[name.toLowerCase()]);
+  (match, dec, hex, name) => dec ? codePoint(Number(dec)) ?? match : hex ? codePoint(parseInt(hex, 16)) ?? match : named[name.toLowerCase()]);
 
 /** Absolute hrefs of anchors, resolved against the response URL. */
 export function anchorLinks(html, base) {

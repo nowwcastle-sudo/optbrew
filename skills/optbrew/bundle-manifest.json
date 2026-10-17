@@ -620,7 +620,7 @@
     },
     {
       "path": "references/runbooks/cwv-site-collection.md",
-      "sha256": "af052897a78b4db85b1e71c974e6b33a6d39b93a1410678f084cfbc9b06bac18"
+      "sha256": "fc224bd56ed2716bd142e6e5ee5a31e12f7daf26f6c283bdc2264a7847d2554e"
     },
     {
       "path": "references/runbooks/google-api-key.md",
@@ -832,7 +832,7 @@
     },
     {
       "path": "scripts/core/html.mjs",
-      "sha256": "18ca332a009cb267fe3d0481a2d3628705d3948297b81e7a92e6e8bedb4e0e97"
+      "sha256": "9bcf0437d092f1d73741edf880556893a0fc0e2d2cb471c21a6eede1737fa8bf"
     },
     {
       "path": "scripts/core/index-targets.mjs",
@@ -935,5 +935,5 @@
       "sha256": "dca0bbd03fbf591c4aca6a568be76615eb48d69f7df0c634886f652b54f3f46d"
     }
   ],
-  "bundle_hash": "19b3e3be0e7c55964bbb56e0f22ccc2da4c26f359a29422a471d4a88b6c6d6ae"
+  "bundle_hash": "9742ecdb43285466264d2d6380b1c23e081cc02bc06d26ead459df3987ba5cce"
 }
