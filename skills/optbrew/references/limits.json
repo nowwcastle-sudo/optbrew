@@ -10,6 +10,7 @@
   "judge_span_min_bytes": 40,
   "judge_span_max_bytes": 2000,
   "judge_short_spans_per_unit": 10,
+  "judge_absence_min_coverage": 0.5,
   "chrome_launch_timeout_ms": 30000,
   "chrome_close_grace_ms": 5000,
   "cdp_command_timeout_ms": 30000,
@@ -19,5 +20,6 @@
   "psi_attempts": 1,
   "cwv_timeout_ms": 60000,
   "cwv_max_bytes": 10485760,
-  "preflight_pages": 10
+  "preflight_pages": 10,
+  "redirect_reserve": { "share": 0.1, "min": 2 }
 }

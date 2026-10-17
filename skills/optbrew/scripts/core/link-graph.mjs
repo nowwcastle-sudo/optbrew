@@ -79,11 +79,11 @@ function pathMentioned({ url, artifact }, rows) {
  * An unlinked page stays undecided when another page's own bytes (inline scripts included) name its path, or when a
  * script file that could build the link was not collected, unless a fetched sitemap that lists other pages leaves it out.
  * No page is an orphan when the crawl was cut short, fewer than two pages were collected, or the sitemap is an index
- * whose child sitemaps were not fetched.
+ * whose child sitemaps were not fetched, or a declared sitemap was never fetched.
  */
 export function findOrphans({ pageRows, rows, graph, sitemaps, complete }) {
   const orphans = new Set();
-  if (rows.length < 2 || !complete || sitemaps.index) return orphans;
+  if (rows.length < 2 || !complete || sitemaps.index || sitemaps.unread.length) return orphans;
   for (const row of pageRows) {
     const keys = [canonicalUrl(row.url), canonicalUrl(row.artifact.final_url)];
     if (keys.some(key => sitemaps.urls.has(key) || graph.inbound(key))) continue;

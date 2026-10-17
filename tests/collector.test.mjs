@@ -302,3 +302,35 @@ test('a selected page redirect cannot spend the declared sitemap request, so lis
   assert.deepEqual(verdicts, prepared.pageRows.map(row => [`discovery|${row.url}`, 'pass']));
   assert.ok(verdicts.length >= pages.length - 1);
 });
+
+test('a declared sitemap that was not fetched is named in the discovery unknown, with the reason the collector gave (R80 F)', async () => {
+  const { prepare } = await import('../skills/optbrew/scripts/core/checks/prepare.mjs');
+  const { discovery } = await import('../skills/optbrew/scripts/core/checks/discovery.mjs');
+  const base = 'https://example.test/owned/';
+  const pages = ['a/', 'b/', 'c/'].map(path => base + path);
+  const sitemap = `${base}sitemap.xml`;
+  const input = context(pages, { max_urls: 20 });
+  input.protocol.auxiliary_resources = [{ kind: 'sitemap', original: sitemap, normalized: sitemap }];
+  const transport = async ({ url }) => url.href === sitemap ? response('<urlset></urlset>', 200, { 'content-type': 'application/xml' }) : response('<title>Page</title>');
+  const collection = await collect(input, { transport, resolve });
+  const unknowns = skipped => {
+    // The sitemap artifact is dropped, as if the budget had run out before its request.
+    const artifacts = collection.artifacts.filter(x => x.normalized_url !== sitemap).map(x => ({ ...x, evidence_ref: x.normalized_url }));
+    const protocol = { ...input.protocol, families: [{ family_id: 'discovery', applicable: true }], engines: [] };
+    const prepared = prepare({ context: { protocol }, artifacts, collection: { ...collection, skipped, limit_reached: skipped.length > 0 }, textOf: x => x.body?.toString('utf8') ?? '' });
+    return discovery.derive(prepared);
+  };
+  const cut = unknowns([{ url: sitemap, reason: 'url_limit' }]);
+  assert.ok(cut.length >= pages.length - 1);
+  for (const verdict of cut) {
+    assert.equal(verdict.state, 'unknown');
+    assert.match(verdict.reason, /^declared sitemap not read: url_limit;/);
+    assert.deepEqual(verdict.measurement.sitemap_unread, [{ url: sitemap, reason: 'url_limit' }]);
+  }
+  const unrecorded = unknowns([]);
+  assert.ok(unrecorded.every(verdict => verdict.reason.startsWith('declared sitemap not read: not_collected;')), 'no skip record: the reason says it was not collected');
+  const read = discovery.derive(prepare({ context: { protocol: { ...input.protocol, families: [{ family_id: 'discovery', applicable: true }], engines: [] } },
+    artifacts: collection.artifacts.map(x => ({ ...x, evidence_ref: x.normalized_url })), collection, textOf: x => x.body?.toString('utf8') ?? '' }));
+  assert.ok(read.every(verdict => !String(verdict.reason).startsWith('declared sitemap not read')) && read.every(verdict => !Object.hasOwn(verdict.measurement ?? {}, 'sitemap_unread')),
+    'a sitemap that was read adds nothing to the verdict');
+});

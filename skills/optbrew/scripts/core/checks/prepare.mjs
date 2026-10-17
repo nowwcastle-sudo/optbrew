@@ -6,13 +6,19 @@ import { canonicalUrl, findOrphans, linkGraph } from '../link-graph.mjs';
 import { selectRenderPages } from '../render.mjs';
 
 const SKIP_REASONS = ['depth_limit', 'url_limit', 'request_limit'];
+const NOT_COLLECTED = 'not_collected';
 const normalizeTitle = title => title.toLowerCase().replace(/\s+/g, ' ').trim();
 /** The pages the run renders: the ones its protocol fixed (none when rendering is off), else, before render plans existed, the default sample. */
 const renderPlan = protocol => protocol.render ? (protocol.render.enabled ? protocol.render.pages : []) : selectRenderPages(protocol.page_types);
 
-/** The declared sitemaps among the collected artifacts: every listed url, whether one is an index, and the unusable ones. */
-function readSitemaps(artifacts, declared, textOf) {
-  const sitemaps = { urls: new Set(), index: false, broken: [] };
+/**
+ * The declared sitemaps among the collected artifacts: every listed url, whether one is an index, the unusable ones, and the ones the
+ * run never fetched (`unread`, each with the reason the collector skipped it, else `not_collected`).
+ */
+function readSitemaps(artifacts, declared, textOf, skipped) {
+  const sitemaps = { urls: new Set(), index: false, broken: [], unread: [] };
+  const fetched = new Set(artifacts.map(artifact => artifact.normalized_url));
+  for (const url of declared) if (!fetched.has(url)) sitemaps.unread.push({ url, reason: skipped.find(x => x.url === url)?.reason ?? NOT_COLLECTED });
   for (const artifact of artifacts) {
     if (!declared.has(artifact.normalized_url)) continue;
     if (artifact.status >= 200 && artifact.status < 300) {
@@ -64,7 +70,7 @@ export function prepare({ context, artifacts, collection = {}, textOf, renders =
     const entry = { urls: [...new Set([artifact.normalized_url, artifact.final_url].map(canonicalUrl))], alternates: alternateLinks(html, artifact.final_url) };
     for (const key of entry.urls) alternates.set(key, entry);
   }
-  const sitemaps = readSitemaps(artifacts, declared('sitemap'), textOf);
+  const sitemaps = readSitemaps(artifacts, declared('sitemap'), textOf, collection.skipped ?? []);
   const complete = !collection.limit_reached && !(collection.skipped ?? []).some(x => SKIP_REASONS.includes(x.reason));
   return { context, artifacts, textOf, planned, selected, pageRows, titleCounts, facts, comparison: compareFacts(facts), sitemaps,
     linkGraph: graph, orphans: findOrphans({ pageRows, rows: htmlRows, graph, sitemaps, complete }), crawlComplete: complete, htmlPages: htmlRows.length, alternates,

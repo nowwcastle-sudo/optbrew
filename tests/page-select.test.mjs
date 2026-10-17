@@ -1,6 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { selectPages } from '../skills/optbrew/scripts/core/page-select.mjs';
+import { pageBudget, selectPages } from '../skills/optbrew/scripts/core/page-select.mjs';
+import { limits } from '../skills/optbrew/scripts/core/config.mjs';
 
 const ORIGIN = 'https://example.test';
 const scope = { allowed: [{ origin: ORIGIN, path_prefix: '/' }], local_targets: [], max_urls: 50 };
@@ -48,4 +49,16 @@ test('a fact page that repeats the home page or another fact page adds no entry,
   assert.deepEqual(result.dropped, [{ url: 'https://elsewhere.test/contact', reason: 'outside_scope' }]);
   const full = select({ factUrls: [`${ORIGIN}/about`], budget: 1 });
   assert.deepEqual(full.dropped, [{ url: `${ORIGIN}/about`, reason: 'over_limit' }]);
+});
+
+test('pageBudget keeps a redirect margin of a share of the pages, at least the minimum, inside the request limit (R80 E)', () => {
+  const { share, min } = limits().redirect_reserve;
+  for (const [limit, declared] of [[50, 2], [50, 5], [200, 2], [200, 12], [20, 2], [10, 2]]) {
+    const pages = pageBudget(limit, declared);
+    const reserve = Math.max(min, Math.ceil(pages * share));
+    assert.ok(pages + declared + reserve <= limit, `${limit}/${declared}: ${pages} pages + ${declared} declared + ${reserve} reserve`);
+    assert.ok(pages + 1 + declared + Math.max(min, Math.ceil((pages + 1) * share)) > limit, `${limit}/${declared}: one more page would not fit`);
+  }
+  assert.equal(pageBudget(50, 2), 43, 'the default limit: 43 pages, 2 declared, 5 spare');
+  assert.deepEqual([pageBudget(3, 2), pageBudget(4, 2), pageBudget(2, 2)], [1, 1, 0], 'a tiny limit still takes the start page while one request is left');
 });

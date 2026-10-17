@@ -17,7 +17,7 @@ import { openStore } from './evidence-store.mjs';
 import { OBSERVATION_SOURCES, buildJudgeQueue, deriveQuestionCoverage, mergeJudgments } from './judgments.mjs';
 import { keyHome, readGoogleKey } from './keys.mjs';
 import { MigrationRequired, assertCurrentEvidence } from './migration.mjs';
-import { groupPages, readPreflight, sameSite, selectPages } from './page-select.mjs';
+import { groupPages, pageBudget, readPreflight, sameSite, selectPages } from './page-select.mjs';
 import { pageNeutral, problemsOf } from './findings.mjs';
 import { freezeProtocol } from './protocol.mjs';
 import { renderPages, selectRenderPages } from './render.mjs';
@@ -136,7 +136,7 @@ async function contextFrom(answers, { out, localTargets = [] }) {
   // Facts the owner confirmed on the address the run started from before its redirect now live on the adopted origin.
   const factUrls = [...new Set(answers.facts.map(fact => adopted && new URL(fact.source_url).origin === asked.origin ?
     fact.source_url.replace(asked.origin, start.origin) : fact.source_url))];
-  const { pages, dropped, sources } = selectPages({ home: home.normalized, factUrls, preflight, scope, budget: requestLimit(scope) - auxiliary.length,
+  const { pages, dropped, sources } = selectPages({ home: home.normalized, factUrls, preflight, scope, budget: pageBudget(requestLimit(scope), auxiliary.length),
     auxiliary: known });
   const pageTypes = groupPages(pages, home.normalized).map(type => ({ id: type.id, urls: type.urls.map(ref) }));
   const wantsNaver = NAVER_GOAL.test(answers.goals.join(' ')) || (answers.owner_exports ?? []).some(x => x.kind === NAVER_ENGINE) ||
@@ -438,7 +438,7 @@ function queueByPage(queue, panel) {
   const pages = new Map();
   for (const item of queue.items) {
     // By address, not by evidence: two pages whose bytes are identical share an evidence file and are still two pages.
-    if (!pages.has(item.url)) pages.set(item.url, { url: item.url, evidence_ref: item.evidence_ref, evidence_sha256: item.evidence_sha256, spans: item.spans, families: [] });
+    if (!pages.has(item.url)) pages.set(item.url, { url: item.url, evidence_ref: item.evidence_ref, evidence_sha256: item.evidence_sha256, spans: item.spans, ...(item.empty_page ? { empty_page: true } : {}), families: [] });
     pages.get(item.url).families.push({ family_id: item.family_id, unit_key: item.unit_key, ...(item.identity ? { identity: item.identity } : {}) });
   }
   return { questions: panel.map(({ id, question }) => ({ id, question })), pages: [...pages.values()] };

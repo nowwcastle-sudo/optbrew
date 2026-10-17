@@ -25,6 +25,13 @@ const NONE_ANSWERED = problem('Question coverage: no audited page answers a ques
 const registry = JSON.parse(readFileSync(new URL('../../references/check-registry.json', import.meta.url)));
 const verdictMode = new Map(registry.families.map(family => [family.family_id, family.verdict_mode]));
 const naConditions = new Map(registry.families.map(family => [family.family_id, family.na_conditions ?? []]));
+// The not_applicable conditions that mean "the page has no X", and the families whose fail may rest on something missing from the page.
+const absenceConditions = new Map(registry.families.map(family => [family.family_id, new Set(family.na_absence_conditions ?? [])]));
+const absenceFamilies = new Set(registry.families.filter(family => family.absence_fail).map(family => family.family_id));
+/** What a model marks (`basis`) on a fail that rests on something missing from the page, as opposed to a fail the cited text shows directly. */
+const ABSENCE_BASIS = 'absence';
+/** Why a verdict that rests on absence becomes unknown when the queue offered too little of the page. */
+export const ABSENCE_UNCOVERED = 'queue covers too little of the page to declare absence';
 const SPACE = '[ \\t\\r\\n\\f]';
 const LEADING = new RegExp(`^${SPACE}*`);
 const TRAILING = new RegExp(`${SPACE}+$`);
@@ -39,7 +46,7 @@ const SENTENCE_END = /[.!?。！？]+["'”’」)\]]*(?=\s|$)/gu;
 const SENTENCE_TAIL = /[.!?。！？]+["'”’」)\]]*\s*$/u;
 // Tags inside a line of text: they do not end a span, and the text shown to the model has them taken out.
 const INLINE_TAGS = new Set(['a', 'abbr', 'b', 'br', 'code', 'em', 'i', 'mark', 'small', 'span', 'strong', 'sub', 'sup', 'time']);
-// Short text that is still worth offering: a date or a way to reach the owner. The floor in limits.json does not drop these.
+// Short text that is still worth offering: a date, a way to reach the owner (and, by element, an author line in <address>). The floor in limits.json does not drop these.
 const SHORT_TEXT_EXCEPTIONS = [
   /\d{4}\s*[-./년]\s*\d{1,2}\s*[-./월]\s*\d{1,2}/u,
   /\d{4}\s*년\s*\d{1,2}\s*월/u,
@@ -50,6 +57,11 @@ const SHORT_TEXT_EXCEPTIONS = [
   /(?:\+?\d{1,3}[\s.-]?)?\(?\d{2,4}\)?[\s.-]\d{3,4}[\s.-]\d{4}/u,
   /\b1[568]\d{2}[-\s]\d{4}\b/u,
 ];
+const ADDRESS_ELEMENT = /<address\b[^>]*>([\s\S]*?)<\/address\s*>/gi;
+const MAIN_ELEMENT = /<main\b[^>]*>([\s\S]*?)<\/main\s*>/i;
+const BODY_ELEMENT = /<body\b[^>]*>([\s\S]*)/i;
+// What is left of an element once its tags and blank entities are gone.
+const NO_TEXT = /^(?:\s|&nbsp;|&#160;|&#xa0;)*$/i;
 
 /** The families a model may judge: per-page families that have no code check block. Code-judged families are read from the block list. */
 function modelFamilies() {
@@ -61,6 +73,10 @@ export const isModelJudged = family_id => modelFamilies().includes(family_id);
 
 /** Whether a family has a code check block, so only code may judge it. */
 export const isCodeJudged = family_id => blocks.some(block => block.family_id === family_id);
+
+/** Whether a judgment rests on something being absent from the page: a not_applicable under an absence condition, or a fail marked with the absence basis in a family that allows it. */
+export const restsOnAbsence = ({ family_id, state, condition, basis }) =>
+  state === 'not_applicable' ? absenceConditions.get(family_id)?.has(condition) === true : state === 'fail' && basis === ABSENCE_BASIS && absenceFamilies.has(family_id);
 
 /** The basis the model's identity verdict must record for its state. */
 export const identityBasisOf = state => IDENTITY_BASIS[state];
@@ -236,32 +252,67 @@ function splitRun(masked, bytes, pieces, max) {
   });
 }
 
+/** The body as latin1 text with inert runs blanked, and the byte ranges of the text inside <address> elements. */
+function maskedBody(bytes) {
+  const masked = bytes.toString('latin1').replace(INERT, found => `<${BLANK.repeat(found.length - 2)}>`);
+  const addresses = [...masked.matchAll(ADDRESS_ELEMENT)].map(found => { const from = found.index + found[0].indexOf('>') + 1; return [from, from + found[1].length]; });
+  return { masked, addresses };
+}
+
+/** Every line of visible text of the body, as the spans are cut from it: byte range, text, and whether it stands inside an <address> element. */
+function textLines(bytes) {
+  const { judge_span_max_bytes: maximum } = limits();
+  const { masked, addresses } = maskedBody(bytes);
+  const lines = [];
+  for (const [from, to] of textRuns(masked)) {
+    const whole = trimmedRun(masked, bytes, from, to);
+    if (!whole) continue;
+    for (const run of Buffer.byteLength(whole.text) > maximum ? splitRun(masked, bytes, whole.pieces, maximum) : [whole])
+      lines.push({ start: run.start, end: run.end, text: run.text, address: addresses.some(([first, last]) => run.start >= first && run.end <= last) });
+  }
+  return lines;
+}
+
 /**
  * Candidate spans of one HTML body: each line of text between tags that break a line, as UTF-8 byte offsets. An inline tag (a, code,
  * em, strong, ...) does not break the line: its span covers the tag, and its `text` is the text of the range with the tags left out.
  * Text inside a tag (attribute values) and inside script and style is never offered. The body is scanned as bytes (latin1), so
  * offsets are byte offsets and a span can only start or end next to an ASCII character, never inside a multi-byte one. A line shorter
- * than the floor is dropped unless it is a date or a contact; those (one of each text) have an allowance of their own beside the
- * cap. A line longer than the maximum is cut at sentence ends (or a space, or a character) into several spans of at most that size. Lines with a secret are dropped; the longest lines are kept, in document order.
+ * than the floor is dropped unless it is a date, a contact or a line inside an <address> element; those (one of each text) have an
+ * allowance of their own beside the cap. A line longer than the maximum is cut at sentence ends (or a space, or a character) into
+ * several spans of at most that size. Lines with a secret are dropped; the longest lines are kept, in document order.
  */
 export function candidateSpans(bytes, evidence_sha256) {
-  const { judge_spans_per_unit: cap, judge_span_min_bytes: minimum, judge_span_max_bytes: maximum, judge_short_spans_per_unit: shortCap } = limits();
-  const masked = bytes.toString('latin1').replace(INERT, found => `<${BLANK.repeat(found.length - 2)}>`);
+  const { judge_spans_per_unit: cap, judge_span_min_bytes: minimum, judge_short_spans_per_unit: shortCap } = limits();
   const long = [];
   const short = new Map();
-  for (const [from, to] of textRuns(masked)) {
-    const whole = trimmedRun(masked, bytes, from, to);
-    if (!whole) continue;
-    for (const run of Buffer.byteLength(whole.text) > maximum ? splitRun(masked, bytes, whole.pieces, maximum) : [whole]) {
-      if (sensitive.test(run.text)) continue;
-      const span = { span_id: `${run.start}-${run.end}`, evidence_sha256, start: run.start, end: run.end, text: run.text };
-      const size = Buffer.byteLength(run.text);
-      if (size >= minimum) long.push({ span, size });
-      else if (!short.has(run.text) && SHORT_TEXT_EXCEPTIONS.some(pattern => pattern.test(run.text))) short.set(run.text, span);
-    }
+  for (const line of textLines(bytes)) {
+    if (sensitive.test(line.text)) continue;
+    const span = { span_id: `${line.start}-${line.end}`, evidence_sha256, start: line.start, end: line.end, text: line.text };
+    const size = Buffer.byteLength(line.text);
+    if (size >= minimum) long.push({ span, size });
+    else if (!short.has(line.text) && (line.address || SHORT_TEXT_EXCEPTIONS.some(pattern => pattern.test(line.text)))) short.set(line.text, span);
   }
   const kept = long.sort((a, b) => b.size - a.size || a.span.start - b.span.start).slice(0, cap).map(x => x.span);
   return [...kept, ...[...short.values()].slice(0, shortCap)].sort((a, b) => a.start - b.start);
+}
+
+/** Whether the page's main text is empty: its <main> element holds no text, or, without one, its <body> does not. A fragment with neither is not empty. */
+export function isEmptyPage(bytes) {
+  const { masked } = maskedBody(bytes);
+  const region = MAIN_ELEMENT.exec(masked) ?? BODY_ELEMENT.exec(masked);
+  return region ? NO_TEXT.test(region[1].replace(/<[^>]*>/g, '')) : false;
+}
+
+/**
+ * Whether the queue's `spans` cover enough of the page to show that something is absent from it: the spans make up at least
+ * `judge_absence_min_coverage` of the page's visible text (bytes of text), or the page's main text is empty. Queue building, merge
+ * and report replay all ask this one question.
+ */
+export function coversPage(bytes, spans) {
+  if (isEmptyPage(bytes)) return true;
+  const total = textLines(bytes).reduce((sum, line) => sum + Buffer.byteLength(line.text), 0);
+  return total === 0 || spans.reduce((sum, span) => sum + Buffer.byteLength(span.text), 0) / total >= limits().judge_absence_min_coverage;
 }
 
 /**
@@ -293,12 +344,14 @@ export async function buildJudgeQueue({ observations, store, context = null, nam
   const queue = { items };
   const spansOf = new Map();
   for (const [url, entry] of pages) {
-    const spans = candidateSpans(await store.read(entry.evidence_ref, entry.content_hash), entry.content_hash);
+    const bytes = await store.read(entry.evidence_ref, entry.content_hash);
+    const spans = candidateSpans(bytes, entry.content_hash);
     spansOf.set(url, spans);
     if (!spans.length) continue;
+    const empty = isEmptyPage(bytes) ? { empty_page: true } : {};
     for (const family_id of families) {
       const unit_key = unitKey(family_id, url);
-      if (!judged.has(unit_key)) items.push({ family_id, unit_key, url, evidence_ref: entry.evidence_ref, evidence_sha256: entry.content_hash, spans });
+      if (!judged.has(unit_key)) items.push({ family_id, unit_key, url, evidence_ref: entry.evidence_ref, evidence_sha256: entry.content_hash, spans, ...empty });
     }
   }
   const home = homeOf([...pages.keys()]);
@@ -364,6 +417,9 @@ export async function mergeJudgments({ observations, judgments, store, questions
       throw new Error(`${unit_key} already has a verdict`);
     if (sensitive.test(judgment.reason ?? '')) throw new Error(`judgment reason for ${unit_key} contains a secret`);
     const extra = { evaluator_type: MODEL_EVALUATOR, source_ref: OBSERVATION_SOURCES[MODEL_EVALUATOR] };
+    let evidence = null;
+    if (judgment.basis !== undefined && !(state === 'fail' && judgment.basis === ABSENCE_BASIS && absenceFamilies.has(family_id)))
+      throw new Error(`basis "${judgment.basis}" is allowed only as "absence" on a fail of ${[...absenceFamilies].join(' or ')} (${unit_key})`);
     if (state === 'not_applicable') {
       if (site) throw new Error(`${unit_key} is a site unit and cannot be not_applicable`);
       if (!naConditions.get(family_id).includes(judgment.condition))
@@ -384,12 +440,21 @@ export async function mergeJudgments({ observations, judgments, store, questions
       });
       if (new Set(judgment.span_ids).size !== spans.length) throw new Error(`span_ids repeat a span for ${unit_key}`);
       const bytes = await store.read(item.evidence_ref, item.evidence_sha256);
+      evidence = bytes;
       extra.evidence_span = spans.map(({ evidence_sha256, start, end }) => ({ evidence_sha256, start, end }));
       for (const part of extra.evidence_span) {
         if (part.evidence_sha256 !== item.evidence_sha256) throw new Error(`span of ${unit_key} is not from the unit's evidence`);
         checkSpan(bytes, part);
       }
     }
+    // A verdict that rests on something missing from the page needs a queue that offered enough of the page; otherwise it is unknown.
+    const absence = restsOnAbsence(judgment);
+    if (absence && !coversPage(evidence, item.spans)) {
+      made.push(makeObservation({ family_id, unit_key, state: 'unknown', reason: ABSENCE_UNCOVERED, evidence_ref: item.evidence_ref, extra: { evaluator_type: MODEL_EVALUATOR, source_ref: extra.source_ref } }));
+      continue;
+    }
+    if (absence && state === 'fail') extra.measurement = { ...extra.measurement, basis: ABSENCE_BASIS };
+    if (item.empty_page && state !== 'unknown') extra.measurement = { ...extra.measurement, empty_page: true };
     if (site && state !== 'unknown') extra.measurement = { identity_basis: IDENTITY_BASIS[state] };
     if (state === 'not_applicable') extra.applicability_decision = { condition: judgment.condition, reason: judgment.reason, evidence_ref: item.evidence_ref };
     const partial = state === 'partial' ? partialBasis(judgment) : { basis: null, q: undefined };

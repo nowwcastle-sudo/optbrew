@@ -170,6 +170,11 @@ function modelNotApplicable(verified) {
   for (const row of verified.model_judgments) if (row.phase === phase && row.state === 'not_applicable') counts[row.family_id] = (counts[row.family_id] ?? 0) + 1;
   return counts;
 }
+/** The audited pages whose main text is empty, in the latest phase: a verdict on one of them rests on a page with nothing to read, not on a missed passage. */
+function emptyPages(verified) {
+  const phase = verified.after ? 'after' : 'baseline';
+  return [...new Set(verified.model_judgments.filter(row => row.phase === phase && row.empty_page).map(row => addressOf(row.unit_key)))];
+}
 /** Which audited pages answer which question of the fixed panel, from the derived question-coverage verdict of a phase; null when it has none. */
 function questionCoverageList(input) {
   const verdict = input.observations.find(obs => obs.unit_key === QUESTION_UNIT && obs.source_ref === OBSERVATION_SOURCES.derived);
@@ -228,7 +233,7 @@ export function composeReport(verified) {
   const fixes = sortedFixes(verified.findings, verified.changes);
   const completeness = completenessOf(verified);
   const afterRender = latest.observations.some(obs => obs.family_id === 'render-content' && obs.state === 'pass' && obs.reason.startsWith(CONTENT_AFTER_RENDER));
-  const conditions = { probe: latest.run_context.environment_probe, model_judgments: verified.model_judgments, model_not_applicable: modelNotApplicable(verified), question_coverage: questionCoverageList(latest), lab_cwv: verified.lab_cwv, start_redirect: verified.start_redirect ?? null,
+  const conditions = { probe: latest.run_context.environment_probe, model_judgments: verified.model_judgments, model_not_applicable: modelNotApplicable(verified), empty_pages: emptyPages(verified), question_coverage: questionCoverageList(latest), lab_cwv: verified.lab_cwv, start_redirect: verified.start_redirect ?? null,
     blockers: { before: blockerSummary(verified.baseline.scores), after: verified.after ? blockerSummary(verified.after.scores) : null },
     notes: afterRender ? [JAVASCRIPT_NOTE] : [] };
   conditions.lines = conditionLines(conditions, verified);
@@ -270,7 +275,7 @@ function tableRows(composed, verified) {
   return { score, remediation,
     actual_outcomes: verified.outcome_rows.map(cells => cells.map(outcomeCell)),
     remaining_work: composed.follow_ups.map(({ text_ko: x }) => [x.problem, x.reason, x.required_input_or_authority, x.next_action, x.reobserve_when]),
-    model_judgments: composed.conditions.model_judgments.map(x => [x.phase, `${x.family_id} ${x.unit_key}`, wordFor('state', x.state) + (x.identity_basis ? ` (${wordFor('identity-basis', x.identity_basis)})` : ''),
+    model_judgments: composed.conditions.model_judgments.map(x => [x.phase, `${x.family_id} ${x.unit_key}`, wordFor('state', x.state) + (x.identity_basis ? ` (${wordFor('identity-basis', x.identity_basis)})` : '') + (x.empty_page ? ' (본문이 빈 쪽)' : ''),
       `${x.evidence_ref} 바이트 ${x.evidence_span.map(span => `${span.start}–${span.end}`).join(', ')}`, x.label]) };
 }
 
@@ -286,6 +291,7 @@ function conditionLines(conditions, verified) {
     { label: '분석 도구', value: probe.source_tools.join(', ') || '지정 없음' },
     { label: '확인한 모델 판단', value: count(conditions.model_judgments.length) },
     { label: '모델이 해당 없음으로 판정한 단위', value: notApplicableText(conditions.model_not_applicable) },
+    ...(conditions.empty_pages.length ? [{ label: '본문이 빈 쪽', value: `${conditions.empty_pages.length}쪽 (${conditions.empty_pages.join(', ')})` }] : []),
     { label: '이전 막는 문제', value: listed(before) },
     { label: '이후 막는 문제', value: after ? listed(after) : `${UNKNOWN} (이후 단계를 보지 않음)` },
     { label: '이후 결과 없는 핵심 검사', value: count(after?.core_unknown ?? null) },

@@ -5,6 +5,9 @@ const FAMILY = 'discovery';
 const ORPHAN = 'discovery.orphan';
 const SITEMAP_UNUSABLE = 'discovery.orphan-sitemap-unusable';
 
+// A declared sitemap that was never fetched may list the page, so its absence from the sitemaps that were read proves nothing.
+const unreadReason = unread => `declared sitemap not read: ${[...new Set(unread.map(x => x.reason))].join(', ')}; not linked from a collected page, and the evidence cannot show that nothing else leads to it`;
+
 const UNPROVEN = 'Not in a read sitemap and not linked from a collected page, but the evidence cannot show that nothing else leads to it';
 
 /** A page listed in a declared sitemap or linked from another collected page passes; a proven orphan fails; the rest is unknown. */
@@ -30,7 +33,9 @@ export const discovery = {
         // Reaching a page because the run selected it is not discoverability, and an orphan is only proven on complete evidence
         // (see findOrphans). A page neither listed nor linked that cannot be proven an orphan is unknown, and says what leaves it open.
         out.push(makeObservation({ family_id: FAMILY, unit_key: unitKey(FAMILY, url), state: 'unknown', evidence_ref: artifact.evidence_ref,
-          reason: UNPROVEN, extra: { measurement: { crawl_complete: crawlComplete, sitemap_index_unread: sitemaps.index, script_gap: linkGraph.scriptGap, collected_pages: htmlPages } } }));
+          reason: sitemaps.unread.length ? unreadReason(sitemaps.unread) : UNPROVEN,
+          extra: { measurement: { crawl_complete: crawlComplete, sitemap_index_unread: sitemaps.index, script_gap: linkGraph.scriptGap, collected_pages: htmlPages,
+            ...(sitemaps.unread.length ? { sitemap_unread: sitemaps.unread } : {}) } } }));
       }
     }
     return out;

@@ -7,6 +7,7 @@ import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 import { run } from '../skills/optbrew/scripts/run.mjs';
 import { limits } from '../skills/optbrew/scripts/core/config.mjs';
+import { pageBudget } from '../skills/optbrew/scripts/core/page-select.mjs';
 import { mergeFindings } from '../skills/optbrew/scripts/core/findings.mjs';
 import { buildReport } from '../skills/optbrew/scripts/core/report.mjs';
 import { stages } from '../skills/optbrew/scripts/core/stages.mjs';
@@ -54,7 +55,7 @@ test('the pages up to the limit are audited: a 30-page site in full, a 60-page s
   const raised = await audit(60, answersFor(`${SITE}/`, { max_urls: 80, sample_mode: 'raise' }));
   const pagesOf = run => run.context.protocol.page_types.flatMap(type => type.urls);
   assert.equal(pagesOf(small).length, 31, 'the home page and all 30 listed pages');
-  assert.equal(pagesOf(sampled).length, limits().max_urls_default - 2, 'the default limit less robots.txt and sitemap.xml');
+  assert.equal(pagesOf(sampled).length, pageBudget(limits().max_urls_default, 2), 'the default limit less robots.txt, sitemap.xml and the redirect margin');
   assert.equal(pagesOf(raised).length, 61, 'the home page and all 60 listed pages');
   for (const result of [small, sampled, raised]) {
     const units = new Set(result.report.baseline.input.observations.filter(x => x.family_id === 'fetch-response').map(x => x.unit_key));

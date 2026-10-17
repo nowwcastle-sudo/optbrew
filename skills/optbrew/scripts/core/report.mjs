@@ -20,7 +20,7 @@ import { composeReport, pagesLabel, renderReport } from './report-compose.mjs';
 import { messageOf } from './messages.mjs';
 import { runbookEntry } from './runbooks.mjs';
 import { sensitive } from './secrets.mjs';
-import { ENTITY_UNIT, OBSERVATION_SOURCES, QUEUE_KIND, QUESTION_UNIT, candidateSpans, checkSpan, deriveQuestionCoverage, homeOf, identityBasisOf, isCodeJudged, isEntityFallback, isModelJudged, queuedSpan } from './judgments.mjs';
+import { ABSENCE_UNCOVERED, ENTITY_UNIT, OBSERVATION_SOURCES, QUEUE_KIND, QUESTION_UNIT, candidateSpans, checkSpan, coversPage, deriveQuestionCoverage, homeOf, identityBasisOf, isCodeJudged, isEmptyPage, isEntityFallback, isModelJudged, queuedSpan, restsOnAbsence } from './judgments.mjs';
 import { parseRobots, robotsVerdict } from '../../modules/naver-searchadvisor/scripts/robots.mjs';
 
 const catalog = JSON.parse(readFileSync(new URL('../../references/remediations.json', import.meta.url))).items;
@@ -669,6 +669,11 @@ function modelJudgmentRows(phase, input, snapshot, requireRef) {
     if (!raw) fail(obs, 'its evidence is not the audit raw entry of the unit page');
     // Candidates are recomputed from the raw bytes, so a consistently forged queue cannot widen what a model may cite.
     const candidates = candidateSpans(requireRef(obs.evidence_ref).bytes, raw.content_hash);
+    // A verdict that rests on something missing from the page needs a queue that offered enough of it; a basis or an empty-page mark must be true of the page.
+    const absence = restsOnAbsence({ family_id: obs.family_id, state: obs.state, condition: obs.applicability_decision?.condition, basis: obs.measurement?.basis });
+    if (obs.measurement?.basis !== undefined && !absence) fail(obs, 'its absence basis is not one this verdict may carry');
+    if (absence && !coversPage(requireRef(obs.evidence_ref).bytes, candidates)) fail(obs, ABSENCE_UNCOVERED);
+    if (obs.measurement?.empty_page !== undefined && (obs.measurement.empty_page !== true || !isEmptyPage(requireRef(obs.evidence_ref).bytes))) fail(obs, 'it names the page empty, but the page holds text');
     for (const span of obs.evidence_span ?? []) {
       if (span.evidence_sha256 !== raw.content_hash) fail(obs, 'a span names evidence other than the unit page');
       try { checkSpan(requireRef(obs.evidence_ref).bytes, span); } catch (error) { fail(obs, error.message); }
@@ -681,6 +686,7 @@ function modelJudgmentRows(phase, input, snapshot, requireRef) {
       if (offered.text !== candidate.text) fail(obs, `the queued text of span ${span.start}-${span.end} differs from the text of the page`);
     }
     return { phase, family_id: obs.family_id, unit_key: obs.unit_key, state: obs.state, evidence_ref: obs.evidence_ref, evidence_span: obs.evidence_span, label: MODEL_JUDGMENT_LABEL,
+      ...(obs.measurement?.empty_page ? { empty_page: true } : {}),
       ...(obs.measurement?.identity_basis ? { identity_basis: obs.measurement.identity_basis } : {}) };
   });
 }

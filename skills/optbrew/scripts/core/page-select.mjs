@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { links } from './collector.mjs';
+import { limits } from './config.mjs';
 import { decodeEntities } from './html.mjs';
 import { assertUrlInScope } from './scope.mjs';
 
@@ -64,6 +65,19 @@ export async function readPreflight(out, startHref) {
     }
   }
   return found;
+}
+
+/**
+ * How many pages the selection may take within the request `limit`, with `declared` auxiliary resources (robots, sitemaps) fetched
+ * first. A redirect hop is a request the page count does not see, so a margin of `redirect_reserve` (a share of the pages, at least
+ * a minimum) stays free: a redirect then cannot push a selected page or a declared resource out of the limit. One page is always left while the limit has room for one.
+ */
+export function pageBudget(limit, declared) {
+  const { share, min } = limits().redirect_reserve;
+  const room = Math.max(0, limit - declared);
+  let pages = room;
+  while (pages > 1 && pages + Math.max(min, Math.ceil(pages * share)) > room) pages--;
+  return pages;
 }
 
 /**

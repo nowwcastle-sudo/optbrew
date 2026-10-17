@@ -9,7 +9,8 @@ import { ContractError, validateEntity } from '../skills/optbrew/scripts/core/co
 import { selectRenderPages } from '../skills/optbrew/scripts/core/render.mjs';
 import { runStages, stages } from '../skills/optbrew/scripts/core/stages.mjs';
 import { proxyTransport } from '../skills/optbrew/scripts/core/transport.mjs';
-import { answersFor, brewPages, memorySite, preflightOf, questions, quietEnv, SITE, workspace } from './support/run-scenario.mjs';
+import { pageBudget } from '../skills/optbrew/scripts/core/page-select.mjs';
+import { answersFor, bigSite, brewPage, brewPages, memorySite, preflightOf, questions, quietEnv, SITE, workspace } from './support/run-scenario.mjs';
 
 // Assembled from fragments: the repository never contains a literal key.
 const KEY = ['AI', 'za', 'Sy', 'Fake', 'Stage', 'Key', '0123456789', 'abcdefghij', 'KLMN'].join('');
@@ -171,4 +172,31 @@ test('the field-data stage reads the key through keyHome and sends it in the hea
   assert.ok(cwv.length > 0);
   for (const entry of cwv) assert.ok(!(await readFile(entry.evidence_ref, 'utf8')).includes(KEY));
   assert.equal(state.lab_cwv, null, 'no Chrome, so no lab measure');
+});
+
+test('page selection leaves a redirect margin: with 301s among the selected pages every page and every declared resource is fetched (R80 E)', async () => {
+  const pages = bigSite(60);
+  const redirecting = [3, 9, 20];
+  for (const n of redirecting) {
+    pages[`/section/page-${n}`] = { redirect: `/section/page-${n}-moved` };
+    pages[`/section/page-${n}-moved`] = brewPage(`Moved ${n}`, ['/']);
+  }
+  const site = memorySite(pages);
+  const answers = answersFor(`${SITE}/`);
+  const ws = await workspace(answers);
+  await preflightOf(site, `${SITE}/`, ws.out);
+  const deps = { env: quietEnv(), home: ws.home, selectTransport: site.selectTransport, chrome: noChrome() };
+  const { state } = await runStages(upTo('context', 'collect'), { answers, out: ws.out }, deps);
+  const { protocol } = state.context;
+  const selected = protocol.page_types.flatMap(type => type.urls.map(url => url.normalized));
+  const declared = protocol.auxiliary_resources.map(resource => resource.normalized);
+  const limit = requestLimit(state.context.scope);
+  assert.equal(selected.length, pageBudget(limit, declared.length), 'the selection takes the budget, not the whole limit');
+  assert.ok(selected.length + declared.length < limit, 'a margin stays for redirect hops');
+  assert.ok(redirecting.every(n => selected.includes(`${SITE}/section/page-${n}`)), 'the redirecting pages are among the selected');
+  const fetched = new Map(state.audit.artifacts.map(artifact => [artifact.normalized_url, artifact]));
+  for (const url of [...selected, ...declared]) assert.equal(fetched.get(url)?.status, 200, `${url} was fetched and answered 200 after any redirect`);
+  assert.deepEqual(state.audit.skipped, [], 'nothing was left out');
+  assert.equal(state.audit.limit_reached, false);
+  assert.equal(state.audit.request_count, selected.length + declared.length + redirecting.length, 'each redirect cost one extra request');
 });

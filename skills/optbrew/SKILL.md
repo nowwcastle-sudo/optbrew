@@ -16,6 +16,7 @@ description: 웹사이트의 검색 유입, 네이버 노출, AI 답변 인용, 
 - 유료 호출, 공개 게시, 검색엔진 제출, 자동 예약은 이 흐름에 없다. 사용자가 요청하면 그 일만 따로 승인받은 뒤 한다.
 - API 키 값을 대화로 받지 않는다. 사용자가 키를 대화에 붙여 넣었다면 저장하지 않고, 그 키를 폐기하고 새로 만들도록 안내한다.
 - 사용자에게 설명하는 글(질문, 런북, 요약)은 사용자의 언어로, 완전한 문장으로 쓴다. 감사 중 진행 문장만 아래 「진행 보고」를 따른다.
+- 진행 문장도 사용자의 언어로 쓴다. 한국어로 말하는 사용자에게는 한국어다. 단계가 바뀔 때마다 한 줄을 쓴다.
 
 ## 1단계. 주소를 받는다
 
@@ -116,7 +117,7 @@ node "<SKILL_DIR>/scripts/preflight.mjs" --url "<주소>" --out "<OUT>" --source
 
 - `goals`는 사용자의 말에 가까운 짧은 문자열 목록이다.
 - `facts`는 `fact_candidates`의 `key`, `value`, `source_url`을 그대로 쓴다. 사용자가 뺀 사실은 뺀다.
-- `sample_mode`는 5번 질문이 없었으면 `null`이고 `max_urls`는 50이다. "표본"이면 `sample`이고 `max_urls`는 50이다. "상한을 올림"이면 `raise`이고 `max_urls`는 `sitemap_pages`에 3을 더한 수다(robots.txt, sitemap.xml, 시작 쪽도 요청 한도에 들어간다). 단 `sitemap_pages_basis`가 `lower_bound`이거나 `sitemap_pages`가 200을 넘으면 200이다.
+- `sample_mode`는 5번 질문이 없었으면 `null`이고 `max_urls`는 50이다. "표본"이면 `sample`이고 `max_urls`는 50이다. "상한을 올림"이면 `raise`이고 `max_urls`는 `sitemap_pages`에 3을 더한 수 N에, N의 10%(소수는 올림, 최소 2)를 다시 더한 수다(robots.txt, sitemap.xml, 시작 쪽도 요청 한도에 들어가고, 쪽이 다른 주소로 넘어갈 때 쓰는 요청 여유가 `redirect_reserve`로 따로 남는다). 단 `sitemap_pages_basis`가 `lower_bound`이거나 `sitemap_pages`가 200을 넘으면 200이다.
 - `owner_exports`는 5단계에서 경로를 받았을 때만 쓴다. 받은 것이 없으면 이 필드를 통째로 뺀다. 파일이 없거나 읽을 수 없으면 감사는 멈추지 않고, 그 칸이 보고서에 "알 수 없음"과 이유로 남는다.
 - `url`은 `start.json`의 `final_url`을 그대로 쓴다. `www`나 `https`로 넘어간 뒤의 주소다. `final_url`이 `null`이면 사용자가 말한 주소를 쓴다. 이 주소가 같은 사이트의 다른 이름이면 감사는 넘어간 주소로 돈다. 다른 사이트이면 7단계에서 한 문장으로 멈춘다.
 - 한도 숫자의 원천은 [limits.json](references/limits.json)이다.
@@ -141,7 +142,7 @@ node "<SKILL_DIR>/scripts/run.mjs" --answers "<OUT>/intake-answers.json" --out "
 ## 8단계. 내용 판정을 한다
 
 1. [judging.md](references/judging.md)를 연다. 그대로 따른다.
-2. 7단계 JSON의 `judge_queue` 경로(보통 `<OUT>/judge-queue.json`)를 읽고 `<OUT>/judgments.json`을 쓴다. 파일은 JSON 배열 하나다.
+2. 7단계 JSON의 `judge_queue` 경로(보통 `<OUT>/judge-queue.json`)를 읽고 `<OUT>/judgments.json`을 쓴다. 파일은 JSON 배열 하나다. 판정은 이 세션에서 직접 한다. 쪽을 순서대로 한 쪽씩 판정하고, 하위 에이전트에 나눠 맡기지 않는다(사용자의 비용과 결과의 예측 가능성 때문이다).
 3. 같은 명령에 `--judgments`를 붙여 실행한다.
 
 ```
@@ -160,7 +161,7 @@ node "<SKILL_DIR>/scripts/run.mjs" --answers "<OUT>/intake-answers.json" --out "
    2. 고칠 것 위 세 건. 쪽 주소와 한 줄 설명을 붙인다.
    3. 남은 빈칸 수. 빈칸마다 방법이 보고서에 붙어 있다고 말한다.
    4. 보고서 경로. `html`을 먼저 열라고 안내한다. 글만 볼 사용자에게는 `md`도 알려 준다.
-4. 마지막은 다음 단계를 알리는 문장으로 끝낸다. 질문으로 끝내지 않는다. 사용자 컴퓨터에 사이트의 소스 파일이 있으면 고치는 일을 도울 수 있다고 한 문장으로 알린다(예: '소스 폴더를 알려 주시면 고칠 수 있습니다.'). 사용자가 고치라고 말하기 전에는 아무 파일도 고치지 않는다.
+4. 마지막 메시지는 결과와 다음 단계를 알리는 말로 끝낸다. 사용자에게 무엇도 요청하지 않고 아무것도 묻지 않는다. '알려 주세요', '말씀해 주세요' 같은 요청과 '~할까요?' 같은 질문을 쓰지 않는다. 사이트의 소스 파일이 사용자 컴퓨터에 있으면 고치는 일을 이어서 할 수 있다고 한 문장으로 알린다(예: '원하면 소스 폴더에서 고치는 일을 이어서 할 수 있습니다.'). 사용자가 고치라고 말하기 전에는 아무 파일도 고치지 않는다.
 
 ## 10단계. 사용자가 고치라고 하면 로컬 파일을 고친다
 
