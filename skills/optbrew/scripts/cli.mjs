@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { score } from './core/score.mjs';
 import { compare } from './core/compare.mjs';
 import { writeReport } from './core/report.mjs';
+import { htmlReportWriter } from './core/report-page.mjs';
 import { MigrationRequired } from './core/migration.mjs';
 
 /** Local calculation CLI. */
@@ -17,7 +18,8 @@ export async function runCli(argv = process.argv.slice(2)) {
     packet.evidence_root = path.resolve(path.dirname(input), packet.evidence_root ?? '.');
     const relative = path.relative(await realpath(path.dirname(input)), await realpath(packet.evidence_root));
     if (relative === '..' || relative.startsWith(`..${path.sep}`)) throw new Error('evidence root must stay under packet run directory');
-    return writeReport(packet, path.resolve(argv[4]));
+    // The page is written beside the other two, as a run writes it. A packet does not record the guidance level, so the full steps are used.
+    return writeReport(packet, path.resolve(argv[4]), { renderHtml: htmlReportWriter({ level: 'beginner', target: packet.run_context?.target, synthetic: packet.data_class === 'synthetic' }) });
   } else if (argv.length === 5 && argv[0] === 'score' && argv[1] === '--input' && argv[3] === '--output' && argv[2] && argv[4]) {
     result = score(JSON.parse(await readFile(argv[2], 'utf8')));
     destination = path.resolve(argv[4]);

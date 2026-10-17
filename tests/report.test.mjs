@@ -477,7 +477,7 @@ test('a local passing receipt stays local and a deployment claim needs its own r
   } finally { rmSync(run.dir, { recursive: true, force: true }); }
 });
 
-test('CLI writes both formats with readback', () => {
+test('CLI writes all three formats with readback (T22 N4: the replay writes report.html as a run does)', () => {
   const dir = mkdtempSync(path.join(os.tmpdir(), 'optbrew report '));
   try {
     const input = path.resolve('tests/fixtures/reports/remote-only.json');
@@ -487,6 +487,10 @@ test('CLI writes both formats with readback', () => {
     assert.equal(run.status, 0, run.stderr);
     assert.deepEqual(JSON.parse(readFileSync(path.join(out, 'report.json'))).baseline.scores, score(fixture().baseline.input));
     assert.match(readFileSync(path.join(out, 'report.md'), 'utf8'), /예시 보고서/);
+    const page = readFileSync(path.join(out, 'report.html'), 'utf8');
+    assert.match(page, /^<!doctype html>/);
+    assert.match(page, /예시 보고서/, 'a synthetic packet carries its banner into the page');
+    assert.deepEqual(readdirSync(out).sort(), ['report.html', 'report.json', 'report.md']);
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 

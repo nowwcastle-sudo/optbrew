@@ -3,7 +3,7 @@ import { CWV_FAMILIES } from './checks/cwv-field.mjs';
 import { CONTENT_AFTER_RENDER } from './checks/render-content.mjs';
 import { messageKey } from './findings.mjs';
 import { koText, messageOf } from './messages.mjs';
-import { OBSERVATION_SOURCES, QUESTION_UNIT } from './judgments.mjs';
+import { ENTITY_UNIT, OBSERVATION_SOURCES, QUESTION_UNIT, homeOf } from './judgments.mjs';
 import { keySetRunbook, runbookHarnesses } from './probe.mjs';
 import { remainingRunbooks, runbookEntry, startRunbooks } from './runbooks.mjs';
 
@@ -86,7 +86,8 @@ const addressOf = unit => {
 /** How a fix row names its pages: the one address (a site-level check reads 「사이트 전체」), or the count and the first few addresses. */
 export const pagesLabel = finding => {
   const units = pagesOf(finding);
-  if (units.length === 1) return addressOf(units[0]);
+  // The site's identity is read and fixed on the home page, so that unit names the home page's address, not the whole site (T22 M-2).
+  if (units.length === 1) return units[0] === ENTITY_UNIT && finding.site_address ? finding.site_address : addressOf(units[0]);
   const shown = units.slice(0, PAGES_SHOWN).map(addressOf).join(', ');
   return `(${units.length}개 페이지: ${shown}${units.length > PAGES_SHOWN ? `, 외 ${units.length - PAGES_SHOWN}개` : ''})`;
 };
@@ -117,13 +118,13 @@ export const fixMethod = fix => fix.remediation ? `${fix.text_ko.remediation.mec
 export const fixEffort = fix => fix.remediation ? `${fix.text_ko.remediation.cost}; ${fix.text_ko.remediation.effort}` : fix.text_ko.remediation?.effort ?? UNKNOWN;
 
 /** Open before resolved, then blocking, then priority (P0 first, an unknown one last), then the problem on the most pages, then the unit. */
-function sortedFixes(findings, changes) {
+function sortedFixes(findings, changes, home) {
   const pages = new Map();
   for (const finding of findings) pages.set(affectedKey(finding), new Set([...(pages.get(affectedKey(finding)) ?? []), ...pagesOf(finding)]));
   const withPaths = findings.map(finding => {
     const change_paths = changes.filter(change => change.finding_ids.some(id => finding.finding_ids.includes(id))).map(change => change.path);
     const text_ko = fixTextKo(finding);
-    return { ...finding, change_paths, text_ko, where: change_paths.join('; ') || modelWhere(finding) || text_ko.remediation?.location_hint || LOCATION_NEEDED,
+    return { ...finding, ...(finding.unit_key === ENTITY_UNIT && home ? { site_address: home } : {}), change_paths, text_ko, where: change_paths.join('; ') || modelWhere({ ...finding, ...(finding.unit_key === ENTITY_UNIT && home ? { site_address: home } : {}) }) || text_ko.remediation?.location_hint || LOCATION_NEEDED,
       priority_label: PRIORITY_LABELS[finding.priority] ?? finding.priority, status_label: STATUS_LABELS[finding.status] ?? finding.status };
   });
   return withPaths.sort((a, b) => Number(resolved(a)) - Number(resolved(b)) || Number(b.blocker) - Number(a.blocker) ||
@@ -186,11 +187,14 @@ function modelNotApplicable(verified) {
   for (const row of verified.model_judgments) if (row.phase === phase && row.state === 'not_applicable') counts[row.family_id] = (counts[row.family_id] ?? 0) + 1;
   return counts;
 }
-/** How many fails of the absence families (a missing operator or date) rest on absence and how many on text the verdict cites, in the latest phase. */
+/**
+ * How many fails of the absence families (a missing operator or date) rest on absence and how many on text the verdict cites, in the latest phase.
+ * A fail is counted by the basis its fix sentence rests on (`sentence_basis`), so a shown freshness fail told as absence counts as absence (T22 M-1).
+ */
 function absenceBasisCounts(verified) {
   const phase = verified.after ? 'after' : 'baseline';
   const counts = { absence: 0, shown: 0 };
-  for (const row of verified.model_judgments) if (row.phase === phase && row.basis) counts[row.basis]++;
+  for (const row of verified.model_judgments) if (row.phase === phase && row.basis) counts[row.sentence_basis ?? row.basis]++;
   return counts;
 }
 const NOT_ACCEPTED_REASONS = { queue_coverage: '조각이 페이지를 충분히 덮지 못함', visible: '페이지에 날짜나 운영 주체가 보임', chrome: '인용한 조각이 모두 사이트 공통 글', empty_page: '페이지에 글이 없음' };
@@ -250,10 +254,15 @@ function remainingBlanks(verified, { observations, run_context: context }) {
   });
 }
 
-/** The pages the run treated as deliberately not indexed (no index checks, no blocker), with the catalog key and values of the sentence that says so; null when there are none. */
+/**
+ * The pages the run treated as deliberately not indexed (no index checks, no blocker), with the catalog key and values of the sentence that says so
+ * and the sentence itself; null when there are none. The owner reads it next to the headline: it is the one place a wrongly hidden noindex shows (T22 I-1).
+ */
 function notIndexedOf(context) {
   const pages = context.protocol.page_types.flatMap(type => type.urls).filter(url => url.public_indexing === false).map(url => url.normalized);
-  return pages.length ? { count: pages.length, pages, ...messageOf('conditions.not-indexed', { count: pages.length, pages: pages.join(', ') }) } : null;
+  if (!pages.length) return null;
+  const note = messageOf('headline.not-indexed', { count: pages.length, pages: pages.join(', ') });
+  return { count: pages.length, pages, ...note, text: koText(note.message_key, note.message_values) };
 }
 
 /**
@@ -264,16 +273,16 @@ function notIndexedOf(context) {
  */
 export function composeReport(verified) {
   const latest = (verified.after ?? verified.baseline).input;
-  const fixes = sortedFixes(verified.findings, verified.changes);
+  const home = homeOf(latest.observations.filter(obs => obs.family_id === 'fetch-response' && obs.state === 'pass').map(obs => obs.unit_key.split('|').at(-1)));
+  const fixes = sortedFixes(verified.findings, verified.changes, home);
   const completeness = completenessOf(verified);
   const afterRender = latest.observations.some(obs => obs.family_id === 'render-content' && obs.state === 'pass' && obs.reason.startsWith(CONTENT_AFTER_RENDER));
   const conditions = { probe: latest.run_context.environment_probe, model_judgments: verified.model_judgments, model_not_applicable: modelNotApplicable(verified), empty_pages: verified.empty_pages ?? [], absence_basis: absenceBasisCounts(verified), not_accepted: notAcceptedCounts(latest), question_coverage: questionCoverageList(latest), lab_cwv: verified.lab_cwv, start_redirect: verified.start_redirect ?? null,
-    not_indexed: notIndexedOf(latest.run_context),
     blockers: { before: blockerSummary(verified.baseline.scores), after: verified.after ? blockerSummary(verified.after.scores) : null },
     notes: afterRender ? [JAVASCRIPT_NOTE] : [] };
   conditions.lines = conditionLines(conditions, verified);
   return {
-    headline: conclusionOf(fixes, completeness),
+    headline: { ...conclusionOf(fixes, completeness), not_indexed: notIndexedOf(latest.run_context) },
     fixes,
     completeness,
     remaining: remainingBlanks(verified, latest),
@@ -330,7 +339,6 @@ function conditionLines(conditions, verified) {
       value: `페이지에 없다는 근거 ${conditions.absence_basis.absence}건, 인용한 글에서 직접 확인 ${conditions.absence_basis.shown}건` }] : []),
     ...(Object.keys(conditions.not_accepted).length ? [{ label: '페이지에 없다는 판정 중 받아들이지 않은 것',
       value: Object.entries(conditions.not_accepted).map(([code, n]) => `${NOT_ACCEPTED_REASONS[code]} ${n}건`).join(', ') }] : []),
-    ...(conditions.not_indexed ? [{ label: '색인하지 않는 페이지', value: koText(conditions.not_indexed.message_key, conditions.not_indexed.message_values) }] : []),
     { label: '이전 막는 문제', value: listed(before) },
     { label: '이후 막는 문제', value: after ? listed(after) : `${UNKNOWN} (이후 단계를 보지 않음)` },
     { label: '이후 결과 없는 핵심 검사', value: count(after?.core_unknown ?? null) },
@@ -355,7 +363,7 @@ export function renderReport(composed, verified) {
   const markdown = `# optbrew 보고서\n\n${verified.data_class === 'synthetic' ? `**${SYNTHETIC_BANNER}**\n\n` : ''}` +
     `대상: ${html(context.target)}  \n환경: ${html(context.environment)}  \n목표: ${html(context.goals.join(', '))}  \n` +
     `비교: ${html(verified.comparison.status)} (${html(verified.comparison.reasons.join(', ') || '없음')})  \n` +
-    `결론: ${html(composed.headline.text)}\n\n` +
+    `결론: ${html(composed.headline.text)}${composed.headline.not_indexed ? `  \n색인 제외: ${html(composed.headline.not_indexed.text)}` : ''}\n\n` +
     `## ${SECTION_TITLES.fixes}\n\n${table(['우선순위', '문제 / 주소', '근거', '고르는 해결 방법', '고칠 위치 또는 사이트 소유자', '비용 / 노력', '확인 방법', '상태'], tables.remediation)}\n\n` +
     `## ${SECTION_TITLES.completeness} (확인한 범위 안의 통과율)\n\n요약:  \n${latest.map(phase => `- ${html(headlineLine(phase.headline))}  \n`).join('')}\n` +
     `${table(['영역', '이전', '이후', '차이', '확인 범위 이전 → 이후', '점수 범위', '상태', '방문자 실측(CWV)을 뺀 확인 범위(최신)'], tables.score)}\n\n` +

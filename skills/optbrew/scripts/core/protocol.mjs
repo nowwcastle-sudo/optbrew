@@ -13,6 +13,27 @@ function unique(values, label) {
 }
 
 const compare = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+
+/**
+ * Whether the run's own fixed conditions decide a family's applicability, and the condition code that names the reason when it is not
+ * applicable; null when no fixed condition decides it (the owner's or the model's decision then stands). Read from the registry, never from
+ * a list of family names: no inapplicable condition at all means always applicable; `public_only` plus `no_public_index_target` follows the
+ * public index targets (and the target engines, where `no_target_engine` is also a condition); an engine-bound family with a `*_not_target`
+ * condition follows its engines; `no_fixed_questions` follows the question panel. A test holds the registry flag and this rule together (T22 S2).
+ */
+function fixedApplicability(definition, protocol, publicCount) {
+  const conditions = definition.na_conditions ?? [];
+  if (!conditions.length) return { applicable: true, condition: null };
+  if (conditions.includes('no_fixed_questions')) return { applicable: protocol.question_panel.length > 0, condition: 'no_fixed_questions' };
+  if (definition.public_only === true && conditions.includes('no_public_index_target')) {
+    const needsEngine = conditions.includes('no_target_engine');
+    return { applicable: publicCount > 0 && (!needsEngine || protocol.engines.length > 0),
+      condition: needsEngine && !protocol.engines.length ? 'no_target_engine' : 'no_public_index_target' };
+  }
+  const engineCondition = conditions.find(code => code.endsWith('_not_target'));
+  if (definition.engines?.length && engineCondition) return { applicable: definition.engines.some(engine => protocol.engines.includes(engine)), condition: engineCondition };
+  return null;
+}
 const sameSet = (a, b) => a.length === b.length && a.every(value => b.includes(value));
 
 function stable(value) {
@@ -87,23 +108,15 @@ export function freezeProtocol(context) {
     // A family that only matters for indexed pages has no unit when every selected page is a non-index target.
     if (publicOnlyFamily(family.family_id) && family.applicable && !publicUrls.length)
       throw new ContractError(`${family.family_id}: applicable family has no public index target`);
-    const expected = family.family_id === 'fetch-response' ? true :
-      ['index-policy', 'discovery'].includes(family.family_id) ? publicUrls.length > 0 :
-      family.family_id === 'search-crawl-policy' ? publicUrls.length > 0 && p.engines.length > 0 :
-      family.family_id === 'question-coverage' ? p.question_panel.length > 0 :
-      family.family_id === 'naver-markup' ? p.engines.includes('naver') : null;
-    if (expected !== null && family.applicable !== expected)
+    const fixed = fixedApplicability(definition, p, publicUrls.length);
+    if (fixed && family.applicable !== fixed.applicable)
       throw new ContractError(`${family.family_id}: applicability contradicts fixed URL/engine conditions`);
     if (family.applicable) {
       if (family.applicability_decision) throw new ContractError(`${family.family_id}: decision only allowed when inapplicable`);
     } else {
       const decision = validateApplicabilityDecision(family.applicability_decision,
         definition.na_conditions, `${family.family_id}.applicability_decision`);
-      const automaticCondition = family.family_id === 'search-crawl-policy' ?
-        (p.engines.length ? 'no_public_index_target' : 'no_target_engine') :
-        ['index-policy', 'discovery'].includes(family.family_id) ? 'no_public_index_target' :
-        family.family_id === 'question-coverage' ? 'no_fixed_questions' :
-        family.family_id === 'naver-markup' ? 'naver_not_target' : null;
+      const automaticCondition = fixed?.condition ?? null;
       if (automaticCondition && decision.condition !== automaticCondition)
         throw new ContractError(`${family.family_id}: decision conflicts with fixed conditions`);
     }

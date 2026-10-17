@@ -54,7 +54,7 @@ test('open fixes come before resolved ones, and an unknown priority sorts last',
   const findings = [finding('done', { priority: 'P0', blocker: true, status: 'verified_production' }), finding('odd', { priority: 'P10' }),
     finding('low', { priority: 'P3' }), finding('lower', { priority: 'p1' }), finding('open', { priority: 'P2' })];
   assert.deepEqual(order(composeReport(verifiedOf({ findings }))), ['open', 'low', 'odd', 'lower', 'done']);
-  assert.deepEqual(composeReport(verifiedOf({ findings })).headline, { open: 4, blocking: 0, already_fixed: 1, text: '먼저 고칠 것이 4건 있습니다.' });
+  assert.deepEqual(composeReport(verifiedOf({ findings })).headline, { open: 4, blocking: 0, already_fixed: 1, text: '먼저 고칠 것이 4건 있습니다.', not_indexed: null });
 });
 
 test('findings come before scores in json and md', () => {
@@ -474,7 +474,7 @@ test('a fix names its address, not the internal unit key', () => {
   const { markdown } = renderReport(composed, verified);
   const page = htmlOf(composed);
   assert.ok(markdown.includes('problem one https://example.com/one') && !markdown.includes('index-policy|https'));
-  assert.ok(page.includes('<p class="pages">https://example.com/one</p>') && page.includes('<p class="pages">사이트 전체</p>'));
+  assert.ok(page.includes('<p class="pages">https://example.com/one</p>') && page.includes('<p class="pages">https://example.com/</p>'), 'the identity of the site is read and fixed on its home page (T22 M-2)');
   assert.doesNotMatch(page, /index-policy\|/);
 });
 

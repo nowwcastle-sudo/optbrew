@@ -86,11 +86,11 @@ node "<SKILL_DIR>/scripts/preflight.mjs" --url "<주소>" --out "<OUT>" --source
 3. 런북을 펼치는 법.
    1. `<SKILL_DIR>/references/runbooks/<id>.md`를 연다.
    2. 안내 수준에 맞는 `## beginner` 또는 `## brief` 절만 보여 준다. 절 안의 `{{skill_root}}`는 `<SKILL_DIR>`로 바꾼다.
-4. 키 파일 점검. "키"를 펼치기 전에 한다.
-   1. `node "<SKILL_DIR>/scripts/key.mjs" status`를 실행한다. `google.present`가 `true`이면 키가 이미 있다. 키 런북을 펼치지 않고 그렇게 말한다.
-   2. `false`이면 `node "<SKILL_DIR>/scripts/key.mjs" remove google`을 실행한다. 이 명령은 키 파일이 깨졌는지 확인하는 데 쓴다. 키가 없다고 나온 뒤에만 실행하므로 지워지는 키는 없다. 빈 `google` 항목이 있으면 그것만 지워진다.
-   3. 출력에 `not a valid JSON object`가 있으면 키 파일이 깨진 것이다. 메시지의 파일 경로를 알려 주고 "이 파일을 고치거나 지운 뒤 다시 말해 주세요"라고 한다. 키 입력 안내는 하지 않는다.
-   4. 그 밖의 출력이면 문제가 없다. 2번의 "키"를 이어 한다.
+4. 키 파일 점검. "키"를 펼치기 전에 한다. 이 점검은 파일을 읽기만 하고 아무것도 바꾸거나 지우지 않는다.
+   1. `node "<SKILL_DIR>/scripts/key.mjs" status`를 실행한다. 출력은 `google.present`와 `google.sha256_8`이고, 키 파일이 JSON 객체가 아니면 `google.corrupt: true`가 더 붙는다.
+   2. `google.present`가 `true`이면 키가 이미 있다. 키 런북을 펼치지 않고 그렇게 말한다.
+   3. `present`가 `false`이고 `google.corrupt`가 `true`이면 키 파일이 깨진 것이다. 파일은 사용자 홈 폴더의 `.optbrew/credentials.json`이다. 그 경로를 알려 주고 "이 파일을 고치거나 지운 뒤 다시 말해 주세요"라고 한다. 키 입력 안내는 하지 않는다.
+   4. 그 밖이면(`present`가 `false`이고 `corrupt`가 없음) 문제가 없다. 2번의 "키"를 이어 한다.
 5. 런북을 펼친 뒤에는 "다 하셨으면 '시작'이라고 알려 주세요"라고 하고 기다린다. 사용자가 아무것도 하지 않고 '시작'이라고 해도 된다.
 6. 사용자가 키, 크롬, 네트워크 중 하나라도 준비했으면 3단계의 점검 명령만 한 번 더 실행해 `start.json`을 새로 받는다. 이때 점검 결과가 막힘(`blocking`이나 `site_down`)이면 3단계 표를 다시 따른다.
 7. 사용자가 3번 질문이나 4번 사실을 고쳤으면 고친 대로 반영한다. 사용자가 목록에 없는 사실을 새로 말했으면 `source_url`은 감사 주소로 둔다.
@@ -117,7 +117,7 @@ node "<SKILL_DIR>/scripts/preflight.mjs" --url "<주소>" --out "<OUT>" --source
 
 - `goals`는 사용자의 말에 가까운 짧은 문자열 목록이다.
 - `facts`는 `fact_candidates`의 `key`, `value`, `source_url`을 그대로 쓴다. 사용자가 뺀 사실은 뺀다.
-- `sample_mode`는 5번 질문이 없었으면 `null`이고 `max_urls`는 50이다. "표본"이면 `sample`이고 `max_urls`는 50이다. "상한을 올림"이면 `raise`이고 `max_urls`는 `sitemap_pages`에 2와 `start.json`의 `sitemap_declared`(없으면 1)를 더한 수 N에, N의 10%(소수는 올림, 최소 2)를 다시 더한 수다(시작 쪽 1개, robots.txt 1개, 사이트맵 파일 `sitemap_declared`개도 요청 한도에 들어가고, 쪽이 다른 주소로 넘어갈 때 쓰는 요청 여유가 `redirect_reserve`로 따로 남는다). 단 `sitemap_pages_basis`가 `lower_bound`이거나 `sitemap_pages`가 200을 넘으면 200이다.
+- `sample_mode`는 5번 질문이 없었으면 `null`이고 `max_urls`는 50이다. "표본"이면 `sample`이고 `max_urls`는 50이다. "상한을 올림"이면 `raise`이고 `max_urls`는 `sitemap_pages`에 2와 `start.json`의 `sitemap_declared`(없으면 1)를 더한 수 N에, N의 10%(소수는 올림, 최소 2)를 다시 더한 수다(시작 쪽 1개, robots.txt 1개, 사이트맵 파일 `sitemap_declared`개도 요청 한도에 들어가고, 쪽이 다른 주소로 넘어갈 때 쓰는 요청 여유가 `redirect_reserve`로 따로 남는다). 계산한 수가 200을 넘으면 200으로 줄인다(요청 상한은 200이고, 실행도 200까지만 받는다). `sitemap_pages_basis`가 `lower_bound`일 때도 200이다. `intake-answers.json`의 `max_urls`는 실행에 실제로 쓰이는 수와 같아야 한다.
 - `owner_exports`는 5단계에서 경로를 받았을 때만 쓴다. 받은 것이 없으면 이 필드를 통째로 뺀다. 파일이 없거나 읽을 수 없으면 감사는 멈추지 않고, 그 칸이 보고서에 "알 수 없음"과 이유로 남는다.
 - `url`은 `start.json`의 `final_url`을 그대로 쓴다. `www`나 `https`로 넘어간 뒤의 주소다. `final_url`이 `null`이면 사용자가 말한 주소를 쓴다. 이 주소가 같은 사이트의 다른 이름이면 감사는 넘어간 주소로 돈다. 다른 사이트이면 7단계에서 한 문장으로 멈춘다.
 - 한도 숫자의 원천은 [limits.json](references/limits.json)이다.
@@ -158,9 +158,10 @@ node "<SKILL_DIR>/scripts/run.mjs" --answers "<OUT>/intake-answers.json" --out "
 2. 보고서 `md`의 위쪽에서 한 줄 결론과 고칠 것 표를 읽는다.
 3. 사용자에게 이 순서로 짧게 알린다. 보고서 파일에 든 내용만 알린다.
    1. 한 줄 결론. 점수는 "측정한 범위 안의 통과율"이라고 부른다. 실제 검색 성과로 말하지 않는다.
-   2. 고칠 것 위 세 건. 페이지 주소와 한 줄 설명을 붙인다.
-   3. 남은 빈칸 수. 빈칸마다 방법이 보고서에 붙어 있다고 말한다.
-   4. 보고서 경로. `html`이 보기 쉽고, 글만 보려면 `md`가 있다고 알린다.
+   2. 보고서의 결론 아래에 `색인 제외:` 줄이 있을 때만(`report.json`에서는 `composed.headline.not_indexed`) 한 문장으로 알린다: 일부러 검색에 내지 않는 페이지로 보고 색인 검사에서 뺀 페이지의 수와 주소, 그 까닭(noindex이고 사이트맵에도 없음), 그리고 검색에 나와야 하는 페이지가 있으면 그 페이지의 noindex를 지우라는 말. 줄이 없으면 이 말을 하지 않는다.
+   3. 고칠 것 위 세 건. 페이지 주소와 한 줄 설명을 붙인다.
+   4. 남은 빈칸 수. 빈칸마다 방법이 보고서에 붙어 있다고 말한다.
+   5. 보고서 경로. `html`이 보기 쉽고, 글만 보려면 `md`가 있다고 알린다.
 4. 마지막 메시지는 보고서 파일(`md`, `json`, `html`)에 든 내용만 요약한다. 보고서에 없는 관찰, 따로 한 분석, 덧붙인 절(예: 「보고서 밖에서 따로 본 것」)을 쓰지 않는다. 마지막 메시지는 결과와 다음 단계를 알리는 말로 끝낸다. 사용자에게 무엇도 요청하지 않고 아무것도 묻지 않는다. '알려 주세요', '말씀해 주세요' 같은 요청과 '~할까요?' 같은 질문을 쓰지 않는다. 사이트의 소스 파일이 사용자 컴퓨터에 있으면 고치는 일을 이어서 할 수 있다고 한 문장으로 알린다(예: '원하면 소스 폴더에서 고치는 일을 이어서 할 수 있습니다.'). 사용자가 고치라고 말하기 전에는 아무 파일도 고치지 않는다. 고칠 것의 문제 문장과 고치는 방법은 보고서의 한국어 문장을 그대로 옮긴다. 질문에 답하는 페이지를 「찾지 못했습니다」로 보고한 질문은 「이번 감사가 읽은 페이지에서 찾지 못했다」고 말하고, 사이트에 답이 없다고 말하지 않는다.
 
 ## 10단계. 사용자가 고치라고 하면 로컬 파일을 고친다
