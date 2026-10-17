@@ -97,8 +97,22 @@ const REMEDIATION_FIELDS = ['mechanism', 'validation', 'effort', 'cost', 'locati
  * remediation's fields. Anything the catalog has no entry for (a model's finding, a remediation of someone's own catalog) keeps its own words.
  */
 const fixTextKo = finding => ({ message: koText(finding.message_key, finding.message_values, finding.message),
+  cited: citedOf(finding),
   remediation: finding.remediation ? Object.fromEntries(REMEDIATION_FIELDS.map(field =>
-    [field, koText(`remediation.${finding.remediation.remediation_id}.${field}`, {}, finding.remediation[field])])) : null });
+    [field, koText(`remediation.${finding.remediation.remediation_id}.${field}`, {}, finding.remediation[field])])) : stepsOf(finding) });
+
+/** A model's fix (and the question coverage's) has no catalogued remediation; the catalog gives its steps under the key of its problem (R100). */
+const MODEL_FIX_STEPS = ['mechanism', 'validation', 'effort'];
+const stepsOf = finding => {
+  const steps = Object.fromEntries(MODEL_FIX_STEPS.map(field => [field, koText(finding.message_key && `${finding.message_key}.${field}`, {}, null)]));
+  return steps.mechanism ? { ...steps, cost: null, location_hint: null } : null;
+};
+/** The text a model's verdict cites, as the page shows it, so the owner sees where to look. */
+const citedOf = finding => finding.message_values?.quote ? koText('model-fix.cited', { quote: finding.message_values.quote }, null) : null;
+/** What a fix row says in each column: the problem with its pages and cited text, the method, and the effort. */
+const fixProblem = fix => [fix.text_ko.message, pagesLabel(fix), fix.text_ko.cited].filter(Boolean).join(' ');
+export const fixMethod = fix => fix.remediation ? `${fix.text_ko.remediation.mechanism} (${fix.remediation.source_url}, 확인일 ${fix.remediation.checked_date})` : fix.text_ko.remediation?.mechanism ?? UNKNOWN;
+export const fixEffort = fix => fix.remediation ? `${fix.text_ko.remediation.cost}; ${fix.text_ko.remediation.effort}` : fix.text_ko.remediation?.effort ?? UNKNOWN;
 
 /** Open before resolved, then blocking, then priority (P0 first, an unknown one last), then the problem on the most pages, then the unit. */
 function sortedFixes(findings, changes) {
@@ -139,7 +153,7 @@ function followUpText(row, fixes) {
   if (fix) {
     const { remediation } = fix.text_ko;
     const authority = fix.remediation && koText(`authority.${fix.remediation.required_authority}`, {}, row.required_input_or_authority);
-    return { problem: `${fix.text_ko.message} ${pagesLabel(fix)}`, reason: fix.status_label,
+    return { problem: fixProblem(fix), reason: fix.status_label,
       required_input_or_authority: authority ?? koText(`${FINDING_ROW}.input`, {}, row.required_input_or_authority),
       next_action: remediation?.mechanism ?? koText(`${FINDING_ROW}.next`, {}, row.next_action),
       reobserve_when: remediation?.validation ?? koText(`${FINDING_ROW}.when`, {}, row.reobserve_when) };
@@ -287,9 +301,8 @@ function tableRows(composed, verified) {
     `${percent(coverageOf(before.headline))} → ${after ? percent(coverageOf(after.headline)) : UNKNOWN}`,
     `${before.missing_bounds?.join('–') ?? UNKNOWN} → ${after?.missing_bounds?.join('–') ?? UNKNOWN}`,
     `${wordFor('readiness', before.readiness_status)} → ${after ? wordFor('readiness', after.readiness_status) : UNKNOWN}`, percent(withoutField)]);
-  const remediation = composed.fixes.map(f => [f.priority_label, `${f.text_ko.message} ${pagesLabel(f)}`, f.sources.map(x => `${x.source_ref} ${x.evidence_ref}`).join('; '),
-    f.remediation ? `${f.text_ko.remediation.mechanism} (${f.remediation.source_url}, 확인일 ${f.remediation.checked_date})` : UNKNOWN,
-    f.where, f.remediation ? `${f.text_ko.remediation.cost}; ${f.text_ko.remediation.effort}` : UNKNOWN, f.text_ko.remediation?.validation ?? UNKNOWN,
+  const remediation = composed.fixes.map(f => [f.priority_label, fixProblem(f), f.sources.map(x => `${x.source_ref} ${x.evidence_ref}`).join('; '),
+    fixMethod(f), f.where, fixEffort(f), f.text_ko.remediation?.validation ?? UNKNOWN,
     f.resolution ? `${f.status_label} (${f.resolution.source_ref}의 ${f.resolution.evaluator_type} 관찰로 해결 확인)` : f.status_label]);
   return { score, remediation,
     actual_outcomes: verified.outcome_rows.map(cells => cells.map(outcomeCell)),
@@ -328,7 +341,8 @@ function conditionLines(conditions, verified) {
 }
 
 /** The questions of the fixed panel and the pages that answer each, as a table for the model-judgment section; empty when there is no coverage verdict. */
-const questionLines = list => list ? `${table(['질문', '답하는 페이지'], list.map(item => [item.question, item.pages.join(', ') || '없음']))}\n\n` : '';
+const questionLines = list => list ? `${table(['질문', '답하는 페이지'], list.map(item => [item.question, item.pages.join(', ') || koText('question-coverage.not-found')]))}\n\n` +
+  `${list.some(item => !item.pages.length) ? `${html(koText('question-coverage.note'))}\n\n` : ''}` : '';
 
 /** `report.md` and the table rows `report.json` carries, both rendered from the composed report. */
 export function renderReport(composed, verified) {

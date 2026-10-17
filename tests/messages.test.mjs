@@ -274,3 +274,73 @@ test('a follow-up row about a fix is told from that fix', () => {
   assert.equal(composed.text_ko.reason, '확인됨');
   assert.equal(composed.text_ko.next_action, catalog['follow-up.finding.next']);
 });
+
+// R100: the owner reads a model's fix in plain Korean from the catalog; the model's own reason stays in the data.
+const modelFixKeys = () => {
+  const registry = JSON.parse(read('../skills/optbrew/references/check-registry.json')).families;
+  const modelFamilies = registry.filter(family => family.unit_scope === 'url' && !blocks.some(item => item.family_id === family.family_id));
+  assert.deepEqual(modelFamilies.map(family => family.family_id).sort(), ['answer-clarity', 'claim-support', 'freshness-truth', 'original-value', 'source-transparency']);
+  return [...modelFamilies.flatMap(family => family.absence_fail ? [`model-fix.${family.family_id}.absence`, `model-fix.${family.family_id}.shown`] : [`model-fix.${family.family_id}`]),
+    'model-fix.entity-identity', 'question-coverage.none-answered'];
+};
+
+test('every failing model family (and each basis) has a problem, a method, an effort and a check in plain Korean (R100)', () => {
+  const keys = modelFixKeys();
+  assert.equal(keys.length, 9);
+  for (const key of keys) {
+    for (const suffix of ['', '.mechanism', '.effort', '.validation']) {
+      const text = catalog[`${key}${suffix}`];
+      assert.equal(typeof text, 'string', `${key}${suffix}`);
+      assert.doesNotMatch(withoutIds(text), SENTENCE, `${key}${suffix} has no English sentence`);
+      assert.deepEqual(placeholders(text), [], `${key}${suffix} fills no value`);
+    }
+  }
+  assert.equal(catalog['model-fix.freshness-truth.absence'], '이 쪽에 바뀔 수 있는 내용(운영 시간·정원·가격 등)이 있는데 언제 기준인지 날짜가 없습니다.');
+  assert.equal(catalog['model-fix.freshness-truth.absence.mechanism'], '그 내용 옆에 「2026년 10월 17일 기준」처럼 확인한 날짜를 적으세요.');
+  assert.equal(catalog['model-fix.freshness-truth.absence.effort'], '작음 — 문장 한 줄');
+  assert.equal(catalog['model-fix.freshness-truth.absence.validation'], '다시 검사하면 이 항목이 통과로 바뀝니다.');
+  assert.deepEqual(namesOf(catalog['model-fix.cited']), ['quote']);
+});
+
+const modelFinding = (id, route, quote = '면회·이용 시간은 연중무휴 08:00~18:00입니다') => ({ schema_version: '2.0.0', finding_id: id, check_id: 'freshness-truth', unit_key: `freshness-truth|https://s.test/${route}`,
+  priority: 'P2', blocker: false, message: '바뀔 수 있는 내용을 안내하지만 쪽에 기준 날짜가 없다', message_key: 'model-fix.freshness-truth.absence', message_values: { quote },
+  source_ref: 'optbrew:model-judgment', evidence_ref: 'e', remediation_ids: [], status: 'confirmed', finding_ids: [id], sources: [], remediation: null, resolution: null });
+
+test('a model\'s fix reads in Korean with its page, the text it cites, the method, the effort and the check; the data keeps its reason (R100)', () => {
+  const fix = modelFinding('m', 'families');
+  const row = { finding_id: 'm', problem: 'English', reason: 'confirmed', required_input_or_authority: 'English', next_action: 'English', reobserve_when: 'English', message_key: 'follow-up.finding', message_values: {} };
+  const verified = verifiedOf({ findings: [fix], follow_ups: [row] });
+  const composed = composeReport(verified);
+  const { markdown, tables } = renderReport(composed, verified);
+  const [priority, problem, , method, , effort, check] = tables.remediation[0];
+  assert.equal(priority, '보통');
+  assert.equal(problem, `${catalog['model-fix.freshness-truth.absence']} https://s.test/families 해당 글: 「면회·이용 시간은 연중무휴 08:00~18:00입니다」`);
+  assert.equal(method, catalog['model-fix.freshness-truth.absence.mechanism']);
+  assert.equal(effort, catalog['model-fix.freshness-truth.absence.effort']);
+  assert.equal(check, catalog['model-fix.freshness-truth.absence.validation']);
+  assert.ok(![problem, method, effort, check].some(cell => cell.includes('알 수 없음')));
+  assert.equal(composed.fixes[0].message, '바뀔 수 있는 내용을 안내하지만 쪽에 기준 날짜가 없다', 'the model\'s own words stay in the data');
+  assert.doesNotMatch(markdown, /바뀔 수 있는 내용을 안내하지만 쪽에/, 'and are not what the owner reads');
+  const [later] = composed.follow_ups;
+  assert.equal(later.text_ko.next_action, method);
+  assert.equal(later.text_ko.reobserve_when, check);
+  assert.match(later.text_ko.problem, /^이 쪽에 바뀔 수 있는 내용.*https:\/\/s\.test\/families 해당 글: 「/);
+  const page = renderHtmlReport({ ...composed, remaining: [] }, { runbooks: [], level: 'beginner', target: PAGE });
+  const fixes = sectionOf(page, 'fixes');
+  for (const text of [catalog['model-fix.freshness-truth.absence'], method, effort, check, '해당 글: 「면회·이용 시간은 연중무휴 08:00~18:00입니다」']) assert.ok(fixes.includes(text.replace(/&/g, '&amp;')), text);
+});
+
+test('a model\'s fix with no catalog key keeps its own words, and the questions the audit did not find say so without blaming the site (R100, R101)', () => {
+  const unkeyed = { ...modelFinding('n', 'old'), message_key: undefined, message_values: undefined };
+  const [fix] = composeReport(verifiedOf({ findings: [unkeyed] })).fixes;
+  assert.equal(fix.text_ko.message, unkeyed.message);
+  assert.equal(fix.text_ko.cited, null);
+  assert.equal(fix.text_ko.remediation, null);
+  assert.equal(catalog['question-coverage.not-found'], '이번에 읽은 페이지에서는 이 질문에 답하는 페이지를 찾지 못했습니다.');
+  for (const key of ['question-coverage.not-found', 'question-coverage.none-answered', 'question-coverage.note']) {
+    assert.match(catalog[key], /찾지 못했습니다/, key);
+    assert.doesNotMatch(catalog[key], /(?:^|[^못])없습니다\. 사람들/, `${key} does not say the site lacks it`);
+  }
+  assert.match(catalog['question-coverage.note'], /사이트에 답이 없다는 뜻이 아닙니다/);
+  assert.match(catalog['question-coverage.note'], /머리말이나 바닥글처럼 모든 페이지에 있는 글에 답이 있으면/);
+});

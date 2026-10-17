@@ -1,4 +1,4 @@
-import { SECTION_TITLES, SYNTHETIC_BANNER, UNKNOWN, coverageOf, headlineLine, pagesLabel, percent, resolved } from './report-compose.mjs';
+import { SECTION_TITLES, SYNTHETIC_BANNER, UNKNOWN, coverageOf, fixEffort, fixMethod, headlineLine, pagesLabel, percent, resolved } from './report-compose.mjs';
 import { runbookEntry } from './runbooks.mjs';
 
 /** Fixes shown open in the "fix first" section; the rest wait inside one fold so the top stays short. */
@@ -87,10 +87,9 @@ const runbookHtml = (runbook, level) => {
 const fixHtml = fix => {
   const chip = resolved(fix) ? '<span class="chip ok">이미 고침</span>' : fix.blocker ? '<span class="chip hot">가장 급함</span>' : `<span class="chip">${esc(fix.priority_label)}</span>`;
   const rows = [['근거', fix.sources.map(x => `${x.source_ref} ${x.evidence_ref}`).join('; ') || UNKNOWN],
-    ['해결 방법', fix.remediation ? `${fix.text_ko.remediation.mechanism} (${fix.remediation.source_url}, 확인일 ${fix.remediation.checked_date})` : UNKNOWN],
-    ['비용 / 노력', fix.remediation ? `${fix.text_ko.remediation.cost}; ${fix.text_ko.remediation.effort}` : UNKNOWN],
+    ['해결 방법', fixMethod(fix)], ['비용 / 노력', fixEffort(fix)],
     ['확인 방법', fix.text_ko.remediation?.validation ?? UNKNOWN], ['상태', fix.status_label]];
-  return `<li class="fix"><div class="head">${chip}<span class="msg">${esc(fix.text_ko.message)}</span></div><p class="pages">${esc(pagesLabel(fix))}</p>` +
+  return `<li class="fix"><div class="head">${chip}<span class="msg">${esc(fix.text_ko.message)}</span></div><p class="pages">${esc(pagesLabel(fix))}${fix.text_ko.cited ? ` ${esc(fix.text_ko.cited)}` : ''}</p>` +
     `<p class="where"><strong>고칠 곳</strong> ${esc(fix.where)}</p><details><summary>자세히 보기</summary><dl>${rows.map(([term, value]) => `<dt>${term}</dt><dd>${esc(value)}</dd>`).join('')}</dl></details></li>`;
 };
 

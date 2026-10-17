@@ -27,6 +27,7 @@ SKILL.md 8단계의 절차다. 코드가 판정하지 못하는 내용 항목을
 ```
 
 - `questions`는 시작 질문으로 확정한 질문 목록이다(`answer-clarity` 판정이 고른다). 질문이 없으면 비어 있고, 그때는 `answer-clarity` 항목도 없다.
+- `site_chrome`은 파일 맨 위에 한 번만 나오는 글 목록이다. 감사한 쪽 대부분에 되풀이되는 글(머리말, 메뉴, 바닥글의 전화번호·주소·운영 시간·연락처 등)을 중복 없이 모았다. 쪽마다 같은 글이 `site_chrome: true` 조각으로 다시 나온다. 감사한 쪽이 적으면 이 목록이 없다. 먼저 이 목록을 읽고, 질문 목록의 질문에 답하는 글이 있는지 본다(`answer-clarity`의 「한 쪽이 여러 질문에 답할 때」와 「사이트 공통 글이 답할 때」).
 - 쪽(page) 하나에 판정할 항목(`families`)이 여럿 붙어 있다. 항목 하나가 판정 하나다. `families`의 각 항목에는 `family_id`와 `unit_key`가 있다. 홈 쪽의 항목에는 사이트 정체 판정(`entity-identity|site`, 2절 끝)이 붙을 수 있고, 그 항목에는 `identity`(`names`, `facts`, `host`)도 있다.
 - `spans`는 쪽의 보이는 글 덩어리다. 쪽마다 길이 순으로 40바이트 이상인 덩어리 30개까지, 문서 순서로 들어 있다(`judge_span_min_bytes` 40, `judge_spans_per_unit` 30). 연도·월·일이 모두 있는 날짜(`2026-10-17`, `2026년 10월 3일`, `2017 10월 26일`, `Oct 3, 2026`), 연도와 월만 있는 날짜(`2026년 9월`), 연락처(이메일·전화번호), `<address>` 요소 안의 글(저자 줄 등), 사용 중단을 알리는 짧은 줄(`deprecated`, `obsolete`, `사용 중단`, `폐지`, `더 이상 지원`이 든 글)은 40바이트 미만이어도 들어 있다. 이런 짧은 글은 따로 같은 글 하나씩 10개까지다(`judge_short_spans_per_unit` 10). 열 개를 넘으면 문서 순서로 앞의 열 개만 들어 있다. 30개 한도에서는 연도·월·일이 있는 날짜가 든 긴 줄이 다른 긴 줄보다 먼저 남는다. 그래도 쪽의 날짜가 모두 조각에 있다고 믿지 않는다. 한도에서 밀린 줄이 있고, `10월 26일`처럼 연도가 없는 짧은 날짜는 들어 있지 않다.
 - `site_chrome: true`가 붙은 조각은 감사한 쪽 대부분에 되풀이되는 글이다(머리말, 메뉴, 바닥글). 그 사이트의 글이지 이 쪽의 글이 아니다. 아래 `freshness-truth`와 `source-transparency`가 이 조각을 쓰는 법을 정한다. 한 덩어리가 2000바이트(`judge_span_max_bytes`)를 넘으면 문장 끝(없으면 공백, 그것도 없으면 글자)에서 나뉘어 덩어리 여러 개가 된다. 나뉜 덩어리마다 바이트 범위가 따로 있고, 코드는 같은 나눔을 다시 만든다. 쪽 제목(`<title>`)의 글도 들어 있다. 태그 안쪽의 글(속성 값)과 스크립트, 스타일, 템플릿, noscript, 주석 안의 글은 없다. 주석(`<!-- -->`)은 글을 끊지 않는다. 한 문장 안의 글 노드 사이에 있는 주석(`금액은 <!-- -->2026<!-- -->년`)은 문장을 나누지 않고, 조각의 `text`는 주석을 뺀 글(`금액은 2026년`)이다. 키나 토큰처럼 보이는 글이 든 덩어리는 빠져 있다.
@@ -81,8 +82,11 @@ SKILL.md 8단계의 절차다. 코드가 판정하지 못하는 내용 항목을
 - `unknown`: 주장이 있는 듯하지만 조각만으로 세기 어렵다.
 
 **answer-clarity** (`not_applicable` 조건: `no_matching_questions`)
-- 이 쪽이 답하려는 질문을 목록 파일의 `questions`에서 고른다. 맞는 질문이 둘 이상이면 가장 가까운 하나로 판정하고, 이유에 그 질문을 적는다.
+- 이 쪽이 답하려는 질문을 목록 파일의 `questions`에서 고른다. 맞는 질문이 둘 이상이면 가장 가까운 하나를 `question_id`로 판정하고, 이유에 그 질문을 적는다. 나머지는 아래 「한 쪽이 여러 질문에 답할 때」를 따른다.
 - `pass`, `partial`, `fail`에는 고른 질문의 `id`를 `question_id`로 쓴다. 목록에 없는 `id`는 거절된다. 같은 질문에 여러 쪽이 답해도 질문은 한 번만 센다.
+- 한 쪽이 여러 질문에 답할 때: 쪽이 `question_id` 말고도 다른 질문에 직접 답하면 그 질문의 `id`를 모두 `also_question_ids`(목록)에 쓴다. 예: 비용 쪽 `/costs`에 월 비용과 등급별 본인부담금이 모두 있으면 `question_id`는 월 비용 질문, `also_question_ids`는 등급별 본인부담금 질문이다. 이 쪽의 `pass`나 `partial` 판정에만 쓴다. `fail`과 `not_applicable`에는 쓰지 않는다. `question_id`와 같은 `id`, 목록에 없는 `id`, 같은 `id`를 두 번 쓴 목록은 거절된다. `also_question_ids`에 쓴 질문도 이 쪽이 답한 것으로 세고, 판정은 쪽이 답한 모든 질문에 하나다(한 질문에는 `pass`지만 다른 질문에는 일부만 답하면 `partial`이다). 판정마다 근거로 고른 조각(`span_ids`)에 `also_question_ids`의 답이 든 조각도 넣는다.
+- 사이트 공통 글이 답할 때: `site_chrome: true` 조각(전화번호, 주소, 운영 시간, 연락처)이 질문에 답하면 사이트가 그 질문에 답한 것이다. 그 글이 조각으로 든 쪽 하나의 `answer-clarity` 판정에서 그 질문을 `question_id`나 `also_question_ids`에 쓰고, 그 조각을 `span_ids`에 넣는다. 홈 쪽을 먼저 보되, 홈 쪽의 조각에 그 글이 없으면(짧은 줄은 쪽마다 30개 한도에서 밀릴 수 있다) 그 글이 조각으로 든 다른 쪽에서 `pass`나 `partial`로 판정하는 쪽 하나를 고른다. 이 판정은 쪽의 글이 아니라 사이트 공통 글에 기대어도 된다(이것은 `freshness-truth`와 `source-transparency`의 규칙과 다르다). 그 쪽이 이미 다른 질문에 답한다면 같은 판정의 `also_question_ids`에 더한다.
+- 질문에 답하는 쪽을 찾지 못하면 그 질문은 「이번에 읽은 쪽에서 답하는 쪽을 찾지 못함」으로 보고된다. 사이트에 답이 없다는 판정이 아니다. 답이 사이트 공통 글에 있는지, 이름이 다른 쪽(예: 비용 쪽)에 있는지 `questions`마다 한 번 더 확인한 뒤 판정을 쓴다.
 - `pass`: 질문에 직접, 빠짐없이 답한다.
 - `partial`: 답이 있지만 핵심 조건 하나가 빠졌다(누가, 얼마, 언제, 어디서 중 하나).
 - `fail`: 이 쪽은 고른 질문에 답하려는 쪽인데(제목이나 첫 문장이 그렇게 말한다) 답이 틀렸거나 빠져 있다. 예: 운영 시간을 묻는 질문의 쪽인데 시간이 없다.
@@ -101,7 +105,7 @@ SKILL.md 8단계의 절차다. 코드가 판정하지 못하는 내용 항목을
 - `pass`: 쪽에 날짜가 보이고, 그 날짜가 글이 바뀐 때나 관찰한 때를 뜻하며, 날짜와 맞는 사실이 최신으로 읽힌다.
 - `fail`은 두 가지다. 모든 `fail`에 `basis`를 쓴다.
   - 조각이 직접 보여 주는 것: 날짜가 내용과 모순되거나(지난 행사를 앞으로의 일로 쓴 경우 등), 중요한 사실이 오래돼 보이는 근거가 조각에 있다. `basis: "shown"`. 앞으로 효력이 생길 날짜를 알리는 글(예: 「2026-10-31부터 적용」)은 모순이 아니다. 모순은 같은 시점에 대해 서로 양립할 수 없는 두 진술이 있을 때만이다. 예: 한 곳은 「시행일 2026-10-31」이라 하고 다른 곳은 「이미 2026-09-01부터 시행 중」이라 한다.
-  - 쪽에 없는 것: 쪽 자신의 글이 시간에 따라 변하는 주장(출시, 「새로운」, 버전, 운영 시간, 정원, 가격)을 하는데 쪽에 보이는 날짜가 없다. `basis: "absence"`를 붙이고 이유에 「time-sensitive claim without a visible date」를 쓴다. 예: 「4.0이 출시되었다」는 공지가 있는데 쪽의 보이는 글에 날짜가 없다.
+  - 쪽에 없는 것: 쪽 자신의 글이 시간에 따라 변하는 주장(출시, 「새로운」, 버전, 운영 시간, 정원, 가격)을 하는데 쪽에 보이는 날짜가 없다. `basis: "absence"`를 붙이고 이유에 그 주장이 무엇인지 사용자의 언어로 한 문장을 쓴다. 보고서가 사용자에게 보이는 문제 문장과 고치는 방법은 목록(`basis`와 `span_ids`)에서 코드가 만들고, 이유는 증거로만 남는다. 예: 「4.0이 출시되었다」는 공지가 있는데 쪽의 보이는 글에 날짜가 없다.
   - 사용 중단(`deprecated`)·대체 안내와 버전·출시 안내는 변하는 사실이다. 쪽 자신의 글에 이런 안내가 있고 쪽에 날짜가 없으면 `basis: "absence"`의 `fail`이다. 같은 안내가 든 쪽은 같은 판정을 받아야 한다. 예: 속성 `hx-vars`의 「deprecated in favor of hx-vals」와 속성 `hx-on`의 「(deprecated)」 표시는 둘 다 날짜 없는 사용 중단 안내이므로 둘 다 `fail`이다(코드가 받아들이지 않으면 둘 다 `unknown`). 한 쪽만 `not_applicable`로 쓰지 않는다.
   - `basis: "shown"`인데 쪽에 날짜가 하나도 없으면 코드는 이 `fail`을 부재 `fail`과 같이 본다. 조각이 쪽을 덮지 못했으면 `unknown`이 된다. 쪽에 날짜가 있으면 `shown`은 그대로 받아들여진다.
   - `site_chrome` 조각은 쪽을 시간에 민감하게 만들지 않는다. 쪽 자신의 글만 센다. 예: 모든 쪽 바닥글의 「연중무휴 08:00~18:00」 때문에 모든 쪽을 `fail`로 쓰지 않는다. 그 쪽의 글이 운영 시간이나 가격을 말할 때 센다.
@@ -185,6 +189,7 @@ SKILL.md 8단계의 절차다. 코드가 판정하지 못하는 내용 항목을
 - `reason`은 모든 상태에 필요하다. `unknown`에도 쓴다.
 - `condition`은 `not_applicable`에만 쓰고, 2절의 항목별 조건 코드 중 하나다.
 - `question_id`는 `answer-clarity`의 `pass`, `partial`, `fail`에 쓴다. 목록 파일의 `questions`에 있는 `id`다.
+- `also_question_ids`는 `answer-clarity`의 `pass`, `partial`에만 쓰는 선택 항목이다. 이 쪽이 `question_id` 말고도 답하는 질문의 `id` 목록이다(비어 있지 않고, `question_id`와 다르며, 겹치지 않는다).
 - `span_ids`는 그 쪽의 `spans`에 있는 `span_id`만 쓴다. 판정에 실제로 읽은 조각만 고른다.
 - `basis`는 `freshness-truth`와 `source-transparency`의 모든 `fail`에 쓴다. `"absence"`는 쪽에 없는 것에 근거한 `fail`이고 `"shown"`은 인용한 조각이 직접 보여 주는 것에 근거한 `fail`이다. 빠지면 거절된다. 다른 항목이나 다른 상태에는 쓰지 않는다.
 - `partial_basis`는 `claim-support`의 `partial`에만 쓴다. `answer-clarity`와 `original-value`의 `partial`은 0.5로 계산되므로 쓰지 않는다.
@@ -193,7 +198,7 @@ SKILL.md 8단계의 절차다. 코드가 판정하지 못하는 내용 항목을
 
 ### 이유 쓰는 법
 
-- 이유는 한 문장이다. 사용자의 언어로 쓴다. 보고서에 그대로 실린다.
+- 이유는 한 문장이다. 사용자의 언어로 쓴다. 판정의 증거로 `report.json`에 남는다. 사용자가 읽는 보고서의 문제 문장은 `fail`의 항목과 `basis`로 코드가 고르는 한국어 문장이고, 이유가 아니다.
 - 판단의 근거가 된 사실을 쓴다. 조각의 글을 인용하면 80자 안으로 줄이고 따옴표로 감싼다.
 - 키, 토큰, 비밀번호, 긴 무작위 문자열을 옮기지 않는다. 그런 글이 든 이유는 거절된다.
 
@@ -217,6 +222,8 @@ SKILL.md 8단계의 절차다. 코드가 판정하지 못하는 내용 항목을
 | `is judged by code` | 코드가 판정하는 항목이다 | 그 판정을 지운다 |
 | `needs a condition of the family` | `not_applicable`인데 `condition`이 없거나 그 항목의 코드가 아니다 | 2절의 항목별 조건 코드를 쓴다 |
 | `needs question_id from the question list` | `answer-clarity`의 `pass`, `partial`, `fail`에 `question_id`가 없거나 목록에 없다 | 목록 파일의 `questions`에서 `id`를 고른다 |
+| `must be a list of other, distinct ids` | `also_question_ids`가 비었거나 목록이 아니거나, `question_id`와 같은 `id`·목록에 없는 `id`·겹치는 `id`가 있다 | 다른 질문의 `id`만, 한 번씩 쓴다 |
+| `names no also_question_ids` | `also_question_ids`를 `pass`, `partial` 밖의 판정에 썼다 | `pass`나 `partial`에만 쓰거나 뺀다 |
 | `names no question` | `answer-clarity`의 `not_applicable`에 `question_id`를 썼다 | 질문을 골랐다면 `pass`, `partial`, `fail` 중에서 고르고, 어느 질문도 쪽의 주제가 아니면 `question_id`를 뺀다 |
 | `is a site unit and cannot be not_applicable` | 사이트 정체 항목에 `not_applicable`을 썼다 | `pass`, `partial`, `fail`, `unknown` 중에서 고른다 |
 | `needs basis "absence"` | `freshness-truth`나 `source-transparency`의 `fail`에 `basis`가 없다 | 쪽에 없는 것이면 `"absence"`, 조각이 보여 주는 것이면 `"shown"`을 쓴다 |

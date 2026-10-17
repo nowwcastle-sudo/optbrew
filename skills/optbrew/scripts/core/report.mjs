@@ -21,7 +21,7 @@ import { composeReport, pagesLabel, renderReport } from './report-compose.mjs';
 import { messageOf } from './messages.mjs';
 import { runbookEntry } from './runbooks.mjs';
 import { sensitive } from './secrets.mjs';
-import { ENTITY_UNIT, OBSERVATION_SOURCES, QUEUE_KIND, QUESTION_UNIT, acceptance, basisAllowed, candidateSpans, checkSpan, deriveQuestionCoverage, homeOf, identityBasisOf, isCodeJudged, isEmptyPage, isEntityFallback, isModelJudged, operatorNames, queuedSpan, siteChrome } from './judgments.mjs';
+import { ENTITY_UNIT, OBSERVATION_SOURCES, QUEUE_KIND, QUESTION_UNIT, acceptance, alsoQuestionIds, basisAllowed, candidateSpans, modelFailMessages, checkSpan, deriveQuestionCoverage, homeOf, identityBasisOf, isCodeJudged, isEmptyPage, isEntityFallback, isModelJudged, operatorNames, queuedSpan, siteChrome } from './judgments.mjs';
 import { parseRobots, robotsVerdict } from '../../modules/naver-searchadvisor/scripts/robots.mjs';
 
 const catalog = JSON.parse(readFileSync(new URL('../../references/remediations.json', import.meta.url))).items;
@@ -680,6 +680,10 @@ function modelJudgmentRows(phase, input, snapshot, requireRef, confirmedNames = 
       const named = obs.measurement?.question_id;
       if (obs.state === 'not_applicable' ? named !== undefined : !(input.run_context.protocol.question_panel ?? []).some(question => question.id === named))
         fail(obs, obs.state === 'not_applicable' ? 'a not applicable answer-clarity verdict names no question' : 'an answer-clarity verdict names a question of the fixed panel');
+      // The other questions it says the page answers: other, distinct questions of the fixed panel, on a pass or partial only.
+      const also = obs.measurement?.also_question_ids;
+      if (also !== undefined && (!['pass', 'partial'].includes(obs.state) || alsoQuestionIds({ question_id: named, also_question_ids: also }, new Set(input.run_context.protocol.question_panel.map(question => question.id))) === null))
+        fail(obs, 'its other questions are not other, distinct questions of the fixed panel on a pass or partial verdict');
     }
     if (isEntityFallback(obs.family_id, obs.unit_key) && obs.measurement?.identity_basis !== identityBasisOf(obs.state)) fail(obs, 'its identity basis is not the one its state records');
     const raw = (audit.raw ?? []).find(x => x.evidence_ref === obs.evidence_ref && x.normalized_url === (isEntityFallback(obs.family_id, obs.unit_key) ? home : unitUrl(obs.unit_key)));
@@ -693,6 +697,9 @@ function modelJudgmentRows(phase, input, snapshot, requireRef, confirmedNames = 
     const unaccepted = acceptance({ family_id: obs.family_id, state: obs.state, condition: obs.applicability_decision?.condition, basis: obs.measurement?.basis }, bytes, cited, candidates,
       { chrome, ...operatorNames({ confirmed: confirmedNames, observations: input.observations, url: unitUrl(obs.unit_key) }) });
     if (unaccepted) fail(obs, `its verdict is not accepted: ${unaccepted.reason}`);
+    // What the owner reads for a fail is the catalog sentence of its family and basis with the text it cites; any other verdict states no problem.
+    if (!same(obs.problem_messages ?? null, obs.state === 'fail' ? modelFailMessages({ family_id: obs.family_id, basis: obs.measurement?.basis }, cited, chrome) : null))
+      fail(obs, 'its problem message is not the one its family, basis and cited text give');
     if (Boolean(obs.measurement?.empty_page) !== isEmptyPage(bytes)) fail(obs, 'its empty-page mark differs from the page');
     for (const span of obs.evidence_span ?? []) {
       if (span.evidence_sha256 !== raw.content_hash) fail(obs, 'a span names evidence other than the unit page');
