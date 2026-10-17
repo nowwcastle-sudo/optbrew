@@ -194,3 +194,22 @@ test('indexing decision evidence paths on a render page do not change the protoc
   };
   assert.equal(freezeProtocol(make('e/one')).protocol_hash, freezeProtocol(make('e/two')).protocol_hash);
 });
+
+// Task 21e (R94): families that matter only for indexed pages have no unit for a page that is not an index target.
+test('document-title, canonical-consistency and naver-markup plan only the public index targets, like the index families (R94)', () => {
+  const about = { original: 'https://example.com/about', normalized: 'https://example.com/about', public_indexing: false,
+    indexing_decision: { condition: 'not_public_index_target', reason: 'documented exclusion', evidence_ref: 'e/index' } };
+  const planned = (familyId, urls) => {
+    const changed = context();
+    changed.protocol.page_types[0].urls.push(about);
+    changed.protocol.families.push({ family_id: familyId, applicable: true, ...(urls ? { urls } : {}) });
+    return changed;
+  };
+  for (const familyId of ['document-title', 'canonical-consistency']) {
+    assert.doesNotThrow(() => freezeProtocol(planned(familyId, ['https://example.com/'])), `${familyId} lists the public page only`);
+    assert.throws(() => freezeProtocol(planned(familyId, ['https://example.com/', 'https://example.com/about'])), ContractError, `${familyId} cannot list the excluded page`);
+  }
+  const allExcluded = planned('document-title', undefined);
+  allExcluded.protocol.page_types[0].urls[0] = { ...about, original: 'https://example.com/', normalized: 'https://example.com/' };
+  assert.throws(() => freezeProtocol(allExcluded), /document-title: applicable family has no public index target/);
+});

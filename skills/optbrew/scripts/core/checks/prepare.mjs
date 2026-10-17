@@ -60,7 +60,8 @@ export function prepare({ context, artifacts, collection = {}, textOf, renders =
       titleKey: info.title ? normalizeTitle(info.title) : null });
   }
   const titleCounts = new Map();
-  for (const row of pageRows) if (row.titleKey !== null) titleCounts.set(row.titleKey, [...titleCounts.get(row.titleKey) ?? [], row]);
+  // A title shared with a page that is not meant to be indexed is no duplicate: only indexed pages compete for a title.
+  for (const row of pageRows) if (row.titleKey !== null && row.publicIndexing) titleCounts.set(row.titleKey, [...titleCounts.get(row.titleKey) ?? [], row]);
   const facts = pageRows.map(row => ({ url: row.url, row, facts: pageFacts(row.html, [row.url, row.artifact.final_url]) }));
   const htmlRows = artifacts.filter(x => x.capability === 'raw_html' && x.status === 200)
     .map(artifact => ({ url: artifact.normalized_url, artifact, html: textOf(artifact) }));

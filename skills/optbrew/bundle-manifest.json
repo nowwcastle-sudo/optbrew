@@ -6,7 +6,7 @@
   "evaluation_sources": [
     {
       "path": "references/check-registry.json",
-      "sha256": "74af0967c65af445df8df796d68a3ddcc22ce86544ab04abee38ff83d1af36c5"
+      "sha256": "a4e28070f760da91114e9dbfad987a5ee93d35b19c5ca4e42235443da5084dca"
     },
     {
       "path": "references/profiles.json",
@@ -14,7 +14,7 @@
     },
     {
       "path": "references/scoring.md",
-      "sha256": "6e23987403ed0c5ce7143b8e28c5bf0cf075dfffb4901e1e6ff193e8c9dfc482"
+      "sha256": "793a1bcc42b2120fed263b56bc8b19ce6063f44ffe08fbb8be95290a87e86e8c"
     },
     {
       "path": "references/measurement.md",
@@ -26,7 +26,7 @@
     },
     {
       "path": "scripts/core/weights.mjs",
-      "sha256": "a565192fdd9151f1b069f721eb5b6ee3be051c4a6c572b9b1bfa6e2a2fb5abee"
+      "sha256": "45bd145e586b105f328426db8b815ec18f5a7f9654918404876ae51e66039d80"
     },
     {
       "path": "scripts/core/contracts.mjs",
@@ -45,7 +45,7 @@
       "sha256": "703d5c16878c526114afb540e4a6d54bd74831f35a824c03a839e2480097d279"
     }
   ],
-  "evaluation_hash": "4c1311f14570b417abb987ef1424efd8fd049aec6ea9a12d4ae596197e23cb9f",
+  "evaluation_hash": "58fd40fdd6eeff844cdce395e6792abcd137507068cdd0b89b2320c39f0017ff",
   "protocol_sources": [
     {
       "path": "references/schemas/contract.schema.json",
@@ -57,10 +57,10 @@
     },
     {
       "path": "scripts/core/protocol.mjs",
-      "sha256": "2c7beef888e5df3df84f0a0d4d2e06ed4124bde70c01da7ae740dc75c2380bda"
+      "sha256": "5b9a2d2cd413330aa7dc0b13c6e39554fb89207ffc7436d60f9ee17eae3d4bce"
     }
   ],
-  "protocol_hash": "ede255f470c25160aa94dd6ca8ecead22d05abdaedd9d3ae8d9d105ad0cf7307",
+  "protocol_hash": "36487f2698b4ea9f85ba70841fc33c2ffe54be4938f8edd0199f2a622cc15ad0",
   "files": [
     {
       "path": "LICENSE",
@@ -552,7 +552,7 @@
     },
     {
       "path": "references/check-registry.json",
-      "sha256": "74af0967c65af445df8df796d68a3ddcc22ce86544ab04abee38ff83d1af36c5"
+      "sha256": "a4e28070f760da91114e9dbfad987a5ee93d35b19c5ca4e42235443da5084dca"
     },
     {
       "path": "references/chrome-paths.json",
@@ -672,7 +672,7 @@
     },
     {
       "path": "references/scoring.md",
-      "sha256": "6e23987403ed0c5ce7143b8e28c5bf0cf075dfffb4901e1e6ff193e8c9dfc482"
+      "sha256": "793a1bcc42b2120fed263b56bc8b19ce6063f44ffe08fbb8be95290a87e86e8c"
     },
     {
       "path": "references/source-analysis.md",
@@ -768,7 +768,7 @@
     },
     {
       "path": "scripts/core/checks/prepare.mjs",
-      "sha256": "df678fe1373100dcedeced82e9bb1628604ec3c54f36f49531843ad29cf344f0"
+      "sha256": "b5f5511a8bad179a81977a83d2d8e685146d242d6f2c898f803a92eaae7c4067"
     },
     {
       "path": "scripts/core/checks/render-content.mjs",
@@ -796,7 +796,7 @@
     },
     {
       "path": "scripts/core/config.mjs",
-      "sha256": "2c613b280fa8f63ecc444d5eb4a91d4bb2cdffa95778c8c1e2071bb7268d35c2"
+      "sha256": "0f3104b3e9eef1ca54eff8e62f3e0d0a34b07e8138d84cc9a1565d99aa97788c"
     },
     {
       "path": "scripts/core/contracts.mjs",
@@ -816,7 +816,7 @@
     },
     {
       "path": "scripts/core/derive.mjs",
-      "sha256": "fc982ed508953ccedf23a90d22f1e40efca815b0d32b2cc678c3931dbd543c16"
+      "sha256": "f819437f924a07a1f21719cc014bd720e33e39eb68bcb5e73e7670e226c55338"
     },
     {
       "path": "scripts/core/evidence-store.mjs",
@@ -872,7 +872,7 @@
     },
     {
       "path": "scripts/core/protocol.mjs",
-      "sha256": "2c7beef888e5df3df84f0a0d4d2e06ed4124bde70c01da7ae740dc75c2380bda"
+      "sha256": "5b9a2d2cd413330aa7dc0b13c6e39554fb89207ffc7436d60f9ee17eae3d4bce"
     },
     {
       "path": "scripts/core/render.mjs",
@@ -916,7 +916,7 @@
     },
     {
       "path": "scripts/core/weights.mjs",
-      "sha256": "a565192fdd9151f1b069f721eb5b6ee3be051c4a6c572b9b1bfa6e2a2fb5abee"
+      "sha256": "45bd145e586b105f328426db8b815ec18f5a7f9654918404876ae51e66039d80"
     },
     {
       "path": "scripts/key.mjs",
@@ -935,5 +935,5 @@
       "sha256": "dca0bbd03fbf591c4aca6a568be76615eb48d69f7df0c634886f652b54f3f46d"
     }
   ],
-  "bundle_hash": "bde063be900431e2113f9b4ef7813cb2e12ca263f5ab2a4bd8e77bb806bae6dc"
+  "bundle_hash": "c7f22ec209660ff62f9555bfb32ca5d6b50dad1771fe33825c0e709a4719fb56"
 }

@@ -1,4 +1,5 @@
 import { readFileSync } from 'node:fs';
+import { publicOnlyFamily } from './config.mjs';
 import { ContractError, validateEntity } from './contracts.mjs';
 import { freezeProtocol } from './protocol.mjs';
 
@@ -8,7 +9,7 @@ const profiles = JSON.parse(readFileSync(new URL('../../references/profiles.json
 const tolerance = 1e-9;
 
 function candidateUnits(definition, plan, protocol) {
-  const publicOnly = ['index-policy', 'search-crawl-policy', 'discovery'].includes(definition.family_id);
+  const publicOnly = publicOnlyFamily(definition.family_id);
   const pageTypes = protocol.page_types.map(type => ({ ...type,
     urls: type.urls.filter(url => (!publicOnly || url.public_indexing) &&
       (!plan.urls || plan.urls.includes(url.normalized))) })).filter(type => type.urls.length);

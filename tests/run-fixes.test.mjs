@@ -534,7 +534,7 @@ test('replay refuses a page marked deliberately not indexed that the stored byte
     await writeFile(path.join(state.out, 'intake.json'), intake);
     const sha = value => createHash('sha256').update(value).digest('hex');
     const packet = structuredClone(state.packet);
-    const dropped = new Set(['index-policy', 'discovery', 'search-crawl-policy']);
+    const dropped = new Set(['index-policy', 'discovery', 'search-crawl-policy', 'document-title', 'canonical-consistency', 'naver-markup']);
     packet.run_context = forged;
     packet.baseline.input = { ...packet.baseline.input, run_context: forged,
       observations: packet.baseline.input.observations.filter(x => !(dropped.has(x.family_id) && x.unit_key.endsWith(`|${SITE}/about`))) };
@@ -545,4 +545,30 @@ test('replay refuses a page marked deliberately not indexed that the stored byte
   } };
   const done = await run({ answersPath: ws.answersPath, out: ws.out, judgmentsPath }, { ...overrides, stages: [...stages(), probe] });
   assert.equal(done.status, 'done');
+});
+
+// Task 21e (R94): the families that only matter for indexed pages skip a page that is not an index target.
+test('a deliberate non-index page gets no naver-markup, document-title or canonical unit and no fix for them; without noindex it does (R94)', async () => {
+  const audit = async over => {
+    const site = memorySite(inquirySite(over));
+    return twoCalls(site, answersFor(`${SITE}/`, { goals: ['네이버 검색 노출'] }), { before: ws => preflightOf(site, `${SITE}/`, ws.out) });
+  };
+  const publicOnly = ['naver-markup', 'document-title', 'canonical-consistency'];
+  const fixUrls = (report, check) => report.findings.filter(item => item.check_id === check).flatMap(item => item.unit_keys.map(key => key.split('|').pop()));
+  // The form shares the title of /about and has no canonical link; noindex and absent from the sitemap.
+  const deliberate = await audit({ '/inquiry': NOINDEX_PAGE('About Brew') });
+  const families = unitsOf(deliberate.report, `${SITE}/inquiry`);
+  assert.ok(families.includes('fetch-response') && families.includes('claim-support'), 'the fetch and content families stay');
+  for (const gone of publicOnly) {
+    assert.equal(families.includes(gone), false, `${gone} is not a unit of the deliberate page`);
+    assert.equal(fixUrls(deliberate.report, gone).includes(`${SITE}/inquiry`), false, `no ${gone} fix lists it`);
+  }
+  assert.equal(fixUrls(deliberate.report, 'document-title').includes(`${SITE}/about`), false, 'a title shared with a non-index page is no duplicate');
+  assert.ok(publicOnly.every(id => unitsOf(deliberate.report, `${SITE}/about`).includes(id)), 'the indexed pages keep them');
+  // The same page without noindex is an index target again and gets every one of them.
+  const open = await audit({ '/inquiry': brewPage('About Brew', ['/']) });
+  const openFamilies = unitsOf(open.report, `${SITE}/inquiry`);
+  for (const id of publicOnly) assert.ok(openFamilies.includes(id), `${id} is a unit of the page without noindex`);
+  assert.ok(fixUrls(open.report, 'document-title').includes(`${SITE}/inquiry`) && fixUrls(open.report, 'document-title').includes(`${SITE}/about`), 'both pages with the title are the duplicate');
+  assert.ok(fixUrls(open.report, 'naver-markup').includes(`${SITE}/inquiry`), 'its missing canonical is a fix');
 });
