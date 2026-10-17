@@ -22,7 +22,7 @@
     },
     {
       "path": "references/messages.ko.json",
-      "sha256": "3d7505e1ee799bd72b5e2d4e55f5918fcb8f7243f4b1a7a3266d3f16a79591f3"
+      "sha256": "d6b763bc8ce6e690bf85c49e1167184188ce62f7b98af9191aaad599fc0ff6a9"
     },
     {
       "path": "scripts/core/score.mjs",
@@ -145,7 +145,7 @@
       "sha256": "7b41a2f2039735e35b1f015ac3f3e8cf7ab9383dbbc758c15fcaa9149874575d"
     }
   ],
-  "evaluation_hash": "f0a8e074c43c8a197d7202ecf39504b6582af3ebb5d025a33d64f681a0e3213c",
+  "evaluation_hash": "35949a8cc23dbd6afb3212f20c095e9da55cbb217ead52f0c20ac8013cac16f3",
   "protocol_sources": [
     {
       "path": "references/schemas/contract.schema.json",
@@ -688,7 +688,7 @@
     },
     {
       "path": "references/messages.ko.json",
-      "sha256": "3d7505e1ee799bd72b5e2d4e55f5918fcb8f7243f4b1a7a3266d3f16a79591f3"
+      "sha256": "d6b763bc8ce6e690bf85c49e1167184188ce62f7b98af9191aaad599fc0ff6a9"
     },
     {
       "path": "references/policies.md",
@@ -884,7 +884,7 @@
     },
     {
       "path": "scripts/core/chrome-temp.mjs",
-      "sha256": "29348ca1b7c0033f66b8e477be338973b28ee82a2c58324fa5d429feb72c5139"
+      "sha256": "9d14a34a3abf6cb4b8f97789e38f08e8592b88ea76c41a448623a56a12e0b0c1"
     },
     {
       "path": "scripts/core/chrome.mjs",
@@ -1043,5 +1043,5 @@
       "sha256": "dca0bbd03fbf591c4aca6a568be76615eb48d69f7df0c634886f652b54f3f46d"
     }
   ],
-  "bundle_hash": "fa25d30a125a295ff1ceb3b9d70008e5c6debf224fefe358848c02527d61efa1"
+  "bundle_hash": "487cda6f7ece555bc449adfe3b5b0ff05ed3c31617de389cb4fe80def5f51fb0"
 }

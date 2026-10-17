@@ -34,7 +34,7 @@ test('pages left out of the index are said next to the headline in report.md and
   const composed = composeReport(verified);
   const note = composed.headline.not_indexed;
   assert.deepEqual([note.count, note.pages, note.message_key, note.message_values], [2, pages, 'headline.not-indexed', { count: 2, pages: pages.join(', ') }]);
-  for (const part of ['2페이지는 noindex이고 사이트맵에도 없어', ...pages, '검색에 나와야 하는 페이지가 있으면 그 페이지의 noindex를 지우세요']) assert.ok(note.text.includes(part), part);
+  for (const part of ['사이트맵에도 없는 페이지 2개는', ...pages, '검색에 나와야 하는 페이지가 있으면 그 페이지의 noindex를 지우세요']) assert.ok(note.text.includes(part), part);
   assert.equal(note.text.includes('쪽'), false, 'says 페이지');
   assert.equal(composed.conditions.not_indexed, undefined, 'moved out of the run conditions');
   assert.equal(composed.conditions.lines.some(line => line.label === '색인하지 않는 페이지'), false);
@@ -45,7 +45,7 @@ test('pages left out of the index are said next to the headline in report.md and
   const html = renderHtmlReport({ ...composed, remaining: [] }, { runbooks: [], level: 'beginner', target: verified.run_context.target });
   assert.ok(heroOf(html).includes('class="skipped"') && heroOf(html).includes('noindex를 지우세요'), 'html: in the top box');
   assert.ok(html.indexOf('class="skipped"') < html.indexOf('<details><summary>실행 조건'), 'and not only in the folded section');
-  assert.equal(html.split('noindex이고 사이트맵에도 없어').length - 1, 1, 'said once');
+  assert.equal(html.split('사이트맵에도 없는 페이지').length - 1, 1, 'said once');
 });
 
 test('with no page left out of the index there is no such line in any format (I-1)', () => {
@@ -112,8 +112,8 @@ test('Chrome runs with a temp folder of its own, and a profile folder nobody use
     await utimes(dir, when, when);
     return dir;
   };
-  await make('optbrew-chrome-orphan', 10 * 60_000);
-  await make('optbrew-chrome-running', 10 * 60_000);
+  await make('optbrew-chrome-orphan', 13 * 60 * 60_000);
+  await make('optbrew-chrome-running', 13 * 60 * 60_000);
   await make('optbrew-chrome-young', 1000);
   await mkdir(path.join(tmpRoot, 'other-folder'));
   const names = () => readdir(tmpRoot).then(list => list.sort());
@@ -125,7 +125,7 @@ test('Chrome runs with a temp folder of its own, and a profile folder nobody use
   assert.deepEqual(await sweepStaleProfiles(tmpRoot, { listLines: async marker => { assert.equal(marker, 'optbrew-chrome-'); return lines; } }), ['optbrew-chrome-orphan']);
   assert.deepEqual(await names(), ['optbrew-chrome-running', 'optbrew-chrome-young', 'other-folder']);
   // With nothing old there is nothing to look up at all.
-  assert.deepEqual(await sweepStaleProfiles(tmpRoot, { now: Date.now() - 20 * 60_000, listLines: async () => { throw new Error('must not list'); } }), []);
+  assert.deepEqual(await sweepStaleProfiles(tmpRoot, { now: Date.now() - 2 * 60 * 60_000, listLines: async () => { throw new Error('must not list'); } }), []);
   assert.deepEqual(await sweepStaleProfiles(path.join(tmpRoot, 'missing')), []);
 });
 

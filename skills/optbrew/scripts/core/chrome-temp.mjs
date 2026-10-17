@@ -5,7 +5,7 @@ import { limits } from './config.mjs';
 
 /** Chrome's temp folders: the environment it runs in, and the sweep of profile folders a killed launcher left (T22 M-7). */
 
-const LIST_LINES_WINDOWS = 'Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -and $_.CommandLine.Contains($env:OPTBREW_MARKER) } | ForEach-Object { $_.CommandLine }';
+const LIST_LINES_WINDOWS = '$ErrorActionPreference = "Stop"; Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -and $_.CommandLine.Contains($env:OPTBREW_MARKER) } | ForEach-Object { $_.CommandLine }';
 
 /** Command lines (whole lines) that name `marker`; null when the listing failed or timed out, so a caller never mistakes "could not look" for "nothing there". */
 function commandLinesNaming(marker, timeoutMs) {
@@ -20,8 +20,11 @@ function commandLinesNaming(marker, timeoutMs) {
 
 export const PROFILE_PREFIX = 'optbrew-chrome-';
 const TEMP_VARIABLES = /^(?:temp|tmp|tmpdir)$/i;
-/** A profile folder this young may still be starting (created, Chrome not yet running), so the sweep leaves it. */
-const YOUNG_PROFILE_MS = 60_000;
+/**
+ * A profile folder younger than this may belong to a run still going (one whose command line this process cannot read, e.g. an elevated
+ * Chrome), so the sweep leaves it. An audit takes minutes; a folder left for half a day is from a launcher that was killed.
+ */
+const YOUNG_PROFILE_MS = 12 * 60 * 60_000;
 
 /**
  * The environment Chrome runs in: `tempDir`, a folder inside this run's profile folder, in place of the user's temporary folder.

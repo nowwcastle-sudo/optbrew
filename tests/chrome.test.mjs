@@ -192,7 +192,7 @@ describe('chrome block', async () => {
   test('a forced kill of chrome still ends with its profile and temp folder removed, and the next start sweeps a profile a killed launcher left (T22 M-7)', { skip }, async () => {
     const stale = path.join(runDir, 'optbrew-chrome-stale1');
     await mkdir(path.join(stale, 'tmp', 'scoped_dir1'), { recursive: true });
-    const old = new Date(Date.now() - 10 * 60_000);
+    const old = new Date(Date.now() - 13 * 60 * 60_000);
     await utimes(stale, old, old);
     const chrome = await launchChrome({ path: found.path, tmpRoot: runDir });
     const swept = await stat(stale).then(() => false, () => true);

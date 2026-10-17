@@ -503,7 +503,7 @@ test('a noindex page the sitemap does not list gets no index checks, no blocker 
   assert.equal(report.composed.conditions.not_indexed, undefined);
   const note = report.composed.headline.not_indexed;
   assert.deepEqual([note.message_key, note.message_values, note.count, note.pages], ['headline.not-indexed', { count: 1, pages: `${SITE}/inquiry` }, 1, [`${SITE}/inquiry`]]);
-  assert.equal(note.text, `1페이지는 noindex이고 사이트맵에도 없어, 사이트가 일부러 검색에 내지 않는 페이지로 보고 색인 검사(검색 색인 허용, 검색 봇 허용, 사이트맵·링크로 찾을 수 있는지, 제목, 대표 주소(canonical), 네이버 표시)에서 뺐습니다: ${SITE}/inquiry. 이 중에 검색에 나와야 하는 페이지가 있으면 그 페이지의 noindex를 지우세요.`);
+  assert.equal(note.text, `noindex가 붙어 있고 사이트맵에도 없는 페이지 1개는 사이트가 일부러 검색에서 뺀 페이지로 보고 색인 검사에서 뺐습니다(${SITE}/inquiry). 이 가운데 검색에 나와야 하는 페이지가 있으면 그 페이지의 noindex를 지우세요.`);
   const markdown = await readFile(path.join(ws.out, 'report.md'), 'utf8'), page = await readFile(path.join(ws.out, 'report.html'), 'utf8');
   assert.ok(markdown.indexOf('색인 제외: ') > markdown.indexOf('결론: ') && markdown.indexOf('색인 제외: ') < markdown.indexOf(`## ${SECTION_TITLES.fixes}`), 'md: the line sits under the result line, above the fixes');
   assert.ok(page.indexOf('class="skipped"') > page.indexOf('class="hero"') && page.indexOf('class="skipped"') < page.indexOf('id="fixes"'), 'html: the line sits in the top box');
