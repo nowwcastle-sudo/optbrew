@@ -49,9 +49,12 @@ const LEADING = new RegExp(`^${SPACE}*`);
 const TRAILING = new RegExp(`${SPACE}+$`);
 // Text that is not shown to a reader: comments and script, style, template and noscript bodies.
 const INERT = /<!--[\s\S]*?(?:-->|$)|<(script|style|template|noscript)\b[\s\S]*?(?:<\/\1\s*>|$)/gi;
-// An inert run is blanked to this character between its angle brackets, so it still reads as one tag and splits the text around it.
+// An inert run is blanked to a character between its angle brackets, so it still reads as one tag. A script, style, template or
+// noscript body (BLANK) splits the text around it. An HTML comment (COMMENT_BLANK) does not: React leaves `<!-- -->` between the
+// text nodes of one sentence (`금액은 <!-- -->2026<!-- -->년`), and a comment is not a boundary of what a reader sees.
 const BLANK = '\0';
-const TAG_OPENER = /[A-Za-z/!?\0]/;
+const COMMENT_BLANK = '\x01';
+const TAG_OPENER = /[A-Za-z/!?\0\x01]/;
 // A hyphenated name (a custom element) is one name, so `b-card` is not the inline tag `b`.
 const TAG_NAME = /^<\/?([A-Za-z][A-Za-z0-9-]*)/;
 const SENTENCE_END = /[.!?。！？]+["'”’」)\]]*(?=\s|$)/gu;
@@ -79,6 +82,8 @@ const YEAR_MONTH_FORMS = [
 const BROAD_DATE_FORMS = [
   ...FULL_DATE_FORMS,
   ...YEAR_MONTH_FORMS,
+  // A year with 년 (`2026년 보건복지부 고시`) shows which year the text applies to. It refutes an absence fail, but it is not offered as a short line.
+  { re: /(?<!\d)(\d{4})\s*년/gu, ok: y => YEAR(+y) },
   { re: /(?<!\d)(\d{4})\s+(\d{1,2})\s*월/gu, ok: (y, m) => YEAR(+y) && MONTH(+m) },
   { re: /(?<![\d./-])(\d{4})\s*[-./]\s*(\d{1,2})(?![\d./-])/gu, ok: (y, m) => YEAR(+y) && MONTH(+m) },
   { re: /(?<!\d)(\d{1,2})\s*월\s*(\d{1,2})\s*일/gu, ok: (m, d) => MONTH(+m) && DAY(+d) },
@@ -92,7 +97,9 @@ const CONTACT_PATTERNS = [
   /(?:\+?\d{1,3}[\s.-]?)?\(?\d{2,4}\)?[\s.-]\d{3,4}[\s.-]\d{4}/u,
   /\b1[568]\d{2}[-\s]\d{4}\b/u,
 ];
-const isShortException = text => hasDate(text, [...FULL_DATE_FORMS, ...YEAR_MONTH_FORMS]) || CONTACT_PATTERNS.some(pattern => pattern.test(text));
+// A short line that marks something as no longer current (htmx `hx-on (deprecated)`) is what a freshness verdict needs to see.
+const DEPRECATION = /deprecated|obsolete|사용\s*중단|폐지|더\s*이상\s*지원/i;
+const isShortException = text => hasDate(text, [...FULL_DATE_FORMS, ...YEAR_MONTH_FORMS]) || CONTACT_PATTERNS.some(pattern => pattern.test(text)) || DEPRECATION.test(text);
 const ADDRESS_ELEMENT = /<address\b[^>]*>([\s\S]*?)<\/address\s*>/gi;
 const BODY_ELEMENT = /<body(?=[\s>/])[^>]*>([\s\S]*)/i;
 const HEAD_ELEMENT = /<head(?=[\s>/])[\s\S]*?<\/head\s*>/i;
@@ -191,7 +198,7 @@ function textRuns(masked) {
     if (masked[index] === '<' && TAG_OPENER.test(masked[index + 1] ?? '')) {
       const name = TAG_NAME.exec(masked.slice(index, index + 24))?.[1].toLowerCase();
       const end = tagEnd(masked, index);
-      if (!INLINE_TAGS.has(name)) {
+      if (!INLINE_TAGS.has(name) && masked[index + 1] !== COMMENT_BLANK) {
         if (index > from) runs.push([from, index]);
         from = end;
       }
@@ -297,7 +304,7 @@ function splitRun(masked, bytes, pieces, max) {
 
 /** The body as latin1 text with inert runs blanked, and the byte ranges of the text inside <address> elements. */
 function maskedBody(bytes) {
-  const masked = bytes.toString('latin1').replace(INERT, found => `<${BLANK.repeat(found.length - 2)}>`);
+  const masked = bytes.toString('latin1').replace(INERT, found => `<${(found.startsWith('<!--') ? COMMENT_BLANK : BLANK).repeat(found.length - 2)}>`);
   const addresses = [...masked.matchAll(ADDRESS_ELEMENT)].map(found => { const from = found.index + found[0].indexOf('>') + 1; return [from, from + found[1].length]; });
   return { masked, addresses };
 }

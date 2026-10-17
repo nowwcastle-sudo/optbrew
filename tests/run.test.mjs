@@ -184,6 +184,8 @@ test('one run produces report.json and report.md', async () => {
 test('a failed check becomes a finding and the report still replays', async () => {
   const pages = brewPages();
   pages['/about'] = { body: brewPage('About Brew', ['/']).body.replace('<head>', '<head><meta name="robots" content="noindex">') };
+  // The sitemap lists the page, so the noindex is a mistake and not a deliberate choice (R89).
+  pages['/sitemap.xml'] = { type: 'application/xml', body: `<urlset><url><loc>${SITE}/</loc></url><url><loc>${SITE}/about</loc></url></urlset>` };
   const call = await firstCall({ pages, over: { facts: [{ key: 'phone', value: '02-555-0142', source_url: `${SITE}/about` }] } });
   const { judgmentsPath } = await judge(call);
   const second = await run({ answersPath: call.ws.answersPath, out: call.ws.out, judgmentsPath }, call.overrides);

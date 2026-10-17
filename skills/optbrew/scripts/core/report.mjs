@@ -12,6 +12,7 @@ import { normalizeImport } from '../adapters/imports.mjs';
 import { mergeFindings, pageNeutral, problemsOf, selectRemediations } from './findings.mjs';
 import { auditCollected, indexingDirectives } from '../../modules/naver-searchadvisor/scripts/audit.mjs';
 import { deriveObservations } from './derive.mjs';
+import { isDerivedIndexDecision, notIndexTargets } from './index-targets.mjs';
 import { readVerified } from './evidence-store.mjs';
 import { links } from './collector.mjs';
 import { checkRenderLedger } from './render.mjs';
@@ -215,8 +216,13 @@ function checkDecisions(input, requireRef, collectedFor) {
           item.condition === decision.condition && item.reason === decision.reason))
       throw new ContractError(`applicability decision record does not match ${scope} ${identity.value}`);
   };
-  for (const type of input.run_context.protocol.page_types) for (const url of type.urls)
-    if (url.indexing_decision) decisionRecord(url.indexing_decision, 'url', { key: 'normalized_url', value: url.normalized });
+  for (const type of input.run_context.protocol.page_types) for (const url of type.urls) {
+    if (!url.indexing_decision) continue;
+    // A page the audit found deliberately not indexed has no approval record: checkAuditPhase derives the decision again from the
+    // stored bytes, which exist only for an audited phase.
+    if (!isDerivedIndexDecision(url.indexing_decision)) decisionRecord(url.indexing_decision, 'url', { key: 'normalized_url', value: url.normalized });
+    else if (input.run_context.audited !== true) throw new ContractError(`indexing decision of ${url.normalized} is derived from an audit this phase does not have`);
+  }
   for (const family of input.run_context.protocol.families)
     if (family.applicability_decision) decisionRecord(family.applicability_decision, 'family', { key: 'family_id', value: family.family_id });
   for (const observation of input.observations) {
@@ -521,6 +527,14 @@ function checkAuditPhase(input, phase, snapshot, requireRef) {
   // Final URL, redirect chain and header lines come from the hashed response records, not from collection.json alone.
   const artifacts = collection.artifacts.map(x => boundArtifact(x, audit, requireRef));
   checkLedger(input, audit, collection, artifacts, requireRef);
+  // A page marked as deliberately not indexed must be one the stored bytes show so (noindex, not in the sitemap the run read).
+  const marked = input.run_context.protocol.page_types.flatMap(type => type.urls).filter(url => isDerivedIndexDecision(url.indexing_decision));
+  if (marked.length) {
+    const found = new Map(notIndexTargets({ context: input.run_context, artifacts, skipped: collection.skipped ?? [],
+      textOf: artifact => artifact.content_hash ? requireRef(artifact.evidence_ref).text : null }).map(target => [target.url, target.evidence_ref]));
+    for (const url of marked) if (url.public_indexing !== false || found.get(url.normalized) !== url.indexing_decision.evidence_ref)
+      throw new ContractError(`indexing decision is not derivable from the raw evidence: ${url.normalized}`);
+  }
   for (const obs of observations) {
     if (!savedObservations.some(x => same(x, obs)) || !rawRefs.has(obs.evidence_ref))
       throw new ContractError('collector observation is not bound to audit index and raw evidence');

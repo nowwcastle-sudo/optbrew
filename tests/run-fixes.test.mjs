@@ -2,6 +2,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
+import { createHash } from 'node:crypto';
 import { appendFile, mkdir, readFile, readdir, rm, writeFile } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
@@ -10,6 +11,8 @@ import { limits } from '../skills/optbrew/scripts/core/config.mjs';
 import { pageBudget } from '../skills/optbrew/scripts/core/page-select.mjs';
 import { mergeFindings } from '../skills/optbrew/scripts/core/findings.mjs';
 import { buildReport } from '../skills/optbrew/scripts/core/report.mjs';
+import { freezeProtocol } from '../skills/optbrew/scripts/core/protocol.mjs';
+import { score } from '../skills/optbrew/scripts/core/score.mjs';
 import { stages } from '../skills/optbrew/scripts/core/stages.mjs';
 import { answersFor, bigSite, brewPage, brewPages, memorySite, passJudgments, preflightOf, queuedUnits, quietEnv, SITE, workspace } from './support/run-scenario.mjs';
 
@@ -265,6 +268,7 @@ test('duplicate titles on three pages are one finding, not three', async () => {
 test('a grouped finding cannot list a page that did not fail the same way', async () => {
   const pages = brewPages();
   pages['/about'] = { body: brewPage('About Brew', ['/']).body.replace('<head>', '<head><meta name="robots" content="noindex">') };
+  pages['/sitemap.xml'] = { type: 'application/xml', body: `<urlset><url><loc>${SITE}/</loc></url><url><loc>${SITE}/about</loc></url></urlset>` };
   const facts = [{ key: 'phone', value: '02-555-0142', source_url: `${SITE}/about` }];
   const site = memorySite(pages);
   const ws = await workspace(answersFor(`${SITE}/`, { facts }));
@@ -467,4 +471,78 @@ test('a folder left by a first call that stopped before its first index save is 
   await mkdir(path.join(other.out, 'evidence'), { recursive: true });
   await writeFile(path.join(other.out, 'context.json'), '{"run_id":"somebody-else"}');
   await assert.rejects(run({ answersPath: other.answersPath, out: other.out }, overridesOf(site, other)), { message: /^This folder holds files this audit did not make/ });
+});
+
+// Task 21e (R89): a page the site itself keeps out of the index (noindex, absent from its own sitemap) is not an index target.
+const NOINDEX_PAGE = (title, links = ['/']) => ({ body: brewPage(title, links).body.replace('<head>', '<head><meta name="robots" content="noindex">') });
+const sitemapOf = paths => ({ type: 'application/xml', body: `<urlset>${paths.map(p => `<url><loc>${SITE}${p}</loc></url>`).join('')}</urlset>` });
+const HOME_LINKS = ['/about', '/contact', '/inquiry'];
+const inquirySite = (over = {}) => ({ ...brewPages(), '/': brewPage('Brew Home', HOME_LINKS), '/inquiry': NOINDEX_PAGE('Inquiry'),
+  '/sitemap.xml': sitemapOf(['/', '/about', '/contact']), ...over });
+const auditOf = site => twoCalls(site, answersFor(`${SITE}/`), { before: ws => preflightOf(site, `${SITE}/`, ws.out) });
+const urlsOf = context => context.protocol.page_types.flatMap(type => type.urls);
+const unitsOf = (report, url) => report.baseline.input.observations.filter(x => x.unit_key.endsWith(`|${url}`)).map(x => x.family_id);
+
+test('a noindex page the sitemap does not list gets no index checks, no blocker and no fix; the report says so in one line (R89)', async () => {
+  const { report, context, ws } = await auditOf(memorySite(inquirySite()));
+  const inquiry = urlsOf(context).find(url => url.normalized === `${SITE}/inquiry`);
+  assert.equal(inquiry.public_indexing, false);
+  assert.deepEqual([inquiry.indexing_decision.condition, inquiry.indexing_decision.reason], ['not_public_index_target', 'noindex and not listed in the sitemap']);
+  assert.ok(report.evidence_index.some(entry => entry.ref === inquiry.indexing_decision.evidence_ref), 'the decision cites the stored raw page');
+  assert.equal(urlsOf(context).filter(url => url.public_indexing === false).length, 1, 'the listed pages stay public targets');
+  const families = unitsOf(report, `${SITE}/inquiry`);
+  assert.ok(families.includes('fetch-response'), 'the page is still fetched and judged');
+  for (const gone of ['index-policy', 'discovery', 'search-crawl-policy']) assert.equal(families.includes(gone), false, `${gone} is not a unit of the page`);
+  assert.equal(report.findings.some(item => item.check_id === 'index-policy'), false);
+  assert.deepEqual(report.baseline.scores.flatMap(result => result.blockers), []);
+  const intake = await readJson(path.join(ws.out, 'intake.json'));
+  assert.deepEqual(intake.selection.not_indexed, [`${SITE}/inquiry`]);
+  const line = report.composed.conditions.lines.find(item => item.label === '색인하지 않는 쪽');
+  assert.equal(line.value, `1쪽은 noindex이고 사이트맵에도 없어, 사이트가 일부러 검색에 내지 않는 쪽으로 보고 색인·크롤러 검사에서 뺐습니다: ${SITE}/inquiry`);
+  assert.deepEqual([report.composed.conditions.not_indexed.message_key, report.composed.conditions.not_indexed.message_values],
+    ['conditions.not-indexed', { count: 1, pages: `${SITE}/inquiry` }]);
+  for (const name of ['report.md', 'report.html']) assert.match(await readFile(path.join(ws.out, name), 'utf8'), /일부러 검색에 내지 않는 쪽/);
+});
+
+test('a noindex stays a blocker on the home page, on a listed page, and when no sitemap lists any page (R89)', async () => {
+  const blocked = async pages => {
+    const { report } = await auditOf(memorySite(pages));
+    return report.findings.filter(item => item.check_id === 'index-policy' && item.blocker).flatMap(item => item.unit_keys.map(key => key.split('|')[1])).sort();
+  };
+  assert.deepEqual(await blocked(inquirySite({ '/': NOINDEX_PAGE('Brew Home', HOME_LINKS) })), [`${SITE}/`], 'the home page is never a deliberate non-index target');
+  assert.deepEqual(await blocked(inquirySite({ '/sitemap.xml': sitemapOf(['/', '/about', '/contact', '/inquiry']) })), [`${SITE}/inquiry`], 'the sitemap lists it');
+  assert.deepEqual(await blocked(inquirySite({ '/sitemap.xml': { type: 'text/plain', body: 'gone' } })), [`${SITE}/inquiry`], 'no sitemap lists any page');
+});
+
+test('replay refuses a page marked deliberately not indexed that the stored bytes do not show so (R89)', async () => {
+  const site = memorySite();
+  const ws = await workspace(answersFor(`${SITE}/`));
+  await preflightOf(site, `${SITE}/`, ws.out);
+  const overrides = overridesOf(site, ws);
+  const first = await run({ answersPath: ws.answersPath, out: ws.out }, overrides);
+  const judgmentsPath = path.join(ws.dir, 'judgments.json');
+  await writeFile(judgmentsPath, JSON.stringify(passJudgments(await readJson(first.judge_queue))));
+  const probe = { name: 'probe', run: async state => {
+    const forged = structuredClone(state.context);
+    const about = urlsOf(forged).find(url => url.normalized === `${SITE}/about`);
+    const evidence_ref = state.input.observations.find(x => x.unit_key === `fetch-response|${SITE}/about`).evidence_ref;
+    Object.assign(about, { public_indexing: false, indexing_decision: { condition: 'not_public_index_target', reason: 'noindex and not listed in the sitemap', evidence_ref } });
+    const text = `${JSON.stringify(forged, null, 2)}\n`;
+    await writeFile(path.join(state.out, 'context.json'), text);
+    // The intake record follows the context's protocol hash, as the audit's own rewrite does, so only the derivation can refuse the page.
+    const intake = `${JSON.stringify({ ...await readJson(path.join(state.out, 'intake.json')), protocol_hash: freezeProtocol(forged).protocol_hash }, null, 2)}\n`;
+    await writeFile(path.join(state.out, 'intake.json'), intake);
+    const sha = value => createHash('sha256').update(value).digest('hex');
+    const packet = structuredClone(state.packet);
+    const dropped = new Set(['index-policy', 'discovery', 'search-crawl-policy']);
+    packet.run_context = forged;
+    packet.baseline.input = { ...packet.baseline.input, run_context: forged,
+      observations: packet.baseline.input.observations.filter(x => !(dropped.has(x.family_id) && x.unit_key.endsWith(`|${SITE}/about`))) };
+    packet.baseline.scores = score(packet.baseline.input);
+    packet.evidence_index = packet.evidence_index.map(entry => entry.kind === 'context' ? { ...entry, sha256: sha(text) } : entry.kind === 'intake' ? { ...entry, sha256: sha(intake) } : entry);
+    assert.throws(() => buildReport(packet), error => error.message === `indexing decision is not derivable from the raw evidence: ${SITE}/about`);
+    return { state };
+  } };
+  const done = await run({ answersPath: ws.answersPath, out: ws.out, judgmentsPath }, { ...overrides, stages: [...stages(), probe] });
+  assert.equal(done.status, 'done');
 });

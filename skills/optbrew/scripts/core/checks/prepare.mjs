@@ -15,7 +15,7 @@ const renderPlan = protocol => protocol.render ? (protocol.render.enabled ? prot
  * The declared sitemaps among the collected artifacts: every listed url, whether one is an index, the unusable ones, and the ones the
  * run never fetched (`unread`, each with the reason the collector skipped it, else `not_collected`).
  */
-function readSitemaps(artifacts, declared, textOf, skipped) {
+export function readSitemaps(artifacts, declared, textOf, skipped) {
   const sitemaps = { urls: new Set(), index: false, broken: [], unread: [] };
   const fetched = new Set(artifacts.map(artifact => artifact.normalized_url));
   for (const url of declared) if (!fetched.has(url)) sitemaps.unread.push({ url, reason: skipped.find(x => x.url === url)?.reason ?? NOT_COLLECTED });

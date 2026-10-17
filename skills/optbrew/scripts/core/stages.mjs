@@ -14,6 +14,7 @@ import { HTTP_OK, collectCwv, labCwv } from './cwv.mjs';
 import { deriveObservations } from './derive.mjs';
 import { lcpField, inpField, clsField } from './checks/cwv-field.mjs';
 import { openStore } from './evidence-store.mjs';
+import { notIndexTargets, withIndexTargets } from './index-targets.mjs';
 import { OBSERVATION_SOURCES, buildJudgeQueue, deriveQuestionCoverage, mergeJudgments } from './judgments.mjs';
 import { keyHome, readGoogleKey } from './keys.mjs';
 import { MigrationRequired, assertCurrentEvidence } from './migration.mjs';
@@ -253,6 +254,19 @@ async function ingestOwnerExports(state, env) {
   if (entries.length) await store.set('owner_exports', entries);
 }
 
+/**
+ * Record the pages the site keeps out of the index in the run's context and in its intake record (whose protocol hash follows the
+ * context). Both files were written by this run's context stage, so they are overwritten here, before any verdict is derived.
+ */
+async function markIndexTargets(state, targets) {
+  const context = withIndexTargets(state.context, targets);
+  const { protocol_hash } = freezeProtocol(context);
+  await writeFile(path.join(state.out, CONTEXT_FILE), json(context));
+  const intake = JSON.parse(await readFile(path.join(state.out, INTAKE_FILE), 'utf8'));
+  await writeFile(path.join(state.out, INTAKE_FILE), json({ ...intake, protocol_hash, selection: { ...intake.selection, not_indexed: targets.map(({ url }) => url) } }));
+  return context;
+}
+
 /** Collect the pages, persist the collector bytes and records, and run the offline modules over them. */
 const collectStage = {
   name: 'collect',
@@ -314,6 +328,14 @@ const collectStage = {
     await document('ledger', { entries: collection.ledger, limit: requestLimit(context.scope) });
     await document('modules', module_outputs);
     await ingestOwnerExports(state, deps.env);
+    // A page the site itself keeps out of the index (noindex, absent from its own sitemap) is not an index target: the run records that
+    // in its context now, before any verdict is derived, and report replay derives it again from the stored bytes (R89).
+    // A run that did not write its own context (`audit.mjs`, with a caller's context) leaves it as it was given.
+    if (state.answers) {
+      const targets = notIndexTargets({ context, skipped: collection.skipped, textOf: artifact => artifact.body?.toString('utf8') ?? null,
+        artifacts: collection.artifacts.map((artifact, index) => ({ ...artifact, evidence_ref: artifacts[index].evidence_ref })) });
+      if (targets.length) state.context = await markIndexTargets(state, targets);
+    }
     state.audit = { artifacts, module_outputs, discovered_count: collection.discovered_count, evaluated_count: collection.evaluated_count,
       request_count: collection.request_count, skipped: collection.skipped, limit_reached: collection.limit_reached };
     return { state };

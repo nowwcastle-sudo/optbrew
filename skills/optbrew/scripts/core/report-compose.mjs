@@ -2,7 +2,7 @@ import { compileUnits, scoreWeighted } from './weights.mjs';
 import { CWV_FAMILIES } from './checks/cwv-field.mjs';
 import { CONTENT_AFTER_RENDER } from './checks/render-content.mjs';
 import { messageKey } from './findings.mjs';
-import { koText } from './messages.mjs';
+import { koText, messageOf } from './messages.mjs';
 import { OBSERVATION_SOURCES, QUESTION_UNIT } from './judgments.mjs';
 import { keySetRunbook, runbookHarnesses } from './probe.mjs';
 import { remainingRunbooks, runbookEntry, startRunbooks } from './runbooks.mjs';
@@ -234,6 +234,12 @@ function remainingBlanks(verified, { observations, run_context: context }) {
   });
 }
 
+/** The pages the run treated as deliberately not indexed (no index checks, no blocker), with the catalog key and values of the sentence that says so; null when there are none. */
+function notIndexedOf(context) {
+  const pages = context.protocol.page_types.flatMap(type => type.urls).filter(url => url.public_indexing === false).map(url => url.normalized);
+  return pages.length ? { count: pages.length, pages, ...messageOf('conditions.not-indexed', { count: pages.length, pages: pages.join(', ') }) } : null;
+}
+
 /**
  * The report, composed once: the conclusion, what to fix, how complete the audit is, what is blank, and the run conditions.
  * `verified` is the checked report data: run_context, baseline and after ({ input, scores }), comparison, findings,
@@ -246,6 +252,7 @@ export function composeReport(verified) {
   const completeness = completenessOf(verified);
   const afterRender = latest.observations.some(obs => obs.family_id === 'render-content' && obs.state === 'pass' && obs.reason.startsWith(CONTENT_AFTER_RENDER));
   const conditions = { probe: latest.run_context.environment_probe, model_judgments: verified.model_judgments, model_not_applicable: modelNotApplicable(verified), empty_pages: verified.empty_pages ?? [], absence_basis: absenceBasisCounts(verified), not_accepted: notAcceptedCounts(latest), question_coverage: questionCoverageList(latest), lab_cwv: verified.lab_cwv, start_redirect: verified.start_redirect ?? null,
+    not_indexed: notIndexedOf(latest.run_context),
     blockers: { before: blockerSummary(verified.baseline.scores), after: verified.after ? blockerSummary(verified.after.scores) : null },
     notes: afterRender ? [JAVASCRIPT_NOTE] : [] };
   conditions.lines = conditionLines(conditions, verified);
@@ -308,6 +315,7 @@ function conditionLines(conditions, verified) {
       value: `쪽에 없다는 근거 ${conditions.absence_basis.absence}건, 인용한 글에서 직접 확인 ${conditions.absence_basis.shown}건` }] : []),
     ...(Object.keys(conditions.not_accepted).length ? [{ label: '쪽에 없다는 판정 중 받아들이지 않은 것',
       value: Object.entries(conditions.not_accepted).map(([code, n]) => `${NOT_ACCEPTED_REASONS[code]} ${n}건`).join(', ') }] : []),
+    ...(conditions.not_indexed ? [{ label: '색인하지 않는 쪽', value: koText(conditions.not_indexed.message_key, conditions.not_indexed.message_values) }] : []),
     { label: '이전 막는 문제', value: listed(before) },
     { label: '이후 막는 문제', value: after ? listed(after) : `${UNKNOWN} (이후 단계를 보지 않음)` },
     { label: '이후 결과 없는 핵심 검사', value: count(after?.core_unknown ?? null) },
