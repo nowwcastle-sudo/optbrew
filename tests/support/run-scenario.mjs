@@ -98,6 +98,10 @@ export function zipOf(files) {
 /** The units a grouped queue file asks for. */
 export const queuedUnits = queue => queue.pages.flatMap(page => page.families.map(family => ({ ...family, page })));
 
-/** One pass judgment for every unit of a queue file, citing the first candidate span of the unit's page. */
+/**
+ * One pass judgment for every unit of a queue file, citing the first candidate span of the unit's page. An answer-clarity pass
+ * names the first question of the file's list.
+ */
 export const passJudgments = queue => queuedUnits(queue).map(({ family_id, unit_key, page }) => ({ family_id, unit_key, state: 'pass',
-  span_ids: [page.spans[0].span_id], reason: 'The cited text supports the check' }));
+  span_ids: [page.spans[0].span_id], reason: 'The cited text supports the check',
+  ...(family_id === 'answer-clarity' ? { question_id: queue.questions[0].id } : {}) }));

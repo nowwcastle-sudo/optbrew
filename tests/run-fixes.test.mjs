@@ -38,7 +38,9 @@ test('pages with identical bytes and a sitemap answered by the app shell: both c
   const urls = context.protocol.page_types.flatMap(type => type.urls.map(url => url.normalized)).sort();
   assert.deepEqual(urls, [`${SITE}/`, `${SITE}/about`, `${SITE}/contact`]);
   assert.deepEqual(queue.pages.map(page => page.url).sort(), urls, 'every selected page is queued, and the sitemap is not');
-  assert.ok(queue.pages.every(page => page.families.length === queue.pages[0].families.length));
+  const perPage = page => page.families.filter(family => family.unit_key !== 'entity-identity|site').length;
+  assert.ok(queue.pages.every(page => perPage(page) === perPage(queue.pages[0])), 'the same units on every page, apart from the site identity');
+  assert.deepEqual(queue.pages.filter(page => page.families.some(family => family.unit_key === 'entity-identity|site')).map(page => page.url), [`${SITE}/`], 'the home page carries the site identity');
   assert.equal(report.model_judgments.length, queuedUnits(queue).length);
 });
 

@@ -82,7 +82,7 @@ test('completeness holds both phases, the difference and the coverage without fi
   assert.equal(seo.before.coverage, seo.coverage);
   assert.ok(seo.coverage_without_cwv > seo.coverage, 'unknown field checks no longer weigh the coverage down');
   assert.equal(seo.pass_rate_in_measured, buildReport(fixturePacket()).json.baseline.scores[0].score);
-  const both = composeReport(verifiedOf({ after: { ...later(), scores: [result({ score: 95, coverage: 95 })] },
+  const both = composeReport(verifiedOf({ after: { ...later(), scores: [result({ score: 95, A: 100, M: 95, coverage: 95 })] },
     comparison: { status: 'comparable', score_deltas: [{ profile: 'SEO', percentage_point_delta: 3.5 }], reasons: [] } })).completeness[0];
   assert.equal(both.pass_rate_in_measured, 95, 'the latest phase gives the figures');
   assert.equal(both.before.coverage, seo.coverage);
@@ -338,7 +338,9 @@ test('one rounding rule shows every coverage', () => {
   const verified = verifiedOf();
   const changed = { ...verified, baseline: { ...verified.baseline, scores: [result({ A: 1000, M: 87.9, score: 50, coverage: 8.8 })] } };
   const composed = composeReport(changed);
-  assert.equal(composed.completeness[0].coverage, 8.8, 'the JSON keeps the rounded coverage the score gives');
+  assert.equal(composed.completeness[0].coverage, 8.7, 'the JSON shows the floor the threshold reads, like the other two formats');
+  assert.equal(composed.completeness[0].before.headline.coverage, 8.7);
+  assert.ok(Math.abs(composed.completeness[0].before.headline.coverage_exact - 8.79) < 1e-9, 'the exact value stays in its own field');
   for (const text of [renderReport(composed, changed).markdown, htmlOf(composed)]) {
     assert.ok(text.includes('8.7%'), 'both formats show the floor the threshold is judged on');
     assert.ok(!text.includes('8.8%'), 'and never the rounded value');

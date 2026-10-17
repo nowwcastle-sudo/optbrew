@@ -20,7 +20,7 @@ import { composeReport, pagesLabel, renderReport } from './report-compose.mjs';
 import { messageOf } from './messages.mjs';
 import { runbookEntry } from './runbooks.mjs';
 import { sensitive } from './secrets.mjs';
-import { OBSERVATION_SOURCES, QUEUE_KIND, candidateSpans, checkSpan, isCodeJudged, isModelJudged, queuedSpan } from './judgments.mjs';
+import { ENTITY_UNIT, OBSERVATION_SOURCES, QUEUE_KIND, QUESTION_UNIT, candidateSpans, checkSpan, deriveQuestionCoverage, homeOf, isCodeJudged, isEntityFallback, isModelJudged, queuedSpan } from './judgments.mjs';
 import { parseRobots, robotsVerdict } from '../../modules/naver-searchadvisor/scripts/robots.mjs';
 
 const catalog = JSON.parse(readFileSync(new URL('../../references/remediations.json', import.meta.url))).items;
@@ -221,13 +221,18 @@ function checkDecisions(input, requireRef, collectedFor) {
     if (family.applicability_decision) decisionRecord(family.applicability_decision, 'family', { key: 'family_id', value: family.family_id });
   for (const observation of input.observations) {
     // A model's verdict cites evidence the collector stored; modelJudgmentRows binds it to that page's raw evidence.
-    const evidence = requireRef(observation.evidence_ref, observation.evaluator_type === 'host_model' ? { anySource: true } : observation.source_ref);
+    const anySource = observation.evaluator_type === 'host_model' || observation.source_ref === OBSERVATION_SOURCES.derived;
+    const evidence = requireRef(observation.evidence_ref, anySource ? { anySource: true } : observation.source_ref);
     // A collector verdict's own N/A decision cites the page evidence it was derived from, and replay re-derives it (the audit
-    // phase compares the decision too); only an outside decision needs an approved decision record.
+    // phase compares the decision too). A model's N/A decision cites its verdict's page evidence the same way; its condition is one of
+    // the family's registry conditions (the schema check) and its spans are replayed against the judge queue (modelJudgmentRows).
+    // Only an outside decision needs an approved decision record.
     if (observation.applicability_decision) {
-      if (observation.evaluator_type === 'code' && observation.source_ref === OBSERVATION_SOURCES.code) {
+      const own = observation.evaluator_type === 'code' && observation.source_ref === OBSERVATION_SOURCES.code ||
+        observation.evaluator_type === 'host_model' && observation.source_ref === OBSERVATION_SOURCES.host_model;
+      if (own) {
         if (observation.applicability_decision.evidence_ref !== observation.evidence_ref)
-          throw new ContractError(`collector N/A decision does not cite the verdict's evidence: ${observation.unit_key}`);
+          throw new ContractError(`N/A decision does not cite the verdict's evidence: ${observation.unit_key}`);
       } else decisionRecord(observation.applicability_decision, 'unit', { key: 'unit_key', value: observation.unit_key });
     }
     if (observation.check_id === 'index-policy' && observation.state === 'fail') {
@@ -576,7 +581,13 @@ function checkAuditPhase(input, phase, snapshot, requireRef) {
     textOf: artifact => artifact.content_hash ? requireRef(artifact.evidence_ref).text : null,
     renders: records, renderTextOf, chrome: audit.chrome ?? null, cwv: storedCwv(audit, requireRef) });
   const shape = x => [x.state, x.q, x.partial_basis, x.evidence_ref, x.reason, x.evaluator_type, x.source_ref, x.applicability_decision ?? null, x.measurement ?? null, x.problem_messages ?? null];
+  // The site's identity is the one code-judged unit a model may judge, and only where code gave no verdict: its placeholder is replaced by
+  // the model's verdict (modelJudgmentRows replays that one), and a model verdict next to a code verdict of the unit is refused.
+  const modelEntity = input.observations.some(x => x.unit_key === ENTITY_UNIT && x.evaluator_type === 'host_model');
+  if (modelEntity && derived.some(x => x.unit_key === ENTITY_UNIT && x.state !== 'unknown'))
+    throw new ContractError(`${ENTITY_UNIT} has a collector verdict; a model verdict cannot stand beside it`);
   for (const expected of derived) {
+    if (modelEntity && expected.unit_key === ENTITY_UNIT) continue;
     if (!observations.some(x => x.unit_key === expected.unit_key) || !savedObservations.some(x => x.unit_key === expected.unit_key))
       throw new ContractError(`planned collector observation missing: ${expected.unit_key}`);
     const have = observations.find(x => x.unit_key === expected.unit_key);
@@ -592,6 +603,19 @@ function checkAuditPhase(input, phase, snapshot, requireRef) {
 const MODEL_JUDGMENT_LABEL = '근거 확인됨, 판정은 모델';
 
 /**
+ * A verdict of the derived source is the question coverage that code computes from the answer-clarity judgments and the fixed
+ * panel. Compute it again from the same input: a verdict that does not follow from them, or any other unit with that source, is refused.
+ */
+function replayedQuestionCoverage(obs, input, fail) {
+  const rest = input.observations.filter(x => x !== obs);
+  const expected = obs.unit_key === QUESTION_UNIT && obs.evaluator_type === 'code' ?
+    deriveQuestionCoverage({ observations: rest, panel: input.run_context.protocol.question_panel, evidence_ref: input.run_context.evidence_ref }).find(x => x.unit_key === QUESTION_UNIT) : null;
+  const shape = x => [x.family_id, x.state, x.q, x.partial_basis, x.evidence_ref, x.reason, x.evaluator_type, x.source_ref, x.measurement ?? null, x.problem_messages ?? null];
+  if (!expected || expected.source_ref !== OBSERVATION_SOURCES.derived || !same(shape(obs), shape(expected)))
+    fail(obs, 'it does not follow from the answer-clarity judgments and the fixed question list');
+}
+
+/**
  * The model judgments of one score input, each replayed against the run's audit evidence. A `host_model` observation is
  * refused for a code-judged family and unless it carries the model source. Its evidence must be the audit raw entry of
  * the page its unit names. A verdict other than unknown cites ranges that are candidates of the queue stored in the audit
@@ -602,9 +626,12 @@ function modelJudgmentRows(phase, input, snapshot, requireRef) {
   const fail = (obs, message) => { throw new ContractError(`verdict ${obs.unit_key}: ${message}`); };
   for (const obs of input?.observations ?? []) {
     const type = obs.evaluator_type;
+    const entityFallback = isEntityFallback(obs.family_id, obs.unit_key) && type === 'host_model' && obs.source_ref === OBSERVATION_SOURCES.host_model;
     // Next to an audit, a code-judged family is the collector's alone and is re-derived; without one, only a model is refused (an outside source stays unverified).
-    if (isCodeJudged(obs.family_id) && (type === 'host_model' || snapshot && (type !== 'code' || obs.source_ref !== OBSERVATION_SOURCES.code)))
+    // The one exception is the site's identity judged by the model, which checkAuditPhase allows only where code gave no verdict.
+    if (isCodeJudged(obs.family_id) && !entityFallback && (type === 'host_model' || snapshot && (type !== 'code' || obs.source_ref !== OBSERVATION_SOURCES.code)))
       fail(obs, `${obs.family_id} is judged by code; a ${type} observation with source_ref ${obs.source_ref} cannot stand for it`);
+    if (obs.source_ref === OBSERVATION_SOURCES.derived) replayedQuestionCoverage(obs, input, fail);
     // A content family has exactly one allowed pair: the model's, bound to the judge queue.
     if (isModelJudged(obs.family_id) && (type !== 'host_model' || obs.source_ref !== OBSERVATION_SOURCES.host_model))
       fail(obs, `${obs.family_id} is judged by a model through the judge queue; evaluator_type ${type} with source_ref ${obs.source_ref} is not allowed`);
@@ -623,8 +650,12 @@ function modelJudgmentRows(phase, input, snapshot, requireRef) {
     if (stored.kind !== QUEUE_KIND) throw new ContractError(`judge queue evidence has kind ${stored.kind}, not ${QUEUE_KIND}`);
     return JSON.parse(stored.text);
   });
+  // The site's identity is judged on the home page, chosen as the queue chose it: from the pages whose fetch verdict passed.
+  const home = homeOf(input.observations.filter(x => x.family_id === 'fetch-response' && x.state === 'pass')
+    .filter(x => (audit.raw ?? []).some(entry => entry.evidence_ref === x.evidence_ref && entry.normalized_url === unitUrl(x.unit_key))).map(x => unitUrl(x.unit_key)));
   return judgments.filter(obs => obs.state !== 'unknown').map(obs => {
-    const raw = (audit.raw ?? []).find(x => x.evidence_ref === obs.evidence_ref && x.normalized_url === unitUrl(obs.unit_key));
+    if (obs.state === 'not_applicable' && !isModelJudged(obs.family_id)) fail(obs, `${obs.family_id} is not a family a model may declare not applicable`);
+    const raw = (audit.raw ?? []).find(x => x.evidence_ref === obs.evidence_ref && x.normalized_url === (isEntityFallback(obs.family_id, obs.unit_key) ? home : unitUrl(obs.unit_key)));
     if (!raw) fail(obs, 'its evidence is not the audit raw entry of the unit page');
     // Candidates are recomputed from the raw bytes, so a consistently forged queue cannot widen what a model may cite.
     const candidates = candidateSpans(requireRef(obs.evidence_ref).bytes, raw.content_hash);
@@ -723,7 +754,7 @@ export function buildReport(packet) {
         obs.evaluator_type === 'host_model' && obs.state === 'fail'))
       throw new ContractError(`model finding has no model verdict: ${finding.finding_id}`);
     for (const source of finding.sources) {
-      const evidence = requireRef(source.evidence_ref, source.source_ref === OBSERVATION_SOURCES.host_model ? { anySource: true } : source.source_ref);
+      const evidence = requireRef(source.evidence_ref, [OBSERVATION_SOURCES.host_model, OBSERVATION_SOURCES.derived].includes(source.source_ref) ? { anySource: true } : source.source_ref);
       // The same HTML plus response-header replay as the observation, bound to the finding's own unit.
       if (finding.check_id === 'index-policy' && finding.blocker &&
           !evidenceBlocksIndexing(evidence, packet.run_context.protocol.engines, collectedAny, unitUrl(finding.unit_key)))

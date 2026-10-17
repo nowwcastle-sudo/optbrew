@@ -166,6 +166,11 @@ test('one run produces report.json and report.md', async () => {
   assert.ok(html.includes(report.composed.headline.text.replace(/'/g, '&#39;')), 'the page says the same conclusion');
   for (const row of report.composed.remaining) for (const id of row.runbook_ids) assert.ok(html.includes(`data-runbook="${id}"`), `the page opens ${id}`);
   assert.equal(report.model_judgments.length, queuedUnits(queue).length);
+  // The question coverage is code's figure from the answer-clarity verdicts; the home page's identity is the model's where code gave none.
+  const byUnit = unit => report.baseline.input.observations.find(x => x.unit_key === unit);
+  assert.deepEqual([byUnit('question-coverage|site').state, byUnit('question-coverage|site').source_ref, byUnit('question-coverage|site').measurement.answered],
+    ['pass', 'optbrew:judgment-derived', 1]);
+  assert.equal(queuedUnits(queue).some(x => x.unit_key === 'entity-identity|site'), byUnit('entity-identity|site')?.evaluator_type === 'host_model');
   // Carry 2 and 17: the phase was audited, and its snapshot says so.
   assert.equal(report.run_context.audited, true);
   assert.deepEqual(report.audit_snapshots, [{ phase: 'baseline', audit_ref: path.join(call.ws.out, 'evidence', 'evidence-index.json'), context_ref: 'context.json' }]);

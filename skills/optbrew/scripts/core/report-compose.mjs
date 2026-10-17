@@ -47,7 +47,7 @@ function scoreHeadline(result) {
   const coreOk = (result.unknown_core ?? []).length === 0;
   const status = !coverageOk ? 'insufficient_coverage' : !coreOk ? 'insufficient_core' : 'sufficient';
   return { profile: result.profile, status, headline_score: status === 'sufficient' ? result.score : null,
-    measured_subset_score: result.score, coverage: result.coverage, coverage_exact: exact, coverage_threshold: COVERAGE_THRESHOLD,
+    measured_subset_score: result.score, coverage: floorTenth(exact), coverage_exact: exact, coverage_threshold: COVERAGE_THRESHOLD,
     unresolved_core: (result.unknown_core ?? []).length, missing_bounds: result.missing_bounds, readiness_status: result.readiness_status };
 }
 
@@ -56,7 +56,7 @@ const phaseOf = (result, input) => {
   const headline = scoreHeadline(result);
   const audited = input.run_context.audited === true;
   return { headline: { ...headline, audited, ...(!audited && headline.status === 'sufficient' ? { status: 'unaudited', headline_score: null } : {}) },
-    coverage: result.coverage, missing_bounds: result.missing_bounds, readiness_status: result.readiness_status };
+    coverage: headline.coverage, missing_bounds: result.missing_bounds, readiness_status: result.readiness_status };
 };
 
 const withoutCwv = (input, profile) => {
@@ -161,6 +161,18 @@ const costIssuesKo = verified => verified.cost_issues.map((text, index) => {
   return koText(message?.message_key, message?.message_values, text);
 });
 
+/** How many units the model declared not applicable in the latest phase, for each family: its own decision, shown apart from the coverage it affects. */
+function modelNotApplicable(verified) {
+  const phase = verified.after ? 'after' : 'baseline';
+  const counts = {};
+  for (const row of verified.model_judgments) if (row.phase === phase && row.state === 'not_applicable') counts[row.family_id] = (counts[row.family_id] ?? 0) + 1;
+  return counts;
+}
+const notApplicableText = counts => {
+  const entries = Object.entries(counts);
+  return entries.length ? `${count(entries.reduce((sum, [, n]) => sum + n, 0))} (${entries.map(([family, n]) => `${family} ${count(n)}`).join(', ')})` : '없음';
+};
+
 const blockerSummary = scores => ({ count: scores[0]?.blockers.length ?? 0, items: scores[0]?.blockers.map(x => `${x.family_id} ${x.unit_key}`) ?? [],
   core_unknown: scores[0]?.unknown_core.length ?? 0 });
 
@@ -170,7 +182,7 @@ function completenessOf(verified) {
     const last = after?.scores.find(result => result.profile === first.profile) ?? null;
     const before = phaseOf(first, baseline.input), later = last ? phaseOf(last, after.input) : null;
     const delta = verified.comparison.score_deltas.find(x => x.profile === first.profile)?.percentage_point_delta ?? null;
-    return { profile: first.profile, pass_rate_in_measured: (last ?? first).score, coverage: (last ?? first).coverage,
+    return { profile: first.profile, pass_rate_in_measured: (last ?? first).score, coverage: coverageOf((later ?? before).headline),
       coverage_without_cwv: withoutCwv(last ? after.input : baseline.input, first.profile), before, after: later, difference: delta,
       between_measured_subsets: delta !== null && [before, later].some(phase => phase && phase.headline.status !== 'sufficient') };
   });
@@ -207,7 +219,7 @@ export function composeReport(verified) {
   const fixes = sortedFixes(verified.findings, verified.changes);
   const completeness = completenessOf(verified);
   const afterRender = latest.observations.some(obs => obs.family_id === 'render-content' && obs.state === 'pass' && obs.reason.startsWith(CONTENT_AFTER_RENDER));
-  const conditions = { probe: latest.run_context.environment_probe, model_judgments: verified.model_judgments, lab_cwv: verified.lab_cwv, start_redirect: verified.start_redirect ?? null,
+  const conditions = { probe: latest.run_context.environment_probe, model_judgments: verified.model_judgments, model_not_applicable: modelNotApplicable(verified), lab_cwv: verified.lab_cwv, start_redirect: verified.start_redirect ?? null,
     blockers: { before: blockerSummary(verified.baseline.scores), after: verified.after ? blockerSummary(verified.after.scores) : null },
     notes: afterRender ? [JAVASCRIPT_NOTE] : [] };
   conditions.lines = conditionLines(conditions, verified);
@@ -264,6 +276,7 @@ function conditionLines(conditions, verified) {
     { label: 'Google 키', value: probe.google_key ? '있음' : '없음' },
     { label: '분석 도구', value: probe.source_tools.join(', ') || '지정 없음' },
     { label: '확인한 모델 판단', value: count(conditions.model_judgments.length) },
+    { label: '모델이 해당 없음으로 판정한 단위', value: notApplicableText(conditions.model_not_applicable) },
     { label: '이전 막는 문제', value: listed(before) },
     { label: '이후 막는 문제', value: after ? listed(after) : `${UNKNOWN} (이후 단계를 보지 않음)` },
     { label: '이후 결과 없는 핵심 검사', value: count(after?.core_unknown ?? null) },

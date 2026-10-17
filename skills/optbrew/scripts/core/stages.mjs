@@ -14,7 +14,7 @@ import { HTTP_OK, collectCwv, labCwv } from './cwv.mjs';
 import { deriveObservations } from './derive.mjs';
 import { lcpField, inpField, clsField } from './checks/cwv-field.mjs';
 import { openStore } from './evidence-store.mjs';
-import { OBSERVATION_SOURCES, buildJudgeQueue, mergeJudgments } from './judgments.mjs';
+import { OBSERVATION_SOURCES, buildJudgeQueue, deriveQuestionCoverage, mergeJudgments } from './judgments.mjs';
 import { keyHome, readGoogleKey } from './keys.mjs';
 import { MigrationRequired, assertCurrentEvidence } from './migration.mjs';
 import { groupPages, readPreflight, sameSite, selectPages } from './page-select.mjs';
@@ -40,6 +40,8 @@ const PHASE = 'baseline';
 const HALT_JUDGMENTS = 'awaiting_judgments';
 const JUDGE_STAGE = 'judge';
 const QUEUE_FILE = 'judge-queue.json';
+/** The `key` of a start-answer fact that names the business (preflight's fact candidates use the type as the key). */
+const NAME_FACT = 'name';
 const CONTEXT_FILE = 'context.json';
 const INTAKE_FILE = 'intake.json';
 const COSTS_FILE = 'costs.json';
@@ -427,27 +429,33 @@ const deriveStage = {
 };
 
 /**
- * The queue as the model reads it: one entry per page, with the page's candidate spans once and the units to judge on it. The
- * stored queue keeps one item per unit (each repeating the page's spans); this file is only the shorter view of it.
+ * The queue as the model reads it: the fixed question list, then one entry per page, with the page's candidate spans once and the
+ * units to judge on it. The stored queue keeps one item per unit (each repeating the page's spans); this file is only the shorter
+ * view of it. A unit that has names to judge against (the site's identity) keeps them.
  */
-function queueByPage(queue) {
+function queueByPage(queue, panel) {
   const pages = new Map();
   for (const item of queue.items) {
     // By address, not by evidence: two pages whose bytes are identical share an evidence file and are still two pages.
     if (!pages.has(item.url)) pages.set(item.url, { url: item.url, evidence_ref: item.evidence_ref, evidence_sha256: item.evidence_sha256, spans: item.spans, families: [] });
-    pages.get(item.url).families.push({ family_id: item.family_id, unit_key: item.unit_key });
+    pages.get(item.url).families.push({ family_id: item.family_id, unit_key: item.unit_key, ...(item.identity ? { identity: item.identity } : {}) });
   }
-  return { pages: [...pages.values()] };
+  return { questions: panel.map(({ id, question }) => ({ id, question })), pages: [...pages.values()] };
 }
 
 /** Judge: build the queue the model works from; with the model's judgments, merge them in and go on. */
 const judgeStage = {
   name: JUDGE_STAGE,
   async run(state) {
-    const { store, out } = state;
-    const queue = await buildJudgeQueue({ observations: state.observations, store });
-    await writeFile(path.join(out, QUEUE_FILE), json(queueByPage(queue)));
-    if (state.judgments) return { state: { ...state, queue, observations: await mergeJudgments({ observations: state.observations, judgments: state.judgments, store }) } };
+    const { store, out, context } = state;
+    const panel = context.protocol.question_panel;
+    const names = (state.answers?.facts ?? []).filter(fact => fact.key === NAME_FACT).map(fact => fact.value);
+    const queue = await buildJudgeQueue({ observations: state.observations, store, context, names });
+    await writeFile(path.join(out, QUEUE_FILE), json(queueByPage(queue, panel)));
+    if (state.judgments) {
+      const merged = await mergeJudgments({ observations: state.observations, judgments: state.judgments, store, questions: panel });
+      return { state: { ...state, queue, observations: deriveQuestionCoverage({ observations: merged, panel, evidence_ref: context.evidence_ref }) } };
+    }
     if (queue.items.length) return { state: { ...state, queue }, halt: HALT_JUDGMENTS };
     return { state: { ...state, queue } };
   },
