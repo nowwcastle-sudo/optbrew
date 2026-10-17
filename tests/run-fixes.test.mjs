@@ -498,7 +498,7 @@ test('a noindex page the sitemap does not list gets no index checks, no blocker 
   const intake = await readJson(path.join(ws.out, 'intake.json'));
   assert.deepEqual(intake.selection.not_indexed, [`${SITE}/inquiry`]);
   const line = report.composed.conditions.lines.find(item => item.label === '색인하지 않는 쪽');
-  assert.equal(line.value, `1쪽은 noindex이고 사이트맵에도 없어, 사이트가 일부러 검색에 내지 않는 쪽으로 보고 색인·크롤러 검사에서 뺐습니다: ${SITE}/inquiry`);
+  assert.equal(line.value, `1쪽은 noindex이고 사이트맵에도 없어, 사이트가 일부러 검색에 내지 않는 쪽으로 보았습니다. 이 쪽들은 검색 색인 허용, 검색 봇 허용, 사이트맵·링크로 찾을 수 있는지, 제목, 대표 주소(canonical), 네이버 표시 검사에서 뺐습니다: ${SITE}/inquiry`);
   assert.deepEqual([report.composed.conditions.not_indexed.message_key, report.composed.conditions.not_indexed.message_values],
     ['conditions.not-indexed', { count: 1, pages: `${SITE}/inquiry` }]);
   for (const name of ['report.md', 'report.html']) assert.match(await readFile(path.join(ws.out, name), 'utf8'), /일부러 검색에 내지 않는 쪽/);
@@ -590,4 +590,37 @@ test('three query variants with one title and one canonical are no duplicates; t
   assert.deepEqual(duplicateFix(apart).sort(), [`${SITE}/a`, `${SITE}/b`], 'different canonicals, the same title: still a duplicate');
   const missing = await audit({ ...home(['/a', '/b']), '/a': brewPage('Same title', ['/']), '/b': brewPage('Same title', ['/']) });
   assert.deepEqual(duplicateFix(missing).sort(), [`${SITE}/a`, `${SITE}/b`], 'no canonical: each page is its own document');
+});
+
+// Task 21e (R98, R99): only query variants of one page are one document; the pass reason of a grouped page says so.
+test('only a page that differs from its canonical in the query string joins its document; a canonical to the home page or another path does not (R98, R99)', async () => {
+  const titled = (title, head, links = ['/']) => ({ body: brewPage(title, links).body.replace('<head>', `<head>${head}`) });
+  const canonical = href => `<link rel="canonical" href="${href}">`;
+  const audit = async pages => {
+    const site = memorySite({ ...brewPages(), '/sitemap.xml': sitemapOf(['/']), ...pages });
+    return (await twoCalls(site, answersFor(`${SITE}/`), { before: ws => preflightOf(site, `${SITE}/`, ws.out) })).report;
+  };
+  const home = links => ({ '/': brewPage('Brew Home', links) });
+  const titleOf = (report, url) => report.baseline.input.observations.find(x => x.unit_key === `document-title|${url}`);
+  const duplicates = report => report.findings.filter(item => item.check_id === 'document-title' && item.message.startsWith('Title duplicates')).flatMap(item => item.unit_keys.map(key => key.split('|').pop())).sort();
+  // A site-wide canonical to the home page: four pages with one title are four duplicates, not one document.
+  const toHome = await audit({ ...home(['/a', '/b', '/c', '/d']), ...Object.fromEntries(['/a', '/b', '/c', '/d'].map(path => [path, titled('Same title', canonical(`${SITE}/`))])) });
+  assert.deepEqual(duplicates(toHome), ['/a', '/b', '/c', '/d'].map(path => `${SITE}${path}`));
+  // Another path, another site: each page stays its own document.
+  const elsewhere = await audit({ ...home(['/a', '/b']), '/a': titled('Same title', canonical(`${SITE}/x`)), '/b': titled('Same title', canonical('https://other.test/a')) });
+  assert.deepEqual(duplicates(elsewhere), [`${SITE}/a`, `${SITE}/b`]);
+  // Query variants of one page (canonical on the page without the query, www and http folded) are one document, and say so.
+  const variants = await audit({ ...home(['/bookings', '/bookings?service=facility', '/bookings?service=home-visit']), '/bookings': titled('Bookings', canonical('http://www.brew.test/bookings/')) });
+  assert.deepEqual(duplicates(variants), []);
+  const grouped = titleOf(variants, `${SITE}/bookings?service=facility`);
+  assert.equal(grouped.state, 'pass');
+  assert.match(grouped.reason, /^The title is present, shared only with query variants of the same page/);
+  assert.deepEqual(grouped.measurement.same_document.pages.sort(), [`${SITE}/bookings`, `${SITE}/bookings?service=home-visit`]);
+  assert.equal(grouped.measurement.message_key, 'document-title.same-document');
+  const unique = titleOf(await audit({ ...home(['/a', '/b']), '/a': titled('Alpha', ''), '/b': titled('Beta', '') }), `${SITE}/a`);
+  assert.match(unique.reason, /differs from the title of every other audited page/, 'a unique title keeps its own reason');
+  // <base href> decides what a relative canonical means.
+  const relative = base => audit({ ...home(['/x/bookings?s=1', '/x/bookings?s=2']), '/x/bookings': titled('Bookings', `${base}${canonical('bookings')}`) });
+  assert.deepEqual(duplicates(await relative('')), [], 'without a base the canonical is /x/bookings, the page itself');
+  assert.deepEqual(duplicates(await relative('<base href="/y/">')), [`${SITE}/x/bookings?s=1`, `${SITE}/x/bookings?s=2`], 'with a base it is /y/bookings, another path');
 });

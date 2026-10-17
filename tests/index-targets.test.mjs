@@ -17,12 +17,14 @@ function scenario(pages, sitemap, { declared = [SITEMAP], extra = [] } = {}) {
     const header_lines = Object.entries(typeof page === 'string' ? {} : page.headers ?? {}).map(([name, value]) => ({ name, value }));
     return { normalized_url: `${SITE}${path}`, final_url: `${SITE}${path}`, status: 200, capability: 'raw_html', evidence_ref, header_lines };
   });
-  for (const [url, body] of [[SITEMAP, sitemap], ...extra]) {
+  // A sitemap answer is a body (200), null (404), or { status, body } for any other answer; { status: null } is a fetch that got no response.
+  for (const [url, answer] of [[SITEMAP, sitemap], ...extra]) {
+    const { status, body } = answer === null ? { status: 404, body: '' } : typeof answer === 'string' ? { status: 200, body: answer } : answer;
     bodies.set(`evidence/${url}`, body ?? '');
-    artifacts.push({ normalized_url: url, final_url: url, status: body === null ? 404 : 200, capability: 'raw_html', evidence_ref: `evidence/${url}`, header_lines: [] });
+    artifacts.push({ normalized_url: url, final_url: url, status, capability: 'raw_html', evidence_ref: `evidence/${url}`, header_lines: [] });
   }
   const urls = Object.keys(pages).map(path => ({ original: `${SITE}${path}`, normalized: `${SITE}${path}` }));
-  const context = { target: `${SITE}/`, protocol: { engines: ['google'], auxiliary_resources: declared.map(normalized => ({ kind: 'sitemap', original: normalized, normalized })),
+  const context = { target: `${SITE}/`, scope: { allowed: [{ origin: SITE, path_prefix: '/' }] }, protocol: { engines: ['google'], auxiliary_resources: declared.map(normalized => ({ kind: 'sitemap', original: normalized, normalized })),
     page_types: [{ id: 'pages', urls }], render: { enabled: true, pages: urls.slice(0, 1) } } };
   const textOf = artifact => bodies.get(artifact.evidence_ref);
   return { context, artifacts, textOf, urls: () => notIndexTargets({ context, artifacts, textOf }).map(target => target.url.replace(SITE, '')) };
@@ -70,6 +72,48 @@ test('a declared sitemap that was never read could list the page, so a noindex s
 test('an indexable page, or a noindex that is not for the target engine, is never a target (R89)', () => {
   const other = '<html><head><meta name="bingbot" content="noindex"></head><body>x</body></html>';
   assert.deepEqual(scenario({ '/': OPEN, '/a': OPEN, '/b': other }, LISTED).urls(), []);
+});
+
+// R96: the sitemap is compared with the product's own normalizer, after folding www and http/https of the run's host.
+const listing = urls => `<urlset>${urls.map(url => `<url><loc>${url}</loc></url>`).join('')}</urlset>`;
+const SERVICES = { '/': OPEN, '/services': NOINDEX };
+
+test('a sitemap that lists the page as www, http or with a trailing slash still lists it: the noindex stays a failure (R96)', () => {
+  for (const form of ['https://www.shop.test/services', 'http://shop.test/services', 'https://shop.test/services/', 'http://www.shop.test/services/'])
+    assert.deepEqual(scenario(SERVICES, listing([`${SITE}/`, form])).urls(), [], form);
+  assert.deepEqual(scenario(SERVICES, listing([`${SITE}/`, 'https://shop.test/services?x=1'])).urls(), ['/services'], 'a query makes it another address');
+  assert.deepEqual(scenario(SERVICES, listing(['http://www.shop.test/products'])).urls(), ['/services'], 'a folded entry still lists other pages of the site');
+});
+
+test('a sitemap that lists only other hosts, or only sitemap files, lists no page of the site (R96)', () => {
+  assert.deepEqual(scenario(SERVICES, listing(['https://other.test/a', 'https://cdn.shop.test/b'])).urls(), []);
+  assert.deepEqual(scenario(SERVICES, listing([`${SITE}/page-sitemap.xml`, `${SITE}/map.xml.gz`])).urls(), []);
+});
+
+test('a sitemap counts as read only on a 2xx with a parsed body; 404 and 410 are absent; anything else is missing evidence (R97)', () => {
+  const second = answer => scenario(SERVICES, LISTED, { declared: [SITEMAP, `${SITE}/post-sitemap.xml`], extra: [[`${SITE}/post-sitemap.xml`, answer]] }).urls();
+  assert.deepEqual(second(null), ['/services'], '404 is absent');
+  assert.deepEqual(second({ status: 410, body: '' }), ['/services'], '410 is absent');
+  assert.deepEqual(second({ status: 503, body: '' }), [], '5xx');
+  assert.deepEqual(second({ status: 503, body: sitemapOf(['/x']) }), [], 'a 5xx body is not read');
+  assert.deepEqual(second({ status: null, body: '' }), [], 'a timeout or connection error');
+  assert.deepEqual(second({ status: 403, body: '' }), [], 'anything else');
+  assert.deepEqual(second({ status: 200, body: '<html><body>app shell</body></html>' }), [], 'a 2xx that is no sitemap');
+  assert.deepEqual(second(sitemapOf(['/x'])), ['/services'], 'a parsed 2xx is read');
+});
+
+test('a sitemap index counts only when every child it names was declared and read; its entries are never pages (R97)', () => {
+  const child = `${SITE}/page-sitemap.xml`;
+  const index = `<sitemapindex><sitemap><loc>${child}</loc></sitemap></sitemapindex>`;
+  const withChild = (answer, declared = [SITEMAP, child]) => scenario(SERVICES, index, { declared, extra: [[child, answer]] }).urls();
+  assert.deepEqual(withChild(sitemapOf(['/', '/products'])), ['/services'], 'index and child both read');
+  assert.deepEqual(withChild(sitemapOf(['/', '/products']), [SITEMAP]), [], 'a child the run never declared (beyond the preflight limit)');
+  assert.deepEqual(withChild({ status: 503, body: '' }), [], 'a child that answered 5xx');
+  assert.deepEqual(withChild(null), [], 'a child that is gone is not a read child');
+  const odd = `<sitemapindex><sitemap><loc>${SITE}/sitemap/pages</loc></sitemap></sitemapindex>`;
+  assert.deepEqual(scenario(SERVICES, odd).urls(), [], 'an index entry without .xml is no page');
+  const two = `<sitemapindex><sitemap><loc>${child}</loc></sitemap><sitemap><loc>${SITE}/post-sitemap.xml</loc></sitemap></sitemapindex>`;
+  assert.deepEqual(scenario(SERVICES, two, { declared: [SITEMAP, child], extra: [[child, sitemapOf(['/', '/products'])]] }).urls(), [], 'one child of two read');
 });
 
 test('withIndexTargets marks the page types and the render pages, and tells the derived decision from an approved one (R89)', () => {

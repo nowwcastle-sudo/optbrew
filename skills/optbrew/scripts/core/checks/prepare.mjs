@@ -3,20 +3,33 @@ import { alternateLinks, decodeEntities } from '../html.mjs';
 import { declaredRobotsIndex } from '../collector.mjs';
 import { compareFacts, pageFacts } from '../facts.mjs';
 import { canonicalUrl, findOrphans, linkGraph } from '../link-graph.mjs';
+import { sameSite } from '../page-select.mjs';
 import { selectRenderPages } from '../render.mjs';
 
 const SKIP_REASONS = ['depth_limit', 'url_limit', 'request_limit'];
 const NOT_COLLECTED = 'not_collected';
 const normalizeTitle = title => title.toLowerCase().replace(/\s+/g, ' ').trim();
+const BASE_HREF = /<base\b[^>]*\bhref\s*=\s*["']([^"']*)["']/i;
+const pathOf = url => url.pathname.length > 1 ? url.pathname.replace(/\/+$/, '') || '/' : url.pathname;
+/** A page's address as its site and path, and its query when asked: the spelling documents are compared by. */
+const documentAddress = (url, withQuery) => `${url.origin}${pathOf(url)}${withQuery ? url.search : ''}`;
 /**
- * The document a page stands for: the URL its canonical link declares (resolved against where the page was served, fragment off),
- * else the page itself. Pages that declare one canonical are one document, so they never make each other duplicates (R95).
+ * The document a page stands for (R95, R98). A page whose canonical link names the same page without its query string or fragment
+ * (same site with `www.` and http/https folded, same path) is a variant of that page, and the variants and the page are one document.
+ * Any other canonical (the home page, another path, another site), an unusable one, or none leaves the page its own document.
+ * The canonical is resolved against `<base href>` when the head has one, else against where the page was served.
  */
-function documentKeyOf(artifact, info) {
+function documentKeyOf(artifact, info, html) {
+  const own = new URL(artifact.final_url);
   if (info.canonical) {
-    try { return canonicalUrl(new URL(info.canonical, artifact.final_url).href); } catch { /* an unusable canonical declares nothing */ }
+    try {
+      const live = String(html ?? '').replace(/<!--[\s\S]*?(?:-->|$)/g, '').replace(/<(script|style|template|noscript)\b[\s\S]*?(?:<\/\1\s*>|$)/gi, '');
+      const baseHref = BASE_HREF.exec(/<head\b[\s\S]*?<\/head\s*>/i.exec(live)?.[0] ?? live)?.[1];
+      const target = new URL(info.canonical, baseHref ? new URL(baseHref, own).href : own.href);
+      if (sameSite(target, own) && pathOf(target) === pathOf(own)) return documentAddress(own, false);
+    } catch { /* an unusable canonical declares nothing */ }
   }
-  return canonicalUrl(artifact.final_url) ?? artifact.final_url;
+  return documentAddress(own, true);
 }
 /** The pages the run renders: the ones its protocol fixed (none when rendering is off), else, before render plans existed, the default sample. */
 const renderPlan = protocol => protocol.render ? (protocol.render.enabled ? protocol.render.pages : []) : selectRenderPages(protocol.page_types);
@@ -25,7 +38,7 @@ const renderPlan = protocol => protocol.render ? (protocol.render.enabled ? prot
  * The declared sitemaps among the collected artifacts: every listed url, whether one is an index, the unusable ones, and the ones the
  * run never fetched (`unread`, each with the reason the collector skipped it, else `not_collected`).
  */
-export function readSitemaps(artifacts, declared, textOf, skipped) {
+function readSitemaps(artifacts, declared, textOf, skipped) {
   const sitemaps = { urls: new Set(), index: false, broken: [], unread: [] };
   const fetched = new Set(artifacts.map(artifact => artifact.normalized_url));
   for (const url of declared) if (!fetched.has(url)) sitemaps.unread.push({ url, reason: skipped.find(x => x.url === url)?.reason ?? NOT_COLLECTED });
@@ -67,7 +80,7 @@ export function prepare({ context, artifacts, collection = {}, textOf, renders =
     const info = auditCollected({ artifact, html, engines: protocol.engines,
       robotsArtifact: robots?.status === 200 ? { ...robots, body: textOf(robots) } : null });
     pageRows.push({ url, artifact, html, info, robots, publicIndexing: selected.get(url).public_indexing !== false,
-      titleKey: info.title ? normalizeTitle(info.title) : null, documentKey: documentKeyOf(artifact, info) });
+      titleKey: info.title ? normalizeTitle(info.title) : null, documentKey: documentKeyOf(artifact, info, html) });
   }
   const titleCounts = new Map();
   // A title shared with a page that is not meant to be indexed is no duplicate: only indexed pages compete for a title.

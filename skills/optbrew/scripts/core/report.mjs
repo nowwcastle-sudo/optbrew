@@ -530,7 +530,7 @@ function checkAuditPhase(input, phase, snapshot, requireRef) {
   // A page marked as deliberately not indexed must be one the stored bytes show so (noindex, not in the sitemap the run read).
   const marked = input.run_context.protocol.page_types.flatMap(type => type.urls).filter(url => isDerivedIndexDecision(url.indexing_decision));
   if (marked.length) {
-    const found = new Map(notIndexTargets({ context: input.run_context, artifacts, skipped: collection.skipped ?? [],
+    const found = new Map(notIndexTargets({ context: input.run_context, artifacts,
       textOf: artifact => artifact.content_hash ? requireRef(artifact.evidence_ref).text : null }).map(target => [target.url, target.evidence_ref]));
     for (const url of marked) if (url.public_indexing !== false || found.get(url.normalized) !== url.indexing_decision.evidence_ref)
       throw new ContractError(`indexing decision is not derivable from the raw evidence: ${url.normalized}`);

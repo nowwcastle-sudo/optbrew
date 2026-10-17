@@ -332,7 +332,7 @@ const collectStage = {
     // in its context now, before any verdict is derived, and report replay derives it again from the stored bytes (R89).
     // A run that did not write its own context (`audit.mjs`, with a caller's context) leaves it as it was given.
     if (state.answers) {
-      const targets = notIndexTargets({ context, skipped: collection.skipped, textOf: artifact => artifact.body?.toString('utf8') ?? null,
+      const targets = notIndexTargets({ context, textOf: artifact => artifact.body?.toString('utf8') ?? null,
         artifacts: collection.artifacts.map((artifact, index) => ({ ...artifact, evidence_ref: artifacts[index].evidence_ref })) });
       if (targets.length) state.context = await markIndexTargets(state, targets);
     }
