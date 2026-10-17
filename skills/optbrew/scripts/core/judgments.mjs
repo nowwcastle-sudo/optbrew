@@ -68,8 +68,8 @@ const FULL_DATE_FORMS = [
   { re: /(?<!\d)(\d{4})\s*[-./년]\s*(\d{1,2})\s*[-./월]\s*(\d{1,2})(?!\d)/gu, ok: (y, m, d) => YEAR(+y) && MONTH(+m) && DAY(+d) },
   { re: /(?<!\d)(\d{4})\s+(\d{1,2})\s*월\s*(\d{1,2})\s*일/gu, ok: (y, m, d) => YEAR(+y) && MONTH(+m) && DAY(+d) },
   { re: /(?<!\d)(\d{1,2})\s*[-./]\s*(\d{1,2})\s*[-./]\s*(\d{4})(?!\d)/gu, ok: (a, b, y) => YEAR(+y) && (MONTH(+a) && DAY(+b) || MONTH(+b) && DAY(+a)) },
-  { re: /(?<!\w)(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?\s+(\d{1,2}),?\s+(\d{4})(?!\d)/giu, ok: (_, d, y) => DAY(+d) && YEAR(+y) },
-  { re: /(?<!\d)(\d{1,2})\s+(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?,?\s+(\d{4})(?!\d)/giu, ok: (d, _, y) => DAY(+d) && YEAR(+y) },
+  { re: /(?<!\w)(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|june?|july?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)(?![a-z])\.?\s+(\d{1,2}),?\s+(\d{4})(?!\d)/giu, ok: (_, d, y) => DAY(+d) && YEAR(+y) },
+  { re: /(?<!\d)(\d{1,2})\s+(jan(?:uary)?|feb(?:ruary)?|mar(?:ch)?|apr(?:il)?|may|june?|july?|aug(?:ust)?|sep(?:t(?:ember)?)?|oct(?:ober)?|nov(?:ember)?|dec(?:ember)?)(?![a-z])\.?,?\s+(\d{4})(?!\d)/giu, ok: (d, _, y) => DAY(+d) && YEAR(+y) },
 ];
 // A year and month, offered when short.
 const YEAR_MONTH_FORMS = [
@@ -82,8 +82,8 @@ const BROAD_DATE_FORMS = [
   { re: /(?<!\d)(\d{4})\s+(\d{1,2})\s*월/gu, ok: (y, m) => YEAR(+y) && MONTH(+m) },
   { re: /(?<![\d./-])(\d{4})\s*[-./]\s*(\d{1,2})(?![\d./-])/gu, ok: (y, m) => YEAR(+y) && MONTH(+m) },
   { re: /(?<!\d)(\d{1,2})\s*월\s*(\d{1,2})\s*일/gu, ok: (m, d) => MONTH(+m) && DAY(+d) },
-  { re: /(?<!\w)(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?\s+(\d{1,2})(?!\d)/gu, ok: (_, d) => DAY(+d) },
-  { re: /(?<!\w)(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\.?,?\s+(\d{4})(?!\d)/gu, ok: (_, y) => YEAR(+y) },
+  { re: /(?<!\w)(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|June?|July?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)(?![a-z])\.?\s+(\d{1,2})(?!\d)/gu, ok: (_, d) => DAY(+d) },
+  { re: /(?<!\w)(Jan(?:uary)?|Feb(?:ruary)?|Mar(?:ch)?|Apr(?:il)?|May|June?|July?|Aug(?:ust)?|Sep(?:t(?:ember)?)?|Oct(?:ober)?|Nov(?:ember)?|Dec(?:ember)?)(?![a-z])\.?,?\s+(\d{4})(?!\d)/gu, ok: (_, y) => YEAR(+y) },
 ];
 const hasDate = (text, forms) => forms.some(({ re, ok }) => [...text.matchAll(re)].some(found => ok(...found.slice(1))));
 // Short text that is still worth offering: a full date or a year and month, a way to reach the owner (and, by element, an author line in <address>). The floor in limits.json does not drop these.

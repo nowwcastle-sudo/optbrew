@@ -1190,7 +1190,7 @@ test('numbers are not dates: business and phone numbers, impossible parts and ye
   const outcome = async line => (await mergeOne(bare(`${LONG_LINE}<p>${'m'.repeat(60)}</p><p>${line}</p>`), failFor('freshness-truth', { basis: 'absence' }))).made.state;
   for (const line of ['2026-10-17', '2017 10월 26일', '10월 26일', '2026.10', '2026년 9월', 'Oct 3, 2026', 'March 2026', '3 Mar 2026', '26/10/2026', '2026 10월'])
     assert.equal(await outcome(line), 'unknown', `${line} is a date`);
-  for (const line of ['요양원 142-80-39228', '586-80-00898', '031-553-1288', '010-2026-1234', '02-555-0142', '2026-13-45', '1985-10-17', '1588-1234', 'the vote may 3 times'])
+  for (const line of ['요양원 142-80-39228', '586-80-00898', '031-553-1288', '010-2026-1234', '02-555-0142', '2026-13-45', '1985-10-17', '1588-1234', 'the vote may 3 times', 'Market 3 opens', 'Decimal 8 places', 'Mark 12 says'])
     assert.equal(await outcome(line), 'fail', `${line} is not a date`);
   const footer = bare(`${LONG_LINE}<p>${'m'.repeat(60)}</p><p>요양원 142-80-39228 · 주야간보호센터 586-80-00898</p><p>031-553-1288 연중무휴 08:00~18:00</p>`);
   const { store, observations } = await fixtureStore(footer);
