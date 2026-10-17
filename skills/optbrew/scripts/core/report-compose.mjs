@@ -177,7 +177,7 @@ function absenceBasisCounts(verified) {
   for (const row of verified.model_judgments) if (row.phase === phase && row.basis) counts[row.basis]++;
   return counts;
 }
-const NOT_ACCEPTED_REASONS = { queue_coverage: '조각이 쪽을 충분히 덮지 못함', visible: '쪽에 날짜나 운영 주체가 보임' };
+const NOT_ACCEPTED_REASONS = { queue_coverage: '조각이 쪽을 충분히 덮지 못함', visible: '쪽에 날짜나 운영 주체가 보임', chrome: '인용한 조각이 모두 사이트 공통 글' };
 /** The model verdicts of the latest phase that rested on absence and were turned into unknown by the code, by reason. */
 function notAcceptedCounts(input) {
   const counts = {};

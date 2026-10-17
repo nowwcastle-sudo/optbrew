@@ -20,7 +20,7 @@ import { composeReport, pagesLabel, renderReport } from './report-compose.mjs';
 import { messageOf } from './messages.mjs';
 import { runbookEntry } from './runbooks.mjs';
 import { sensitive } from './secrets.mjs';
-import { ABSENCE_UNCOVERED, ENTITY_UNIT, OBSERVATION_SOURCES, QUEUE_KIND, QUESTION_UNIT, absenceRefuted, basisAllowed, candidateSpans, checkSpan, coversPage, deriveQuestionCoverage, homeOf, identityBasisOf, isCodeJudged, isEmptyPage, isEntityFallback, isModelJudged, queuedSpan, restsOnAbsence, siteChrome } from './judgments.mjs';
+import { ENTITY_UNIT, OBSERVATION_SOURCES, QUEUE_KIND, QUESTION_UNIT, acceptance, basisAllowed, candidateSpans, checkSpan, deriveQuestionCoverage, homeOf, identityBasisOf, isCodeJudged, isEmptyPage, isEntityFallback, isModelJudged, operatorNames, queuedSpan, siteChrome } from './judgments.mjs';
 import { parseRobots, robotsVerdict } from '../../modules/naver-searchadvisor/scripts/robots.mjs';
 
 const catalog = JSON.parse(readFileSync(new URL('../../references/remediations.json', import.meta.url))).items;
@@ -626,7 +626,7 @@ function replayedQuestionCoverage(obs, input, fail) {
  * index, each with that raw entry's hash and a byte range inside it on character boundaries. The label says the evidence was
  * checked and the verdict is the model's.
  */
-function modelJudgmentRows(phase, input, snapshot, requireRef) {
+function modelJudgmentRows(phase, input, snapshot, requireRef, confirmedNames = []) {
   const fail = (obs, message) => { throw new ContractError(`verdict ${obs.unit_key}: ${message}`); };
   for (const obs of input?.observations ?? []) {
     const type = obs.evaluator_type;
@@ -658,9 +658,8 @@ function modelJudgmentRows(phase, input, snapshot, requireRef) {
   const audited = input.observations.filter(x => x.family_id === 'fetch-response' && x.state === 'pass')
     .filter(x => (audit.raw ?? []).some(entry => entry.content_hash && entry.evidence_ref === x.evidence_ref && entry.normalized_url === unitUrl(x.unit_key)));
   const home = homeOf(audited.map(x => unitUrl(x.unit_key)));
-  // What the gates of an absence fail need, derived here from the audited pages and not read from the queue: the lines most pages repeat, and the names the owner confirmed.
+  // What the gates of an absence fail need, derived here and not read from the queue: the lines most audited pages repeat, and (below) the names the owner confirmed in the intake answers, the code identity check and the host.
   const chrome = siteChrome([...new Map(audited.map(x => [unitUrl(x.unit_key), requireRef(x.evidence_ref).bytes])).values()]);
-  const names = queues.flatMap(queue => queue.items).find(item => item.identity)?.identity.names ?? [];
   return judgments.filter(obs => obs.state !== 'unknown').map(obs => {
     if (obs.state === 'not_applicable' && !isModelJudged(obs.family_id)) fail(obs, `${obs.family_id} is not a family a model may declare not applicable`);
     if (obs.family_id === 'answer-clarity') {
@@ -675,10 +674,11 @@ function modelJudgmentRows(phase, input, snapshot, requireRef) {
     const candidates = candidateSpans(requireRef(obs.evidence_ref).bytes, raw.content_hash);
     // A verdict that rests on something missing from the page needs a queue that offered enough of it and a page that does not show it; a fail of an absence family names its basis; the empty-page mark is true of the page.
     const bytes = requireRef(obs.evidence_ref).bytes;
-    const absence = restsOnAbsence({ family_id: obs.family_id, state: obs.state, condition: obs.applicability_decision?.condition, basis: obs.measurement?.basis });
     if (!basisAllowed({ family_id: obs.family_id, state: obs.state, basis: obs.measurement?.basis })) fail(obs, 'its basis is not the one this verdict must carry');
-    if (absence && !coversPage(bytes, candidates)) fail(obs, ABSENCE_UNCOVERED);
-    if (absence && obs.state === 'fail') { const shown = absenceRefuted(obs.family_id, bytes, candidates, { chrome, names }); if (shown) fail(obs, `its absence fail is not accepted: ${shown}`); }
+    const cited = (obs.evidence_span ?? []).map(span => candidates.find(x => x.start === span.start && x.end === span.end)).filter(Boolean);
+    const unaccepted = acceptance({ family_id: obs.family_id, state: obs.state, condition: obs.applicability_decision?.condition, basis: obs.measurement?.basis }, bytes, cited, candidates,
+      { chrome, ...operatorNames({ confirmed: confirmedNames, observations: input.observations, url: unitUrl(obs.unit_key) }) });
+    if (unaccepted) fail(obs, `its verdict is not accepted: ${unaccepted.reason}`);
     if (Boolean(obs.measurement?.empty_page) !== isEmptyPage(bytes)) fail(obs, 'its empty-page mark differs from the page');
     for (const span of obs.evidence_span ?? []) {
       if (span.evidence_sha256 !== raw.content_hash) fail(obs, 'a span names evidence other than the unit page');
@@ -756,14 +756,15 @@ export function buildReport(packet) {
   if (!packet.costs.evidence_ref || !same(JSON.parse(requireRef(packet.costs.evidence_ref).text), packet.costs))
     throw new ContractError('cost ledger snapshot evidence differs from report');
   // Model verdicts are replayed first, so a host_model observation never reaches the collector replay under a collector source.
-  const modelRows = [['baseline', packet.baseline.input], ['after', packet.after?.input]].flatMap(([phase, input]) => modelJudgmentRows(phase, input, snapshotFor(phase), requireRef));
+  const intakeEntry = packet.evidence_index.find(x => x.kind === 'intake');
+  const intake = intakeEntry ? JSON.parse(requireRef(intakeEntry.ref).text) : null;
+  const confirmedNames = (intake?.answers?.facts ?? []).filter(fact => fact.key === 'name').map(fact => fact.value);
+  const modelRows = [['baseline', packet.baseline.input], ['after', packet.after?.input]].flatMap(([phase, input]) => modelJudgmentRows(phase, input, snapshotFor(phase), requireRef, confirmedNames));
   const emptyPages = emptyPagesOf(snapshotFor(packet.after ? 'after' : 'baseline'), requireRef);
   checkAuditPhase(packet.baseline.input, 'baseline', snapshotFor('baseline'), requireRef);
   checkAuditPhase(packet.after?.input, 'after', snapshotFor('after'), requireRef);
   // An adopted start address is said in the run conditions, so it must match the intake record and the run's target.
   const startRedirect = packet.start_redirect ?? null;
-  const intakeEntry = packet.evidence_index.find(x => x.kind === 'intake');
-  const intake = intakeEntry ? JSON.parse(requireRef(intakeEntry.ref).text) : null;
   if (startRedirect || intake?.selection?.start_redirect) {
     if (startRedirect?.to !== packet.run_context.target || !same(intake?.selection?.start_redirect ?? null, startRedirect))
       throw new ContractError('start redirect differs from the intake record or the run target');
