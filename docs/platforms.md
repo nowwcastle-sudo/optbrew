@@ -45,10 +45,10 @@ Bash and PowerShell use the same commands:
 ```text
 node bin/optbrew.mjs check-updates --json
 node bin/optbrew.mjs update --scope project --project ./site --json
-node bin/optbrew.mjs rollback --scope project --project ./site --release-version 0.1.0 --json
+node bin/optbrew.mjs rollback --scope project --project ./site --release-version 0.2.0 --json
 ```
 
-The shown rollback fails on a fresh 0.2.0 install, because no earlier release is retained; it applies to a managed install that retains local 0.1.0.
+Rollback works only between releases that share the evaluation version, so no release before 0.2.0 can be rolled back to. The shown command reports that no earlier release is retained on a fresh 0.2.0 install; it applies once a later release that shares evaluation version 0.4.0 has updated the install.
 
 The CLI validates bundle hashes before an install or update. `update` replaces every target in one managed record as a unit. An edited target makes the default update stop; the explicit `--local-changes backup-and-replace` policy retains a readable backup. `rollback --release-version VERSION` works only when that version is in the record's retained prior releases. A fresh installation has no older release.
 

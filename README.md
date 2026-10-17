@@ -22,8 +22,8 @@ optbrew gives the agent one workflow and one scoring rule for all five profiles.
 
 ## How it works
 
-1. **Ask.** You give the URL. optbrew reads the start page, the sitemap and your setup (Chrome, a Google key, network access). Then it sends one message with the start questions: your guidance level, the goal, the questions people search for, the facts it read from the site, and the page limit. Reply with an answer for each number, or just "start" to take the defaults. If one thing blocks the audit, such as a network that is closed, you get one setup guide first. Up to three more guides appear as one-line offers; you open one by answering with its word.
-2. **Audit.** One command collects the pages, renders them in a headless Chrome of its own, measures speed and runs the code checks. It audits pages from the sitemap and from links on the start page, up to your limit: 50 pages by default, up to 200 if you raise it. The limit counts every request, so redirects and the robots and sitemap files use part of it. It follows a redirect to the `www` or `https` twin of your address and says so in the report. It stores every response with its hash.
+1. **Ask.** You give the URL. optbrew reads the start page, the sitemap and your setup (Chrome, a Google key, network access). Then it sends one message with the start questions: your guidance level, the goal, the questions people search for, the facts it read from the site, and the page limit. The questions, the guides and the report are in Korean. Reply with an answer for each number, or just "시작" (start) to take the defaults. If one thing blocks the audit, such as a network that is closed, you get one setup guide first. Up to three more guides appear as one-line offers; you open one by answering with its word, such as "키" (key).
+2. **Audit.** One command collects the pages, renders up to 10 of them (one of each kind of page) in a headless Chrome of its own, measures speed and runs the code checks. It audits pages from the sitemap and from links on the start page, up to your limit: 50 pages by default, up to 200 if you raise it. The limit counts every request, so redirects and the robots and sitemap files use part of it. It follows a redirect to the `www` or `https` twin of your address and says so in the report. It stores every response with its hash.
 3. **Judge.** The agent reads the page text that code cannot judge, such as claims, answer clarity and freshness. It cites the sentences it relied on. A second call of the same command checks that the cited text exists in the evidence, then scores.
 4. **Report.** You get three files with the same content: `report.html` (open this one; it is a single self-contained file), `report.md` and `report.json`. The text is in Korean. Each problem has one fix with the number of pages it affects. A numbered list of steps tells you how to fill each blank, such as a missing Google key. Blanks are shown as unknown, never as a pass.
 5. **Fix and re-check (optional).** The agent proposes changes to local files. Nothing is edited, deployed or submitted without your approval. After you deploy, the same collection runs again under the same conditions, so the before and after are comparable.
@@ -38,7 +38,7 @@ What the script measures by itself, and what still needs the guides and the agen
 | LLMO | How models describe you | Whether name, address, phone and founding year agree across pages, and whether the pages describe one business | Whether those facts are true |
 | All | Speed and scripts | Whether the text still shows after JavaScript runs in Chrome. Field Core Web Vitals (LCP, INP, CLS) from Google's Chrome UX Report and PageSpeed Insights | Nothing. The Chrome lab values are shown as a run condition and are never scored |
 
-Engine-specific checks run for the engines you name as targets. Name the AI answer engines you care about, such as ChatGPT, Claude or Perplexity. Naver is added on its own when the goal, an export or the site's language points to it. The scoring rule is in [scoring.md](skills/optbrew/references/scoring.md). The 80% coverage threshold is optbrew's own rule, not a search engine standard.
+Engine-specific checks run for the engines you name as targets. Name the AI answer engines you care about, such as ChatGPT, Claude or Perplexity. Naver is added on its own when the goal names it, you give a Naver export, or the site is Korean (`lang="ko"` or an address ending in `.kr`). Google is always a target. The scoring rule is in [scoring.md](skills/optbrew/references/scoring.md). The 80% coverage threshold is optbrew's own rule, not a search engine standard.
 
 ## Install
 
@@ -121,13 +121,13 @@ Start a new agent session and ask, for example:
 Run optbrew on https://example.com. Goal: show up in Naver and get cited in AI answers.
 ```
 
-optbrew then checks your setup and sends the start questions in one message. Answer each number, or reply "start" to accept the defaults. A missing Google key, Chrome or export file does not stop the audit. The blank is listed in the report with the steps to fill it.
+optbrew then checks your setup and sends the start questions in one message. Answer each number, or reply "시작" (start) to accept the defaults. A missing Google key, Chrome or export file does not stop the audit. The blank is listed in the report with the steps to fill it.
 
-The audit takes a few minutes. Everything it writes goes to `optbrew-audit/<site>-<date>` in your working folder: the evidence (every response with its hash) and the three reports. Open `report.html` first. The same name with a number added (`-2`, `-3`) is used when the folder already exists. Private network addresses are fetched only when you declare a local target.
+The audit takes a few minutes. Everything it writes goes to `optbrew-audit/<site>-<date>` in your working folder: the evidence (every response with its hash) and the three reports. Open `report.html` first. The same name with a number added (`-2`, `-3`) is used when the folder already exists. Private, internal and local addresses (such as `localhost` or `192.168.x.x`) are refused, so audit the public address of the site.
 
 ### Google API key (optional)
 
-A free Google API key fills the speed scores that real visitors get (LCP, INP, CLS). When optbrew offers it, answer "key" to see how to get one. Then save it from your own terminal, never in the chat. In Codex and Claude Code cloud, the key guide shows where to save it instead.
+A free Google API key makes the real-visitor speed scores (LCP, INP, CLS) fill reliably. When optbrew offers it, answer "키" (key) to see how to get one. Then save it from your own terminal, never in the chat. In Codex and Claude Code cloud, the key guide shows where to save it instead.
 
 ```bash
 optbrew key set google
@@ -135,7 +135,7 @@ optbrew key status
 optbrew key remove google
 ```
 
-`set` asks for the key with hidden input. `status` shows only whether a key exists and the first 8 characters of its hash. `remove` deletes it. Without the npm CLI, the skill folder has the same command: `node <skill folder>/scripts/key.mjs set google`. The key is saved in `.optbrew/credentials.json` in your home folder, outside every project, and the environment variable `OPTBREW_GOOGLE_API_KEY` takes priority if it is set. optbrew sends the key to Google only in a request header, and never writes it to a report, a log or the evidence.
+`set` asks for the key with hidden input. `status` shows only whether a key exists and the first 8 characters of its hash. `remove` deletes it. If you did not install with npm, use `npx optbrew@0.2.0 key set google`, or answer "키" and copy the exact command from the guide. The skill folder has the same command too: `node <skill folder>/scripts/key.mjs set google`. The key is saved in `.optbrew/credentials.json` in your home folder, outside every project, and the environment variable `OPTBREW_GOOGLE_API_KEY` takes priority if it is set. optbrew sends the key to Google only in a request header, and never writes it to a report, a log or the evidence.
 
 ## Update
 

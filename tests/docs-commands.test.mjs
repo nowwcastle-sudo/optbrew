@@ -9,6 +9,7 @@ import { test } from 'node:test';
 import { fixture } from './fixtures/releases/create.mjs';
 import { tempDir } from './support/temp-dir.mjs';
 import { main } from '../lib/cli.mjs';
+import { versions } from '../skills/optbrew/scripts/core/config.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const cli = path.join(root, 'bin/optbrew.mjs');
@@ -29,7 +30,7 @@ test('documented local commands parse and operate in isolated project', async ()
     'doctor --agents codex,claude-code,cursor,opencode,pi --scope project --project ./site --json',
     'check-updates --json',
     'update --scope project --project ./site --json',
-    'rollback --scope project --project ./site --release-version 0.1.0 --json',
+    `rollback --scope project --project ./site --release-version ${versions().release} --json`,
     'score --input ./before.json --output ./score.json',
     'compare --before ./before.json --after ./after.json --output ./comparison.json',
     'report --input ./remote-only.json --output-dir ./report-output',
@@ -150,7 +151,9 @@ test('documented key commands run against an isolated home and keep the key out 
   };
   const saved = await call('set google', `${key}\n`);
   assert.equal(saved.code, 0, saved.stderr);
-  assert.equal(JSON.parse((await call('status', '')).stdout).google.present, true);
+  const present = JSON.parse((await call('status', '')).stdout).google;
+  assert.equal(present.present, true);
+  assert.match(present.sha256_8, /^[0-9a-f]{8}$/);
   const removed = await call('remove google', '');
   assert.equal(removed.code, 0, removed.stderr);
   assert.equal(JSON.parse((await call('status', '')).stdout).google.present, false);
