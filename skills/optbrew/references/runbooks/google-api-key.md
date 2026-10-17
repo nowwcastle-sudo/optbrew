@@ -1,5 +1,5 @@
 ---
-checked: 2026-10-16
+checked: 2026-10-18
 source: https://docs.cloud.google.com/docs/authentication/api-keys https://docs.cloud.google.com/apis/docs/getting-started https://docs.cloud.google.com/resource-manager/docs/creating-managing-projects https://developer.chrome.com/docs/crux/api https://developers.google.com/speed/docs/insights/v5/get-started
 harness: any
 ---
@@ -21,16 +21,16 @@ harness: any
 9. 몇 초 기다린 뒤 알림에서 방금 만든 프로젝트를 누릅니다. (화면 확인 필요)
 10. 위쪽 프로젝트 이름 상자에 쓸 프로젝트 이름이 보이는지 확인합니다.
 11. 왼쪽 위의 메뉴 아이콘(☰)을 누릅니다.
-12. **API 및 서비스**(APIs & Services) → **라이브러리**(Library)를 누릅니다. (화면 확인 필요: 한글 메뉴 이름)
+12. **API 및 서비스**(APIs & Services) → **라이브러리**(Library)를 누릅니다. (영어 화면은 확인함. 한글 메뉴 이름은 화면 확인 필요)
 13. 검색 상자에 `Chrome UX Report API`를 입력합니다.
 14. 검색 결과에서 **Chrome UX Report API**를 누릅니다.
-15. **사용**(ENABLE) 버튼을 누릅니다. (화면 확인 필요: 한글 버튼 이름)
+15. **사용**(Enable) 버튼을 누릅니다. (영어 화면은 확인함. 한글 버튼 이름은 화면 확인 필요)
 16. 12번처럼 **라이브러리**로 돌아갑니다.
 17. 검색 상자에 `PageSpeed Insights API`를 입력합니다.
 18. 검색 결과에서 **PageSpeed Insights API**를 누릅니다.
 19. **사용**(ENABLE) 버튼을 누릅니다.
-20. 왼쪽 메뉴에서 **API 및 서비스** → **사용자 인증 정보**(Credentials)를 누릅니다. (화면 확인 필요: 한글 메뉴 이름)
-21. 위쪽 **사용자 인증 정보 만들기**(Create credentials)를 누릅니다. (화면 확인 필요: 한글 버튼 이름)
+20. 왼쪽 메뉴에서 **API 및 서비스** → **사용자 인증 정보**(Credentials)를 누릅니다. (영어 화면은 확인함. 한글 메뉴 이름은 화면 확인 필요)
+21. 위쪽 **+ 사용자 인증 정보 만들기**(+ Create credentials)를 누릅니다. 메뉴에 **API 키**(API key), OAuth 클라이언트 ID, 서비스 계정이 나옵니다. (영어 화면은 확인함. 한글 버튼 이름은 화면 확인 필요)
 22. 열린 메뉴에서 **API 키**(API key)를 누릅니다.
 23. 제한을 하나 이상 정해야 키를 만들 수 있다고 안내가 나오면, **API 제한사항**(API restrictions) 영역의 **키 제한**(Restrict key)을 누릅니다. 안내가 없으면 27번으로 갑니다. (화면 확인 필요: 이 안내와 영역 이름)
 24. 선택 상자(드롭다운)를 눌러 API 목록을 엽니다. (화면 확인 필요: 열리는 방식)

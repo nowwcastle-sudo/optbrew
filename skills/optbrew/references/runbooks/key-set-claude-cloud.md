@@ -1,5 +1,5 @@
 ---
-checked: 2026-10-16
+checked: 2026-10-18
 source: https://code.claude.com/docs/en/cloud-environments
 harness: claude-code-cloud
 ---
@@ -13,7 +13,7 @@ harness: claude-code-cloud
 1. 브라우저에서 claude.ai/code를 엽니다.
 2. 새 세션 화면으로 갑니다. 이미 실행 중인 세션을 고치려면 위쪽 세션 제목 옆 화살표(caret)를 누르고 **Edit cloud environment**를 고른 뒤 5번으로 갑니다.
 3. 메시지 입력 상자 바로 아래 줄에서 첫 번째 컨트롤(환경 이름이 적힌 버튼)을 누릅니다.
-4. 목록의 **Cloud** 아래에서 내 개인 환경 줄에 마우스를 올리고, 줄 오른쪽에 나타나는 설정 아이콘(톱니바퀴)을 누릅니다. 환경이 안 보이면 **More** 줄을 먼저 누릅니다. 환경이 하나도 없으면 목록 맨 아래 **New environment**를 눌러 이름을 적고 **Add environment**를 누른 뒤, 만든 환경의 설정 아이콘을 누릅니다.
+4. 열린 목록에서 **클라우드**(Cloud)를 누르면 옆에 클라우드 환경 목록이 열립니다. 내 개인 환경 줄에 마우스를 올리면 줄 오른쪽에 톱니바퀴와 별 아이콘이 나타납니다. 톱니바퀴(설정)를 누릅니다. 환경이 하나도 없으면 그 목록 맨 아래 **클라우드 환경 추가…**(Add cloud environment)를 눌러 환경을 만든 뒤, 만든 환경의 톱니바퀴를 누릅니다.
 5. 설정 창에서 **Environment variables** 칸을 찾습니다.
 6. 칸의 맨 아래 새 줄에 `OPTBREW_GOOGLE_API_KEY=`를 입력합니다. 등호 앞뒤에 공백을 넣지 않습니다.
 7. 등호 바로 뒤에 복사해 둔 Google 키를 붙여 넣습니다. 따옴표는 붙이지 않습니다.
