@@ -1,5 +1,5 @@
 ---
-checked: 2026-10-16
+checked: 2026-10-17
 source: https://learn.microsoft.com/en-us/powershell/scripting/windows-powershell/starting-windows-powershell
 harness: local
 ---
@@ -18,10 +18,10 @@ node "{{skill_root}}/scripts/key.mjs" set google
 ```
 
 3. Enter를 누릅니다.
-4. 키를 입력하라는 안내가 나옵니다. 키를 붙여 넣습니다. 입력한 글자는 화면에 보이지 않는 것이 정상입니다.
+4. `Google API key (input is hidden):`라는 안내가 나옵니다. 키를 붙여 넣습니다. 입력한 글자는 화면에 보이지 않는 것이 정상입니다.
 5. Enter를 누릅니다.
-6. 저장되었다는 안내가 나오면 끝납니다.
-7. 저장됐는지 확인하려면 다음 명령을 붙여 넣고 Enter를 누릅니다. 키가 있는지와 해시 앞 8자만 보이고 키 전체는 보이지 않습니다.
+6. `google key saved`가 나오면 끝납니다.
+7. 저장됐는지 확인하려면 다음 명령을 붙여 넣고 Enter를 누릅니다. 결과 한 줄에 `"present":true`가 보이면 저장된 것입니다. 키 전체는 보이지 않고 해시 앞 8자(`sha256_8`)만 보입니다.
 
 ```
 node "{{skill_root}}/scripts/key.mjs" status
@@ -30,7 +30,7 @@ node "{{skill_root}}/scripts/key.mjs" status
 8. 터미널 창을 닫습니다.
 9. 에이전트에게 "키 넣었어"라고만 말합니다. 키 값은 말하지 않습니다.
 
-npm으로 optbrew를 설치했다면 같은 일을 `optbrew key set google`, `optbrew key status`로 할 수 있습니다. 저장한 키를 지울 때는 같은 방법으로 `key remove` 명령을 씁니다. (화면 확인 필요: 안내 문구 글자와 remove 인자)
+npm으로 optbrew를 설치했다면 같은 일을 `optbrew key set google`, `optbrew key status`로 할 수 있습니다. 저장한 키를 지울 때는 같은 방법으로 `key remove google` 명령을 씁니다. 지우면 `google key removed`가 나옵니다.
 
 ## brief
 

@@ -1,5 +1,5 @@
 ---
-checked: 2026-10-16
+checked: 2026-10-17
 source: https://learn.chatgpt.com/docs/agent-approvals-security
 harness: codex
 ---
@@ -12,15 +12,15 @@ harness: codex
 
 1. 감사를 시작하면 Codex 화면에 승인을 묻는 창(또는 메시지)이 뜹니다. 뜰 때까지 기다립니다. 이 창은 파일이나 네트워크를 쓰는 명령을 실행하기 전에 Codex가 사용자에게 허락을 구하는 것입니다.
 2. 창에 적힌 명령을 읽습니다. 명령에 `node`와 optbrew의 `preflight.mjs` 또는 `run.mjs`가 보이면 정상입니다.
-3. 명령이 낯선 곳(다른 사이트 주소, 설치 명령 등)으로 가는 내용이면 허용하지 말고 거절합니다. 에이전트에게 이유를 묻습니다.
-4. 정상이면 이번 한 번만 허용하는 선택지를 고릅니다. 한 번만 허용하면 실행마다 다시 묻습니다. (화면 확인 필요: 선택지의 정확한 글자)
-5. 같은 승인이 계속 반복되어 번거로우면 이번 세션 동안 허용하는 선택지를 고릅니다. 세션을 닫으면 허용은 사라집니다. (화면 확인 필요: 선택지의 정확한 글자)
+3. 명령이 낯선 곳(다른 사이트 주소, 설치 명령 등)으로 가는 내용이면 **No, and tell Codex what to do differently**(거절하고 이유 말하기)를 고릅니다. 에이전트에게 이유를 묻습니다.
+4. 정상이면 **Yes, just this once**(이번 한 번만 허용)를 고릅니다. 한 번만 허용하면 실행마다 다시 묻습니다.
+5. 같은 승인이 계속 반복되어 번거로우면 **Yes, and don't ask again for this command in this session**(이 세션 동안 이 명령은 다시 묻지 않음)을 고릅니다. 사이트 주소를 허용할지 물으면 **Yes, and allow this host for this conversation**(이 대화 동안 이 주소 허용)을 고릅니다. 세션을 닫으면 허용은 사라집니다.
 6. 승인 후 에이전트가 "사이트를 읽는 중"이라는 취지로 진행하면 끝난 것입니다.
 7. 승인 창이 아예 뜨지 않고 "네트워크가 막혔다"는 오류만 나오면, `network-codex-config` 런북(설정 파일로 허용)으로 넘어갑니다.
 
 ## brief
 
-- Codex는 sandbox 기본값(workspace-write)에서 네트워크를 끄고, 필요한 명령 앞에서 승인을 묻습니다. 승인 창에서 optbrew의 `node` 명령인지 확인하고 허용합니다. (선택지 글자는 화면 확인 필요)
+- Codex는 sandbox 기본값(workspace-write)에서 네트워크를 끄고, 필요한 명령 앞에서 승인을 묻습니다. 승인 창에서 optbrew의 `node` 명령인지 확인하고 허용합니다. 선택지 글자는 Codex CLI 0.162.0 기준(`Yes, just this once` 등)입니다.
 - 한 번만 허용하면 실행마다 묻고, 세션 동안 허용하면 세션 종료까지 묻지 않습니다.
 - 한 번의 실행에만 쓸 때는 `-c 'sandbox_workspace_write.network_access=true'`를 Codex 실행 인자로 줄 수 있습니다.
 - 승인 창이 없이 막히면 `network-codex-config`를 봅니다.
