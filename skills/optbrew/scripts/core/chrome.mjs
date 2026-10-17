@@ -176,7 +176,9 @@ async function attempt({ executable, proxy, hostRules, tmpRoot, transport: kind,
   const gone = new Promise(resolve => child.once('exit', resolve));
   const failed = new Promise((_, reject) => {
     child.once('error', () => reject(new Error('chrome could not be started')));
-    gone.then(() => {
+    gone.then(async () => {
+      // 'exit' can come before stderr is drained; wait for its end, bounded, so the dying words are not lost.
+      await Promise.race([new Promise(resolve => child.stderr.readableEnded ? resolve() : child.stderr.once('end', resolve)), sleep(closeGrace)]);
       const said = stderrTail.replace(/\s+/g, ' ').trim().slice(-300);
       reject(new Error(`chrome exited before it was ready${said ? `: ${said}` : ''}`));
     });
