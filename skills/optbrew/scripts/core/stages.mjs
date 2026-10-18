@@ -14,6 +14,7 @@ import { HTTP_OK, collectCwv, labCwv } from './cwv.mjs';
 import { deriveObservations } from './derive.mjs';
 import { lcpField, inpField, clsField } from './checks/cwv-field.mjs';
 import { openStore } from './evidence-store.mjs';
+import { goalIds } from './goals.mjs';
 import { notIndexTargets, withIndexTargets } from './index-targets.mjs';
 import { OBSERVATION_SOURCES, buildJudgeQueue, deriveQuestionCoverage, mergeJudgments } from './judgments.mjs';
 import { keyHome, readGoogleKey } from './keys.mjs';
@@ -54,7 +55,7 @@ const INDEX_CHANGED = 'index changed: the evidence in this folder no longer matc
 const APPROVED_BY = 'start answers (intake-answers.json)';
 const NAVER_ENGINE = 'naver';
 const KOREAN_DOMAIN = '.kr';
-const NAVER_GOAL = /naver|네이버/i;
+const NAVER_GOAL = 'naver';
 // Families the start answers can switch off; every other family of the registry is planned for every run.
 const NAVER_FAMILY = 'naver-markup';
 const QUESTION_FAMILIES = ['question-coverage', 'answer-clarity'];
@@ -141,7 +142,8 @@ async function contextFrom(answers, { out, localTargets = [] }) {
   const { pages, dropped, sources } = selectPages({ home: home.normalized, factUrls, preflight, scope, budget: pageBudget(requestLimit(scope), auxiliary.length),
     auxiliary: known });
   const pageTypes = groupPages(pages, home.normalized).map(type => ({ id: type.id, urls: type.urls.map(ref) }));
-  const wantsNaver = NAVER_GOAL.test(answers.goals.join(' ')) || (answers.owner_exports ?? []).some(x => x.kind === NAVER_ENGINE) ||
+  const goals = goalIds(answers.goals);
+  const wantsNaver = goals.includes(NAVER_GOAL) || (answers.owner_exports ?? []).some(x => x.kind === NAVER_ENGINE) ||
     preflight.korean || target.host.endsWith(KOREAN_DOMAIN);
   const engines = ['google', ...(wantsNaver ? [NAVER_ENGINE] : [])];
   const planned = id => id === NAVER_FAMILY ? engines.includes(NAVER_ENGINE) : QUESTION_FAMILIES.includes(id) ? answers.questions.length > 0 : true;

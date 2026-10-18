@@ -73,7 +73,7 @@ node "<SKILL_DIR>/scripts/preflight.mjs" --url "<주소>" --out "<OUT>" --source
 이 메시지가 이 턴의 마지막 메시지다. 보낸 뒤 진행 문장이나 요약을 쓰지 않고 턴을 끝낸다.
 
 1. 1번: 안내 수준을 묻는다.
-2. 2번: 주소는 확인만 받는다. 목표는 사용자가 이미 말한 것이 기본이다. 없으면 "검색 유입, AI 답변 인용"을 기본으로 둔다. 고를 수 있는 목표는 검색 유입, 네이버 노출, AI 답변 인용, 브랜드 사실 정확성, 전환이다.
+2. 2번: 주소는 확인만 받는다. 목표는 사용자가 이미 말한 것이 기본이다. 없으면 "검색 유입, AI 답변 인용"을 기본으로 둔다. 고를 수 있는 목표는 검색 유입, 네이버 노출, AI 답변 인용, 브랜드 사실 정확성, 전환이다. 사용자의 말이 이 중 하나를 가리키면 그 목표 이름으로 보여 준다. 문의, 예약, 상담, 전화는 전환이다.
 3. 3번: `question_candidates_input`을 읽고 10개 안팎의 질문을 만든다. 브랜드 질문과 일반 질문을 섞는다.
 4. 4번: `fact_candidates`를 `종류: 값 (읽은 페이지)`으로 보여 준다. 후보가 없으면 이 번호를 빼고 번호를 당긴다.
 5. 5번: `start.json`의 `sitemap_pages`가 50을 넘거나 `sitemap_pages_basis`가 `lower_bound`일 때만 넣는다. 아니면 빼고 번호를 당긴다.
@@ -124,7 +124,7 @@ node "<SKILL_DIR>/scripts/cli.mjs" runbook --ids "<id>" --level <수준>
 }
 ```
 
-- `goals`는 사용자의 말에 가까운 짧은 문자열 목록이다.
+- `goals`는 4단계 2번에서 확정한 목표 이름을 그대로 쓴 목록이다. 실행은 이 이름을 읽어 점검할 엔진과 항목을 정한다.
 - `facts`는 `fact_candidates`의 `key`, `value`, `source_url`을 그대로 쓴다. 사용자가 뺀 사실은 뺀다.
 - `sample_mode`는 5번 질문이 없었으면 `null`이고 `max_urls`는 50이다. "표본"이면 `sample`이고 `max_urls`는 50이다. "상한을 올림"이면 `raise`이고 `max_urls`는 `sitemap_pages`에 2와 `start.json`의 `sitemap_declared`(없으면 1)를 더한 수 N에, N의 10%(소수는 올림, 최소 2)를 다시 더한 수다(시작 쪽 1개, robots.txt 1개, 사이트맵 파일 `sitemap_declared`개도 요청 한도에 들어가고, 쪽이 다른 주소로 넘어갈 때 쓰는 요청 여유가 `redirect_reserve`로 따로 남는다). 계산한 수가 200을 넘으면 200으로 줄인다(요청 상한은 200이고, 실행도 200까지만 받는다). `sitemap_pages_basis`가 `lower_bound`일 때도 200이다. `intake-answers.json`의 `max_urls`는 실행에 실제로 쓰이는 수와 같아야 한다.
 - `owner_exports`는 5단계에서 경로를 받았을 때만 쓴다. 받은 것이 없으면 이 필드를 통째로 뺀다. 파일이 없거나 읽을 수 없으면 감사는 멈추지 않고, 그 칸이 보고서에 "알 수 없음"과 이유로 남는다.
