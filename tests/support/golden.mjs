@@ -9,8 +9,8 @@ const siteRoot = new URL('../fixtures/sites/', import.meta.url);
 const template = new URL('../fixtures/scoring/before.json', import.meta.url);
 const VERSION_FIELDS = ['schema_version', 'evaluation_version', 'protocol_version'];
 
-/** The sixteen families whose verdicts come from stored evidence alone; each has its own check block. */
-export const CODE_FAMILIES = ['fetch-response', 'search-crawl-policy', 'index-policy', 'render-content', 'discovery', 'document-title',
+/** The families whose verdicts come from stored evidence alone; each has its own check block. */
+export const CODE_FAMILIES = ['fetch-response', 'search-crawl-policy', 'ai-crawler-policy', 'index-policy', 'render-content', 'discovery', 'document-title',
   'canonical-consistency', 'internal-navigation', 'structured-data-truth', 'locale-links', 'naver-markup', 'entity-identity', 'fact-consistency', 'lcp-field', 'inp-field', 'cls-field'];
 
 /** Copy of the observations without version fields, so a version bump never breaks the golden comparison. */
@@ -127,7 +127,7 @@ export async function goldenObservations() {
         const url = `${origin}/${kind === 'robots' ? 'robots.txt' : 'sitemap.xml'}`;
         return { kind, original: url, normalized: url };
       });
-      context.protocol.engines = ['google', 'naver'];
+      context.protocol.engines = ['google', 'naver', 'chatgpt', 'claude', 'perplexity'];
       for (const family of context.protocol.families) {
         if (CODE_FAMILIES.includes(family.family_id)) { family.applicable = true; delete family.applicability_decision; }
         else if (family.applicability_decision) family.applicability_decision.evidence_ref = 'intake.json';

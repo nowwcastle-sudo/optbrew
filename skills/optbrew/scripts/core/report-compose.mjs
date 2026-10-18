@@ -75,7 +75,7 @@ const pagesOf = finding => finding.unit_keys ?? [finding.unit_key];
 const PAGES_SHOWN = 5;
 const SITE_UNIT = 'site';
 /** A unit key is `<check>|<address>`; the address may hold `|` itself, so it is everything after the first one. */
-const ENGINE_LABELS = { naver: '네이버', google: '구글' };
+const ENGINE_LABELS = { naver: '네이버', google: '구글', chatgpt: 'ChatGPT', claude: 'Claude', perplexity: 'Perplexity' };
 /** A unit of a check judged per engine reads `<engine>|<address>`: the address first, the engine in parentheses. */
 const addressOf = unit => {
   const address = unit.slice(unit.indexOf('|') + 1);

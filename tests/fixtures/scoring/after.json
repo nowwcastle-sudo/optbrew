@@ -62,6 +62,15 @@
           "applicable": true
         },
         {
+          "family_id": "ai-crawler-policy",
+          "applicable": false,
+          "applicability_decision": {
+            "condition": "ai_not_target",
+            "reason": "Synthetic intake confirms this condition is absent",
+            "evidence_ref": "synthetic/intake"
+          }
+        },
+        {
           "family_id": "index-policy",
           "applicable": true
         },

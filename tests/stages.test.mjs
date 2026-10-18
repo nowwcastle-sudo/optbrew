@@ -84,9 +84,21 @@ test('context stage plans question-coverage with its panel, or records why it ca
   assert.equal(plan(naver, 'naver-markup').applicable, true);
 });
 
+test('an AI citation goal targets the AI answer engines, and the AI crawler check follows them', async () => {
+  const contextOf = async goals => (await begin(['context'], { goals })).state.context;
+  const plan = (context, id) => context.protocol.families.find(family => family.family_id === id);
+  const ai = await contextOf(['검색 유입', 'AI 답변 인용']);
+  assert.deepEqual(ai.protocol.engines, ['google', 'chatgpt', 'claude', 'perplexity']);
+  assert.equal(plan(ai, 'ai-crawler-policy').applicable, true);
+  const search = await contextOf(['검색 유입']);
+  assert.deepEqual(search.protocol.engines, ['google']);
+  assert.equal(plan(search, 'ai-crawler-policy').applicability_decision.condition, 'ai_not_target');
+  assert.equal(plan(search, 'search-crawl-policy').applicable, true);
+});
+
 test('Naver is a target when a goal names it, an owner export is Naver, the start page is Korean or the host is .kr; Google always', async () => {
   const engines = async over => (await begin(['context'], over)).state.context.protocol.engines;
-  assert.deepEqual(await engines({ goals: ['검색 유입', 'AI 답변 인용'] }), ['google']);
+  assert.deepEqual(await engines({ goals: ['검색 유입'] }), ['google']);
   assert.deepEqual(await engines({ goals: ['검색 유입'], owner_exports: [{ kind: 'naver', path: 'naver.txt' }] }), ['google', 'naver']);
   assert.deepEqual(await engines({ owner_exports: [{ kind: 'gsc', path: 'gsc.zip' }] }), ['google']);
   assert.deepEqual(await engines({ url: 'https://brew.example.kr/' }), ['google', 'naver']);

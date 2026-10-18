@@ -18,8 +18,8 @@ export const evaluationSourcePaths = ['references/check-registry.json', 'referen
   'scripts/core/contracts.mjs', 'scripts/core/compare.mjs', 'scripts/core/metrics.mjs', 'scripts/core/bootstrap.mjs',
   'scripts/core/derive.mjs', 'scripts/core/index-targets.mjs', 'scripts/core/judgments.mjs', 'scripts/core/facts.mjs',
   'scripts/core/link-graph.mjs', 'scripts/core/page-select.mjs', 'modules/naver-searchadvisor/scripts/audit.mjs',
-  ...['canonical-consistency', 'cwv-field', 'discovery', 'document-title', 'entity-identity', 'fact-consistency', 'fetch-response', 'index-policy',
-    'index', 'internal-navigation', 'locale-links', 'naver-markup', 'observation', 'prepare', 'render-content', 'search-crawl-policy',
+  ...['canonical-consistency', 'crawl-policy', 'cwv-field', 'discovery', 'document-title', 'entity-identity', 'fact-consistency', 'fetch-response',
+    'index-policy', 'index', 'internal-navigation', 'locale-links', 'naver-markup', 'observation', 'prepare', 'render-content',
     'structured-data-truth'].map(name => `scripts/core/checks/${name}.mjs`)];
 export const protocolSourcePaths = ['references/schemas/contract.schema.json', 'references/limits.json', 'scripts/core/protocol.mjs'];
 

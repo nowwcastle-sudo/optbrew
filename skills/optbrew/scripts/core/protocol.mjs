@@ -14,25 +14,34 @@ function unique(values, label) {
 
 const compare = (a, b) => a < b ? -1 : a > b ? 1 : 0;
 
+/** The engines of the run a family covers: its own registry engines that the run targets, or every target engine. */
+const coveredEngines = (definition, protocol) => definition.engines ? definition.engines.filter(engine => protocol.engines.includes(engine)) : protocol.engines;
+
+/**
+ * The inapplicable conditions the run's own fixed facts decide, in the order a held one names the reason: the question panel, the
+ * target engines (`no_target_engine`, or a `*_not_target` condition of a family with registry engines), and the public index targets
+ * (`no_public_index_target` of a `public_only` family). `holds` answers whether the condition is true for this run.
+ */
+const FIXED_CONDITIONS = [
+  { matches: code => code === 'no_fixed_questions', holds: ({ protocol }) => !protocol.question_panel.length },
+  { matches: (code, definition) => code === 'no_target_engine' || (code.endsWith('_not_target') && definition.engines?.length > 0),
+    holds: ({ definition, protocol }) => !coveredEngines(definition, protocol).length },
+  { matches: (code, definition) => code === 'no_public_index_target' && definition.public_only === true, holds: ({ publicCount }) => publicCount === 0 },
+];
+
 /**
  * Whether the run's own fixed conditions decide a family's applicability, and the condition code that names the reason when it is not
  * applicable; null when no fixed condition decides it (the owner's or the model's decision then stands). Read from the registry, never from
- * a list of family names: no inapplicable condition at all means always applicable; `public_only` plus `no_public_index_target` follows the
- * public index targets (and the target engines, where `no_target_engine` is also a condition); an engine-bound family with a `*_not_target`
- * condition follows its engines; `no_fixed_questions` follows the question panel. A test holds the registry flag and this rule together (T22 S2).
+ * a list of family names: no inapplicable condition at all means always applicable; otherwise the first fixed condition that holds makes
+ * the family inapplicable, and a family whose fixed conditions all fail is applicable. A test holds the registry flag and this rule together (T22 S2).
  */
 function fixedApplicability(definition, protocol, publicCount) {
   const conditions = definition.na_conditions ?? [];
   if (!conditions.length) return { applicable: true, condition: null };
-  if (conditions.includes('no_fixed_questions')) return { applicable: protocol.question_panel.length > 0, condition: 'no_fixed_questions' };
-  if (definition.public_only === true && conditions.includes('no_public_index_target')) {
-    const needsEngine = conditions.includes('no_target_engine');
-    return { applicable: publicCount > 0 && (!needsEngine || protocol.engines.length > 0),
-      condition: needsEngine && !protocol.engines.length ? 'no_target_engine' : 'no_public_index_target' };
-  }
-  const engineCondition = conditions.find(code => code.endsWith('_not_target'));
-  if (definition.engines?.length && engineCondition) return { applicable: definition.engines.some(engine => protocol.engines.includes(engine)), condition: engineCondition };
-  return null;
+  const fixed = FIXED_CONDITIONS.map(rule => ({ rule, code: conditions.find(code => rule.matches(code, definition)) })).filter(x => x.code);
+  if (!fixed.length) return null;
+  const held = fixed.find(({ rule }) => rule.holds({ definition, protocol, publicCount }));
+  return held ? { applicable: false, condition: held.code } : { applicable: true, condition: null };
 }
 const sameSet = (a, b) => a.length === b.length && a.every(value => b.includes(value));
 
@@ -101,7 +110,7 @@ export function freezeProtocol(context) {
     }
     if (family.engines) {
       unique(family.engines, `${family.family_id}.engines`);
-      const requiredEngines = definition.engines ?? p.engines;
+      const requiredEngines = coveredEngines(definition, p);
       if (definition.unit_scope !== 'engine_url' || !sameSet(family.engines, requiredEngines))
         throw new ContractError(`${family.family_id}: target engine units cannot be omitted`);
     }

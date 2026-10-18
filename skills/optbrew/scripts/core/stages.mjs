@@ -14,6 +14,7 @@ import { HTTP_OK, collectCwv, labCwv } from './cwv.mjs';
 import { deriveObservations } from './derive.mjs';
 import { lcpField, inpField, clsField } from './checks/cwv-field.mjs';
 import { openStore } from './evidence-store.mjs';
+import { planFamilies, targetEngines } from './family-plan.mjs';
 import { goalIds } from './goals.mjs';
 import { notIndexTargets, withIndexTargets } from './index-targets.mjs';
 import { OBSERVATION_SOURCES, buildJudgeQueue, deriveQuestionCoverage, mergeJudgments } from './judgments.mjs';
@@ -56,14 +57,6 @@ const APPROVED_BY = 'start answers (intake-answers.json)';
 const NAVER_ENGINE = 'naver';
 const KOREAN_DOMAIN = '.kr';
 const NAVER_GOAL = 'naver';
-// Families the start answers can switch off; every other family of the registry is planned for every run.
-const NAVER_FAMILY = 'naver-markup';
-const QUESTION_FAMILIES = ['question-coverage', 'answer-clarity'];
-const NOT_APPLICABLE = {
-  [NAVER_FAMILY]: { condition: 'naver_not_target', reason: 'Naver is not among the target engines of this run' },
-  'question-coverage': { condition: 'no_fixed_questions', reason: 'The start answers fixed no question list' },
-  'answer-clarity': { condition: 'no_matching_questions', reason: 'The start answers fixed no question list to match answers against' },
-};
 
 const json = value => `${JSON.stringify(value, null, 2)}\n`;
 const compact = value => `${JSON.stringify(value)}\n`;
@@ -145,10 +138,8 @@ async function contextFrom(answers, { out, localTargets = [] }) {
   const goals = goalIds(answers.goals);
   const wantsNaver = goals.includes(NAVER_GOAL) || (answers.owner_exports ?? []).some(x => x.kind === NAVER_ENGINE) ||
     preflight.korean || target.host.endsWith(KOREAN_DOMAIN);
-  const engines = ['google', ...(wantsNaver ? [NAVER_ENGINE] : [])];
-  const planned = id => id === NAVER_FAMILY ? engines.includes(NAVER_ENGINE) : QUESTION_FAMILIES.includes(id) ? answers.questions.length > 0 : true;
-  const families = checkRegistry().families.map(({ family_id }) => planned(family_id) ? { family_id, applicable: true } :
-    { family_id, applicable: false, applicability_decision: { ...NOT_APPLICABLE[family_id], evidence_ref: INTAKE_FILE } });
+  const engines = targetEngines({ goals, naver: wantsNaver });
+  const families = planFamilies({ engines, questions: answers.questions, evidence_ref: INTAKE_FILE });
   // Handing over an export of this site is the owner's approval of the property it describes: the site's own host, whole site.
   const providers = [...new Set((answers.owner_exports ?? []).map(x => x.kind))];
   const mapping = provider => ({ provider, property: target.host, hostname: target.host, path_prefix: '/' });

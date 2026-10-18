@@ -218,7 +218,7 @@ test('document-title, canonical-consistency and naver-markup plan only the publi
 // Task 22 (S2): the fixed applicability rules are read from the registry flags, not from lists of family names; this holds the two together.
 test('the fixed applicability rules agree with the registry public_only flags (S2)', () => {
   const excluded = { condition: 'not_public_index_target', reason: 'documented exclusion', evidence_ref: 'e/index' };
-  const withFamily = (family, { publicPage = true, engines = ['google'] } = {}) => {
+  const withFamilyOf = (family, { publicPage = true, engines = ['google'] } = {}) => {
     const changed = context();
     changed.protocol.engines = engines;
     if (!publicPage) Object.assign(changed.protocol.page_types[0].urls[0], { public_indexing: false, indexing_decision: excluded });
@@ -230,6 +230,9 @@ test('the fixed applicability rules agree with the registry public_only flags (S
   assert.ok(families.filter(item => item.public_only === true).length >= 6, 'the registry still marks its public-only families');
   for (const item of families) {
     const publicOnly = item.public_only === true, id = item.family_id;
+    // A family bound to engines is judged with one of its own engines targeted, so only the public pages decide it here.
+    const targeted = { engines: [...new Set(['google', ...(item.engines ?? [])])] };
+    const withFamily = (family, options = {}) => withFamilyOf(family, { ...targeted, ...options });
     if (item.na_conditions.includes('no_public_index_target')) {
       assert.equal(publicOnly, true, `${id} names no_public_index_target, so the registry must flag it public_only`);
       // Public pages: the family is applicable, and calling it inapplicable is refused. Only non-index pages: it is inapplicable with exactly that condition.
@@ -250,4 +253,23 @@ test('the fixed applicability rules agree with the registry public_only flags (S
       try { attempt(); } catch (error) { assert.doesNotMatch(String(error.message), /public index target/, `${id} is not a public-only family`); }
     }
   }
+});
+
+test('an engine-bound family follows its own engines among the targets', () => {
+  const planned = (engines, family) => {
+    const changed = context();
+    changed.protocol.engines = engines;
+    changed.protocol.families.push(family);
+    return changed;
+  };
+  const off = condition => ({ applicable: false, applicability_decision: { condition, reason: 'fixed condition', evidence_ref: 'e/fixed' } });
+  const ai = { family_id: 'ai-crawler-policy' };
+  assert.doesNotThrow(() => freezeProtocol(planned(['google'], { ...ai, ...off('ai_not_target') })), 'no AI engine targeted');
+  assert.throws(() => freezeProtocol(planned(['google'], { ...ai, applicable: true })), /contradicts fixed/);
+  assert.doesNotThrow(() => freezeProtocol(planned(['google', 'perplexity'], { ...ai, applicable: true })));
+  assert.throws(() => freezeProtocol(planned(['google', 'perplexity'], { ...ai, ...off('ai_not_target') })), /contradicts fixed/);
+  const crawl = { family_id: 'search-crawl-policy' };
+  assert.doesNotThrow(() => freezeProtocol(planned(['claude'], { ...crawl, ...off('no_target_engine') })), 'an AI engine is no search crawl target');
+  assert.throws(() => freezeProtocol(planned(['google', 'claude'], { ...crawl, applicable: true, engines: ['google', 'claude'] })), /target engine units cannot be omitted/);
+  assert.doesNotThrow(() => freezeProtocol(planned(['google', 'claude'], { ...crawl, applicable: true, engines: ['google'] })));
 });

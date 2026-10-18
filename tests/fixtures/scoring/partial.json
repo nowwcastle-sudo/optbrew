@@ -22,6 +22,7 @@
       "families": [
         { "family_id": "fetch-response", "applicable": true },
         { "family_id": "search-crawl-policy", "applicable": true },
+        { "family_id": "ai-crawler-policy", "applicable": false, "applicability_decision": {"condition":"ai_not_target","reason":"Synthetic intake confirms this condition is absent","evidence_ref":"synthetic/intake"} },
         { "family_id": "index-policy", "applicable": true },
         { "family_id": "render-content", "applicable": false, "applicability_decision": {"condition":"not_render_dependent","reason":"Synthetic intake confirms this condition is absent","evidence_ref":"synthetic/intake"} },
         { "family_id": "discovery", "applicable": true },

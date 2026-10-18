@@ -1,9 +1,15 @@
 {
   "run_id": "synthetic-report",
   "target": "example.com",
-  "protocol_hash": "25762b5c1e75f13c270329856fa64d0f997014fca620a29055ec22116f555aaa",
+  "protocol_hash": "44b403407615287fbd010ea7c4a421507800584742c4b6de108a31df7630c6d6",
   "approved_by": "synthetic-fixture",
   "decisions": [
+    {
+      "scope": "family",
+      "family_id": "ai-crawler-policy",
+      "condition": "ai_not_target",
+      "reason": "Synthetic intake confirms this condition is absent"
+    },
     {
       "scope": "family",
       "family_id": "render-content",

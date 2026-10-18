@@ -81,6 +81,15 @@
           "applicable": true
         },
         {
+          "family_id": "ai-crawler-policy",
+          "applicable": false,
+          "applicability_decision": {
+            "condition": "ai_not_target",
+            "reason": "Synthetic intake confirms this condition is absent",
+            "evidence_ref": "intake.json"
+          }
+        },
+        {
           "family_id": "index-policy",
           "applicable": true
         },
@@ -315,6 +324,15 @@
             {
               "family_id": "search-crawl-policy",
               "applicable": true
+            },
+            {
+              "family_id": "ai-crawler-policy",
+              "applicable": false,
+              "applicability_decision": {
+                "condition": "ai_not_target",
+                "reason": "Synthetic intake confirms this condition is absent",
+                "evidence_ref": "intake.json"
+              }
             },
             {
               "family_id": "index-policy",
@@ -804,13 +822,13 @@
   "evidence_index": [
     {
       "ref": "context.json",
-      "sha256": "1189ecbcfe78d5097562ea556ced5df4f8d48841dca67fa2ccf22ba69188489b",
+      "sha256": "4f188c721781b6ceb59511c6f4f9273d6a5a9da536604cc1ca9c3b1d356f192e",
       "kind": "context",
       "run_id": "synthetic-report"
     },
     {
       "ref": "intake.json",
-      "sha256": "1f7bf489c6c8ba806c39cc5978162a157a439eadd9e8154baa0373e014940255",
+      "sha256": "fe5682cf8ce4d11dbc35e59115f524a03a1fb57a180e07d8b27d4924e881c1d4",
       "kind": "intake",
       "run_id": "synthetic-report"
     },

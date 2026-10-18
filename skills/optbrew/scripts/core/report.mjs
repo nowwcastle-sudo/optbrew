@@ -26,6 +26,7 @@ import { parseRobots, robotsVerdict } from '../../modules/naver-searchadvisor/sc
 
 const catalog = JSON.parse(readFileSync(new URL('../../references/remediations.json', import.meta.url))).items;
 const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+const CRAWL_FAMILIES = ['search-crawl-policy', 'ai-crawler-policy'];
 const named = value => typeof value === 'string' && value.trim().length > 0;
 const days = window => (Date.parse(`${window.end}T00:00:00Z`) - Date.parse(`${window.start}T00:00:00Z`)) / 86400000 + 1;
 const dayBefore = date => new Date(Date.parse(`${date}T00:00:00Z`) - 86400000).toISOString().slice(0, 10);
@@ -567,7 +568,9 @@ function checkAuditPhase(input, phase, snapshot, requireRef) {
       if (obs.check_id === 'index-policy' && obs.state !== (replay.index_blocked ? 'fail' : 'pass'))
         throw new ContractError('title/index verdict differs from raw response and headers');
     }
-    if (obs.check_id === 'search-crawl-policy' && ['pass', 'fail'].includes(obs.state) && obs.unit_key.split('|')[1] === 'naver') {
+    // A robots.txt answered with 4xx gives the module no rules to read; the derivation replay below checks that verdict from the stored status.
+    const robotsUnavailable = artifacts.some(x => x.evidence_ref === obs.evidence_ref && x.status >= 400 && x.status < 500);
+    if (obs.check_id === 'search-crawl-policy' && ['pass', 'fail'].includes(obs.state) && obs.unit_key.split('|')[1] === 'naver' && !robotsUnavailable) {
       const [, engine] = obs.unit_key.split('|');
       const robotsArtifact = artifacts.find(x => x.evidence_ref === obs.evidence_ref && x.status === 200);
       const declared = robotsArtifact && (input.run_context.protocol.auxiliary_resources ?? []).some(resource =>
@@ -610,7 +613,7 @@ function checkAuditPhase(input, phase, snapshot, requireRef) {
       throw new ContractError(`planned collector observation missing: ${expected.unit_key}`);
     const have = observations.find(x => x.unit_key === expected.unit_key);
     if (!same(shape(have), shape(expected)))
-      throw new ContractError(expected.family_id === 'search-crawl-policy' ? 'crawl verdict differs from bound robots evidence and module output' :
+      throw new ContractError(CRAWL_FAMILIES.includes(expected.family_id) ? 'crawl verdict differs from bound robots evidence and module output' :
         ['index-policy', 'document-title'].includes(expected.family_id) ? 'title/index verdict differs from raw response and headers' :
           `collector verdict differs from raw evidence: ${expected.unit_key}`);
   }
