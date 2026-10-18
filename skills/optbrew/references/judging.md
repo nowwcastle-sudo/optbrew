@@ -4,43 +4,51 @@ SKILL.md 8단계의 절차다. 코드가 판정하지 못하는 내용 항목을
 
 ## 1. 작업 목록 읽기
 
-읽을 파일은 `run.mjs`가 마지막 줄 JSON의 `judge_queue`로 알려 준 경로다(보통 `<OUT>/judge-queue.json`). 쪽마다 묶여 있고, 쪽의 글 조각은 한 번만 나온다.
+읽을 곳은 `run.mjs`가 마지막 줄 JSON의 `judge_pages`로 알려 준 폴더다(보통 `<OUT>/judge-queue/`). 폴더에는 `site.json` 하나와 쪽마다 파일 하나(`p001.json`, `p002.json`…)가 있다. 파일은 들여쓰기 없는 JSON이다. 아래 예는 읽기 쉽게 들여썼다.
+
+`site.json`은 모든 쪽에 공통인 것을 담는다.
 
 ```json
 {
   "questions": [
     { "id": "q1", "question": "…" }
   ],
-  "pages": [
-    {
-      "url": "https://example.org/about",
-      "evidence_ref": "…",
-      "spans": [
-        { "span_id": "812-1040", "evidence_sha256": "…", "start": 812, "end": 1040, "text": "…" }
-      ],
-      "families": [
-        { "family_id": "original-value", "unit_key": "original-value|https://example.org/about" }
-      ]
-    }
+  "site_chrome": ["…"]
+}
+```
+
+쪽 파일 하나는 쪽 하나다. 쪽의 글 조각은 한 번만 나온다.
+
+```json
+{
+  "url": "https://example.org/about",
+  "evidence_ref": "…",
+  "evidence_sha256": "…",
+  "families": [
+    { "family_id": "original-value", "unit_key": "original-value|https://example.org/about" }
+  ],
+  "spans": [
+    { "span_id": "812-1040", "text": "…" },
+    { "span_id": "1302-1511", "text": "…", "site_chrome": true }
   ]
 }
 ```
 
-- `questions`는 시작 질문으로 확정한 질문 목록이다(`answer-clarity` 판정이 고른다). 질문이 없으면 비어 있고, 그때는 `answer-clarity` 항목도 없다.
-- `site_chrome`은 파일 맨 위에 한 번만 나오는 글 목록이다. 감사한 쪽 대부분에 되풀이되는 글(머리말, 메뉴, 바닥글의 전화번호·주소·운영 시간·연락처 등)을 중복 없이 모았다. 쪽마다 같은 글이 `site_chrome: true` 조각으로 다시 나온다. 감사한 쪽이 적으면 이 목록이 없다. 먼저 이 목록을 읽고, 질문 목록의 질문에 답하는 글이 있는지 본다(`answer-clarity`의 「한 쪽이 여러 질문에 답할 때」와 「사이트 공통 글이 답할 때」).
+- `questions`는 `site.json`에 있다. 시작 질문으로 확정한 질문 목록이다(`answer-clarity` 판정이 고른다). 질문이 없으면 비어 있고, 그때는 `answer-clarity` 항목도 없다.
+- `site_chrome`은 `site.json`에 한 번만 나오는 글 목록이다. 감사한 쪽 대부분에 되풀이되는 글(머리말, 메뉴, 바닥글의 전화번호·주소·운영 시간·연락처 등)을 중복 없이 모았다. 쪽마다 같은 글이 쪽 파일에 `site_chrome: true` 조각으로 다시 나온다. 감사한 쪽이 적으면 이 목록이 없다. 먼저 이 목록을 읽고, 질문 목록의 질문에 답하는 글이 있는지 본다(`answer-clarity`의 「한 쪽이 여러 질문에 답할 때」와 「사이트 공통 글이 답할 때」).
 - 쪽(page) 하나에 판정할 항목(`families`)이 여럿 붙어 있다. 항목 하나가 판정 하나다. `families`의 각 항목에는 `family_id`와 `unit_key`가 있다. 홈 쪽의 항목에는 사이트 정체 판정(`entity-identity|site`, 2절 끝)이 붙을 수 있고, 그 항목에는 `identity`(`names`, `facts`, `host`)도 있다.
 - `spans`는 쪽의 보이는 글 덩어리다. 쪽마다 길이 순으로 40바이트 이상인 덩어리 30개까지, 문서 순서로 들어 있다(`judge_span_min_bytes` 40, `judge_spans_per_unit` 30). 연도·월·일이 모두 있는 날짜(`2026-10-17`, `2026년 10월 3일`, `2017 10월 26일`, `Oct 3, 2026`), 연도와 월만 있는 날짜(`2026년 9월`), 연락처(이메일·전화번호), `<address>` 요소 안의 글(저자 줄 등), 사용 중단을 알리는 짧은 줄(`deprecated`, `obsolete`, `사용 중단`, `폐지`, `더 이상 지원`이 든 글)은 40바이트 미만이어도 들어 있다. 이런 짧은 글은 따로 같은 글 하나씩 10개까지다(`judge_short_spans_per_unit` 10). 열 개를 넘으면 문서 순서로 앞의 열 개만 들어 있다. 30개 한도에서는 연도·월·일이 있는 날짜가 든 긴 줄이 다른 긴 줄보다 먼저 남는다. 그래도 쪽의 날짜가 모두 조각에 있다고 믿지 않는다. 한도에서 밀린 줄이 있고, `10월 26일`처럼 연도가 없는 짧은 날짜는 들어 있지 않다.
-- `site_chrome: true`가 붙은 조각은 감사한 쪽 대부분에 되풀이되는 글이다(머리말, 메뉴, 바닥글). 그 사이트의 글이지 이 쪽의 글이 아니다. 아래 `freshness-truth`와 `source-transparency`가 이 조각을 쓰는 법을 정한다. 한 덩어리가 2000바이트(`judge_span_max_bytes`)를 넘으면 문장 끝(없으면 공백, 그것도 없으면 글자)에서 나뉘어 덩어리 여러 개가 된다. 나뉜 덩어리마다 바이트 범위가 따로 있고, 코드는 같은 나눔을 다시 만든다. 쪽 제목(`<title>`)의 글도 들어 있다. 태그 안쪽의 글(속성 값)과 스크립트, 스타일, 템플릿, noscript, 주석 안의 글은 없다. 주석(`<!-- -->`)은 글을 끊지 않는다. 한 문장 안의 글 노드 사이에 있는 주석(`금액은 <!-- -->2026<!-- -->년`)은 문장을 나누지 않고, 조각의 `text`는 주석을 뺀 글(`금액은 2026년`)이다. 키나 토큰처럼 보이는 글이 든 덩어리는 빠져 있다.
+- 조각에는 `span_id`와 `text`만 있고, `site_chrome: true` 조각에는 `site_chrome`도 있다. 조각마다 붙는 증거 해시와 바이트 범위(`start`, `end`)는 쪽 파일에 없다. 판정에는 `span_id`만 쓴다. 코드가 저장된 목록에서 해시와 범위를 붙인다.
+- `site_chrome: true`가 붙은 조각은 감사한 쪽 대부분에 되풀이되는 글이다(머리말, 메뉴, 바닥글). 그 사이트의 글이지 이 쪽의 글이 아니다. 아래 `freshness-truth`와 `source-transparency`가 이 조각을 쓰는 법을 정한다. 같은 글도 `span_id`는 쪽마다 다르다. 판정에 쓸 조각은 판정하는 쪽의 파일에서 복사한다. 한 덩어리가 2000바이트(`judge_span_max_bytes`)를 넘으면 문장 끝(없으면 공백, 그것도 없으면 글자)에서 나뉘어 덩어리 여러 개가 된다. 나뉜 덩어리마다 바이트 범위가 따로 있고, 코드는 같은 나눔을 다시 만든다. 쪽 제목(`<title>`)의 글도 들어 있다. 태그 안쪽의 글(속성 값)과 스크립트, 스타일, 템플릿, noscript, 주석 안의 글은 없다. 주석(`<!-- -->`)은 글을 끊지 않는다. 한 문장 안의 글 노드 사이에 있는 주석(`금액은 <!-- -->2026<!-- -->년`)은 문장을 나누지 않고, 조각의 `text`는 주석을 뺀 글(`금액은 2026년`)이다. 키나 토큰처럼 보이는 글이 든 덩어리는 빠져 있다.
 - 문장 안의 `a`, `code`, `em`, `strong`, `b`, `i`, `span`, `abbr`, `time`, `mark`, `small`, `sub`, `sup`, `br` 태그는 덩어리를 끊지 않는다. 덩어리의 바이트 범위는 그 태그를 덮지만, `text`에는 태그가 빠져 있다. 코드는 같은 범위에서 같은 `text`를 다시 만든다.
 - `text`는 HTML에서 태그 사이의 글을 그대로 뗀 것이다. `&amp;`나 `&nbsp;` 같은 문자 참조가 풀리지 않은 채 보일 수 있다. 뜻은 풀어서 읽는다.
 - `span_id`는 `<시작>-<끝>`이다. 숫자는 쪽 원본의 UTF-8 바이트 위치다(끝은 포함하지 않는다). 한글은 글자 하나가 3바이트이므로 글자 수가 아니다. 숫자를 직접 계산하지 말고 `span_id`를 그대로 복사한다.
 - 쪽의 `<body>`에 보이는 글이 하나도 없으면(`<body>`가 없으면 `<head>` 밖에 글이 없으면) 그 쪽에 `empty_page: true`가 붙는다. 조각이 하나도 없는 쪽은 목록에 오르지 않지만 보고서는 이 쪽도 「본문이 빈 쪽」으로 알린다.
-- 판정할 쪽이 없으면 `pages`가 비어 있다. 그러면 판정 파일도 없다.
+- 판정할 쪽이 없으면 쪽 파일이 없다. 그러면 판정 파일도 없다.
 
-### 크기와 읽는 법
+### 읽는 법
 
-- 쪽 하나는 대략 10~20KB다. 50쪽이면 목록 전체는 대략 0.5~1MB다. `judge-queue.json`을 통째로 읽지 않는다.
-- 같은 목록이 쪽별 파일로도 있다. 폴더는 `run.mjs` 마지막 줄 JSON의 `judge_pages`다(보통 `<OUT>/judge-queue/`). `site.json`에 `questions`와 `site_chrome`이 있고, `p001.json`, `p002.json`…에 쪽 하나씩(위 `pages`의 원소 하나)이 있다.
+- 쪽 파일은 쪽마다 따로 있다. 한 번에 한 쪽만 읽고, 폴더의 파일을 한꺼번에 읽지 않는다.
 - `site.json`을 먼저 읽는다. 그다음 쪽 파일을 번호 순서로 하나씩 읽고, 그 쪽을 판정하면 곧바로 `<OUT>/judgments/`에 같은 이름(`p001.json`)으로 판정 배열을 쓴다. 다음 쪽으로 간다.
 - 판정을 머릿속에 모아 두었다가 끝에 큰 파일 하나로 쓰지 않는다. 긴 출력에서 뒤쪽 항목이 「…」나 「나머지 동일」 같은 자리표시로 줄어드는 일이 생기기 때문이다. 자리표시가 든 파일은 거절된다.
 - 판정할 항목이 없는 쪽도 `[]`를 쓴다. 쪽 파일이 하나라도 빠지면 실행이 빠진 이름을 대고 멈춘다.
@@ -83,7 +91,7 @@ SKILL.md 8단계의 절차다. 코드가 판정하지 못하는 내용 항목을
 - `unknown`: 주장이 있는 듯하지만 조각만으로 세기 어렵다.
 
 **answer-clarity** (`not_applicable` 조건: `no_matching_questions`)
-- 이 쪽이 답하려는 질문을 목록 파일의 `questions`에서 고른다. 맞는 질문이 둘 이상이면 가장 가까운 하나를 `question_id`로 판정하고, 이유에 그 질문을 적는다. 나머지는 아래 「한 쪽이 여러 질문에 답할 때」를 따른다.
+- 이 쪽이 답하려는 질문을 `site.json`의 `questions`에서 고른다. 맞는 질문이 둘 이상이면 가장 가까운 하나를 `question_id`로 판정하고, 이유에 그 질문을 적는다. 나머지는 아래 「한 쪽이 여러 질문에 답할 때」를 따른다.
 - `pass`, `partial`, `fail`에는 고른 질문의 `id`를 `question_id`로 쓴다. 목록에 없는 `id`는 거절된다. 같은 질문에 여러 쪽이 답해도 질문은 한 번만 센다.
 - 한 쪽이 여러 질문에 답할 때: 쪽이 `question_id` 말고도 다른 질문에 직접 답하면 그 질문의 `id`를 모두 `also_question_ids`(목록)에 쓴다. 예: 비용 쪽 `/costs`에 월 비용과 등급별 본인부담금이 모두 있으면 `question_id`는 월 비용 질문, `also_question_ids`는 등급별 본인부담금 질문이다. 이 쪽의 `pass`나 `partial` 판정에만 쓴다. `fail`과 `not_applicable`에는 쓰지 않는다. `question_id`와 같은 `id`, 목록에 없는 `id`, 같은 `id`를 두 번 쓴 목록은 거절된다. `also_question_ids`에 쓴 질문도 이 쪽이 답한 것으로 세고, 판정은 쪽이 답한 모든 질문에 하나다(한 질문에는 `pass`지만 다른 질문에는 일부만 답하면 `partial`이다). 판정마다 근거로 고른 조각(`span_ids`)에 `also_question_ids`의 답이 든 조각도 넣는다.
 - 사이트 공통 글이 답할 때: `site_chrome: true` 조각(전화번호, 주소, 운영 시간, 연락처)이 질문에 답하면 사이트가 그 질문에 답한 것이다. 그 글이 조각으로 든 쪽 하나의 `answer-clarity` 판정에서 그 질문을 `question_id`나 `also_question_ids`에 쓰고, 그 조각을 `span_ids`에 넣는다. 홈 쪽을 먼저 보되, 홈 쪽의 조각에 그 글이 없으면(짧은 줄은 쪽마다 30개 한도에서 밀릴 수 있다) 그 글이 조각으로 든 다른 쪽에서 `pass`나 `partial`로 판정하는 쪽 하나를 고른다. 이 판정은 쪽의 글이 아니라 사이트 공통 글에 기대어도 된다(이것은 `freshness-truth`와 `source-transparency`의 규칙과 다르다). 그 쪽이 이미 다른 질문에 답한다면 같은 판정의 `also_question_ids`에 더한다. 주제가 질문 목록의 어느 질문도 아니라서 `not_applicable`로 판정할 쪽은 고르지 않는다(`not_applicable`에는 `also_question_ids`를 쓸 수 없다). 그런 쪽만 남으면 그 질문은 「찾지 못함」으로 보고된다.
@@ -189,7 +197,7 @@ SKILL.md 8단계의 절차다. 코드가 판정하지 못하는 내용 항목을
 - `state`는 2절의 표에 있는 값이다. 이진 항목(`freshness-truth`, `source-transparency`)에는 `partial`을 쓸 수 없다.
 - `reason`은 모든 상태에 필요하다. `unknown`에도 쓴다.
 - `condition`은 `not_applicable`에만 쓰고, 2절의 항목별 조건 코드 중 하나다.
-- `question_id`는 `answer-clarity`의 `pass`, `partial`, `fail`에 쓴다. 목록 파일의 `questions`에 있는 `id`다.
+- `question_id`는 `answer-clarity`의 `pass`, `partial`, `fail`에 쓴다. `site.json`의 `questions`에 있는 `id`다.
 - `also_question_ids`는 `answer-clarity`의 `pass`, `partial`에만 쓰는 선택 항목이다. 이 쪽이 `question_id` 말고도 답하는 질문의 `id` 목록이다(비어 있지 않고, `question_id`와 다르며, 겹치지 않는다).
 - `span_ids`는 그 쪽의 `spans`에 있는 `span_id`만 쓴다. 판정에 실제로 읽은 조각만 고른다.
 - `basis`는 `freshness-truth`와 `source-transparency`의 모든 `fail`에 쓴다. `"absence"`는 쪽에 없는 것에 근거한 `fail`이고 `"shown"`은 인용한 조각이 직접 보여 주는 것에 근거한 `fail`이다. 빠지면 거절된다. 다른 항목이나 다른 상태에는 쓰지 않는다.
@@ -222,7 +230,7 @@ SKILL.md 8단계의 절차다. 코드가 판정하지 못하는 내용 항목을
 | `already has a verdict` | 앞선 판정이 이미 정했다 | 그 판정을 지운다 |
 | `is judged by code` | 코드가 판정하는 항목이다 | 그 판정을 지운다 |
 | `needs a condition of the family` | `not_applicable`인데 `condition`이 없거나 그 항목의 코드가 아니다 | 2절의 항목별 조건 코드를 쓴다 |
-| `needs question_id from the question list` | `answer-clarity`의 `pass`, `partial`, `fail`에 `question_id`가 없거나 목록에 없다 | 목록 파일의 `questions`에서 `id`를 고른다 |
+| `needs question_id from the question list` | `answer-clarity`의 `pass`, `partial`, `fail`에 `question_id`가 없거나 목록에 없다 | `site.json`의 `questions`에서 `id`를 고른다 |
 | `must be a list of other, distinct ids` | `also_question_ids`가 비었거나 목록이 아니거나, `question_id`와 같은 `id`·목록에 없는 `id`·겹치는 `id`가 있다 | 다른 질문의 `id`만, 한 번씩 쓴다 |
 | `names no also_question_ids` | `also_question_ids`를 `pass`, `partial` 밖의 판정에 썼다 | `pass`나 `partial`에만 쓰거나 뺀다 |
 | `names no question` | `answer-clarity`의 `not_applicable`에 `question_id`를 썼다 | 질문을 골랐다면 `pass`, `partial`, `fail` 중에서 고르고, 어느 질문도 쪽의 주제가 아니면 `question_id`를 뺀다 |

@@ -1410,7 +1410,7 @@ test('judging.md tells the model to name several questions and to credit site ch
   assert.match(doc, /also_question_ids/);
   assert.match(doc, /한 쪽이 여러 질문에 답할 때/);
   assert.match(doc, /사이트 공통 글이 답할 때/);
-  assert.match(doc, /`site_chrome`은 파일 맨 위에 한 번만 나오는 글 목록이다/);
+  assert.match(doc, /`site_chrome`은 `site.json`에 한 번만 나오는 글 목록이다/);
   assert.doesNotMatch(doc, /이유에 「time-sensitive claim without a visible date」를 쓴다/, 'the model no longer writes the English reason prefix');
 });
 

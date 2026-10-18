@@ -6,7 +6,7 @@ import path from 'node:path';
 import { run } from '../skills/optbrew/scripts/run.mjs';
 import { findChrome } from '../skills/optbrew/scripts/core/chrome.mjs';
 import { stages } from '../skills/optbrew/scripts/core/stages.mjs';
-import { answersFor, brewPage, brewPages, memorySite, passJudgments, queuedUnits, quietEnv, SITE, workspace } from './support/run-scenario.mjs';
+import { answersFor, brewPage, brewPages, memorySite, passJudgments, queueBytes, queuedUnits, quietEnv, readQueue, SITE, workspace } from './support/run-scenario.mjs';
 import { startSite } from './support/review-scenario.mjs';
 import { tempDir } from './support/temp-dir.mjs';
 
@@ -26,7 +26,7 @@ async function firstCall({ pages = brewPages(), over = {}, extra = {} } = {}) {
 }
 
 async function judge(call) {
-  const queue = await readJson(call.first.judge_queue);
+  const queue = await readQueue(call.first);
   const judgmentsPath = path.join(call.ws.dir, 'judgments.json');
   await writeFile(judgmentsPath, JSON.stringify(passJudgments(queue)));
   return { queue, judgmentsPath };
@@ -35,22 +35,24 @@ async function judge(call) {
 test('first call halts awaiting judgments with a queue', async () => {
   const { site, ws, first } = await firstCall();
   assert.equal(first.status, 'awaiting_judgments');
-  assert.equal(first.judge_queue, path.join(ws.out, 'judge-queue.json'));
-  const queue = await readJson(first.judge_queue);
+  assert.equal(first.judge_pages, path.join(ws.out, 'judge-queue'));
+  assert.equal('judge_queue' in first, false, 'one path names the queue the model reads');
+  await assert.rejects(readFile(path.join(ws.out, 'judge-queue.json')), { code: 'ENOENT' }, 'no second copy of the queue');
+  const queue = await readQueue(first);
   assert.ok(queuedUnits(queue).length > 0);
   assert.equal(first.queue_items, queuedUnits(queue).length);
   assert.ok(site.requests.length > 0 && site.requests.length <= 50, 'the crawl stays within max_urls');
   const index = await readJson(path.join(ws.out, 'evidence', 'evidence-index.json'));
-  // Carry 11: the queue lives in the evidence store, and the file in --out is that stored queue.
+  // Carry 11: the queue lives in the evidence store, and the files in --out are that stored queue, regrouped.
   assert.equal(index.judge_queue.length, 1);
   const stored = JSON.parse(await readFile(index.judge_queue[0].evidence_ref, 'utf8'));
-  assert.equal(stored.items.length, queuedUnits(queue).length, 'the file is the stored queue, regrouped by page');
+  assert.equal(stored.items.length, queuedUnits(queue).length, 'the files are the stored queue, regrouped by page');
   for (const page of queue.pages) {
     const items = stored.items.filter(item => item.evidence_ref === page.evidence_ref);
     assert.deepEqual(items.map(item => item.family_id), page.families.map(family => family.family_id));
-    assert.ok(items.every(item => JSON.stringify(item.spans) === JSON.stringify(page.spans)), 'each page lists its spans once, equal to the stored ones');
+    assert.ok(items.every(item => JSON.stringify(item.spans.map(({ start, end, evidence_sha256, ...kept }) => kept)) === JSON.stringify(page.spans)), 'each page lists its spans once: the stored ones without hash and byte range');
   }
-  assert.ok((await readFile(first.judge_queue, 'utf8')).length < JSON.stringify(stored, null, 2).length, 'grouping makes the file smaller');
+  assert.ok(await queueBytes(first) < Buffer.byteLength(JSON.stringify(stored, null, 2)), 'the files the model reads are smaller than the stored queue');
   // Carry 8: the audit index says what became of Chrome.
   assert.deepEqual(index.chrome, { found: false, reason: 'optbrew_chrome_missing' });
   await assert.rejects(readFile(path.join(ws.out, 'report.json')), { code: 'ENOENT' }, 'no report before the judgments');
@@ -137,7 +139,7 @@ test('run never writes outside --out', async () => {
   try {
     const first = await run({ answersPath, out }, { env, selectTransport: site.selectTransport });
     const judgmentsPath = path.join(sandbox, 'judgments.json');
-    await writeFile(judgmentsPath, JSON.stringify(passJudgments(await readJson(first.judge_queue))));
+    await writeFile(judgmentsPath, JSON.stringify(passJudgments(await readQueue(first))));
     await run({ answersPath, out, judgmentsPath }, { env, selectTransport: site.selectTransport });
   } finally { process.chdir(previous); }
   const after = await snapshot();
@@ -240,7 +242,7 @@ test('a real local site: collect, render when Chrome exists, judge and report', 
   assert.deepEqual(context.scope.local_targets, [{ host: '127.0.0.1', port: Number(new URL(site.origin).port) }]);
   assert.equal((index.cwv ?? []).length, 0, 'a local site has no public field data and is not sent to Google');
   const judgmentsPath = path.join(ws.dir, 'judgments.json');
-  await writeFile(judgmentsPath, JSON.stringify(passJudgments(await readJson(first.judge_queue))));
+  await writeFile(judgmentsPath, JSON.stringify(passJudgments(await readQueue(first))));
   const second = await run({ answersPath: ws.answersPath, out: ws.out, judgmentsPath }, overrides);
   assert.equal(second.status, 'done');
   const report = await readJson(second.reports.json);

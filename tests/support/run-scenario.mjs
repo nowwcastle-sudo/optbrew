@@ -1,4 +1,4 @@
-import { writeFile } from 'node:fs/promises';
+import { readFile, readdir, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { deflateRawSync } from 'node:zlib';
@@ -95,7 +95,22 @@ export function zipOf(files) {
   return Buffer.concat([...locals, directory, end]);
 }
 
-/** The units a grouped queue file asks for. */
+const PAGE_FILE = /^p\d{3,}\.json$/;
+
+/** The queue as the model reads it: the `judge_pages` folder a first call names, `site.json` joined with its page files in order as `{ questions, site_chrome?, pages }`. */
+export async function readQueue({ judge_pages: dir }) {
+  const read = async name => JSON.parse(await readFile(path.join(dir, name), 'utf8'));
+  const names = (await readdir(dir)).filter(name => PAGE_FILE.test(name)).sort();
+  return { ...(await read('site.json')), pages: await Promise.all(names.map(read)) };
+}
+
+/** The bytes the model has to read for a queue: every file of the `judge_pages` folder. */
+export async function queueBytes({ judge_pages: dir }) {
+  const sizes = await Promise.all((await readdir(dir)).map(async name => (await readFile(path.join(dir, name))).length));
+  return sizes.reduce((sum, size) => sum + size, 0);
+}
+
+/** The units a grouped queue asks for. */
 export const queuedUnits = queue => queue.pages.flatMap(page => page.families.map(family => ({ ...family, page })));
 
 /**

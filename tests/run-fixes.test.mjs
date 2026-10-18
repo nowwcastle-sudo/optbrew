@@ -15,7 +15,7 @@ import { SECTION_TITLES } from '../skills/optbrew/scripts/core/report-compose.mj
 import { freezeProtocol } from '../skills/optbrew/scripts/core/protocol.mjs';
 import { score } from '../skills/optbrew/scripts/core/score.mjs';
 import { stages } from '../skills/optbrew/scripts/core/stages.mjs';
-import { answersFor, bigSite, brewPage, brewPages, memorySite, passJudgments, preflightOf, queuedUnits, quietEnv, SITE, workspace } from './support/run-scenario.mjs';
+import { answersFor, bigSite, brewPage, brewPages, memorySite, passJudgments, preflightOf, queueBytes, queuedUnits, quietEnv, readQueue, SITE, workspace } from './support/run-scenario.mjs';
 
 // Assembled from fragments: the repository never contains a literal key.
 const KEY = ['AI', 'za', 'Sy', 'Fake', 'Fix', 'Key', '0123456789', 'abcdefghij', 'KLMN'].join('');
@@ -28,7 +28,7 @@ async function twoCalls(site, answers, { before = null, judge = passJudgments, e
   if (before) await before(ws);
   const overrides = overridesOf(site, ws, extra);
   const first = await run({ answersPath: ws.answersPath, out: ws.out }, overrides);
-  const queue = await readJson(first.judge_queue);
+  const queue = await readQueue(first);
   const judgmentsPath = path.join(ws.dir, 'judgments.json');
   await writeFile(judgmentsPath, JSON.stringify(judge(queue)));
   const second = await run({ answersPath: ws.answersPath, out: ws.out, judgmentsPath }, overrides);
@@ -49,7 +49,7 @@ test('pages with identical bytes and a sitemap answered by the app shell: both c
   assert.equal(report.model_judgments.length, queuedUnits(queue).length);
 });
 
-test('the pages up to the limit are audited: a 30-page site in full, a 60-page site cut at the default, and raising the limit raises the count', async t => {
+test('the pages up to the limit are audited: a 30-page site in full, a 60-page site cut at the default, and raising the limit raises the count', async () => {
   const audit = async (count, answers) => {
     const site = memorySite(bigSite(count));
     return twoCalls(site, answers, { before: ws => preflightOf(site, `${SITE}/`, ws.out) });
@@ -70,10 +70,36 @@ test('the pages up to the limit are audited: a 30-page site in full, a 60-page s
   assert.deepEqual(pagesOf(sampled).map(x => x.normalized), pagesOf(raised).slice(0, pagesOf(sampled).length).map(x => x.normalized), 'the same order, cut at the limit');
   assert.deepEqual(small.context.protocol.page_types.map(type => type.id), ['home', 'section']);
   assert.ok(small.context.protocol.render.pages.length <= limits().render_pages);
-  const queueFile = await readFile(small.first.judge_queue, 'utf8');
-  const stored = JSON.stringify(await readJson((await readJson(path.join(small.ws.out, 'evidence', 'evidence-index.json'))).judge_queue[0].evidence_ref), null, 2);
-  t.diagnostic(`judge-queue.json for 31 pages: ${Buffer.byteLength(queueFile)} bytes (the stored queue: ${Buffer.byteLength(stored)} bytes)`);
-  assert.ok(queueFile.length < stored.length);
+  const storedBytes = (await readFile((await readJson(path.join(small.ws.out, 'evidence', 'evidence-index.json'))).judge_queue[0].evidence_ref)).length;
+  const viewBytes = await queueBytes(small.first);
+  assert.ok(viewBytes * 2 < storedBytes, `the files the model reads for 31 pages (${viewBytes} bytes) are under half the stored queue (${storedBytes} bytes)`);
+});
+
+test('the page file of a page with 30 Korean spans is at most 60% of the bytes it took with indentation and a hash and byte range on every span', async t => {
+  const topics = ['원두는 매주 화요일과 금요일에 직접 볶습니다', '빵은 새벽 다섯 시에 매장에서 굽습니다', '우유는 근처 목장에서 매일 아침 받아 옵니다', '단체 주문은 하루 전에 알려 주시면 됩니다',
+    '주차는 건물 뒤편 공영주차장을 이용하세요', '반려동물은 야외 좌석에서만 함께 앉을 수 있습니다', '생일 케이크는 사흘 전까지 예약을 받습니다', '와이파이와 콘센트는 모든 좌석에서 쓸 수 있습니다',
+    '텀블러를 가져오시면 음료를 오백 원 깎아 드립니다', '매달 첫째 주 월요일은 쉬는 날입니다'];
+  const notes = ['', ' 자세한 내용은 매장으로 문의해 주세요.', ' 바쁜 시간에는 준비가 늦어질 수 있으니 방문 전에 전화로 확인해 주시면 더 빠르게 안내해 드립니다.'];
+  const lines = Array.from({ length: 30 }, (_, i) => `${topics[i % topics.length]}.${notes[Math.floor(i / topics.length)]}`);
+  const url = `${SITE}/about`;
+  const about = { body: `<!doctype html><html lang="ko"><head><title>브루 카페 안내</title></head><body><h1>브루 카페 안내</h1>${lines.map(line => `<p>${line}</p>`).join('')}</body></html>` };
+  const site = memorySite({ ...brewPages(), '/about': about });
+  const ws = await workspace(answersFor(`${SITE}/`));
+  await preflightOf(site, `${SITE}/`, ws.out);
+  const first = await run({ answersPath: ws.answersPath, out: ws.out }, overridesOf(site, ws));
+  const files = await Promise.all((await readdir(first.judge_pages)).filter(name => /^p\d+\.json$/.test(name)).map(name => readFile(path.join(first.judge_pages, name), 'utf8')));
+  const written = files.find(text => JSON.parse(text).url === url);
+  const page = JSON.parse(written);
+  assert.equal(page.spans.length, 30);
+  assert.ok(page.spans.every(span => /[가-힣]/.test(span.text)));
+  const stored = (await readJson((await readJson(path.join(ws.out, 'evidence', 'evidence-index.json'))).judge_queue[0].evidence_ref)).items.filter(item => item.url === url);
+  assert.deepEqual(stored[0].spans.map(span => span.text), page.spans.map(span => span.text), 'the same spans in both shapes');
+  const old = { url, evidence_ref: stored[0].evidence_ref, evidence_sha256: stored[0].evidence_sha256, spans: stored[0].spans,
+    families: stored.map(({ family_id, unit_key }) => ({ family_id, unit_key })) };
+  const before = Buffer.byteLength(`${JSON.stringify(old, null, 2)}\n`);
+  const after = Buffer.byteLength(written);
+  t.diagnostic(`page file for 30 Korean spans: ${before} bytes before, ${after} bytes after (${(100 * after / before).toFixed(1)}%)`);
+  assert.ok(after <= before * 0.6, `${after} bytes after against ${before} before is ${(100 * after / before).toFixed(1)}%`);
 });
 
 test('sitemap files with CMS names (Yoast, WordPress) are read by what they hold, not by their file name', async () => {
@@ -138,7 +164,7 @@ test('a first call that stopped early can be run again into the same --out', asy
   const overrides = overridesOf(site, ws);
   const first = await run({ answersPath: ws.answersPath, out: ws.out }, overrides);
   const judgmentsPath = path.join(ws.dir, 'judgments.json');
-  await writeFile(judgmentsPath, JSON.stringify(passJudgments(await readJson(first.judge_queue))));
+  await writeFile(judgmentsPath, JSON.stringify(passJudgments(await readQueue(first))));
   await writeFile(path.join(ws.out, 'costs.json'), '{}');
   assert.equal((await run({ answersPath: ws.answersPath, out: ws.out, judgmentsPath }, overrides)).status, 'done');
 });
@@ -186,7 +212,7 @@ test('a forged collector not-applicable decision is refused by the report', asyn
   const overrides = overridesOf(site, ws);
   const first = await run({ answersPath: ws.answersPath, out: ws.out }, overrides);
   const judgmentsPath = path.join(ws.dir, 'judgments.json');
-  await writeFile(judgmentsPath, JSON.stringify(passJudgments(await readJson(first.judge_queue))));
+  await writeFile(judgmentsPath, JSON.stringify(passJudgments(await readQueue(first))));
   await assert.rejects(run({ answersPath: ws.answersPath, out: ws.out, judgmentsPath }, { ...overrides, stages: real }), /collector verdict differs from raw evidence/);
 });
 
@@ -200,7 +226,7 @@ test('a resume selects no transport and opens no chrome', async () => {
   const [before, chromeBefore] = [selections, opened];
   assert.ok(before > 0 && chromeBefore > 0);
   const judgmentsPath = path.join(ws.dir, 'judgments.json');
-  await writeFile(judgmentsPath, JSON.stringify(passJudgments(await readJson(first.judge_queue))));
+  await writeFile(judgmentsPath, JSON.stringify(passJudgments(await readQueue(first))));
   await run({ answersPath: ws.answersPath, out: ws.out, judgmentsPath }, overrides);
   assert.deepEqual([selections, opened], [before, chromeBefore]);
 });
@@ -276,7 +302,7 @@ test('a grouped finding cannot list a page that did not fail the same way', asyn
   const overrides = overridesOf(site, ws);
   const first = await run({ answersPath: ws.answersPath, out: ws.out }, overrides);
   const judgmentsPath = path.join(ws.dir, 'judgments.json');
-  await writeFile(judgmentsPath, JSON.stringify(passJudgments(await readJson(first.judge_queue))));
+  await writeFile(judgmentsPath, JSON.stringify(passJudgments(await readQueue(first))));
   const probe = { name: 'probe', run: async state => {
     const packet = structuredClone(state.packet);
     packet.findings = packet.findings.map(item => item.check_id === 'index-policy' ? { ...item, unit_keys: [...item.unit_keys, `index-policy|${SITE}/`] } : item);
@@ -300,7 +326,7 @@ test('an adopted start address is said in the run conditions and must match the 
   const overrides = overridesOf(site, ws2);
   const first = await run({ answersPath: ws2.answersPath, out: ws2.out }, overrides);
   const judgmentsPath = path.join(ws2.dir, 'judgments.json');
-  await writeFile(judgmentsPath, JSON.stringify(passJudgments(await readJson(first.judge_queue))));
+  await writeFile(judgmentsPath, JSON.stringify(passJudgments(await readQueue(first))));
   const forge = { name: 'forge', run: async state => ({ state: { ...state, start_redirect: { from, to: 'https://elsewhere.test/' } } }) };
   const list = stages();
   list.splice(list.findIndex(stage => stage.name === 'report'), 0, forge);
@@ -327,7 +353,7 @@ test('a preflight of another address is ignored, an off-site redirect is named, 
   const overrides = overridesOf(site, broken);
   const first = await run({ answersPath: broken.answersPath, out: broken.out }, overrides);
   const judgmentsPath = path.join(broken.dir, 'judgments.json');
-  await writeFile(judgmentsPath, JSON.stringify(passJudgments(await readJson(first.judge_queue))));
+  await writeFile(judgmentsPath, JSON.stringify(passJudgments(await readQueue(first))));
   const done = await run({ answersPath: broken.answersPath, out: broken.out, judgmentsPath }, overrides);
   assert.equal((await readJson(path.join(broken.out, 'intake.json'))).selection.sources.preflight, 'unreadable');
   assert.ok((await readJson(done.reports.json)).follow_ups.some(row => row.reason === 'preflight_unreadable'));
@@ -345,7 +371,7 @@ test('the commands and result fields SKILL.md names are the ones run.mjs and pre
   const ws = await workspace(answersFor(`${SITE}/`));
   const first = await run({ answersPath: ws.answersPath, out: ws.out }, overridesOf(site, ws));
   const judgmentsPath = path.join(ws.dir, 'judgments.json');
-  await writeFile(judgmentsPath, JSON.stringify(passJudgments(await readJson(first.judge_queue))));
+  await writeFile(judgmentsPath, JSON.stringify(passJudgments(await readQueue(first))));
   const child = await new Promise(resolve => {
     const proc = spawn(process.execPath, [fileURLToPath(new URL('../skills/optbrew/scripts/run.mjs', import.meta.url)), '--answers', ws.answersPath, '--out', ws.out, '--judgments', judgmentsPath],
       { env: { ...quietEnv(), HOME: ws.home, USERPROFILE: ws.home }, windowsHide: true });
@@ -356,8 +382,8 @@ test('the commands and result fields SKILL.md names are the ones run.mjs and pre
   assert.equal(child.code, 0);
   const done = JSON.parse(child.stdout);
   const printed = { ...first, ...done };
-  for (const field of ['judge_queue', 'reports', 'score_input', 'queue_items', 'lab_cwv']) assert.ok(skill.includes(`\`${field}\``), `SKILL.md names ${field}`);
-  for (const field of ['judge_queue', 'queue_items', 'reports', 'score_input']) assert.ok(field in printed, `${field} is printed`);
+  for (const field of ['judge_pages', 'reports', 'score_input', 'queue_items', 'lab_cwv']) assert.ok(skill.includes(`\`${field}\``), `SKILL.md names ${field}`);
+  for (const field of ['judge_pages', 'queue_items', 'reports', 'score_input']) assert.ok(field in printed, `${field} is printed`);
   assert.ok(done.reports.json && done.reports.md && done.reports.html);
   // Every field step 7.3 names is printed, whatever is added to that step later; lab_cwv exists only with a Chrome.
   const named = [...skill.split('\n').find(line => line.startsWith('3. 종료 코드가 0이면')).matchAll(/`([a-z_]+)`/g)].map(match => match[1]);
@@ -444,7 +470,7 @@ test('the shipped flow (answers hold the landed address) still says the typed ad
   const overrides = overridesOf(site, again);
   const first = await run({ answersPath: again.answersPath, out: again.out }, overrides);
   const judgmentsPath = path.join(again.dir, 'judgments.json');
-  await writeFile(judgmentsPath, JSON.stringify(passJudgments(await readJson(first.judge_queue))));
+  await writeFile(judgmentsPath, JSON.stringify(passJudgments(await readQueue(first))));
   const forget = { name: 'forget', run: async state => ({ state: { ...state, start_redirect: null } }) };
   const list = stages();
   list.splice(list.findIndex(stage => stage.name === 'report'), 0, forget);
@@ -528,7 +554,7 @@ test('replay refuses a page marked deliberately not indexed that the stored byte
   const overrides = overridesOf(site, ws);
   const first = await run({ answersPath: ws.answersPath, out: ws.out }, overrides);
   const judgmentsPath = path.join(ws.dir, 'judgments.json');
-  await writeFile(judgmentsPath, JSON.stringify(passJudgments(await readJson(first.judge_queue))));
+  await writeFile(judgmentsPath, JSON.stringify(passJudgments(await readQueue(first))));
   const probe = { name: 'probe', run: async state => {
     const forged = structuredClone(state.context);
     const about = urlsOf(forged).find(url => url.normalized === `${SITE}/about`);
