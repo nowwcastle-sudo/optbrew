@@ -38,6 +38,10 @@ const PHASE = 'baseline';
 const HALT_JUDGMENTS = 'awaiting_judgments';
 const JUDGE_STAGE = 'judge';
 const QUEUE_FILE = 'judge-queue.json';
+/** The same queue cut into one file per page (`p001.json` …) plus `site.json`, so the model reads and judges one small file at a time. */
+export const QUEUE_PAGES_DIR = 'judge-queue';
+const SITE_QUEUE_FILE = 'site.json';
+const pageFileName = index => `p${String(index + 1).padStart(3, '0')}.json`;
 /** The `key` of a start-answer fact that names the business (preflight's fact candidates use the type as the key). */
 const NAME_FACT = 'name';
 const CONTEXT_FILE = 'context.json';
@@ -464,6 +468,14 @@ function queueByPage(queue, panel) {
   return { questions: panel.map(({ id, question }) => ({ id, question })), ...(queue.site_chrome?.length ? { site_chrome: queue.site_chrome } : {}), pages: [...pages.values()] };
 }
 
+/** The page files: written afresh on every call, since the queue is rebuilt from the same evidence each time. */
+async function writeQueuePages(dir, { pages, ...site }) {
+  await rm(dir, { recursive: true, force: true });
+  await mkdir(dir, { recursive: true });
+  await writeFile(path.join(dir, SITE_QUEUE_FILE), json(site));
+  for (const [index, page] of pages.entries()) await writeFile(path.join(dir, pageFileName(index)), json(page));
+}
+
 /** Judge: build the queue the model works from; with the model's judgments, merge them in and go on. */
 const judgeStage = {
   name: JUDGE_STAGE,
@@ -474,7 +486,9 @@ const judgeStage = {
     const names = confirmed.filter(fact => fact.key === NAME_FACT).map(fact => fact.value);
     const facts = confirmed.filter(fact => fact.key !== NAME_FACT).map(({ key, value }) => ({ key, value }));
     const queue = await buildJudgeQueue({ observations: state.observations, store, context, names, facts });
-    await writeFile(path.join(out, QUEUE_FILE), json(queueByPage(queue, panel)));
+    const byPage = queueByPage(queue, panel);
+    await writeFile(path.join(out, QUEUE_FILE), json(byPage));
+    await writeQueuePages(path.join(out, QUEUE_PAGES_DIR), byPage);
     if (state.judgments) {
       const merged = await mergeJudgments({ observations: state.observations, judgments: state.judgments, store, questions: panel });
       return { state: { ...state, queue, observations: deriveQuestionCoverage({ observations: merged, panel, evidence_ref: context.evidence_ref }) } };
@@ -613,7 +627,7 @@ export function stages() {
 }
 
 // The files a first call writes in the run folder (besides the evidence folder); none of them is the owner's.
-const FIRST_CALL_FILES = [CONTEXT_FILE, INTAKE_FILE, COSTS_FILE, QUEUE_FILE, SCORE_INPUT_FILE];
+const FIRST_CALL_FILES = [CONTEXT_FILE, INTAKE_FILE, COSTS_FILE, QUEUE_FILE, QUEUE_PAGES_DIR, SCORE_INPUT_FILE];
 
 /**
  * What to do with the run folder. A folder whose first call stored a judge queue is resumed. A folder with a finished report is

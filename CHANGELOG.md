@@ -1,5 +1,15 @@
 # Changelog
 
+## Unreleased
+
+Fixes what the youthdc.com audit conversation showed: text the user never saw, a judgments file that kept filling with placeholders, and a plain report page.
+
+### What you see
+
+- **Runbooks are shown, not just read.** `cli.mjs runbook --ids <id> --level <level>` prints the runbook as Markdown to paste into the reply; the export answer prints Search Console and Naver Search Advisor together. SKILL.md now says the user sees only the last message of a turn, so start questions and runbooks go there whole, with no status recap after them.
+- **One judgments file per page.** The first call also writes `judge-queue/site.json` and `judge-queue/p001.json`… and its JSON names the folder (`judge_pages`) and the page count (`pages`). The agent writes `judgments/p001.json`… as it goes, and `--judgments` takes that folder. A page left out, or an entry that is a stand-in (`…`, `TODO`, `나머지 동일`, a missing field), is refused by file name and position before anything is merged.
+- **A report page that reads by importance.** Bold type, a new palette, the conclusion largest, the first three fixes as large cards; the same problem on several pages is one card with each page under it, and the fix method shows on the card. Profiles sit in one grid with the excluded-units note said once. Visible focus, theme colour, tabular numbers; all text pairs at 4.5:1 or more in both themes.
+
 ## 0.2.2
 
 Corrects the 0.2.1 key guidance after a live check, and makes `key status` show where a key came from. The audit itself is unchanged.

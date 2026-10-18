@@ -36,7 +36,7 @@ test('the CLI prints one JSON line on success and one plain sentence on failure'
     return { site, ws, first, judgmentsPath };
   };
   const { ws, first, judgmentsPath } = await call();
-  assert.deepEqual(Object.keys(first), ['status', 'judge_queue', 'queue_items']);
+  assert.deepEqual(Object.keys(first), ['status', 'judge_queue', 'judge_pages', 'pages', 'queue_items']);
   const queue = await readJson(first.judge_queue);
   assert.ok(queue.pages.every(page => page.families.every(family => family.family_id && family.unit_key)), 'every unit names its family and unit_key');
   const second = await cli(['--answers', ws.answersPath, '--out', ws.out, '--judgments', judgmentsPath], ws);
@@ -142,4 +142,29 @@ test('--out may already hold preflight/ and the answers file; the queue file is 
   const second = await run({ answersPath: path.join(ws.out, 'intake-answers.json'), out: ws.out, judgmentsPath }, { env: quietEnv(), home: ws.home, selectTransport: site.selectTransport });
   assert.equal(second.status, 'done');
   assert.equal(await readFile(path.join(ws.out, 'preflight', 'start.json'), 'utf8'), start);
+});
+
+test('the queue comes as one file per page too, and a folder of page judgments is merged; a page left out stops the run', async () => {
+  const site = memorySite();
+  const ws = await workspace(answersFor(`${SITE}/`));
+  const overrides = { env: quietEnv(), home: ws.home, selectTransport: site.selectTransport };
+  const first = await run({ answersPath: ws.answersPath, out: ws.out }, overrides);
+  const queue = await readJson(first.judge_queue);
+  const files = (await readdir(first.judge_pages)).sort();
+  assert.deepEqual(files, [...queue.pages.map((_, i) => `p${String(i + 1).padStart(3, '0')}.json`), 'site.json']);
+  assert.equal(first.pages, queue.pages.length);
+  const siteFile = await readJson(path.join(first.judge_pages, 'site.json'));
+  assert.deepEqual(siteFile.questions, queue.questions);
+  assert.equal(siteFile.pages, undefined, 'the site file holds no pages');
+  assert.deepEqual(await readJson(path.join(first.judge_pages, 'p001.json')), queue.pages[0]);
+  const dir = path.join(ws.out, 'judgments');
+  await mkdir(dir);
+  const pageJudgments = page => passJudgments({ ...queue, pages: [page] });
+  for (const [i, page] of queue.pages.entries()) if (i > 0) await writeFile(path.join(dir, `p${String(i + 1).padStart(3, '0')}.json`), JSON.stringify(pageJudgments(page)));
+  await assert.rejects(run({ answersPath: ws.answersPath, out: ws.out, judgmentsPath: dir }, overrides), /judgments are missing for page p001\.json/);
+  await writeFile(path.join(dir, 'p001.json'), JSON.stringify([...pageJudgments(queue.pages[0]), { family_id: 'x', unit_key: 'y', state: 'pass', reason: '…' }]));
+  await assert.rejects(run({ answersPath: ws.answersPath, out: ws.out, judgmentsPath: dir }, overrides), /Judgment \d+ in p001\.json looks like a placeholder/);
+  await writeFile(path.join(dir, 'p001.json'), JSON.stringify(pageJudgments(queue.pages[0])));
+  const done = await run({ answersPath: ws.answersPath, out: ws.out, judgmentsPath: dir }, overrides);
+  assert.equal(done.status, 'done');
 });
