@@ -48,7 +48,8 @@ test('empty env key and corrupt key file are treated as missing', async () => {
     assert.equal(status.code, 0);
     // A file that is not a JSON object is reported as corrupt (and still read as "no key"); a valid object without a key is not.
     const broken = ['{not json', '', '[]', 'null'].includes(corrupt);
-    assert.deepEqual(JSON.parse(status.stdout), { google: { present: false, sha256_8: null, ...(broken ? { corrupt: true } : {}) } }, corrupt);
+    const sources = { plugin_setting: false, env: false, key_file: broken ? 'corrupt' : 'absent', used: null };
+    assert.deepEqual(JSON.parse(status.stdout), { google: { present: false, sha256_8: null, ...(broken ? { corrupt: true } : {}), sources } }, corrupt);
     assert.equal(await readFile(path.join(home, '.optbrew', 'credentials.json'), 'utf8'), corrupt, 'status never changes the file');
   }
 });
@@ -65,12 +66,36 @@ test('status prints only presence and an 8-char hash', async () => {
   const home = await tempDir('optbrew-keys-');
   const result = await run(['status'], { home, env: { OPTBREW_GOOGLE_API_KEY: KEY } });
   assert.equal(result.code, 0);
-  assert.deepEqual(JSON.parse(result.stdout), { google: { present: true, sha256_8: sha8(KEY) } });
+  assert.deepEqual(JSON.parse(result.stdout), { google: { present: true, sha256_8: sha8(KEY),
+    sources: { plugin_setting: false, env: true, key_file: 'absent', used: 'env' } } });
   assert.match(JSON.parse(result.stdout).google.sha256_8, /^[0-9a-f]{8}$/);
   assert.equal(result.stdout.includes(KEY), false);
   assert.equal(result.stderr, '');
   const absent = await run(['status'], { home, env: {} });
-  assert.deepEqual(JSON.parse(absent.stdout), { google: { present: false, sha256_8: null } });
+  assert.deepEqual(JSON.parse(absent.stdout), { google: { present: false, sha256_8: null,
+    sources: { plugin_setting: false, env: false, key_file: 'absent', used: null } } });
+});
+
+test('status sources name each source without its value and the one that wins', async () => {
+  const PLUGIN = ['plugin', '-', 'fake', '-', 'value'].join('');
+  const home = await tempDir('optbrew-keys-');
+  await writeKeyFile(home, JSON.stringify({ google: OTHER }));
+  const cases = [
+    [{ CLAUDE_PLUGIN_OPTION_GOOGLE_API_KEY: PLUGIN, OPTBREW_GOOGLE_API_KEY: KEY }, { plugin_setting: true, env: true, key_file: 'present', used: 'plugin_setting' }, PLUGIN],
+    [{ CLAUDE_PLUGIN_OPTION_GOOGLE_API_KEY: '  ', OPTBREW_GOOGLE_API_KEY: KEY }, { plugin_setting: false, env: true, key_file: 'present', used: 'env' }, KEY],
+    [{}, { plugin_setting: false, env: false, key_file: 'present', used: 'key_file' }, OTHER],
+  ];
+  for (const [env, sources, winner] of cases) {
+    const result = await run(['status'], { home, env });
+    assert.equal(result.code, 0);
+    assert.deepEqual(JSON.parse(result.stdout).google, { present: true, sha256_8: sha8(winner), sources }, JSON.stringify(sources));
+    for (const value of [PLUGIN, KEY, OTHER]) assert.equal(result.stdout.includes(value), false, 'no key value is printed');
+  }
+  // The plugin setting alone, beside a corrupt key file: the setting is used and the file is still reported.
+  await writeKeyFile(home, '{not json');
+  const result = await run(['status'], { home, env: { CLAUDE_PLUGIN_OPTION_GOOGLE_API_KEY: PLUGIN } });
+  assert.deepEqual(JSON.parse(result.stdout).google, { present: true, sha256_8: sha8(PLUGIN), corrupt: true,
+    sources: { plugin_setting: true, env: false, key_file: 'corrupt', used: 'plugin_setting' } });
 });
 
 test('set never echoes the key: a piped line is stored and stays out of stdout and stderr', async () => {
@@ -204,7 +229,8 @@ test('optbrew key reaches the key command and keeps the key out of its output', 
   assert.equal((out.text() + err.text()).includes(KEY), false);
   const status = sink();
   assert.equal(await main(['key', 'status'], { stdout: status, stderr: err, env: { HOME: home, USERPROFILE: home }, cwd: home }), 0);
-  assert.deepEqual(JSON.parse(status.text()), { google: { present: true, sha256_8: sha8(KEY) } });
+  assert.deepEqual(JSON.parse(status.text()), { google: { present: true, sha256_8: sha8(KEY),
+    sources: { plugin_setting: false, env: false, key_file: 'present', used: 'key_file' } } });
 });
 
 test('keyHome picks USERPROFILE on Windows and HOME elsewhere, then the OS home', () => {

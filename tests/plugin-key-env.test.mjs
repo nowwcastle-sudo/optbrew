@@ -34,7 +34,7 @@ test('the hook line is one plain single-quoted assignment, and only for a key-sh
     assert.equal(envLine({ [NAME]: bad, CLAUDE_ENV_FILE: 'x' }), null, JSON.stringify(bad));
 });
 
-test('the hook appends the setting to CLAUDE_ENV_FILE, keeps lines already there and prints nothing', async () => {
+test('the hook appends the setting to CLAUDE_ENV_FILE, keeps lines already there and never prints to stdout',async () => {
   const dir = await tempDir('optbrew-plugin-hook-');
   const envFile = path.join(dir, 'session.env');
   await writeFile(envFile, "export EARLIER='1'\n");
@@ -53,7 +53,13 @@ test('the hook appends the setting to CLAUDE_ENV_FILE, keeps lines already there
   assert.ok(!bad.stderr.includes('bad'), 'the message never repeats the value');
   assert.equal((await readFile(envFile, 'utf8')).split('\n').length, 3, 'nothing appended for a value that is not key-shaped');
 
-  const none = run({ CLAUDE_ENV_FILE: envFile });
-  assert.equal(none.status, 0);
-  assert.equal(none.stdout + none.stderr, '');
+  // No setting reached the hook: one stderr line (the debug log keeps it), nothing on stdout (that would become session
+  // context), exit 0, and the env file is left alone.
+  for (const env of [{ CLAUDE_ENV_FILE: envFile }, { [NAME]: '  ', CLAUDE_ENV_FILE: envFile }, {}]) {
+    const none = run(env);
+    assert.equal(none.status, 0);
+    assert.equal(none.stdout, '');
+    assert.match(none.stderr, /^optbrew: no google_api_key plugin setting reached this hook;[^\n]*\n$/);
+  }
+  assert.equal((await readFile(envFile, 'utf8')).split('\n').length, 3, 'nothing appended without a setting');
 });

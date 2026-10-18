@@ -1,7 +1,9 @@
 // SessionStart hook of the Claude plugin. Claude Code keeps the plugin's `google_api_key` setting (userConfig, sensitive) in the
 // system credential store and gives it only to hook processes, as CLAUDE_PLUGIN_OPTION_GOOGLE_API_KEY. The audit scripts run as
 // shell commands, so this hook appends the value to CLAUDE_ENV_FILE, which Claude Code applies to every later shell command of the
-// session. It writes nothing else and never prints the value.
+// session. It writes nothing else and never prints the value. When no setting reached it, it writes one stderr line and exits 0:
+// Claude Code adds a SessionStart hook's stdout to the session context but sends the stderr of a hook that exits 0 only to its
+// debug log, so the line is a trace there and never blocks or changes the session.
 import { appendFileSync, realpathSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -23,6 +25,8 @@ export function main(env = process.env, stderr = process.stderr) {
   if (line) appendFileSync(env.CLAUDE_ENV_FILE, line);
   else if (env[NAME]?.trim() && env.CLAUDE_ENV_FILE)
     stderr.write('optbrew: the google_api_key plugin setting has characters a Google API key does not have; it was not used\n');
+  else if (!env[NAME]?.trim())
+    stderr.write('optbrew: no google_api_key plugin setting reached this hook; the key file or OPTBREW_GOOGLE_API_KEY is used if set\n');
 }
 
 if (process.argv[1] && realpathSync(path.resolve(process.argv[1])) === realpathSync(fileURLToPath(import.meta.url))) main();

@@ -50,13 +50,24 @@ export function readGoogleKey({ env = process.env, home = keyHome(env) } = {}) {
 /**
  * Presence and the first 8 hex characters of the SHA-256; the key value itself is never returned. A key file that exists but is
  * not a JSON object adds `corrupt: true` (the file is only read, never changed), so the user is told to fix it instead of
- * being told there is no key.
+ * being told there is no key. `sources` says, without values, what each source held: the Claude plugin setting, the
+ * environment variable, the key file (`present`, `absent` or `corrupt`), and which one is `used` (null when none).
  */
 export function googleKeyStatus({ env = process.env, home = keyHome(env) } = {}) {
   const key = readGoogleKey({ env, home });
-  let corrupt = false;
-  try { loadCredentials(credentialsPath(home)); } catch { corrupt = true; }
-  return { google: { present: key !== null, sha256_8: key === null ? null : createHash('sha256').update(key).digest('hex').slice(0, HASH_CHARS), ...(corrupt ? { corrupt: true } : {}) } };
+  let credentials = null;
+  try { credentials = loadCredentials(credentialsPath(home)); } catch { /* corrupt, reported below */ }
+  const corrupt = credentials === null;
+  const pluginSetting = clean(env?.[PLUGIN_ENV_NAME]) !== null;
+  const envVar = clean(env?.[ENV_NAME]) !== null;
+  const keyFile = corrupt ? 'corrupt' : clean(credentials.google) === null ? 'absent' : 'present';
+  const used = pluginSetting ? 'plugin_setting' : envVar ? 'env' : keyFile === 'present' ? 'key_file' : null;
+  return { google: {
+    present: key !== null,
+    sha256_8: key === null ? null : createHash('sha256').update(key).digest('hex').slice(0, HASH_CHARS),
+    ...(corrupt ? { corrupt: true } : {}),
+    sources: { plugin_setting: pluginSetting, env: envVar, key_file: keyFile, used },
+  } };
 }
 
 /** Replace the key file atomically (temp file, then rename) so a reader never sees a half-written file. */
