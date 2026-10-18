@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0.0",
-  "release_version": "0.2.1",
+  "release_version": "0.2.2",
   "evaluation_version": "0.4.0",
   "protocol_version": "0.2.0",
   "evaluation_sources": [
@@ -168,7 +168,7 @@
     },
     {
       "path": "SKILL.md",
-      "sha256": "03129bfab989c3486fb085d70cc37c3376a1af08a9c03aea6b072f6f26a5e42c"
+      "sha256": "5146212c76152e99c6c9d86fee015da8dac6f050ae27636dc2c496a18b1a2416"
     },
     {
       "path": "THIRD_PARTY_NOTICES.md",
@@ -744,7 +744,7 @@
     },
     {
       "path": "references/runbooks/key-set-local.md",
-      "sha256": "43424c1b72766c3866e210c3a666ccca50a2fc6244a29c11d8519a36fff770fd"
+      "sha256": "3a352adf8464d97477cc302565eda6cf36fd8078de499a861c346d415d36e830"
     },
     {
       "path": "references/runbooks/naver-searchadvisor-export.md",
@@ -780,7 +780,7 @@
     },
     {
       "path": "references/versions.json",
-      "sha256": "838675b611fcc6fb243b253575f17af8536fa30d912e0e654be4a819ece3e908"
+      "sha256": "5cd511e7b6cb2696be2f7702a891ab729184412ff4355d46f953508e5813f127"
     },
     {
       "path": "scripts/adapters/anthropic.mjs",
@@ -948,7 +948,7 @@
     },
     {
       "path": "scripts/core/keys.mjs",
-      "sha256": "ef7e5d7106628da61da448b170accdf834244c10035165cc96f6110101d2c9f0"
+      "sha256": "381dd2eca2dde1166e06749db2a7ff354a0280cbd720b2fa98232189bfd0fcd5"
     },
     {
       "path": "scripts/core/link-graph.mjs",
@@ -1043,5 +1043,5 @@
       "sha256": "dca0bbd03fbf591c4aca6a568be76615eb48d69f7df0c634886f652b54f3f46d"
     }
   ],
-  "bundle_hash": "5b7087588e8fc817a3a5704e9b6418955bf5f615594ac9cbedf149bc5a3e707d"
+  "bundle_hash": "8b8e3373f77bd8088698beedca1f7a9b065a584ad1bcccc4a89d57a5aa1c3f16"
 }

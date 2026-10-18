@@ -1,5 +1,25 @@
 # Changelog
 
+## 0.2.2
+
+Corrects the 0.2.1 key guidance after a live check, and makes `key status` show where a key came from. The audit itself is unchanged.
+
+### What you see
+
+- **Desktop app: use the key file.** Measured on 2026-10-18 on Windows: in a session the Claude desktop app started (its bundled claude.exe 2.1.299), the plugin's SessionStart hook ran, but `CLAUDE_PLUGIN_OPTION_GOOGLE_API_KEY` did not reach the session. A `claude -p` session from terminal `claude` 2.1.302 on the same PC did receive it. Whether the desktop app or version 2.1.299 makes the difference is not separated. `key-set-local` now says first: with the desktop app, use `key set google`. The plugin setting stays as the terminal option.
+- **Where `/plugin` is.** The `/plugin` screen (**Installed**, optbrew, **Configure options**) exists in terminal `claude`, not in the desktop app's Code tab. The runbook now says: open a terminal, run `claude`, then `/plugin`.
+- **READMEs and `docs/platforms.md`** carry the same desktop-app note, the terminal `/plugin` path and the conditional order.
+- **The order is conditional.** The plugin setting comes before `OPTBREW_GOOGLE_API_KEY` and the key file only when its value reaches the session.
+- **`key status` names its sources.** A new `google.sources` field shows, without values: `plugin_setting` (true or false), `env` (true or false), `key_file` (`present`, `absent` or `corrupt`), and `used` (`plugin_setting`, `env`, `key_file` or null). `google.present` and `google.sha256_8` are unchanged.
+- **The hook leaves a trace.** When no plugin setting reached it, `plugin-key-env.mjs` writes one stderr line and exits 0. Per the Claude Code hooks reference, the stderr of a hook that exits 0 goes to the debug log, not to Claude or the session; stdout stays empty because a SessionStart hook's stdout becomes session context.
+
+### Versions
+
+Release 0.2.2, evaluation 0.4.0, audit protocol 0.2.0, contract schema 2.0.0. Scores from 0.2.0 to 0.2.2 are comparable.
+
+### Not checked here
+
+- The root cause of the desktop-app gap. The new stderr line and `key status` `sources` are the tools to separate it in a later live check.
 ## 0.2.1
 
 Answers the Claude plugin directory review of 0.2.0. The audit itself is unchanged; evaluation 0.4.0, audit protocol 0.2.0 and contract schema 2.0.0 stay.

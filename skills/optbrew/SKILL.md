@@ -87,7 +87,7 @@ node "<SKILL_DIR>/scripts/preflight.mjs" --url "<주소>" --out "<OUT>" --source
    1. `<SKILL_DIR>/references/runbooks/<id>.md`를 연다.
    2. 안내 수준에 맞는 `## beginner` 또는 `## brief` 절만 보여 준다. 절 안의 `{{skill_root}}`는 `<SKILL_DIR>`로 바꾼다.
 4. 키 파일 점검. "키"를 펼치기 전에 한다. 이 점검은 파일을 읽기만 하고 아무것도 바꾸거나 지우지 않는다.
-   1. `node "<SKILL_DIR>/scripts/key.mjs" status`를 실행한다. 출력은 `google.present`와 `google.sha256_8`이고, 키 파일이 JSON 객체가 아니면 `google.corrupt: true`가 더 붙는다.
+   1. `node "<SKILL_DIR>/scripts/key.mjs" status`를 실행한다. 출력은 `google.present`와 `google.sha256_8`이고, 키 파일이 JSON 객체가 아니면 `google.corrupt: true`가 더 붙는다. `google.sources`는 값 없이 출처별 상태(`plugin_setting`·`env`·`key_file`)와 실제로 쓰이는 출처(`used`)를 보여 준다.
    2. `google.present`가 `true`이면 키가 이미 있다. 키 런북을 펼치지 않고 그렇게 말한다.
    3. `present`가 `false`이고 `google.corrupt`가 `true`이면 키 파일이 깨진 것이다. 파일은 사용자 홈 폴더의 `.optbrew/credentials.json`이다. 그 경로를 알려 주고 "이 파일을 고치거나 지운 뒤 다시 말해 주세요"라고 한다. 키 입력 안내는 하지 않는다.
    4. 그 밖이면(`present`가 `false`이고 `corrupt`가 없음) 문제가 없다. 2번의 "키"를 이어 한다.
