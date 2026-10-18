@@ -79,10 +79,13 @@ test('Fix 4: canonical target, redirect chain, orphan page and sitemap status be
   const scenario = await run(t, noSitemap, paths, { enable: ['canonical-consistency'], sitemap: true });
   assert.equal(stateOf(scenario, 'canonical-consistency', '/c-ok'), 'pass');
   assert.equal(stateOf(scenario, 'canonical-consistency', '/c-bad'), 'fail');
-  assert.match(reasonOf(scenario, 'canonical-consistency', '/c-bad'), /returns HTTP 404/);
+  assert.equal(reasonOf(scenario, 'canonical-consistency', '/c-bad'), 'canonical target does not return a successful status');
+  const bad = scenario.packet.baseline.input.observations.find(x => x.family_id === 'canonical-consistency' && x.unit_key.endsWith('/c-bad'));
+  assert.equal(bad.measurement.canonical_status, 404);
   assert.equal(stateOf(scenario, 'canonical-consistency', '/chain-a'), 'fail');
-  assert.match(reasonOf(scenario, 'canonical-consistency', '/chain-a'), /Redirect chain of 2 hops/);
-  assert.equal(stateOf(scenario, 'canonical-consistency', '/hub'), undefined, 'no canonical and no chain stays unknown');
+  assert.equal(reasonOf(scenario, 'canonical-consistency', '/chain-a'), 'Redirect chain of two or more hops');
+  assert.equal(scenario.packet.baseline.input.observations.find(x => x.family_id === 'canonical-consistency' && x.unit_key.endsWith('/chain-a')).measurement.redirect_hops, 2);
+  assert.equal(stateOf(scenario, 'canonical-consistency', '/hub'), 'not_applicable', 'no canonical and no chain declares no representative URL policy');
   assert.equal(stateOf(scenario, 'discovery', '/orphan'), 'fail');
   assert.match(reasonOf(scenario, 'discovery', '/orphan'), /declared sitemap unusable: .*sitemap\.xml \(404\)/);
   assert.equal(stateOf(scenario, 'discovery', '/c-ok'), 'pass');
@@ -100,8 +103,10 @@ test('Fix 4: a page listed in a reachable declared sitemap is discoverable, and 
   assert.match(reasonOf(scenario, 'discovery', '/orphan'), /Listed in a declared sitemap/);
   assert.equal(stateOf(scenario, 'document-title', '/dup-1'), 'fail');
   assert.equal(stateOf(scenario, 'document-title', '/dup-2'), 'fail');
-  assert.match(reasonOf(scenario, 'document-title', '/dup-1'), /Title duplicates .*\/dup-2/);
-  assert.equal(stateOf(scenario, 'document-title', '/hub'), 'unknown');
+  assert.equal(reasonOf(scenario, 'document-title', '/dup-1'), 'Title duplicates the title of other pages', 'the reason is the same on every page');
+  const dup = scenario.packet.baseline.input.observations.find(x => x.unit_key.endsWith('/dup-1') && x.family_id === 'document-title');
+  assert.match(dup.measurement.duplicate_pages.join(' '), /\/dup-2/, 'the other page is in the measurement');
+  assert.equal(stateOf(scenario, 'document-title', '/hub'), 'pass', 'a present title no other audited page shares passes');
   assert.doesNotThrow(() => buildReport(scenario.packet));
 });
 
@@ -155,9 +160,12 @@ test('Fix 5: cross-page entity facts produce fact-consistency and entity-identit
   const entity = scenario.packet.baseline.input.observations.find(x => x.family_id === 'entity-identity');
   assert.equal(entity.unit_key, 'entity-identity|site');
   assert.equal(entity.state, 'fail');
-  assert.match(entity.reason, /name differs from "Brewline Coffee Roasters" on .*\/press/);
-  assert.match(entity.reason, /Organization JSON-LD without sameAs on .*\/about/);
-  assert.match(entity.reason, /no Organization or LocalBusiness JSON-LD on .*\//);
+  assert.match(entity.reason, /the business name differs between pages/);
+  assert.match(entity.reason, /Organization JSON-LD lacks sameAs on some pages/);
+  assert.match(entity.reason, /no Organization or LocalBusiness JSON-LD on the home page/);
+  assert.equal(entity.measurement.name_reference, 'Brewline Coffee Roasters');
+  assert.match(entity.measurement.name_differs_on.join(' '), /\/press/);
+  assert.match(entity.measurement.without_same_as_on.join(' '), /\/about/);
   assert.doesNotThrow(() => buildReport(scenario.packet));
   await scenario.forgeObservations(list => Object.assign(list.find(x => x.family_id === 'fact-consistency' && x.unit_key.endsWith('/support')), { state: 'pass', q: 1, reason: 'forged' }));
   assert.throws(() => buildReport(scenario.packet), /collector verdict differs from raw evidence: fact-consistency/);
@@ -182,7 +190,7 @@ const ldSite = await open({
 test('Fix 6: a JSON-LD parse error reaches the report as a structured-data-truth failure bound to raw evidence', async t => {
   const scenario = await run(t, ldSite, ['/bad-ld', '/good-ld'], { enable: ['structured-data-truth'] });
   assert.equal(stateOf(scenario, 'structured-data-truth', '/bad-ld'), 'fail');
-  assert.equal(stateOf(scenario, 'structured-data-truth', '/good-ld'), undefined);
+  assert.equal(stateOf(scenario, 'structured-data-truth', '/good-ld'), 'unknown', 'JSON-LD that parses but states no entity fact has nothing to be compared');
   assert.equal(scenario.audit.module_outputs['naver-searchadvisor'].find(x => x.url.endsWith('/bad-ld')).jsonld_parse_errors, 1);
   const bad = scenario.observation('structured-data-truth', '/bad-ld');
   scenario.packet.findings = [scenario.finding(bad, { blocker: false, priority: 'P1', message: 'JSON-LD does not parse' })];

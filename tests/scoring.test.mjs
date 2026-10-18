@@ -55,7 +55,7 @@ test('unobserved expected unit is unknown and conflicting or unregistered observ
 test('blocker and unknown core policy override a high measured score', () => {
   const input = fixture();
   const blocked = structuredClone(input);
-  blocked.observations.push({ schema_version: '1.0.0', observation_id: 'noindex', check_id: 'index-policy',
+  blocked.observations.push({ schema_version: '2.0.0', observation_id: 'noindex', check_id: 'index-policy',
     family_id: 'index-policy', unit_key: 'index-policy|https://example.com/', state: 'fail', q: 0,
     partial_basis: null, reason: 'unexpected noindex', evaluator_type: 'code', source_ref: 'synthetic', evidence_ref: 'e/noindex' });
   assert.equal(score(blocked)[0].readiness_status, 'blocked');
@@ -77,7 +77,7 @@ test('URL type weighting and duplicate observations do not multiply family weigh
 
 test('not applicable units redistribute within family and an empty axis is excluded', () => {
   const input = fixture();
-  input.observations.push({ schema_version: '1.0.0', observation_id: 'title-na', check_id: 'document-title',
+  input.observations.push({ schema_version: '2.0.0', observation_id: 'title-na', check_id: 'document-title',
     family_id: 'document-title', unit_key: 'document-title|https://example.com/about',
     state: 'not_applicable', q: null, partial_basis: null, reason: 'non-HTML page',
     evaluator_type: 'code', source_ref: 'synthetic', evidence_ref: 'synthetic/title',
@@ -125,7 +125,7 @@ test('skill CLI rejects a partial noindex verdict before creating output', () =>
   const dir = mkdtempSync(path.join(os.tmpdir(), 'optbrew-score-invalid-'));
   try {
     const input = fixture();
-    input.observations.push({ schema_version: '1.0.0', observation_id: 'noindex-partial',
+    input.observations.push({ schema_version: '2.0.0', observation_id: 'noindex-partial',
       check_id: 'index-policy', family_id: 'index-policy',
       unit_key: 'index-policy|https://example.com/', state: 'partial', q: 0.5,
       partial_basis: { kind: 'threshold_half' }, reason: 'confirmed noindex', evaluator_type: 'code',
@@ -148,7 +148,7 @@ test('fixed question coverage denominator cannot differ from the panel', () => {
   const coveragePlan = input.run_context.protocol.families.find(x => x.family_id === 'question-coverage');
   coveragePlan.applicable = true;
   delete coveragePlan.applicability_decision;
-  input.observations.push({ schema_version: '1.0.0', observation_id: 'coverage',
+  input.observations.push({ schema_version: '2.0.0', observation_id: 'coverage',
     check_id: 'question-coverage', family_id: 'question-coverage', unit_key: 'question-coverage|site',
     state: 'partial', q: 1 / 3, partial_basis: { kind: 'ratio', numerator: 1, denominator: 3 },
     reason: 'one evidenced answer', evaluator_type: 'human', source_ref: 'synthetic', evidence_ref: 'e/questions' });
@@ -165,11 +165,15 @@ test('high score and full coverage do not conceal a confirmed noindex blocker', 
     'cls-field': { value: 0.1, percentile: 75, source_type: 'field', unit: 'unitless' } };
   const present = new Set(input.observations.map(x => x.unit_key));
   for (const unit of compileUnits(input, 'SEO')) if (!present.has(unit.key))
-    input.observations.push({ schema_version: '1.0.0', observation_id: `pass-${unit.key}`,
+    input.observations.push({ schema_version: '2.0.0', observation_id: `pass-${unit.key}`,
       check_id: unit.family_id, family_id: unit.family_id, unit_key: unit.key,
       state: 'pass', q: 1, partial_basis: null, reason: 'synthetic pass', evaluator_type: 'code',
       source_ref: 'synthetic', evidence_ref: `synthetic/${unit.family_id}`,
       ...(measurements[unit.family_id] ? { measurement: measurements[unit.family_id] } : {}) });
+  const unaudited = score(input)[0];
+  assert.equal(unaudited.score, 100);
+  assert.equal(unaudited.readiness_status, 'unverified', 'a phase with no audit is never measured');
+  input.run_context.audited = true;
   const measured = score(input)[0];
   assert.equal(measured.score, 100);
   assert.equal(measured.readiness_status, 'measured');
@@ -185,7 +189,7 @@ test('high score and full coverage do not conceal a confirmed noindex blocker', 
 
 test('duplicate matching blocker verdicts yield stable evidence independent of input order', () => {
   const input = fixture();
-  const first = { schema_version: '1.0.0', observation_id: 'a', check_id: 'index-policy',
+  const first = { schema_version: '2.0.0', observation_id: 'a', check_id: 'index-policy',
     family_id: 'index-policy', unit_key: 'index-policy|https://example.com/', state: 'fail', q: 0,
     partial_basis: null, reason: 'first evidence', evaluator_type: 'code',
     source_ref: 'synthetic', evidence_ref: 'e/first' };
@@ -199,14 +203,14 @@ test('duplicate matching blocker verdicts yield stable evidence independent of i
 
 test('unit N/A requires an allowed condition decision and core units cannot disappear', () => {
   const input = fixture();
-  input.observations.push({ schema_version: '1.0.0', observation_id: 'fetch-na',
+  input.observations.push({ schema_version: '2.0.0', observation_id: 'fetch-na',
     check_id: 'fetch-response', family_id: 'fetch-response',
     unit_key: 'fetch-response|https://example.com/about', state: 'not_applicable', q: null,
     partial_basis: null, reason: 'no data', evaluator_type: 'code',
     source_ref: 'synthetic', evidence_ref: 'e/na' });
   assert.throws(() => compileUnits(input, 'SEO'), ContractError);
   input.observations.pop();
-  const titleNa = { schema_version: '1.0.0', observation_id: 'title-na',
+  const titleNa = { schema_version: '2.0.0', observation_id: 'title-na',
     check_id: 'document-title', family_id: 'document-title',
     unit_key: 'document-title|https://example.com/about', state: 'not_applicable', q: null,
     partial_basis: null, reason: 'non-HTML page', evaluator_type: 'code',
@@ -234,7 +238,7 @@ test('unknown public-indexing intent keeps core units; evidenced non-target excl
 
 test('unit N/A cannot contradict fixed panel, public URL, or target engine facts', () => {
   const input = fixture();
-  const example = { schema_version: '1.0.0', observation_id: 'na',
+  const example = { schema_version: '2.0.0', observation_id: 'na',
     state: 'not_applicable', q: null, partial_basis: null, reason: 'synthetic exclusion',
     evaluator_type: 'code', source_ref: 'synthetic', evidence_ref: 'e/na' };
   const decision = condition => ({ condition, reason: 'synthetic condition evidence', evidence_ref: 'e/na' });

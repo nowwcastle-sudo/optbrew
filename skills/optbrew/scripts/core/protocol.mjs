@@ -2,6 +2,7 @@ import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { ContractError, validateEntity, validateApplicabilityDecision } from './contracts.mjs';
 import { assertUrlInScope } from './scope.mjs';
+import { limits, publicOnlyFamily, requestLimit } from './config.mjs';
 
 const registry = JSON.parse(readFileSync(new URL('../../references/check-registry.json', import.meta.url)));
 const knownFamilies = new Map(registry.families.map(x => [x.family_id, x]));
@@ -12,6 +13,27 @@ function unique(values, label) {
 }
 
 const compare = (a, b) => a < b ? -1 : a > b ? 1 : 0;
+
+/**
+ * Whether the run's own fixed conditions decide a family's applicability, and the condition code that names the reason when it is not
+ * applicable; null when no fixed condition decides it (the owner's or the model's decision then stands). Read from the registry, never from
+ * a list of family names: no inapplicable condition at all means always applicable; `public_only` plus `no_public_index_target` follows the
+ * public index targets (and the target engines, where `no_target_engine` is also a condition); an engine-bound family with a `*_not_target`
+ * condition follows its engines; `no_fixed_questions` follows the question panel. A test holds the registry flag and this rule together (T22 S2).
+ */
+function fixedApplicability(definition, protocol, publicCount) {
+  const conditions = definition.na_conditions ?? [];
+  if (!conditions.length) return { applicable: true, condition: null };
+  if (conditions.includes('no_fixed_questions')) return { applicable: protocol.question_panel.length > 0, condition: 'no_fixed_questions' };
+  if (definition.public_only === true && conditions.includes('no_public_index_target')) {
+    const needsEngine = conditions.includes('no_target_engine');
+    return { applicable: publicCount > 0 && (!needsEngine || protocol.engines.length > 0),
+      condition: needsEngine && !protocol.engines.length ? 'no_target_engine' : 'no_public_index_target' };
+  }
+  const engineCondition = conditions.find(code => code.endsWith('_not_target'));
+  if (definition.engines?.length && engineCondition) return { applicable: definition.engines.some(engine => protocol.engines.includes(engine)), condition: engineCondition };
+  return null;
+}
 const sameSet = (a, b) => a.length === b.length && a.every(value => b.includes(value));
 
 function stable(value) {
@@ -35,11 +57,16 @@ export function freezeProtocol(context) {
   const urls = p.page_types.flatMap(x => x.urls.map(u => u.normalized));
   unique(urls, 'normalized URLs');
   if (!urls.length) throw new ContractError('protocol requires selected public audit URLs');
+  const { render } = p;
+  unique(render.pages.map(x => x.normalized), 'render pages');
+  if (render.pages.length > limits().render_pages) throw new ContractError('render pages exceed the render page limit');
+  if (render.pages.some(x => !urls.includes(x.normalized))) throw new ContractError('render page is not a selected URL');
+  if (!Number.isInteger(render.max_render_requests) || render.max_render_requests > limits().max_render_requests)
+    throw new ContractError('render request limit is not a whole number within the render ceiling');
   const resources = p.auxiliary_resources ?? [];
   unique(resources.map(x => x.normalized), 'auxiliary resources');
   if (resources.some(x => urls.includes(x.normalized))) throw new ContractError('auxiliary resource duplicates a selected URL');
-  const requestLimit = Math.min(context.scope.max_urls ?? 50, 50);
-  if (urls.length + resources.length > requestLimit) throw new ContractError('selected pages and auxiliary resources exceed request scope');
+  if (urls.length + resources.length > requestLimit(context.scope)) throw new ContractError('selected pages and auxiliary resources exceed request scope');
   for (const resource of resources) {
     for (const url of [resource.original, resource.normalized]) {
       try { assertUrlInScope(url, context.scope); }
@@ -66,7 +93,7 @@ export function freezeProtocol(context) {
   for (const family of p.families) {
     const definition = knownFamilies.get(family.family_id);
     if (!definition) throw new ContractError(`unregistered family: ${family.family_id}`);
-    const requiredUrls = ['index-policy', 'search-crawl-policy', 'discovery'].includes(family.family_id) ? publicUrls : urls;
+    const requiredUrls = publicOnlyFamily(family.family_id) ? publicUrls : urls;
     if (family.urls) {
       unique(family.urls, `${family.family_id}.urls`);
       if (definition.unit_scope === 'site' || !sameSet(family.urls, requiredUrls))
@@ -78,23 +105,18 @@ export function freezeProtocol(context) {
       if (definition.unit_scope !== 'engine_url' || !sameSet(family.engines, requiredEngines))
         throw new ContractError(`${family.family_id}: target engine units cannot be omitted`);
     }
-    const expected = family.family_id === 'fetch-response' ? true :
-      ['index-policy', 'discovery'].includes(family.family_id) ? publicUrls.length > 0 :
-      family.family_id === 'search-crawl-policy' ? publicUrls.length > 0 && p.engines.length > 0 :
-      family.family_id === 'question-coverage' ? p.question_panel.length > 0 :
-      family.family_id === 'naver-markup' ? p.engines.includes('naver') : null;
-    if (expected !== null && family.applicable !== expected)
+    // A family that only matters for indexed pages has no unit when every selected page is a non-index target.
+    if (publicOnlyFamily(family.family_id) && family.applicable && !publicUrls.length)
+      throw new ContractError(`${family.family_id}: applicable family has no public index target`);
+    const fixed = fixedApplicability(definition, p, publicUrls.length);
+    if (fixed && family.applicable !== fixed.applicable)
       throw new ContractError(`${family.family_id}: applicability contradicts fixed URL/engine conditions`);
     if (family.applicable) {
       if (family.applicability_decision) throw new ContractError(`${family.family_id}: decision only allowed when inapplicable`);
     } else {
       const decision = validateApplicabilityDecision(family.applicability_decision,
         definition.na_conditions, `${family.family_id}.applicability_decision`);
-      const automaticCondition = family.family_id === 'search-crawl-policy' ?
-        (p.engines.length ? 'no_public_index_target' : 'no_target_engine') :
-        ['index-policy', 'discovery'].includes(family.family_id) ? 'no_public_index_target' :
-        family.family_id === 'question-coverage' ? 'no_fixed_questions' :
-        family.family_id === 'naver-markup' ? 'naver_not_target' : null;
+      const automaticCondition = fixed?.condition ?? null;
       if (automaticCondition && decision.condition !== automaticCondition)
         throw new ContractError(`${family.family_id}: decision conflicts with fixed conditions`);
     }
@@ -103,6 +125,7 @@ export function freezeProtocol(context) {
   }
   const sorted = { ...p,
     ...(p.auxiliary_resources ? { auxiliary_resources: [...resources].sort((a, b) => compare(a.normalized, b.normalized)) } : {}),
+    render: { ...render, pages: [...render.pages].sort((a, b) => compare(a.normalized, b.normalized)) },
     engines: [...p.engines].sort(),
     families: [...p.families].sort((a, b) => compare(a.family_id, b.family_id)).map(f => ({ ...f,
       ...(f.urls ? { urls: [...f.urls].sort() } : {}),
@@ -115,6 +138,7 @@ export function freezeProtocol(context) {
   const hashInput = structuredClone(protocol);
   for (const type of hashInput.page_types) for (const url of type.urls) if (url.indexing_decision)
     url.indexing_decision = { condition: url.indexing_decision.condition };
+  for (const url of hashInput.render.pages) if (url.indexing_decision) url.indexing_decision = { condition: url.indexing_decision.condition };
   for (const family of hashInput.families) if (family.applicability_decision)
     family.applicability_decision = { condition: family.applicability_decision.condition };
   if (hashInput.target_identity) {

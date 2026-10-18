@@ -1,14 +1,16 @@
 import { lookup } from 'node:dns/promises';
 import { createHash } from 'node:crypto';
-import http from 'node:http';
-import https from 'node:https';
 import { isIP } from 'node:net';
 import { performance } from 'node:perf_hooks';
-import { assertInScope, assertUrlInScope } from './scope.mjs';
+import { assertInScope, assertUrlInScope, urlTarget } from './scope.mjs';
 import { anchorLinks, canonicalLink } from './html.mjs';
+import { limits, requestLimit } from './config.mjs';
+import { directTransport } from './transport.mjs';
 
 const HEADER_NAMES = ['content-type', 'content-length', 'content-range', 'content-encoding', 'location', 'x-robots-tag', 'last-modified', 'etag'];
 const REDIRECTS = new Set([301, 302, 303, 307, 308]);
+// An API call follows no redirect: zero hops.
+const FOLLOW_NONE = 0;
 const text = value => Buffer.isBuffer(value) ? value : Buffer.from(value ?? '');
 
 function auxiliaryDocument(url) {
@@ -24,14 +26,14 @@ function undeclaredAuxiliary(url, allowed) {
   throw error;
 }
 
-function safeHeaders(headers) {
+function safeHeaders(headers, extra = []) {
   const source = headers instanceof Headers ? Object.fromEntries(headers) : headers ?? {};
-  return Object.fromEntries(Object.entries(source).filter(([name]) => HEADER_NAMES.includes(name.toLowerCase()))
+  return Object.fromEntries(Object.entries(source).filter(([name]) => HEADER_NAMES.includes(name.toLowerCase()) || extra.includes(name.toLowerCase()))
     .map(([name, value]) => [name.toLowerCase(), String(value)]));
 }
 
 /** Response header lines in wire order; repeated lines (for example two X-Robots-Tag lines) stay separate. */
-export function headerLines(response) {
+function headerLines(response) {
   const lines = [];
   if (Array.isArray(response.rawHeaders)) {
     for (let i = 0; i + 1 < response.rawHeaders.length; i += 2) {
@@ -47,38 +49,8 @@ export function headerLines(response) {
   return lines;
 }
 
-/** Node's lookup callback pins the already-vetted address while TLS still verifies the URL hostname. */
-async function nodeTransport({ url, address, timeoutMs, maxBytes, headers = {}, signal }) {
-  const client = url.protocol === 'https:' ? https : http;
-  const hostname = url.hostname.replace(/^\[|\]$/g, '');
-  return new Promise((resolve, reject) => {
-    const req = client.request(url, {
-      method: 'GET', agent: false, signal, headers: { 'User-Agent': 'optbrew/0.1 (bounded public audit)', Accept: '*/*', 'Accept-Encoding': 'identity', ...headers },
-      lookup: (_hostname, options, callback) => options.all ?
-        callback(null, [{ address: address.address, family: address.family }]) : callback(null, address.address, address.family),
-      ...(url.protocol === 'https:' ? { rejectUnauthorized: true,
-        ...(!isIP(hostname) ? { servername: hostname } : {}) } : {}),
-    }, res => {
-      const chunks = []; let size = 0;
-      if (Number(res.headers['content-length']) > maxBytes) {
-        req.destroy(new Error('response byte limit exceeded')); return;
-      }
-      res.on('data', chunk => {
-        size += chunk.length;
-        if (size > maxBytes) { req.destroy(new Error('response byte limit exceeded')); return; }
-        chunks.push(chunk);
-      });
-      res.on('end', () => resolve({ status: res.statusCode, headers: res.headers, rawHeaders: res.rawHeaders, body: Buffer.concat(chunks) }));
-      res.on('error', reject);
-    });
-    req.setTimeout(timeoutMs, () => req.destroy(new Error('request timeout')));
-    req.on('error', reject);
-    req.end();
-  });
-}
-
 async function addressesFor(url, resolve) {
-  const host = url.hostname.replace(/^\[|\]$/g, '');
+  const { host } = urlTarget(url);
   if (isIP(host)) return [{ address: host, family: isIP(host) }];
   const values = await resolve(host);
   return (Array.isArray(values) ? values : [values]).map(x => {
@@ -88,9 +60,15 @@ async function addressesFor(url, resolve) {
 }
 
 /** Fetch one URL with fresh DNS validation at every redirect and a pinned connection. */
-export async function fetchScoped(input, { context, transport = nodeTransport, resolve = host => lookup(host, { all: true, verbatim: true }), timeoutMs = 20000, maxBytes = 5242880, maxRedirects = 10, headers = {}, allowedAuxiliary = null, reserveRequest = null }) {
-  if (![timeoutMs, maxBytes, maxRedirects].every(Number.isInteger) || timeoutMs < 1 || timeoutMs > 20000 || maxBytes < 1 || maxBytes > 5242880 || maxRedirects < 0 || maxRedirects > 10)
+export async function fetchScoped(input, { context, transport = directTransport, resolve = host => lookup(host, { all: true, verbatim: true }), timeoutMs = limits().timeout_ms, maxBytes = limits().max_bytes, maxRedirects = limits().max_redirects, headers = {}, allowedAuxiliary = null, reserveRequest = null, addressVetting = 'direct', extraHeaders = [], method = 'GET', body: requestBody = null, ceiling = { timeoutMs: limits().timeout_ms, maxBytes: limits().max_bytes }, fieldData = false }) {
+  // A caller may ask for a lower ceiling, never a higher one than the config fixes: the crawl's limits, or the field-data limits
+  // for the one adapter that says it is a field-data call (`transportFetch`).
+  const fixed = fieldData ? { timeoutMs: limits().cwv_timeout_ms, maxBytes: limits().cwv_max_bytes } : { timeoutMs: limits().timeout_ms, maxBytes: limits().max_bytes };
+  if (![timeoutMs, maxBytes, maxRedirects].every(Number.isInteger) || timeoutMs < 1 || timeoutMs > Math.min(ceiling.timeoutMs, fixed.timeoutMs) ||
+      maxBytes < 1 || maxBytes > Math.min(ceiling.maxBytes, fixed.maxBytes) || maxRedirects < 0 || maxRedirects > limits().max_redirects)
     throw new Error('fetch limits exceed context ceiling');
+  // Proxy vetting skips DNS-name checks, which is only safe when the proxy transport (not a direct connection) carries the request.
+  if (addressVetting === 'proxy' && transport.addressVetting !== 'proxy') throw new Error('proxy address vetting requires the proxy transport');
   let url = assertUrlInScope(input, context.scope);
   if (allowedAuxiliary) undeclaredAuxiliary(url, allowedAuxiliary);
   const requested_url = String(input);
@@ -105,7 +83,7 @@ export async function fetchScoped(input, { context, transport = nodeTransport, r
   try {
     for (let hop = 0; hop <= maxRedirects; hop++) {
       const addresses = await withinDeadline(addressesFor(url, resolve));
-      try { assertInScope(url.href, context.scope, addresses); }
+      try { assertInScope(url.href, context.scope, addresses, { addressVetting }); }
       catch (error) { error.code = 'scope_rejected'; error.redirect_chain = redirect_chain; throw error; }
       // Pick only a vetted address. The transport must use this address, not resolve again.
       const remainingMs = Math.ceil(deadline - performance.now());
@@ -118,11 +96,11 @@ export async function fetchScoped(input, { context, transport = nodeTransport, r
         throw error;
       }
       made++;
-      const response = await withinDeadline(transport({ url, address: addresses[0], timeoutMs: remainingMs, maxBytes, headers, signal: controller.signal }));
+      const response = await withinDeadline(transport({ url, address: addresses[0], timeoutMs: remainingMs, maxBytes, headers, signal: controller.signal, method, body: requestBody }));
       if (!Number.isInteger(response?.status) || response.status < 100 || response.status > 599) throw new Error('invalid transport status');
       const body = text(response.body);
       if (body.length > maxBytes) throw new Error('response byte limit exceeded');
-      const savedHeaders = safeHeaders(response.headers);
+      const savedHeaders = safeHeaders(response.headers, extraHeaders);
       if (REDIRECTS.has(response.status) && savedHeaders.location) {
         if (hop === maxRedirects) {
           redirect_chain.push({ url: url.href, status: response.status, location: '[limit]' });
@@ -133,6 +111,7 @@ export async function fetchScoped(input, { context, transport = nodeTransport, r
         catch {
           const error = new Error('redirect outside scope');
           error.code = 'redirect_outside_scope';
+          try { error.redirect_to = new URL(savedHeaders.location, url).href; } catch { /* an unparsable location names no site */ }
           error.redirect_chain = [...redirect_chain, { url: url.href, status: response.status, location: '[blocked]' }];
           throw error;
         }
@@ -162,6 +141,21 @@ export async function fetchScoped(input, { context, transport = nodeTransport, r
   finally { clearTimeout(timer); }
 }
 
+/**
+ * A fetch-like function over the transport `selectTransport` chose, for API calls the audit makes itself (field CWV): the
+ * host is resolved and vetted exactly as `fetchScoped` does it (direct: pinned vetted address; proxy: the proxy resolves,
+ * literals are vetted), a redirect is never followed, and the limits are the caller's, not the page collection's.
+ * It answers `{ status, text() }` and throws what `fetchScoped` throws.
+ */
+export function transportFetch(selected, { timeoutMs, maxBytes }) {
+  return async (url, { method = 'GET', headers = {}, body = null } = {}) => {
+    const result = await fetchScoped(url, { context: { scope: { allowed: [{ origin: new URL(url).origin }] } }, transport: selected.transport,
+      resolve: selected.resolve, addressVetting: selected.address_vetting, method, headers, body, maxRedirects: FOLLOW_NONE,
+      timeoutMs, maxBytes, ceiling: { timeoutMs, maxBytes }, fieldData: true });
+    return { status: result.status, text: async () => result.body.toString('utf8') };
+  };
+}
+
 /** Index of the declared robots.txt artifact on the same origin as the page, as the audit and the report both select it. */
 export function declaredRobotsIndex(artifacts, declaredRobots, pageFinalUrl) {
   return artifacts.findIndex(x => {
@@ -179,11 +173,11 @@ export function links(html, base) {
 }
 
 /** Bounded crawl of fixed protocol URLs and their in-scope links. */
-export async function collect(context, { transport, resolve } = {}) {
+export async function collect(context, { transport, resolve, addressVetting } = {}) {
   const scope = context?.scope;
-  const limit = Math.min(scope?.max_urls ?? 50, 50);
-  const depthLimit = Math.min(scope?.max_depth ?? 3, 3);
-  const concurrency = Math.min(scope?.concurrency ?? 2, 2);
+  const limit = requestLimit(scope);
+  const depthLimit = Math.min(scope?.max_depth ?? limits().max_depth, limits().max_depth);
+  const concurrency = Math.min(scope?.concurrency ?? limits().concurrency, limits().concurrency);
   if (![limit, depthLimit, concurrency].every(Number.isInteger) || limit < 1 || depthLimit < 0 || concurrency < 1)
     throw new Error('invalid collection limits');
   const initial = context.protocol.page_types.flatMap(type => type.urls.map(ref => ref.normalized));
@@ -209,14 +203,16 @@ export async function collect(context, { transport, resolve } = {}) {
     if (depth > depthLimit) { skip(normalized, 'depth_limit'); return; }
     queue.push({ url: normalized, depth, auxiliaryResource });
   };
-  initial.forEach(url => enqueue(url, 0));
+  if (auxiliary.some(resource => initial.includes(resource.normalized))) throw new Error('auxiliary resource duplicates selected URL');
+  // Declared resources (robots, sitemap) are evidence for every page, so they go first: a selected page's redirect hop
+  // takes a request the page budget did not count, and that overrun must cost a page, never the site-wide evidence.
   for (const resource of auxiliary) {
-    if (seen.has(resource.normalized)) throw new Error('auxiliary resource duplicates selected URL');
     const normalized = assertUrlInScope(resource.normalized, scope).href;
     if (normalized !== resource.normalized || assertUrlInScope(resource.original, scope).href !== normalized)
       throw new Error('auxiliary resource URL mismatch');
     enqueue(normalized, 0, true);
   }
+  initial.forEach(url => enqueue(url, 0));
   const artifacts = []; let cursor = 0; let requestCount = 0;
   async function worker() {
     while (cursor < queue.length) {
@@ -231,7 +227,7 @@ export async function collect(context, { transport, resolve } = {}) {
         return true;
       };
       let artifact;
-      try { artifact = await fetchScoped(item.url, { context, transport, resolve, allowedAuxiliary: allowedDocuments, reserveRequest }); }
+      try { artifact = await fetchScoped(item.url, { context, transport, resolve, addressVetting, allowedAuxiliary: allowedDocuments, reserveRequest }); }
       catch (error) {
         const reason = ['scope_rejected', 'redirect_outside_scope', 'auxiliary_undeclared', 'request_limit'].includes(error.code) ? error.code : 'fetch_failed';
         if (reason === 'request_limit' && !used) { skip(item.url, 'url_limit'); continue; }

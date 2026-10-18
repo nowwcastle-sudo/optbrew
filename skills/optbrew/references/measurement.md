@@ -1,4 +1,4 @@
-# optbrew outcome measurement contract (0.1.0)
+# optbrew outcome measurement contract (evaluation 0.4.0)
 
 Readiness scores and actual outcomes stay separate. `ScoreInput` contains the 22-family readiness observations. `MetricObservation[]` contains owner-provided native search, analytics, and AI panel observations. Neither indexing, search traffic, citations, conversions, nor revenue is inferred from readiness. The official source IDs and URLs are in `docs/superpowers/specs/2026-10-13-optbrew-sources.md` in the source repository. The rules below follow approved design section 7.
 

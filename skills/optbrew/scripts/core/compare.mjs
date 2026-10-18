@@ -2,6 +2,7 @@ import { validateEntity } from './contracts.mjs';
 import { freezeProtocol } from './protocol.mjs';
 import { compileUnits } from './weights.mjs';
 import { score } from './score.mjs';
+import { olderVersion } from './migration.mjs';
 
 const close = (a, b) => Math.abs(a - b) <= 1e-9;
 const rawScore = result => result.M === 0 ? null : 100 * result.N / result.M;
@@ -9,11 +10,27 @@ const rawCoverage = result => result.A === 0 ? null : 100 * result.M / result.A;
 const difference = (before, after) => before === null || after === null ? null : after - before;
 const relative = (before, after) => before === null || after === null || close(before, 0) ? null : (after - before) / before;
 
+/**
+ * An input made by an older optbrew was a valid input then, so it is reported as not comparable in plain words instead of
+ * failing the schema. It is found by its version labels, never by the shape the older protocol lacked.
+ */
+const olderReason = (input, label) => {
+  const older = olderVersion(input);
+  return older && `the ${label} was made with ${older.name} ${older.found}, which is older than the current one; run a new audit to compare`;
+};
+
 /** Compare two ScoreInputs only when their frozen conditions and applicable units match. */
 export function compare(before, after) {
+  const oldBaseline = olderReason(before, 'baseline');
+  if (after === null || after === undefined) {
+    if (!oldBaseline) { validateEntity('ScoreInput', before); freezeProtocol(before.run_context); }
+    return { status: 'no_after', score_deltas: [], reasons: ['after_missing'] };
+  }
+  if (oldBaseline) return { status: 'not_comparable', score_deltas: [], reasons: [oldBaseline] };
+  const oldFollowup = olderReason(after, 'follow-up');
+  if (oldFollowup) return { status: 'not_comparable', score_deltas: [], reasons: [oldFollowup] };
   validateEntity('ScoreInput', before);
   const baseline = freezeProtocol(before.run_context);
-  if (after === null || after === undefined) return { status: 'no_after', score_deltas: [], reasons: ['after_missing'] };
   validateEntity('ScoreInput', after);
   const followup = freezeProtocol(after.run_context);
   const reasons = [];

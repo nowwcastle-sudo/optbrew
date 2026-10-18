@@ -1,7 +1,7 @@
 {
-  "schema_version": "1.0.0",
+  "schema_version": "2.0.0",
   "run_context": {
-    "schema_version": "1.0.0",
+    "schema_version": "2.0.0",
     "run_id": "synthetic-after",
     "target": "example.com",
     "environment": "local",
@@ -10,10 +10,10 @@
     ],
     "allowed_changes": [],
     "scope": {},
-    "evaluation_version": "0.3.0",
-    "protocol_version": "0.1.0",
+    "evaluation_version": "0.4.0",
+    "protocol_version": "0.2.0",
     "data_sources": [],
-    "cost_decision": {},
+    "cost_decision": {}, "environment_probe": {"harness":"other","transport":"direct","address_vetting":"direct","proxy":null,"block_reason":null,"chrome":{"found":true,"kind":"chrome","reason":null},"google_key":false,"source_tools":[],"sitemap_pages":null},
     "evidence_ref": "synthetic/after",
     "protocol": {
       "page_types": [
@@ -50,6 +50,7 @@
       "surfaces": [],
       "models": [],
       "search_enabled": null,
+      "render": { "enabled": false, "pages": [], "max_render_requests": 300 },
       "question_panel": [],
       "families": [
         {
@@ -215,7 +216,7 @@
   },
   "observations": [
     {
-      "schema_version": "1.0.0",
+      "schema_version": "2.0.0",
       "observation_id": "fetch-pass",
       "check_id": "fetch-response",
       "family_id": "fetch-response",
@@ -230,7 +231,7 @@
     },
     {
       "unit_key": "document-title|https://example.com/",
-      "schema_version": "1.0.0",
+      "schema_version": "2.0.0",
       "evidence_ref": "synthetic/title-fail",
       "partial_basis": null,
       "observation_id": "title-fail",

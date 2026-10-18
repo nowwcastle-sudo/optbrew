@@ -1,10 +1,12 @@
 import assert from 'node:assert/strict';
 import { execFileSync } from 'node:child_process';
-import { mkdtemp, writeFile, rm, unlink } from 'node:fs/promises';
+import { mkdtemp, writeFile, readFile, rm, unlink } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
 import { scanSecrets, readGitScanInputs, scanTrackedAndStaged } from '../scripts/scan-secrets.mjs';
+import { requestAnthropic } from '../skills/optbrew/scripts/adapters/anthropic.mjs';
+import { collectCwv } from '../skills/optbrew/scripts/core/cwv.mjs';
 
 test('scanner reports four fake secret classes without values and ignores public SHA', async () => {
   const dir = await mkdtemp(path.join(os.tmpdir(), 'optbrew-secret-'));
@@ -51,4 +53,53 @@ test('Git scan reads staged bytes, even if working copy differs or is deleted', 
     assert.equal(result.checkedVersions, 4);
     assert.equal(result.findings.length, 0);
   } finally { await rm(dir, { recursive: true, force: true }); }
+});
+
+test('scan-secrets finds a Google API key pattern', async () => {
+  const dir = await mkdtemp(path.join(os.tmpdir(), 'optbrew-google-scan-'));
+  try {
+    // Assembled from fragments: the repository never contains a literal key.
+    const fake = ['AI', 'za', 'Sy', 'x'.repeat(33)].join('');
+    const nearMisses = ['AI' + 'za' + 'short', ['AI', 'za', 'x'.repeat(34)].join('')];
+    await writeFile(path.join(dir, 'hit.txt'), `key=${fake}\n${nearMisses.join('\n')}\n`);
+    const result = await scanSecrets({ root: dir, files: ['hit.txt'] });
+    assert.deepEqual(result.findings, [{ path: 'hit.txt', line: 1, rule: 'google_api_key' }]);
+    assert.equal(result.exitCode, 1);
+    assert.equal(JSON.stringify(result).includes(fake), false);
+  } finally { await rm(dir, { recursive: true, force: true }); }
+});
+
+test('endpoints.json has no key parameter', async () => {
+  const endpoints = JSON.parse(await readFile(new URL('../skills/optbrew/references/endpoints.json', import.meta.url), 'utf8'));
+  for (const [name, value] of Object.entries(endpoints)) {
+    assert.doesNotMatch(name, /key/i, name);
+    assert.doesNotMatch(value, /[?&;]key=|api[_-]?key/i, name);
+    if (/^https?:/.test(value)) assert.equal(new URL(value).searchParams.has('key'), false, name);
+  }
+});
+
+test('requestAnthropic does not call transport when env has no key', async () => {
+  let calls = 0;
+  const transport = async () => { calls++; throw new Error('transport must not be called'); };
+  const context = { run_id: 'test', cost_decision: { approval_ref: 'approved/test', providers: { anthropic: { upper_bounds: [{ unit: 'tokens', amount: 1 }] } } } };
+  for (const env of [{}, { ANTHROPIC_API_KEY: '' }]) {
+    const result = await requestAnthropic({ context, request: { model: 'claude-sonnet-5-5', max_tokens: 1, messages: [{ role: 'user', content: 'x' }] }, env, transport, ledgerPath: 'unused-ledger.json' });
+    assert.equal(result.valid, false);
+    assert.equal(result.error, 'api_key_missing');
+  }
+  assert.equal(calls, 0);
+});
+
+test('collectCwv without a key never adds a key parameter', async () => {
+  const urls = [];
+  const store = { write: async () => ({ ref: 'cwv.json', sha256: '0' }), append: async () => {} };
+  const headers = [];
+  const fetchFn = async (url, init) => { urls.push(url); headers.push(init.headers); return { status: 200, text: async () => '{}' }; };
+  for (const key of [null, undefined, '']) await collectCwv({ origin: 'https://example.test', key, fetchFn, store });
+  assert.equal(urls.length, 3);
+  for (const sent of headers) assert.deepEqual(Object.keys(sent), []);
+  for (const url of urls) {
+    assert.equal(new URL(url).searchParams.has('key'), false, url);
+    assert.doesNotMatch(url, /key/i, url);
+  }
 });

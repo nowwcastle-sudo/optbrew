@@ -11,6 +11,7 @@ import { normalizeImport } from '../skills/optbrew/scripts/adapters/imports.mjs'
 import { measurePanel } from '../skills/optbrew/scripts/core/metrics.mjs';
 import { freezeProtocol } from '../skills/optbrew/scripts/core/protocol.mjs';
 import { compare } from '../skills/optbrew/scripts/core/compare.mjs';
+import { headlineOf } from './support/compose.mjs';
 
 const fixture = () => JSON.parse(readFileSync(new URL('./fixtures/reports/remote-only.json', import.meta.url)));
 const sha = text => createHash('sha256').update(text).digest('hex');
@@ -44,7 +45,7 @@ function addChange(run, id, { environment = 'local', status = 'passed', deployed
     path: 'site/page.html', after_hash: receiptHash, environment, target: 'example.com',
     checks: [{ id: 'raw-response', status: 'passed', observed: 'file hash checked',
       evidence_ref: `${id}-after.txt`, after_hash: sha(after) }], ...(deployment ? { deployment } : {}) }, 'verification');
-  run.packet.changes.push({ schema_version: '1.0.0', change_id: id, finding_ids: ['module:a'],
+  run.packet.changes.push({ schema_version: '2.0.0', change_id: id, finding_ids: ['module:a'], analysis: { tools: [], queries: [], self_analysis: true },
     environment, path: 'site/page.html', before_hash: sha(before), after_hash: sha(after),
     backup_ref: `${id}-before.txt`, evidence_ref: `${id}-after.txt`,
     verification: { status, deployed, evidence_ref: `${id}-verify.json` } });
@@ -63,10 +64,16 @@ function collectedArtifact(run, prefix, ref, extra = {}) {
 }
 /** The collector also plans a document-title unit for a selected HTML page; a present title replays as unknown. */
 function titleObservation(ref) {
-  return { schema_version: '1.0.0', observation_id: 'collector-title', check_id: 'document-title', family_id: 'document-title',
+  return { schema_version: '2.0.0', observation_id: 'collector-title', check_id: 'document-title', family_id: 'document-title',
     unit_key: 'document-title|https://example.com/', state: 'unknown', q: null, partial_basis: null,
     reason: 'Raw HTML has a title; uniqueness and descriptiveness are not established', evaluator_type: 'code',
+    measurement: { title: 'Example', audited_pages: 1, site_name_only: true, generic_word_only: false },
     source_ref: 'optbrew:collector', evidence_ref: ref };
+}
+/** Record in the hashed run context that the phase was audited, as the audit flow does; the packet then needs its snapshot. */
+function markAudited(run) {
+  for (const context of [run.packet.run_context, run.packet.baseline.input.run_context]) context.audited = true;
+  run.rewrite('context.json', `${JSON.stringify(run.packet.run_context, null, 2)}\n`);
 }
 /**
  * Hand-built audit evidence for the fixture's three selected pages: the home page is fetched (when `ref` is given) and
@@ -74,6 +81,7 @@ function titleObservation(ref) {
  * observations all agree the way the audit writes them.
  */
 function handAudit(run, { prefix, collectionRef, ref = null, homeError = 'fetch_failed' }) {
+  markAudited(run);
   const urls = run.packet.run_context.protocol.page_types.flatMap(type => type.urls).map(x => x.normalized);
   const artifacts = [], entries = [], raw = [], responses = [], failures = [], observations = [];
   for (const [index, url] of urls.entries()) {
@@ -82,6 +90,12 @@ function handAudit(run, { prefix, collectionRef, ref = null, homeError = 'fetch_
       artifacts.push(bound.artifact); responses.push(bound.response);
       entries.push({ url, requests: 1, outcome: 'response', skipped_reason: null, error: null });
       raw.push({ normalized_url: url, evidence_ref: ref, content_hash: run.packet.evidence_index.find(x => x.ref === ref).sha256 });
+      // The one collected page is neither listed nor linked, and one page cannot prove an orphan: discovery says why it is unknown.
+      if (run.packet.run_context.protocol.families.some(x => x.applicable && x.family_id === 'discovery'))
+        observations.push({ schema_version: '2.0.0', observation_id: 'discovery-0', check_id: 'discovery', family_id: 'discovery', unit_key: `discovery|${url}`,
+          state: 'unknown', q: null, partial_basis: null, reason: 'Not in a read sitemap and not linked from a collected page, but the evidence cannot show that nothing else leads to it',
+          evaluator_type: 'code', source_ref: 'optbrew:collector', evidence_ref: ref,
+          measurement: { crawl_complete: true, sitemap_index_unread: false, script_gap: false, collected_pages: 1 } });
       continue;
     }
     const error = index === 0 ? homeError : 'fetch_failed';
@@ -94,10 +108,17 @@ function handAudit(run, { prefix, collectionRef, ref = null, homeError = 'fetch_
       evidence_ref: collectionRef, headers: {}, header_lines: [], redirect_chain: [], unanswered: 1, failure_ref: failureRef, capability: 'none', raw_html_ref: null });
     entries.push({ url, requests: 1, outcome: 'error', skipped_reason: null, error });
     raw.push({ normalized_url: url, evidence_ref: collectionRef, content_hash: null });
-    observations.push({ schema_version: '1.0.0', observation_id: `failed-${index}`, check_id: 'fetch-response', family_id: 'fetch-response',
+    observations.push({ schema_version: '2.0.0', observation_id: `failed-${index}`, check_id: 'fetch-response', family_id: 'fetch-response',
       unit_key: `fetch-response|${url}`, state: 'unknown', q: null, partial_basis: null, reason: 'Request did not finish',
       evaluator_type: 'code', source_ref: 'optbrew:collector', evidence_ref: collectionRef });
   }
+  // The field CWV families judged, as the audit does with no field data: unknown, pointing at a collected response of the origin.
+  const planned = run.packet.run_context.protocol.families.filter(x => x.applicable).map(x => x.family_id);
+  for (const origin of new Set(urls.map(url => new URL(url).origin)))
+    for (const family_id of ['lcp-field', 'inp-field', 'cls-field'].filter(id => planned.includes(id)))
+      observations.push({ schema_version: '2.0.0', observation_id: `cwv-${family_id}`, check_id: family_id, family_id, unit_key: `${family_id}|${origin}`,
+        state: 'unknown', q: null, partial_basis: null, reason: 'field_data_unavailable', evaluator_type: 'code', source_ref: 'optbrew:collector',
+        evidence_ref: artifacts.find(artifact => new URL(artifact.normalized_url).origin === origin).evidence_ref });
   addEvidence(run, prefix + '-ledger.json', { entries, limit: 50 }, 'record', 'optbrew:collector');
   const collection = { artifacts, skipped: [], request_count: entries.length, evaluated_count: entries.length, limit_reached: false };
   return { collection, raw, responses, failures, observations, auditFields: { ledger_ref: prefix + '-ledger.json', modules: ['naver-searchadvisor'], raw, responses, failures } };
@@ -243,10 +264,10 @@ test('report recomputes raw scores and keeps remote-only, synthetic and missing 
   assert.equal(Math.round(1000 * seo.M / seo.A) / 10, 5.8);
   assert.deepEqual(seo.missing_bounds, [2.9, 97.1]);
   assert.equal(json.comparison.status, 'no_after');
-  assert.match(markdown, /Synthetic example/);
-  assert.match(markdown, /proposed_only/);
+  assert.match(markdown, /예시 보고서/);
+  assert.match(markdown, /제안만 함/);
   assert.match(markdown, /not_connected/);
-  for (const header of ['Score', 'Remediation', 'Actual outcomes', 'Remaining work']) assert.match(markdown, new RegExp(header));
+  for (const header of ['먼저 고칠 것', '얼마나 확인했나', '아직 비어 있는 곳', '남은 일', '실제 결과', '실행 조건']) assert.match(markdown, new RegExp(header));
   assert.match(markdown, /Unexpected \\\| noindex/);
 });
 
@@ -302,10 +323,15 @@ test('unknown billing and observed overrun remain visible alongside host policy'
     run.rewrite('cost-ledger.json', `${JSON.stringify(run.packet.costs, null, 2)}\n`);
     const { json, markdown } = buildReport(run.packet);
     assert.deepEqual(json.costs.settlements[1].actual, [{ unit: 'tokens', amount: 1000200 }]);
-    assert.match(markdown, /anthropic: unknown/);
-    assert.match(markdown, /anthropic: overrun/);
-    assert.match(markdown, /host_policy/);
-    assert.match(markdown, /text-only/);
+    assert.match(markdown, /anthropic: 비용 상태가 '알 수 없음'입니다/);
+    assert.match(markdown, /anthropic: 비용 상태가 '한도 초과'입니다/);
+    assert.match(markdown, /에이전트 프로그램의 설정/);
+    assert.match(markdown, /글자만 처리합니다/);
+    // The English sentences stay in the checked data.
+    assert.match(json.cost_issues.join('\n'), /anthropic: unknown/);
+    assert.match(json.cost_issues.join('\n'), /anthropic: overrun/);
+    assert.match(json.cost_issues.join('\n'), /host_policy/);
+    assert.match(json.cost_issues.join('\n'), /text-only/);
   } finally { rmSync(run.dir, { recursive: true, force: true }); }
 });
 
@@ -325,7 +351,7 @@ test('native export is replayed, with ambiguous zero preserved as missing', () =
       source_ref: 'synthetic-export', run_id: 'synthetic-report' });
     const { json } = buildReport(run.packet);
     assert.equal(json.metrics[0].value_state, 'zero_or_missing');
-    assert.match(json.tables.actual_outcomes[0].at(-1), /zero_or_missing/);
+    assert.match(json.tables.actual_outcomes[0].at(-1), /0이거나 빠짐/);
     run.packet.metrics[0].filters.property = 'other.example';
     assert.throws(() => buildReport(run.packet), /metric differs/);
   } finally { rmSync(run.dir, { recursive: true, force: true }); }
@@ -352,7 +378,7 @@ test('two complete matched native windows report raw before, after and differenc
     }
     const row = buildReport(run.packet).json.tables.actual_outcomes[0];
     assert.deepEqual(row.slice(3, 6), [2, 5, 3]);
-    assert.match(row.at(-1), /comparable_windows/);
+    assert.match(row.at(-1), /비교할 수 있는 기간/);
     run.packet.metrics[1].filters.country = 'US';
     assert.throws(() => buildReport(run.packet), /metric differs/);
   } finally { rmSync(run.dir, { recursive: true, force: true }); }
@@ -374,6 +400,8 @@ test('collector observations bind to the owning audit index and raw content hash
   try {
     for (const obs of run.packet.baseline.input.observations) obs.source_ref = 'optbrew:collector';
     run.packet.baseline.input.observations.find(x => x.check_id === 'index-policy').reason = 'Raw response blocks indexing for the target engine';
+    // The Korean key is part of what replay compares.
+    run.packet.baseline.input.observations.find(x => x.check_id === 'index-policy').problem_messages = [{ message_key: 'index-policy.noindex', message_values: {} }];
     run.packet.baseline.input.observations.push(titleObservation('raw.html'));
     run.packet.evidence_index.find(x => x.ref === 'raw.html').source_ref = 'optbrew:collector';
     const hand = handAudit(run, { prefix: 'bind', collectionRef: 'collection.json', ref: 'raw.html' });
@@ -422,8 +450,8 @@ test('final review I2/N5: neither a byte-hash receipt nor an agent-sourced pass 
     addChange(hashOnly, 'c1');
     const report = buildReport(hashOnly.packet).json;
     assert.equal(report.findings[0].status, 'modified_unverified');
-    assert.equal(report.remaining.filter(x => x.reason === 'production_deployment_pending').length, 0);
-    assert.ok(report.remaining.some(x => x.reason === 'modified_unverified'));
+    assert.equal(report.follow_ups.filter(x => x.reason === 'production_deployment_pending').length, 0);
+    assert.ok(report.follow_ups.some(x => x.reason === 'modified_unverified'));
   } finally { rmSync(hashOnly.dir, { recursive: true, force: true }); }
   // A passing after observation with every label and binding is still only a statement unless the collector produced it.
   const statement = localRun();
@@ -449,7 +477,7 @@ test('a local passing receipt stays local and a deployment claim needs its own r
   } finally { rmSync(run.dir, { recursive: true, force: true }); }
 });
 
-test('CLI writes both formats with readback', () => {
+test('CLI writes all three formats with readback (T22 N4: the replay writes report.html as a run does)', () => {
   const dir = mkdtempSync(path.join(os.tmpdir(), 'optbrew report '));
   try {
     const input = path.resolve('tests/fixtures/reports/remote-only.json');
@@ -458,7 +486,11 @@ test('CLI writes both formats with readback', () => {
     const run = spawnSync(process.execPath, [cli, 'report', '--input', input, '--output-dir', out], { encoding: 'utf8' });
     assert.equal(run.status, 0, run.stderr);
     assert.deepEqual(JSON.parse(readFileSync(path.join(out, 'report.json'))).baseline.scores, score(fixture().baseline.input));
-    assert.match(readFileSync(path.join(out, 'report.md'), 'utf8'), /Synthetic example/);
+    assert.match(readFileSync(path.join(out, 'report.md'), 'utf8'), /예시 보고서/);
+    const page = readFileSync(path.join(out, 'report.html'), 'utf8');
+    assert.match(page, /^<!doctype html>/);
+    assert.match(page, /예시 보고서/, 'a synthetic packet carries its banner into the page');
+    assert.deepEqual(readdirSync(out).sort(), ['report.html', 'report.json', 'report.md']);
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
@@ -474,10 +506,19 @@ test('review P1-1: production status requires same changed bytes, target and aft
   const run = productionRun();
   try {
     const receipt = JSON.parse(readFileSync(path.join(run.dir, 'c1-verify.json'), 'utf8'));
-    assert.equal(buildReport(run.packet).json.findings[0].status, 'verified_production');
+    assert.equal(buildReport(run.packet).json.findings[0].status, 'modified_unverified', 'no audit snapshot: capped');
     receipt.observation_evidence_ref = 'raw.html';
     run.rewrite('c1-verify.json', `${JSON.stringify(receipt)}\n`);
     assert.throws(() => buildReport(run.packet), /after observation evidence/);
+  } finally { rmSync(run.dir, { recursive: true, force: true }); }
+});
+
+test('the after-phase context must be indexed as a context record, as the baseline context is', () => {
+  const run = productionRun();
+  try {
+    assert.ok(buildReport(run.packet).json.after, 'a context record is accepted');
+    run.packet.evidence_index.find(x => x.ref === 'after-context.json').kind = 'record';
+    assert.throws(() => buildReport(run.packet), /after context evidence differs/);
   } finally { rmSync(run.dir, { recursive: true, force: true }); }
 });
 
@@ -487,7 +528,7 @@ test('review fix2: after target must match deployed target while same-target pro
     retargetAfter(sameTarget, { browser: 'Firefox' });
     const report = buildReport(sameTarget.packet).json;
     assert.equal(report.comparison.status, 'not_comparable');
-    assert.equal(report.findings[0].status, 'verified_production');
+    assert.equal(report.findings[0].status, 'modified_unverified', 'no audit snapshot: capped');
   } finally { rmSync(sameTarget.dir, { recursive: true, force: true }); }
   const otherTarget = productionRun();
   try {
@@ -581,7 +622,7 @@ test('review P1-4: evaluated facts and citations require all four indexed source
   const healthy = completePanelRun();
   try {
     assert.equal(buildReport(healthy.packet).json.metrics[3].value, 1);
-    assert.match(buildReport(healthy.packet).markdown, /provider response origin/);
+    assert.match(buildReport(healthy.packet).markdown, /검색 서비스가 돌려준 답의 출처/);
   } finally { rmSync(healthy.dir, { recursive: true, force: true }); }
   for (const [missing, pattern] of [
     ['facts.json', /evidence\/source link|fact list/],
@@ -629,7 +670,7 @@ test('review P1-5: URL and unit exclusions require matching approved decision re
   try {
     const unit_key = 'document-title|https://example.com/about';
     const decision = { condition: 'not_html', reason: 'synthetic non-HTML response', evidence_ref: 'unit-decision.json' };
-    unitRun.packet.baseline.input.observations.push({ schema_version: '1.0.0', observation_id: 'unit-na',
+    unitRun.packet.baseline.input.observations.push({ schema_version: '2.0.0', observation_id: 'unit-na',
       check_id: 'document-title', family_id: 'document-title', unit_key, state: 'not_applicable', q: null,
       partial_basis: null, reason: 'not HTML', evaluator_type: 'human', source_ref: 'synthetic',
       evidence_ref: 'unit-decision.json', applicability_decision: decision });
@@ -657,7 +698,7 @@ test('review P1-6: definition, cohort and future incomplete windows produce no o
         definition: variant === 'definition' ? 'B' : 'A',
         sample_selection: { kind: 'all', cohort: variant === 'cohort' ? 'B' : 'A' },
         last_complete_date: variant === 'lag' ? '2026-09-20' : '2026-10-13' });
-      assert.ok(buildReport(run.packet).json.tables.actual_outcomes.every(row => row[5] === 'unknown'), variant);
+      assert.ok(buildReport(run.packet).json.tables.actual_outcomes.every(row => row[5] === '알 수 없음'), variant);
     } finally { rmSync(run.dir, { recursive: true, force: true }); }
   }
 });
@@ -667,6 +708,9 @@ test('review P2-7: bodyless timeout remains a reportable unknown', () => {
   try {
     const fetch = run.packet.baseline.input.observations[0];
     Object.assign(fetch, { state: 'unknown', q: null, reason: 'Request did not finish', source_ref: 'optbrew:collector', evidence_ref: 'collection.json' });
+    // Next to an audit snapshot a code-judged family is the collector's alone, so the fixture's synthetic index-policy verdict and its finding go.
+    run.packet.baseline.input.observations = run.packet.baseline.input.observations.filter(x => x.source_ref === 'optbrew:collector');
+    run.packet.findings = [];
     const hand = handAudit(run, { prefix: 'p27', collectionRef: 'collection.json', homeError: 'timeout' });
     run.packet.baseline.input.observations.push(...hand.observations);
     run.packet.baseline.scores = score(run.packet.baseline.input);
@@ -685,6 +729,8 @@ test('review P2-8: before and after collector snapshots use their own evidence r
   try {
     for (const obs of run.packet.baseline.input.observations) obs.source_ref = 'optbrew:collector';
     run.packet.baseline.input.observations.find(x => x.check_id === 'index-policy').reason = 'Raw response blocks indexing for the target engine';
+    // The Korean key is part of what replay compares.
+    run.packet.baseline.input.observations.find(x => x.check_id === 'index-policy').problem_messages = [{ message_key: 'index-policy.noindex', message_values: {} }];
     run.packet.baseline.input.observations.push(titleObservation('raw.html'));
     run.packet.evidence_index.find(x => x.ref === 'raw.html').source_ref = 'optbrew:collector';
     const hands = {};
@@ -696,6 +742,8 @@ test('review P2-8: before and after collector snapshots use their own evidence r
     run.packet.baseline.scores = score(run.packet.baseline.input);
     const afterInput = structuredClone(run.packet.baseline.input);
     for (const obs of afterInput.observations) obs.evidence_ref = obs.evidence_ref === 'b-collection.json' ? 'a-collection.json' : 'after.html';
+    // The after page has its own title, which the measurement records.
+    afterInput.observations.find(x => x.check_id === 'document-title').measurement = { title: 'After', audited_pages: 1, site_name_only: false, generic_word_only: false };
     run.packet.after = { input: afterInput, scores: score(afterInput) };
     run.packet.comparison = compare(run.packet.baseline.input, afterInput);
     for (const [phase] of [['baseline'], ['after']]) {
@@ -756,10 +804,10 @@ test('final review M1: a single measured window keeps its raw value and state wi
     setNativeIdentity(run);
     addNative(run, 'only-export.json', { start: '2026-09-01', end: '2026-09-28', value: 7 });
     const row = buildReport(run.packet).json.tables.actual_outcomes[0];
-    assert.deepEqual(row.slice(3, 6), [7, 'unknown', 'unknown']);
-    assert.match(row.at(-1), /not_comparable_or_missing_window; measured/);
+    assert.deepEqual(row.slice(3, 6), [7, '알 수 없음', '알 수 없음']);
+    assert.match(row.at(-1), /비교할 수 없거나 기간이 빠짐; 측정됨/);
     const markdown = buildReport(run.packet).markdown;
-    assert.match(markdown, /\| 7 \| unknown \| unknown \|/);
+    assert.match(markdown, /\| 7 \| 알 수 없음 \| 알 수 없음 \|/);
   } finally { rmSync(run.dir, { recursive: true, force: true }); }
 });
 
@@ -767,7 +815,7 @@ test('final review I9: a verified duplicate-title verdict over a present title i
   const run = copyRun();
   try {
     const unit_key = 'document-title|https://example.com/about';
-    run.packet.baseline.input.observations.push({ schema_version: '1.0.0', observation_id: 'duplicate-title',
+    run.packet.baseline.input.observations.push({ schema_version: '2.0.0', observation_id: 'duplicate-title',
       check_id: 'document-title', family_id: 'document-title', unit_key, state: 'fail', q: 0, partial_basis: null,
       reason: 'Title duplicates https://example.com/ (reviewed uniqueness evidence)', evaluator_type: 'human',
       source_ref: 'synthetic', evidence_ref: 'raw.html' });
@@ -796,21 +844,51 @@ test('final review M2: the CLI refuses an invalid packet before creating any out
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
-test('final review round 3: a production resolution shows the evaluator type of its resolving observation', () => {
-  for (const evaluator of ['code', 'host_model']) {
+test('a no-audit packet is never verified', () => {
+  for (const evaluator of ['code', 'human']) {
     const run = productionRun();
     try {
-      const observation = run.packet.after.input.observations.find(x => x.check_id === 'index-policy');
-      observation.evaluator_type = evaluator;
+      run.packet.after.input.observations.find(x => x.check_id === 'index-policy').evaluator_type = evaluator;
       run.packet.after.scores = score(run.packet.after.input);
       const report = buildReport(run.packet);
-      assert.equal(report.json.findings[0].status, 'verified_production');
-      assert.deepEqual(report.json.findings[0].resolution, { observation_id: observation.observation_id,
-        evaluator_type: evaluator, source_ref: observation.source_ref });
-      assert.ok(report.json.tables.remediation[0].at(-1).startsWith(`verified_production (resolved by ${evaluator} observation`));
-      assert.ok(report.markdown.includes(`resolved by ${evaluator} observation`));
+      assert.equal(report.json.findings[0].status, 'modified_unverified');
+      assert.equal(report.json.findings[0].resolution, null);
+      for (const result of [...report.json.baseline.scores, ...report.json.after.scores]) assert.notEqual(result.readiness_status, 'measured', 'unaudited data is never measured');
     } finally { rmSync(run.dir, { recursive: true, force: true }); }
   }
+  const claimed = productionRun();
+  try {
+    // Claiming the collector's source without an audit snapshot is refused, not accepted as unverified input.
+    const observation = claimed.packet.after.input.observations.find(x => x.check_id === 'index-policy');
+    observation.source_ref = 'optbrew:collector';
+    claimed.packet.evidence_index.find(x => x.ref === observation.evidence_ref).source_ref = 'optbrew:collector';
+    claimed.packet.after.scores = score(claimed.packet.after.input);
+    assert.throws(() => buildReport(claimed.packet), /needs the after audit snapshot|require their own audit snapshot/);
+  } finally { rmSync(claimed.dir, { recursive: true, force: true }); }
+});
+
+test('a packet whose snapshots differ from the recorded audit phases is refused', () => {
+  const extra = productionRun();
+  try {
+    extra.packet.audit_snapshots = [{ phase: 'after', audit_ref: 'after-response.html', context_ref: 'after-context.json' }];
+    assert.throws(() => buildReport(extra.packet), /after audit snapshot differs from the audit recorded in its run context/);
+  } finally { rmSync(extra.dir, { recursive: true, force: true }); }
+  const marked = copyRun();
+  try {
+    markAudited(marked);
+    assert.throws(() => buildReport(marked.packet), /baseline audit snapshot differs from the audit recorded in its run context/, 'audited context without a snapshot');
+  } finally { rmSync(marked.dir, { recursive: true, force: true }); }
+});
+
+test('final review round 3: a model cannot stand in for a code-judged family', () => {
+  const forged = productionRun();
+  try {
+    const observation = forged.packet.after.input.observations.find(x => x.check_id === 'index-policy');
+    Object.assign(observation, { evaluator_type: 'host_model', source_ref: 'optbrew:model-judgment',
+      evidence_span: [{ evidence_sha256: forged.packet.evidence_index.find(x => x.ref === observation.evidence_ref).sha256, start: 0, end: 6 }] });
+    forged.packet.after.scores = score(forged.packet.after.input);
+    assert.throws(() => buildReport(forged.packet), /index-policy is judged by code/, 'a model cannot stand in for a code-judged family');
+  } finally { rmSync(forged.dir, { recursive: true, force: true }); }
   const pending = copyRun();
   try {
     addChange(pending, 'c1');
@@ -819,30 +897,28 @@ test('final review round 3: a production resolution shows the evaluator type of 
 });
 
 test('0.1.2 fix 2: a measured score is never the headline below 80% coverage', async () => {
-  const report = await import('../skills/optbrew/scripts/core/report.mjs');
   const synthetic = (coverage, score, extra = {}) => ({ profile: 'SEO', score, coverage, A: 100, M: coverage, N: score * coverage / 100,
     missing_bounds: [10.1, 99.9], readiness_status: 'provisional', ...extra });
-  assert.equal(report.COVERAGE_THRESHOLD, 80);
-  assert.deepEqual(report.scoreHeadline(synthetic(79.9, 100)), { profile: 'SEO', status: 'insufficient_coverage', headline_score: null,
-    measured_subset_score: 100, coverage: 79.9, coverage_exact: 79.9, coverage_threshold: 80, unresolved_core: 0, missing_bounds: [10.1, 99.9], readiness_status: 'provisional' });
-  assert.equal(report.scoreHeadline(synthetic(80, 91.2)).status, 'sufficient');
-  assert.equal(report.scoreHeadline(synthetic(80, 91.2)).headline_score, 91.2);
-  assert.equal(report.scoreHeadline({ profile: 'SEO', score: null, coverage: 0, A: 100, M: 0, missing_bounds: [0, 100], readiness_status: 'unverified' }).status, 'insufficient_coverage');
+  assert.deepEqual(headlineOf(synthetic(79.9, 100)), { profile: 'SEO', status: 'insufficient_coverage', headline_score: null,
+    measured_subset_score: 100, coverage: 79.9, coverage_exact: 79.9, coverage_threshold: 80, unresolved_core: 0, missing_bounds: [10.1, 99.9], readiness_status: 'provisional', audited: true });
+  assert.equal(headlineOf(synthetic(80, 91.2)).status, 'sufficient');
+  assert.equal(headlineOf(synthetic(80, 91.2)).headline_score, 91.2);
+  assert.equal(headlineOf({ profile: 'SEO', score: null, coverage: 0, A: 100, M: 0, missing_bounds: [0, 100], readiness_status: 'unverified' }).status, 'insufficient_coverage');
 
   const packet = fixture(); packet.evidence_root = path.resolve('tests/fixtures/reports');
   const { json, markdown } = buildReport(packet);
   const seo = json.baseline.scores.find(x => x.profile === 'SEO');
-  const headline = json.headline.find(x => x.profile === 'SEO');
+  const headline = json.composed.completeness.find(x => x.profile === 'SEO').before.headline;
   assert.ok(seo.coverage < 80);
   assert.equal(headline.status, 'insufficient_coverage');
   assert.equal(headline.headline_score, null);
   assert.equal(headline.measured_subset_score, seo.score);
   assert.deepEqual(headline.missing_bounds, seo.missing_bounds);
-  assert.match(markdown, /Headline:/);
+  assert.match(markdown, /요약:/);
   const shown = Math.floor(headline.coverage_exact * 10 + 1e-9) / 10;
-  assert.match(markdown, new RegExp(`SEO: insufficient coverage \\(${shown}% of the applicable weight is measured; at least 80% is needed\\)`));
-  assert.match(markdown, new RegExp(`measured subset ${seo.score}`));
+  assert.match(markdown, new RegExp(`SEO: 확인 범위 부족 \\(적용 가중치의 ${shown}%만 확인했습니다. 점수를 내려면 80% 이상 필요합니다\\)`));
+  assert.match(markdown, new RegExp(`확인한 범위의 통과율 ${seo.score}`));
   const row = json.tables.score.find(x => x[0] === 'SEO');
-  assert.match(row[1], /^insufficient coverage \(measured subset/);
-  assert.match(row[1], new RegExp(`bounds ${seo.missing_bounds.join('–')}`));
+  assert.match(row[1], /^확인 범위 부족 \(확인한 범위의 통과율/);
+  assert.match(row[1], new RegExp(`점수 범위 ${seo.missing_bounds.join('–')}`));
 });

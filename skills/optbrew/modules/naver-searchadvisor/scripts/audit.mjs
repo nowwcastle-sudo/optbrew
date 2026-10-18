@@ -665,15 +665,15 @@ export function auditCollected({ artifact, html, robotsArtifact = null, engines 
   const openGraph = {};
   for (const t of markupMetas) if ((t.property || '').startsWith('og:')) openGraph[t.property.slice(3)] = t.content ?? '';
   for (const k of ['title', 'description', 'image', 'url', 'type'])
-    if (!openGraph[k]) markupFindings.push({ code: `no-og-${k}`, message: `og:${k} is missing` });
+    if (!openGraph[k]) markupFindings.push({ code: `no-og-${k}`, message: `og:${k} is missing`, values: { name: k } });
   if (!metaBy(markupMetas, 'name', 'description')[0]) markupFindings.push({ code: 'no-description', message: 'meta description is missing' });
   const canonical = markupLinks.find((l) => (l.rel || '').toLowerCase() === 'canonical')?.href ?? null;
   if (!canonical) markupFindings.push({ code: 'no-canonical', message: 'canonical link is missing' });
-  else if (!/^https?:\/\//i.test(canonical)) markupFindings.push({ code: 'canonical-relative', message: `canonical is relative: ${canonical}` });
+  else if (!/^https?:\/\//i.test(canonical)) markupFindings.push({ code: 'canonical-relative', message: `canonical is relative: ${canonical}`, values: { canonical } });
   // Three or more occurrences of one word in a title; two are common in legitimate "Page | Site" titles.
   const titleWords = (title || '').toLowerCase().match(/[가-힣a-z0-9]+/g) || [];
   const repeated = [...new Set(titleWords.filter((w) => w.length > 1 && titleWords.filter((x) => x === w).length >= 3))];
-  if (repeated.length) markupFindings.push({ code: 'title-keyword-repeat', message: `title repeats: ${repeated.join(', ')}` });
+  if (repeated.length) markupFindings.push({ code: 'title-keyword-repeat', message: `title repeats: ${repeated.join(', ')}`, values: { words: repeated.join(', ') } });
   if (!metaBy(markupMetas, 'name', 'viewport')[0]) markupFindings.push({ code: 'no-viewport', message: 'meta viewport is missing' });
   let parsedRobots = null;
   let yetiVerdict = null;
@@ -700,7 +700,7 @@ export function auditCollected({ artifact, html, robotsArtifact = null, engines 
       let target;
       try { target = new URL(resource, artifact.final_url); } catch { continue; }
       if (target.origin === url.origin && !robotsVerdict(parsedRobots, 'yeti', target.pathname + target.search).allowed)
-        markupFindings.push({ code: 'resource-blocked', message: `Yeti cannot fetch ${target.pathname}${target.search}` });
+        markupFindings.push({ code: 'resource-blocked', message: `Yeti cannot fetch ${target.pathname}${target.search}`, values: { path: `${target.pathname}${target.search}` } });
     }
   }
   return {

@@ -1,14 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, readFile, writeFile, mkdir } from 'node:fs/promises';
-import { tmpdir } from 'node:os';
+import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import path from 'node:path';
+import { tempDir } from './support/temp-dir.mjs';
 import { reserveCost, settleCost } from '../skills/optbrew/scripts/core/cost-ledger.mjs';
 
 async function ledger() {
-  const dir = await mkdtemp(path.join(tmpdir(), 'optbrew-cost-'));
+  const dir = await tempDir('optbrew-cost-');
   const file = path.join(dir, 'ledger.json');
-  await writeFile(file, JSON.stringify({ schema_version: '1.0.0', run_id: 'test', budgets: [{ provider: 'anthropic', unit: 'credits', amount: 10 }], reservations: [], settlements: [], approval_ref: 'approved/test', source_ref: 'test' }));
+  await writeFile(file, JSON.stringify({ schema_version: '2.0.0', run_id: 'test', budgets: [{ provider: 'anthropic', unit: 'credits', amount: 10 }], reservations: [], settlements: [], approval_ref: 'approved/test', source_ref: 'test' }));
   return file;
 }
 const upperBounds = [{ unit: 'credits', amount: 6 }];

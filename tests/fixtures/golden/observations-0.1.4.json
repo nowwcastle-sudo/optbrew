@@ -1,0 +1,3292 @@
+[
+  {
+    "check_id": "canonical-consistency",
+    "family_id": "canonical-consistency",
+    "unit_key": "canonical-consistency|http://127.0.0.1:PORT/",
+    "state": "not_applicable",
+    "q": null,
+    "partial_basis": null,
+    "reason": "The page declares no canonical URL and does not redirect",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/239b66f2f58e6d41d966cb7da2240e8415189925030bd5b8a3ed957fb3717d77.html",
+    "measurement": {
+      "redirect_hops": 0,
+      "canonical_target": null,
+      "canonical_status": null
+    },
+    "applicability_decision": {
+      "condition": "no_representative_url_policy",
+      "reason": "The page declares no canonical URL and does not redirect",
+      "evidence_ref": "<out>/evidence/239b66f2f58e6d41d966cb7da2240e8415189925030bd5b8a3ed957fb3717d77.html"
+    },
+    "site": "after"
+  },
+  {
+    "check_id": "cls-field",
+    "family_id": "cls-field",
+    "unit_key": "cls-field|http://127.0.0.1:PORT",
+    "state": "unknown",
+    "q": null,
+    "partial_basis": null,
+    "reason": "field_data_unavailable",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/239b66f2f58e6d41d966cb7da2240e8415189925030bd5b8a3ed957fb3717d77.html",
+    "site": "after"
+  },
+  {
+    "check_id": "discovery",
+    "family_id": "discovery",
+    "unit_key": "discovery|http://127.0.0.1:PORT/",
+    "state": "unknown",
+    "q": null,
+    "partial_basis": null,
+    "reason": "Not in a read sitemap and not linked from a collected page, but the evidence cannot show that nothing else leads to it",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/239b66f2f58e6d41d966cb7da2240e8415189925030bd5b8a3ed957fb3717d77.html",
+    "measurement": {
+      "crawl_complete": true,
+      "sitemap_index_unread": false,
+      "script_gap": false,
+      "collected_pages": 1
+    },
+    "site": "after"
+  },
+  {
+    "check_id": "document-title",
+    "family_id": "document-title",
+    "unit_key": "document-title|http://127.0.0.1:PORT/",
+    "state": "unknown",
+    "q": null,
+    "partial_basis": null,
+    "reason": "Raw HTML has a title; uniqueness and descriptiveness are not established",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/239b66f2f58e6d41d966cb7da2240e8415189925030bd5b8a3ed957fb3717d77.html",
+    "measurement": {
+      "title": "Example service",
+      "audited_pages": 1,
+      "site_name_only": false,
+      "generic_word_only": false
+    },
+    "site": "after"
+  },
+  {
+    "check_id": "fact-consistency",
+    "family_id": "fact-consistency",
+    "unit_key": "fact-consistency|http://127.0.0.1:PORT/",
+    "state": "not_applicable",
+    "q": null,
+    "partial_basis": null,
+    "reason": "The page has no labelled, marked-up or tel: contact fact (name, phone number, address, founding year) that this check can compare",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/239b66f2f58e6d41d966cb7da2240e8415189925030bd5b8a3ed957fb3717d77.html",
+    "measurement": {
+      "facts_found": 0
+    },
+    "applicability_decision": {
+      "condition": "no_evaluable_facts",
+      "reason": "The page has no labelled, marked-up or tel: contact fact (name, phone number, address, founding year) that this check can compare",
+      "evidence_ref": "<out>/evidence/239b66f2f58e6d41d966cb7da2240e8415189925030bd5b8a3ed957fb3717d77.html"
+    },
+    "site": "after"
+  },
+  {
+    "check_id": "fetch-response",
+    "family_id": "fetch-response",
+    "unit_key": "fetch-response|http://127.0.0.1:PORT/",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "HTTP 200",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/239b66f2f58e6d41d966cb7da2240e8415189925030bd5b8a3ed957fb3717d77.html",
+    "site": "after"
+  },
+  {
+    "check_id": "index-policy",
+    "family_id": "index-policy",
+    "unit_key": "index-policy|http://127.0.0.1:PORT/",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "Raw response has no applicable noindex directive",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/239b66f2f58e6d41d966cb7da2240e8415189925030bd5b8a3ed957fb3717d77.html",
+    "site": "after"
+  },
+  {
+    "check_id": "inp-field",
+    "family_id": "inp-field",
+    "unit_key": "inp-field|http://127.0.0.1:PORT",
+    "state": "unknown",
+    "q": null,
+    "partial_basis": null,
+    "reason": "field_data_unavailable",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/239b66f2f58e6d41d966cb7da2240e8415189925030bd5b8a3ed957fb3717d77.html",
+    "site": "after"
+  },
+  {
+    "check_id": "internal-navigation",
+    "family_id": "internal-navigation",
+    "unit_key": "internal-navigation|http://127.0.0.1:PORT/",
+    "state": "not_applicable",
+    "q": null,
+    "partial_basis": null,
+    "reason": "No collected page links to another page of the site",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/239b66f2f58e6d41d966cb7da2240e8415189925030bd5b8a3ed957fb3717d77.html",
+    "applicability_decision": {
+      "condition": "not_link_based",
+      "reason": "No collected page links to another page of the site",
+      "evidence_ref": "<out>/evidence/239b66f2f58e6d41d966cb7da2240e8415189925030bd5b8a3ed957fb3717d77.html"
+    },
+    "site": "after"
+  },
+  {
+    "check_id": "lcp-field",
+    "family_id": "lcp-field",
+    "unit_key": "lcp-field|http://127.0.0.1:PORT",
+    "state": "unknown",
+    "q": null,
+    "partial_basis": null,
+    "reason": "field_data_unavailable",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/239b66f2f58e6d41d966cb7da2240e8415189925030bd5b8a3ed957fb3717d77.html",
+    "site": "after"
+  },
+  {
+    "check_id": "locale-links",
+    "family_id": "locale-links",
+    "unit_key": "locale-links|http://127.0.0.1:PORT/",
+    "state": "not_applicable",
+    "q": null,
+    "partial_basis": null,
+    "reason": "No hreflang link on this page and no collected page lists it as an alternate",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/239b66f2f58e6d41d966cb7da2240e8415189925030bd5b8a3ed957fb3717d77.html",
+    "applicability_decision": {
+      "condition": "single_locale",
+      "reason": "No hreflang link on this page and no collected page lists it as an alternate",
+      "evidence_ref": "<out>/evidence/239b66f2f58e6d41d966cb7da2240e8415189925030bd5b8a3ed957fb3717d77.html"
+    },
+    "site": "after"
+  },
+  {
+    "check_id": "naver-markup",
+    "family_id": "naver-markup",
+    "unit_key": "naver-markup|naver|http://127.0.0.1:PORT/",
+    "state": "fail",
+    "q": 0,
+    "partial_basis": null,
+    "reason": "og:title is missing; og:description is missing; og:image is missing; og:url is missing; og:type is missing; meta description is missing; canonical link is missing; meta viewport is missing",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/239b66f2f58e6d41d966cb7da2240e8415189925030bd5b8a3ed957fb3717d77.html",
+    "measurement": {
+      "problems": [
+        "og:title is missing",
+        "og:description is missing",
+        "og:image is missing",
+        "og:url is missing",
+        "og:type is missing",
+        "meta description is missing",
+        "canonical link is missing",
+        "meta viewport is missing"
+      ]
+    },
+    "problem_messages": [
+      {
+        "message_key": "naver-markup.no-og",
+        "message_values": {
+          "name": "title"
+        }
+      },
+      {
+        "message_key": "naver-markup.no-og",
+        "message_values": {
+          "name": "description"
+        }
+      },
+      {
+        "message_key": "naver-markup.no-og",
+        "message_values": {
+          "name": "image"
+        }
+      },
+      {
+        "message_key": "naver-markup.no-og",
+        "message_values": {
+          "name": "url"
+        }
+      },
+      {
+        "message_key": "naver-markup.no-og",
+        "message_values": {
+          "name": "type"
+        }
+      },
+      {
+        "message_key": "naver-markup.no-description",
+        "message_values": {}
+      },
+      {
+        "message_key": "naver-markup.no-canonical",
+        "message_values": {}
+      },
+      {
+        "message_key": "naver-markup.no-viewport",
+        "message_values": {}
+      }
+    ],
+    "site": "after"
+  },
+  {
+    "check_id": "render-content",
+    "family_id": "render-content",
+    "unit_key": "render-content|http://127.0.0.1:PORT/",
+    "state": "unknown",
+    "q": null,
+    "partial_basis": null,
+    "reason": "chrome_missing",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/239b66f2f58e6d41d966cb7da2240e8415189925030bd5b8a3ed957fb3717d77.html",
+    "site": "after"
+  },
+  {
+    "check_id": "structured-data-truth",
+    "family_id": "structured-data-truth",
+    "unit_key": "structured-data-truth|http://127.0.0.1:PORT/",
+    "state": "not_applicable",
+    "q": null,
+    "partial_basis": null,
+    "reason": "The page has no JSON-LD, microdata or RDFa markup",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/239b66f2f58e6d41d966cb7da2240e8415189925030bd5b8a3ed957fb3717d77.html",
+    "measurement": {
+      "jsonld_blocks": 0
+    },
+    "applicability_decision": {
+      "condition": "markup_not_used_or_selected",
+      "reason": "The page has no JSON-LD, microdata or RDFa markup",
+      "evidence_ref": "<out>/evidence/239b66f2f58e6d41d966cb7da2240e8415189925030bd5b8a3ed957fb3717d77.html"
+    },
+    "site": "after"
+  },
+  {
+    "check_id": "canonical-consistency",
+    "family_id": "canonical-consistency",
+    "unit_key": "canonical-consistency|http://127.0.0.1:PORT/",
+    "state": "not_applicable",
+    "q": null,
+    "partial_basis": null,
+    "reason": "The page declares no canonical URL and does not redirect",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/c79271fb4d98447734a702cd72feb167ec5dd825e82817cfc672f24045e1d7a0.html",
+    "measurement": {
+      "redirect_hops": 0,
+      "canonical_target": null,
+      "canonical_status": null
+    },
+    "applicability_decision": {
+      "condition": "no_representative_url_policy",
+      "reason": "The page declares no canonical URL and does not redirect",
+      "evidence_ref": "<out>/evidence/c79271fb4d98447734a702cd72feb167ec5dd825e82817cfc672f24045e1d7a0.html"
+    },
+    "site": "before"
+  },
+  {
+    "check_id": "cls-field",
+    "family_id": "cls-field",
+    "unit_key": "cls-field|http://127.0.0.1:PORT",
+    "state": "unknown",
+    "q": null,
+    "partial_basis": null,
+    "reason": "field_data_unavailable",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/c79271fb4d98447734a702cd72feb167ec5dd825e82817cfc672f24045e1d7a0.html",
+    "site": "before"
+  },
+  {
+    "check_id": "discovery",
+    "family_id": "discovery",
+    "unit_key": "discovery|http://127.0.0.1:PORT/",
+    "state": "unknown",
+    "q": null,
+    "partial_basis": null,
+    "reason": "Not in a read sitemap and not linked from a collected page, but the evidence cannot show that nothing else leads to it",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/c79271fb4d98447734a702cd72feb167ec5dd825e82817cfc672f24045e1d7a0.html",
+    "measurement": {
+      "crawl_complete": true,
+      "sitemap_index_unread": false,
+      "script_gap": false,
+      "collected_pages": 1
+    },
+    "site": "before"
+  },
+  {
+    "check_id": "document-title",
+    "family_id": "document-title",
+    "unit_key": "document-title|http://127.0.0.1:PORT/",
+    "state": "fail",
+    "q": 0,
+    "partial_basis": null,
+    "reason": "Raw HTML has no title",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/c79271fb4d98447734a702cd72feb167ec5dd825e82817cfc672f24045e1d7a0.html",
+    "problem_messages": [
+      {
+        "message_key": "document-title.missing",
+        "message_values": {}
+      }
+    ],
+    "site": "before"
+  },
+  {
+    "check_id": "fact-consistency",
+    "family_id": "fact-consistency",
+    "unit_key": "fact-consistency|http://127.0.0.1:PORT/",
+    "state": "not_applicable",
+    "q": null,
+    "partial_basis": null,
+    "reason": "The page has no labelled, marked-up or tel: contact fact (name, phone number, address, founding year) that this check can compare",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/c79271fb4d98447734a702cd72feb167ec5dd825e82817cfc672f24045e1d7a0.html",
+    "measurement": {
+      "facts_found": 0
+    },
+    "applicability_decision": {
+      "condition": "no_evaluable_facts",
+      "reason": "The page has no labelled, marked-up or tel: contact fact (name, phone number, address, founding year) that this check can compare",
+      "evidence_ref": "<out>/evidence/c79271fb4d98447734a702cd72feb167ec5dd825e82817cfc672f24045e1d7a0.html"
+    },
+    "site": "before"
+  },
+  {
+    "check_id": "fetch-response",
+    "family_id": "fetch-response",
+    "unit_key": "fetch-response|http://127.0.0.1:PORT/",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "HTTP 200",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/c79271fb4d98447734a702cd72feb167ec5dd825e82817cfc672f24045e1d7a0.html",
+    "site": "before"
+  },
+  {
+    "check_id": "index-policy",
+    "family_id": "index-policy",
+    "unit_key": "index-policy|http://127.0.0.1:PORT/",
+    "state": "fail",
+    "q": 0,
+    "partial_basis": null,
+    "reason": "Raw response blocks indexing for the target engine",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/c79271fb4d98447734a702cd72feb167ec5dd825e82817cfc672f24045e1d7a0.html",
+    "problem_messages": [
+      {
+        "message_key": "index-policy.noindex",
+        "message_values": {}
+      }
+    ],
+    "site": "before"
+  },
+  {
+    "check_id": "inp-field",
+    "family_id": "inp-field",
+    "unit_key": "inp-field|http://127.0.0.1:PORT",
+    "state": "unknown",
+    "q": null,
+    "partial_basis": null,
+    "reason": "field_data_unavailable",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/c79271fb4d98447734a702cd72feb167ec5dd825e82817cfc672f24045e1d7a0.html",
+    "site": "before"
+  },
+  {
+    "check_id": "internal-navigation",
+    "family_id": "internal-navigation",
+    "unit_key": "internal-navigation|http://127.0.0.1:PORT/",
+    "state": "not_applicable",
+    "q": null,
+    "partial_basis": null,
+    "reason": "No collected page links to another page of the site",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/c79271fb4d98447734a702cd72feb167ec5dd825e82817cfc672f24045e1d7a0.html",
+    "applicability_decision": {
+      "condition": "not_link_based",
+      "reason": "No collected page links to another page of the site",
+      "evidence_ref": "<out>/evidence/c79271fb4d98447734a702cd72feb167ec5dd825e82817cfc672f24045e1d7a0.html"
+    },
+    "site": "before"
+  },
+  {
+    "check_id": "lcp-field",
+    "family_id": "lcp-field",
+    "unit_key": "lcp-field|http://127.0.0.1:PORT",
+    "state": "unknown",
+    "q": null,
+    "partial_basis": null,
+    "reason": "field_data_unavailable",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/c79271fb4d98447734a702cd72feb167ec5dd825e82817cfc672f24045e1d7a0.html",
+    "site": "before"
+  },
+  {
+    "check_id": "locale-links",
+    "family_id": "locale-links",
+    "unit_key": "locale-links|http://127.0.0.1:PORT/",
+    "state": "not_applicable",
+    "q": null,
+    "partial_basis": null,
+    "reason": "No hreflang link on this page and no collected page lists it as an alternate",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/c79271fb4d98447734a702cd72feb167ec5dd825e82817cfc672f24045e1d7a0.html",
+    "applicability_decision": {
+      "condition": "single_locale",
+      "reason": "No hreflang link on this page and no collected page lists it as an alternate",
+      "evidence_ref": "<out>/evidence/c79271fb4d98447734a702cd72feb167ec5dd825e82817cfc672f24045e1d7a0.html"
+    },
+    "site": "before"
+  },
+  {
+    "check_id": "naver-markup",
+    "family_id": "naver-markup",
+    "unit_key": "naver-markup|naver|http://127.0.0.1:PORT/",
+    "state": "fail",
+    "q": 0,
+    "partial_basis": null,
+    "reason": "og:title is missing; og:description is missing; og:image is missing; og:url is missing; og:type is missing; meta description is missing; canonical link is missing; meta viewport is missing",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/c79271fb4d98447734a702cd72feb167ec5dd825e82817cfc672f24045e1d7a0.html",
+    "measurement": {
+      "problems": [
+        "og:title is missing",
+        "og:description is missing",
+        "og:image is missing",
+        "og:url is missing",
+        "og:type is missing",
+        "meta description is missing",
+        "canonical link is missing",
+        "meta viewport is missing"
+      ]
+    },
+    "problem_messages": [
+      {
+        "message_key": "naver-markup.no-og",
+        "message_values": {
+          "name": "title"
+        }
+      },
+      {
+        "message_key": "naver-markup.no-og",
+        "message_values": {
+          "name": "description"
+        }
+      },
+      {
+        "message_key": "naver-markup.no-og",
+        "message_values": {
+          "name": "image"
+        }
+      },
+      {
+        "message_key": "naver-markup.no-og",
+        "message_values": {
+          "name": "url"
+        }
+      },
+      {
+        "message_key": "naver-markup.no-og",
+        "message_values": {
+          "name": "type"
+        }
+      },
+      {
+        "message_key": "naver-markup.no-description",
+        "message_values": {}
+      },
+      {
+        "message_key": "naver-markup.no-canonical",
+        "message_values": {}
+      },
+      {
+        "message_key": "naver-markup.no-viewport",
+        "message_values": {}
+      }
+    ],
+    "site": "before"
+  },
+  {
+    "check_id": "render-content",
+    "family_id": "render-content",
+    "unit_key": "render-content|http://127.0.0.1:PORT/",
+    "state": "unknown",
+    "q": null,
+    "partial_basis": null,
+    "reason": "chrome_missing",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/c79271fb4d98447734a702cd72feb167ec5dd825e82817cfc672f24045e1d7a0.html",
+    "site": "before"
+  },
+  {
+    "check_id": "structured-data-truth",
+    "family_id": "structured-data-truth",
+    "unit_key": "structured-data-truth|http://127.0.0.1:PORT/",
+    "state": "not_applicable",
+    "q": null,
+    "partial_basis": null,
+    "reason": "The page has no JSON-LD, microdata or RDFa markup",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/c79271fb4d98447734a702cd72feb167ec5dd825e82817cfc672f24045e1d7a0.html",
+    "measurement": {
+      "jsonld_blocks": 0
+    },
+    "applicability_decision": {
+      "condition": "markup_not_used_or_selected",
+      "reason": "The page has no JSON-LD, microdata or RDFa markup",
+      "evidence_ref": "<out>/evidence/c79271fb4d98447734a702cd72feb167ec5dd825e82817cfc672f24045e1d7a0.html"
+    },
+    "site": "before"
+  },
+  {
+    "check_id": "canonical-consistency",
+    "family_id": "canonical-consistency",
+    "unit_key": "canonical-consistency|http://127.0.0.1:PORT/",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "Canonical target is this page or a reachable page and redirects stay within one hop",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/947ad3ecd2d39c1fb45e87fb89ecf4e871b1ff74aaa4d4af9a7acb14a216fc5e.html",
+    "measurement": {
+      "redirect_hops": 0,
+      "canonical_target": "http://127.0.0.1:PORT/",
+      "canonical_status": null
+    },
+    "site": "clean"
+  },
+  {
+    "check_id": "canonical-consistency",
+    "family_id": "canonical-consistency",
+    "unit_key": "canonical-consistency|http://127.0.0.1:PORT/about",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "Canonical target is this page or a reachable page and redirects stay within one hop",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/561c1c9e1709de60fc8d21e75e0500f9b4e63ab9d7b30a0ea36ecf8f04ef5834.html",
+    "measurement": {
+      "redirect_hops": 0,
+      "canonical_target": "http://127.0.0.1:PORT/about",
+      "canonical_status": null
+    },
+    "site": "clean"
+  },
+  {
+    "check_id": "canonical-consistency",
+    "family_id": "canonical-consistency",
+    "unit_key": "canonical-consistency|http://127.0.0.1:PORT/contact",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "Canonical target is this page or a reachable page and redirects stay within one hop",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/36b1b6008d0e08d619c7ce921fc87f9b0ac6261ab05b914ae7468aa5738f2b4d.html",
+    "measurement": {
+      "redirect_hops": 0,
+      "canonical_target": "http://127.0.0.1:PORT/contact",
+      "canonical_status": null
+    },
+    "site": "clean"
+  },
+  {
+    "check_id": "cls-field",
+    "family_id": "cls-field",
+    "unit_key": "cls-field|http://127.0.0.1:PORT",
+    "state": "unknown",
+    "q": null,
+    "partial_basis": null,
+    "reason": "field_data_unavailable",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/947ad3ecd2d39c1fb45e87fb89ecf4e871b1ff74aaa4d4af9a7acb14a216fc5e.html",
+    "site": "clean"
+  },
+  {
+    "check_id": "discovery",
+    "family_id": "discovery",
+    "unit_key": "discovery|http://127.0.0.1:PORT/",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "Listed in a declared sitemap",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/947ad3ecd2d39c1fb45e87fb89ecf4e871b1ff74aaa4d4af9a7acb14a216fc5e.html",
+    "site": "clean"
+  },
+  {
+    "check_id": "discovery",
+    "family_id": "discovery",
+    "unit_key": "discovery|http://127.0.0.1:PORT/about",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "Listed in a declared sitemap",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/561c1c9e1709de60fc8d21e75e0500f9b4e63ab9d7b30a0ea36ecf8f04ef5834.html",
+    "site": "clean"
+  },
+  {
+    "check_id": "discovery",
+    "family_id": "discovery",
+    "unit_key": "discovery|http://127.0.0.1:PORT/contact",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "Listed in a declared sitemap",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/36b1b6008d0e08d619c7ce921fc87f9b0ac6261ab05b914ae7468aa5738f2b4d.html",
+    "site": "clean"
+  },
+  {
+    "check_id": "document-title",
+    "family_id": "document-title",
+    "unit_key": "document-title|http://127.0.0.1:PORT/",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "The title is present, differs from the title of every other audited page, and is not only the site name or a generic word",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/947ad3ecd2d39c1fb45e87fb89ecf4e871b1ff74aaa4d4af9a7acb14a216fc5e.html",
+    "measurement": {
+      "title": "Brew Home",
+      "audited_pages": 3,
+      "site_name_only": false,
+      "generic_word_only": false
+    },
+    "site": "clean"
+  },
+  {
+    "check_id": "document-title",
+    "family_id": "document-title",
+    "unit_key": "document-title|http://127.0.0.1:PORT/about",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "The title is present, differs from the title of every other audited page, and is not only the site name or a generic word",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/561c1c9e1709de60fc8d21e75e0500f9b4e63ab9d7b30a0ea36ecf8f04ef5834.html",
+    "measurement": {
+      "title": "About Brew",
+      "audited_pages": 3,
+      "site_name_only": false,
+      "generic_word_only": false
+    },
+    "site": "clean"
+  },
+  {
+    "check_id": "document-title",
+    "family_id": "document-title",
+    "unit_key": "document-title|http://127.0.0.1:PORT/contact",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "The title is present, differs from the title of every other audited page, and is not only the site name or a generic word",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/36b1b6008d0e08d619c7ce921fc87f9b0ac6261ab05b914ae7468aa5738f2b4d.html",
+    "measurement": {
+      "title": "Contact Brew",
+      "audited_pages": 3,
+      "site_name_only": false,
+      "generic_word_only": false
+    },
+    "site": "clean"
+  },
+  {
+    "check_id": "entity-identity",
+    "family_id": "entity-identity",
+    "unit_key": "entity-identity|site",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "Organization JSON-LD with name and sameAs is present on the home page and names agree",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/947ad3ecd2d39c1fb45e87fb89ecf4e871b1ff74aaa4d4af9a7acb14a216fc5e.html",
+    "measurement": {
+      "name_reference": null,
+      "name_differs_on": [],
+      "without_same_as_on": [],
+      "home_page": "http://127.0.0.1:PORT/"
+    },
+    "site": "clean"
+  },
+  {
+    "check_id": "fact-consistency",
+    "family_id": "fact-consistency",
+    "unit_key": "fact-consistency|http://127.0.0.1:PORT/",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "Facts on this page match the cross-page reference values (no approved fact list; consistency is not accuracy)",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/947ad3ecd2d39c1fb45e87fb89ecf4e871b1ff74aaa4d4af9a7acb14a216fc5e.html",
+    "site": "clean"
+  },
+  {
+    "check_id": "fact-consistency",
+    "family_id": "fact-consistency",
+    "unit_key": "fact-consistency|http://127.0.0.1:PORT/about",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "Facts on this page match the cross-page reference values (no approved fact list; consistency is not accuracy)",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/561c1c9e1709de60fc8d21e75e0500f9b4e63ab9d7b30a0ea36ecf8f04ef5834.html",
+    "site": "clean"
+  },
+  {
+    "check_id": "fact-consistency",
+    "family_id": "fact-consistency",
+    "unit_key": "fact-consistency|http://127.0.0.1:PORT/contact",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "Facts on this page match the cross-page reference values (no approved fact list; consistency is not accuracy)",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/36b1b6008d0e08d619c7ce921fc87f9b0ac6261ab05b914ae7468aa5738f2b4d.html",
+    "site": "clean"
+  },
+  {
+    "check_id": "fetch-response",
+    "family_id": "fetch-response",
+    "unit_key": "fetch-response|http://127.0.0.1:PORT/",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "HTTP 200",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/947ad3ecd2d39c1fb45e87fb89ecf4e871b1ff74aaa4d4af9a7acb14a216fc5e.html",
+    "site": "clean"
+  },
+  {
+    "check_id": "fetch-response",
+    "family_id": "fetch-response",
+    "unit_key": "fetch-response|http://127.0.0.1:PORT/about",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "HTTP 200",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/561c1c9e1709de60fc8d21e75e0500f9b4e63ab9d7b30a0ea36ecf8f04ef5834.html",
+    "site": "clean"
+  },
+  {
+    "check_id": "fetch-response",
+    "family_id": "fetch-response",
+    "unit_key": "fetch-response|http://127.0.0.1:PORT/contact",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "HTTP 200",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/36b1b6008d0e08d619c7ce921fc87f9b0ac6261ab05b914ae7468aa5738f2b4d.html",
+    "site": "clean"
+  },
+  {
+    "check_id": "index-policy",
+    "family_id": "index-policy",
+    "unit_key": "index-policy|http://127.0.0.1:PORT/",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "Raw response has no applicable noindex directive",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/947ad3ecd2d39c1fb45e87fb89ecf4e871b1ff74aaa4d4af9a7acb14a216fc5e.html",
+    "site": "clean"
+  },
+  {
+    "check_id": "index-policy",
+    "family_id": "index-policy",
+    "unit_key": "index-policy|http://127.0.0.1:PORT/about",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "Raw response has no applicable noindex directive",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/561c1c9e1709de60fc8d21e75e0500f9b4e63ab9d7b30a0ea36ecf8f04ef5834.html",
+    "site": "clean"
+  },
+  {
+    "check_id": "index-policy",
+    "family_id": "index-policy",
+    "unit_key": "index-policy|http://127.0.0.1:PORT/contact",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "Raw response has no applicable noindex directive",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/36b1b6008d0e08d619c7ce921fc87f9b0ac6261ab05b914ae7468aa5738f2b4d.html",
+    "site": "clean"
+  },
+  {
+    "check_id": "inp-field",
+    "family_id": "inp-field",
+    "unit_key": "inp-field|http://127.0.0.1:PORT",
+    "state": "unknown",
+    "q": null,
+    "partial_basis": null,
+    "reason": "field_data_unavailable",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/947ad3ecd2d39c1fb45e87fb89ecf4e871b1ff74aaa4d4af9a7acb14a216fc5e.html",
+    "site": "clean"
+  },
+  {
+    "check_id": "internal-navigation",
+    "family_id": "internal-navigation",
+    "unit_key": "internal-navigation|http://127.0.0.1:PORT/",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "Reached within the click limit; anchors are within the limit",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/947ad3ecd2d39c1fb45e87fb89ecf4e871b1ff74aaa4d4af9a7acb14a216fc5e.html",
+    "measurement": {
+      "click_depth": 0,
+      "max_click_depth": 3,
+      "weak_anchor_pages": 0,
+      "linked_pages": 2,
+      "allowed_weak_ratio": 0.25
+    },
+    "site": "clean"
+  },
+  {
+    "check_id": "internal-navigation",
+    "family_id": "internal-navigation",
+    "unit_key": "internal-navigation|http://127.0.0.1:PORT/about",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "Reached within the click limit; anchors are within the limit",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/561c1c9e1709de60fc8d21e75e0500f9b4e63ab9d7b30a0ea36ecf8f04ef5834.html",
+    "measurement": {
+      "click_depth": 1,
+      "max_click_depth": 3,
+      "weak_anchor_pages": 0,
+      "linked_pages": 1,
+      "allowed_weak_ratio": 0.25
+    },
+    "site": "clean"
+  },
+  {
+    "check_id": "internal-navigation",
+    "family_id": "internal-navigation",
+    "unit_key": "internal-navigation|http://127.0.0.1:PORT/contact",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "Reached within the click limit; anchors are within the limit",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/36b1b6008d0e08d619c7ce921fc87f9b0ac6261ab05b914ae7468aa5738f2b4d.html",
+    "measurement": {
+      "click_depth": 1,
+      "max_click_depth": 3,
+      "weak_anchor_pages": 0,
+      "linked_pages": 1,
+      "allowed_weak_ratio": 0.25
+    },
+    "site": "clean"
+  },
+  {
+    "check_id": "lcp-field",
+    "family_id": "lcp-field",
+    "unit_key": "lcp-field|http://127.0.0.1:PORT",
+    "state": "unknown",
+    "q": null,
+    "partial_basis": null,
+    "reason": "field_data_unavailable",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/947ad3ecd2d39c1fb45e87fb89ecf4e871b1ff74aaa4d4af9a7acb14a216fc5e.html",
+    "site": "clean"
+  },
+  {
+    "check_id": "locale-links",
+    "family_id": "locale-links",
+    "unit_key": "locale-links|http://127.0.0.1:PORT/",
+    "state": "not_applicable",
+    "q": null,
+    "partial_basis": null,
+    "reason": "No hreflang link on this page and no collected page lists it as an alternate",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/947ad3ecd2d39c1fb45e87fb89ecf4e871b1ff74aaa4d4af9a7acb14a216fc5e.html",
+    "applicability_decision": {
+      "condition": "single_locale",
+      "reason": "No hreflang link on this page and no collected page lists it as an alternate",
+      "evidence_ref": "<out>/evidence/947ad3ecd2d39c1fb45e87fb89ecf4e871b1ff74aaa4d4af9a7acb14a216fc5e.html"
+    },
+    "site": "clean"
+  },
+  {
+    "check_id": "locale-links",
+    "family_id": "locale-links",
+    "unit_key": "locale-links|http://127.0.0.1:PORT/about",
+    "state": "not_applicable",
+    "q": null,
+    "partial_basis": null,
+    "reason": "No hreflang link on this page and no collected page lists it as an alternate",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/561c1c9e1709de60fc8d21e75e0500f9b4e63ab9d7b30a0ea36ecf8f04ef5834.html",
+    "applicability_decision": {
+      "condition": "single_locale",
+      "reason": "No hreflang link on this page and no collected page lists it as an alternate",
+      "evidence_ref": "<out>/evidence/561c1c9e1709de60fc8d21e75e0500f9b4e63ab9d7b30a0ea36ecf8f04ef5834.html"
+    },
+    "site": "clean"
+  },
+  {
+    "check_id": "locale-links",
+    "family_id": "locale-links",
+    "unit_key": "locale-links|http://127.0.0.1:PORT/contact",
+    "state": "not_applicable",
+    "q": null,
+    "partial_basis": null,
+    "reason": "No hreflang link on this page and no collected page lists it as an alternate",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/36b1b6008d0e08d619c7ce921fc87f9b0ac6261ab05b914ae7468aa5738f2b4d.html",
+    "applicability_decision": {
+      "condition": "single_locale",
+      "reason": "No hreflang link on this page and no collected page lists it as an alternate",
+      "evidence_ref": "<out>/evidence/36b1b6008d0e08d619c7ce921fc87f9b0ac6261ab05b914ae7468aa5738f2b4d.html"
+    },
+    "site": "clean"
+  },
+  {
+    "check_id": "naver-markup",
+    "family_id": "naver-markup",
+    "unit_key": "naver-markup|naver|http://127.0.0.1:PORT/",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "Open Graph, description, canonical, viewport and title checks pass",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/947ad3ecd2d39c1fb45e87fb89ecf4e871b1ff74aaa4d4af9a7acb14a216fc5e.html",
+    "site": "clean"
+  },
+  {
+    "check_id": "naver-markup",
+    "family_id": "naver-markup",
+    "unit_key": "naver-markup|naver|http://127.0.0.1:PORT/about",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "Open Graph, description, canonical, viewport and title checks pass",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/561c1c9e1709de60fc8d21e75e0500f9b4e63ab9d7b30a0ea36ecf8f04ef5834.html",
+    "site": "clean"
+  },
+  {
+    "check_id": "naver-markup",
+    "family_id": "naver-markup",
+    "unit_key": "naver-markup|naver|http://127.0.0.1:PORT/contact",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "Open Graph, description, canonical, viewport and title checks pass",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/36b1b6008d0e08d619c7ce921fc87f9b0ac6261ab05b914ae7468aa5738f2b4d.html",
+    "site": "clean"
+  },
+  {
+    "check_id": "render-content",
+    "family_id": "render-content",
+    "unit_key": "render-content|http://127.0.0.1:PORT/",
+    "state": "unknown",
+    "q": null,
+    "partial_basis": null,
+    "reason": "chrome_missing",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/947ad3ecd2d39c1fb45e87fb89ecf4e871b1ff74aaa4d4af9a7acb14a216fc5e.html",
+    "site": "clean"
+  },
+  {
+    "check_id": "search-crawl-policy",
+    "family_id": "search-crawl-policy",
+    "unit_key": "search-crawl-policy|google|http://127.0.0.1:PORT/",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "Collected robots.txt allows Googlebot path",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/16ceb5ee3e0dc13aa9adf31a3ebbe45a1d965b8c2b9f72eaf84e5911e140ed95.bin",
+    "site": "clean"
+  },
+  {
+    "check_id": "search-crawl-policy",
+    "family_id": "search-crawl-policy",
+    "unit_key": "search-crawl-policy|google|http://127.0.0.1:PORT/about",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "Collected robots.txt allows Googlebot path",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/16ceb5ee3e0dc13aa9adf31a3ebbe45a1d965b8c2b9f72eaf84e5911e140ed95.bin",
+    "site": "clean"
+  },
+  {
+    "check_id": "search-crawl-policy",
+    "family_id": "search-crawl-policy",
+    "unit_key": "search-crawl-policy|google|http://127.0.0.1:PORT/contact",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "Collected robots.txt allows Googlebot path",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/16ceb5ee3e0dc13aa9adf31a3ebbe45a1d965b8c2b9f72eaf84e5911e140ed95.bin",
+    "site": "clean"
+  },
+  {
+    "check_id": "search-crawl-policy",
+    "family_id": "search-crawl-policy",
+    "unit_key": "search-crawl-policy|naver|http://127.0.0.1:PORT/",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "Collected robots.txt allows Yeti path",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/16ceb5ee3e0dc13aa9adf31a3ebbe45a1d965b8c2b9f72eaf84e5911e140ed95.bin",
+    "site": "clean"
+  },
+  {
+    "check_id": "search-crawl-policy",
+    "family_id": "search-crawl-policy",
+    "unit_key": "search-crawl-policy|naver|http://127.0.0.1:PORT/about",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "Collected robots.txt allows Yeti path",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/16ceb5ee3e0dc13aa9adf31a3ebbe45a1d965b8c2b9f72eaf84e5911e140ed95.bin",
+    "site": "clean"
+  },
+  {
+    "check_id": "search-crawl-policy",
+    "family_id": "search-crawl-policy",
+    "unit_key": "search-crawl-policy|naver|http://127.0.0.1:PORT/contact",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "Collected robots.txt allows Yeti path",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/16ceb5ee3e0dc13aa9adf31a3ebbe45a1d965b8c2b9f72eaf84e5911e140ed95.bin",
+    "site": "clean"
+  },
+  {
+    "check_id": "structured-data-truth",
+    "family_id": "structured-data-truth",
+    "unit_key": "structured-data-truth|http://127.0.0.1:PORT/",
+    "state": "unknown",
+    "q": null,
+    "partial_basis": null,
+    "reason": "The JSON-LD states a fact that the page text neither shows nor contradicts, so not every fact is confirmed",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/947ad3ecd2d39c1fb45e87fb89ecf4e871b1ff74aaa4d4af9a7acb14a216fc5e.html",
+    "measurement": {
+      "jsonld_blocks": 1,
+      "matched": [],
+      "mismatched": [],
+      "unevaluated": [
+        {
+          "type": "name",
+          "jsonld": "Brew Cafe"
+        }
+      ]
+    },
+    "site": "clean"
+  },
+  {
+    "check_id": "structured-data-truth",
+    "family_id": "structured-data-truth",
+    "unit_key": "structured-data-truth|http://127.0.0.1:PORT/about",
+    "state": "not_applicable",
+    "q": null,
+    "partial_basis": null,
+    "reason": "The page has no JSON-LD, microdata or RDFa markup",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/561c1c9e1709de60fc8d21e75e0500f9b4e63ab9d7b30a0ea36ecf8f04ef5834.html",
+    "measurement": {
+      "jsonld_blocks": 0
+    },
+    "applicability_decision": {
+      "condition": "markup_not_used_or_selected",
+      "reason": "The page has no JSON-LD, microdata or RDFa markup",
+      "evidence_ref": "<out>/evidence/561c1c9e1709de60fc8d21e75e0500f9b4e63ab9d7b30a0ea36ecf8f04ef5834.html"
+    },
+    "site": "clean"
+  },
+  {
+    "check_id": "structured-data-truth",
+    "family_id": "structured-data-truth",
+    "unit_key": "structured-data-truth|http://127.0.0.1:PORT/contact",
+    "state": "not_applicable",
+    "q": null,
+    "partial_basis": null,
+    "reason": "The page has no JSON-LD, microdata or RDFa markup",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/36b1b6008d0e08d619c7ce921fc87f9b0ac6261ab05b914ae7468aa5738f2b4d.html",
+    "measurement": {
+      "jsonld_blocks": 0
+    },
+    "applicability_decision": {
+      "condition": "markup_not_used_or_selected",
+      "reason": "The page has no JSON-LD, microdata or RDFa markup",
+      "evidence_ref": "<out>/evidence/36b1b6008d0e08d619c7ce921fc87f9b0ac6261ab05b914ae7468aa5738f2b4d.html"
+    },
+    "site": "clean"
+  },
+  {
+    "check_id": "canonical-consistency",
+    "family_id": "canonical-consistency",
+    "unit_key": "canonical-consistency|http://127.0.0.1:PORT/",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "Canonical target is this page or a reachable page and redirects stay within one hop",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/260ba0e7e892c57fcef46111d4a877daff635a4cf6df79c757ffdc076ee0cedc.html",
+    "measurement": {
+      "redirect_hops": 0,
+      "canonical_target": "http://127.0.0.1:PORT/",
+      "canonical_status": null
+    },
+    "site": "defect"
+  },
+  {
+    "check_id": "canonical-consistency",
+    "family_id": "canonical-consistency",
+    "unit_key": "canonical-consistency|http://127.0.0.1:PORT/about",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "Canonical target is this page or a reachable page and redirects stay within one hop",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/4d56853ee2b4dcb6174d7b9a7a37e253e9dffed80d43a8f0d0622e8607a0f435.html",
+    "measurement": {
+      "redirect_hops": 0,
+      "canonical_target": "http://127.0.0.1:PORT/about",
+      "canonical_status": null
+    },
+    "site": "defect"
+  },
+  {
+    "check_id": "canonical-consistency",
+    "family_id": "canonical-consistency",
+    "unit_key": "canonical-consistency|http://127.0.0.1:PORT/badcanon",
+    "state": "fail",
+    "q": 0,
+    "partial_basis": null,
+    "reason": "canonical target does not return a successful status",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/bc4a85adb25e4de3462ba6326bb6bea59dcbeed2fbaf4a71087d473b965d4189.html",
+    "measurement": {
+      "redirect_hops": 0,
+      "canonical_target": "http://127.0.0.1:PORT/gone",
+      "canonical_status": 404,
+      "problems": [
+        "canonical target does not return a successful status"
+      ]
+    },
+    "problem_messages": [
+      {
+        "message_key": "canonical-consistency.target-status",
+        "message_values": {}
+      }
+    ],
+    "site": "defect"
+  },
+  {
+    "check_id": "canonical-consistency",
+    "family_id": "canonical-consistency",
+    "unit_key": "canonical-consistency|http://127.0.0.1:PORT/badld",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "Canonical target is this page or a reachable page and redirects stay within one hop",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/ab38ae9a9d9d58dd8b77c6dc5c5da40d301b69d4f0cdf40d50fa20112a0bbbe6.html",
+    "measurement": {
+      "redirect_hops": 0,
+      "canonical_target": "http://127.0.0.1:PORT/badld",
+      "canonical_status": null
+    },
+    "site": "defect"
+  },
+  {
+    "check_id": "canonical-consistency",
+    "family_id": "canonical-consistency",
+    "unit_key": "canonical-consistency|http://127.0.0.1:PORT/bare",
+    "state": "unknown",
+    "q": null,
+    "partial_basis": null,
+    "reason": "Another audited page has the same title or body text, so whether this page needs a representative URL is not established",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/02cb3482406e7d0256280bbdf6f300ca959146a425c1729a7615e3017e147e91.html",
+    "measurement": {
+      "redirect_hops": 0,
+      "canonical_target": null,
+      "canonical_status": null,
+      "repeated_with": [
+        "http://127.0.0.1:PORT/about",
+        "http://127.0.0.1:PORT/noindex",
+        "http://127.0.0.1:PORT/private",
+        "http://127.0.0.1:PORT/orphan",
+        "http://127.0.0.1:PORT/dup",
+        "http://127.0.0.1:PORT/badcanon",
+        "http://127.0.0.1:PORT/badld"
+      ]
+    },
+    "site": "defect"
+  },
+  {
+    "check_id": "canonical-consistency",
+    "family_id": "canonical-consistency",
+    "unit_key": "canonical-consistency|http://127.0.0.1:PORT/contact",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "Canonical target is this page or a reachable page and redirects stay within one hop",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/ef4dac027a5e1aee55546f8c0b8147593896af72526a71b4e88c87654ba835e4.html",
+    "measurement": {
+      "redirect_hops": 0,
+      "canonical_target": "http://127.0.0.1:PORT/contact",
+      "canonical_status": null
+    },
+    "site": "defect"
+  },
+  {
+    "check_id": "canonical-consistency",
+    "family_id": "canonical-consistency",
+    "unit_key": "canonical-consistency|http://127.0.0.1:PORT/dup",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "Canonical target is this page or a reachable page and redirects stay within one hop",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/007526ad105b554a5386c19c25f62806b7564ac45657e352ea89a5c1bb5fc9b3.html",
+    "measurement": {
+      "redirect_hops": 0,
+      "canonical_target": "http://127.0.0.1:PORT/dup",
+      "canonical_status": null
+    },
+    "site": "defect"
+  },
+  {
+    "check_id": "canonical-consistency",
+    "family_id": "canonical-consistency",
+    "unit_key": "canonical-consistency|http://127.0.0.1:PORT/noindex",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "Canonical target is this page or a reachable page and redirects stay within one hop",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/445743d8f42f88657af42c0a2d15eb71a92d473be906952a39a4396dc8755fb8.html",
+    "measurement": {
+      "redirect_hops": 0,
+      "canonical_target": "http://127.0.0.1:PORT/noindex",
+      "canonical_status": null
+    },
+    "site": "defect"
+  },
+  {
+    "check_id": "canonical-consistency",
+    "family_id": "canonical-consistency",
+    "unit_key": "canonical-consistency|http://127.0.0.1:PORT/orphan",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "Canonical target is this page or a reachable page and redirects stay within one hop",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/82bcec8a591ef5b7f23889ddf176dae98dd988bbccd850fa0b5d3ef67f0b05fb.html",
+    "measurement": {
+      "redirect_hops": 0,
+      "canonical_target": "http://127.0.0.1:PORT/orphan",
+      "canonical_status": null
+    },
+    "site": "defect"
+  },
+  {
+    "check_id": "canonical-consistency",
+    "family_id": "canonical-consistency",
+    "unit_key": "canonical-consistency|http://127.0.0.1:PORT/private",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "Canonical target is this page or a reachable page and redirects stay within one hop",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/2831a310a8db81bfd44e92641d41ce673a0ba8f7f7151a777a7bafb421a1c63b.html",
+    "measurement": {
+      "redirect_hops": 0,
+      "canonical_target": "http://127.0.0.1:PORT/private",
+      "canonical_status": null
+    },
+    "site": "defect"
+  },
+  {
+    "check_id": "cls-field",
+    "family_id": "cls-field",
+    "unit_key": "cls-field|http://127.0.0.1:PORT",
+    "state": "unknown",
+    "q": null,
+    "partial_basis": null,
+    "reason": "field_data_unavailable",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/260ba0e7e892c57fcef46111d4a877daff635a4cf6df79c757ffdc076ee0cedc.html",
+    "site": "defect"
+  },
+  {
+    "check_id": "discovery",
+    "family_id": "discovery",
+    "unit_key": "discovery|http://127.0.0.1:PORT/",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "Listed in a declared sitemap",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/260ba0e7e892c57fcef46111d4a877daff635a4cf6df79c757ffdc076ee0cedc.html",
+    "site": "defect"
+  },
+  {
+    "check_id": "discovery",
+    "family_id": "discovery",
+    "unit_key": "discovery|http://127.0.0.1:PORT/about",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "Listed in a declared sitemap",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/4d56853ee2b4dcb6174d7b9a7a37e253e9dffed80d43a8f0d0622e8607a0f435.html",
+    "site": "defect"
+  },
+  {
+    "check_id": "discovery",
+    "family_id": "discovery",
+    "unit_key": "discovery|http://127.0.0.1:PORT/badcanon",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "Linked from another collected page",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/bc4a85adb25e4de3462ba6326bb6bea59dcbeed2fbaf4a71087d473b965d4189.html",
+    "site": "defect"
+  },
+  {
+    "check_id": "discovery",
+    "family_id": "discovery",
+    "unit_key": "discovery|http://127.0.0.1:PORT/badld",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "Linked from another collected page",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/ab38ae9a9d9d58dd8b77c6dc5c5da40d301b69d4f0cdf40d50fa20112a0bbbe6.html",
+    "site": "defect"
+  },
+  {
+    "check_id": "discovery",
+    "family_id": "discovery",
+    "unit_key": "discovery|http://127.0.0.1:PORT/bare",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "Linked from another collected page",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/02cb3482406e7d0256280bbdf6f300ca959146a425c1729a7615e3017e147e91.html",
+    "site": "defect"
+  },
+  {
+    "check_id": "discovery",
+    "family_id": "discovery",
+    "unit_key": "discovery|http://127.0.0.1:PORT/contact",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "Listed in a declared sitemap",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/ef4dac027a5e1aee55546f8c0b8147593896af72526a71b4e88c87654ba835e4.html",
+    "site": "defect"
+  },
+  {
+    "check_id": "discovery",
+    "family_id": "discovery",
+    "unit_key": "discovery|http://127.0.0.1:PORT/dup",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "Linked from another collected page",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/007526ad105b554a5386c19c25f62806b7564ac45657e352ea89a5c1bb5fc9b3.html",
+    "site": "defect"
+  },
+  {
+    "check_id": "discovery",
+    "family_id": "discovery",
+    "unit_key": "discovery|http://127.0.0.1:PORT/noindex",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "Linked from another collected page",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/445743d8f42f88657af42c0a2d15eb71a92d473be906952a39a4396dc8755fb8.html",
+    "site": "defect"
+  },
+  {
+    "check_id": "discovery",
+    "family_id": "discovery",
+    "unit_key": "discovery|http://127.0.0.1:PORT/orphan",
+    "state": "fail",
+    "q": 0,
+    "partial_basis": null,
+    "reason": "Not linked from any collected page and not in a sitemap",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/82bcec8a591ef5b7f23889ddf176dae98dd988bbccd850fa0b5d3ef67f0b05fb.html",
+    "problem_messages": [
+      {
+        "message_key": "discovery.orphan",
+        "message_values": {}
+      }
+    ],
+    "site": "defect"
+  },
+  {
+    "check_id": "discovery",
+    "family_id": "discovery",
+    "unit_key": "discovery|http://127.0.0.1:PORT/private",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "Linked from another collected page",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/2831a310a8db81bfd44e92641d41ce673a0ba8f7f7151a777a7bafb421a1c63b.html",
+    "site": "defect"
+  },
+  {
+    "check_id": "document-title",
+    "family_id": "document-title",
+    "unit_key": "document-title|http://127.0.0.1:PORT/",
+    "state": "fail",
+    "q": 0,
+    "partial_basis": null,
+    "reason": "Title duplicates the title of other pages",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/260ba0e7e892c57fcef46111d4a877daff635a4cf6df79c757ffdc076ee0cedc.html",
+    "measurement": {
+      "duplicate_pages": [
+        "http://127.0.0.1:PORT/dup"
+      ]
+    },
+    "problem_messages": [
+      {
+        "message_key": "document-title.duplicate",
+        "message_values": {}
+      }
+    ],
+    "site": "defect"
+  },
+  {
+    "check_id": "document-title",
+    "family_id": "document-title",
+    "unit_key": "document-title|http://127.0.0.1:PORT/about",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "The title is present, differs from the title of every other audited page, and is not only the site name or a generic word",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/4d56853ee2b4dcb6174d7b9a7a37e253e9dffed80d43a8f0d0622e8607a0f435.html",
+    "measurement": {
+      "title": "About Brew",
+      "audited_pages": 10,
+      "site_name_only": false,
+      "generic_word_only": false
+    },
+    "site": "defect"
+  },
+  {
+    "check_id": "document-title",
+    "family_id": "document-title",
+    "unit_key": "document-title|http://127.0.0.1:PORT/badcanon",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "The title is present, differs from the title of every other audited page, and is not only the site name or a generic word",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/bc4a85adb25e4de3462ba6326bb6bea59dcbeed2fbaf4a71087d473b965d4189.html",
+    "measurement": {
+      "title": "Wrong Canonical Brew",
+      "audited_pages": 10,
+      "site_name_only": false,
+      "generic_word_only": false
+    },
+    "site": "defect"
+  },
+  {
+    "check_id": "document-title",
+    "family_id": "document-title",
+    "unit_key": "document-title|http://127.0.0.1:PORT/badld",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "The title is present, differs from the title of every other audited page, and is not only the site name or a generic word",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/ab38ae9a9d9d58dd8b77c6dc5c5da40d301b69d4f0cdf40d50fa20112a0bbbe6.html",
+    "measurement": {
+      "title": "Broken Data Brew",
+      "audited_pages": 10,
+      "site_name_only": false,
+      "generic_word_only": false
+    },
+    "site": "defect"
+  },
+  {
+    "check_id": "document-title",
+    "family_id": "document-title",
+    "unit_key": "document-title|http://127.0.0.1:PORT/bare",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "The title is present, differs from the title of every other audited page, and is not only the site name or a generic word",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/02cb3482406e7d0256280bbdf6f300ca959146a425c1729a7615e3017e147e91.html",
+    "measurement": {
+      "title": "Bare Brew",
+      "audited_pages": 10,
+      "site_name_only": false,
+      "generic_word_only": false
+    },
+    "site": "defect"
+  },
+  {
+    "check_id": "document-title",
+    "family_id": "document-title",
+    "unit_key": "document-title|http://127.0.0.1:PORT/contact",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "The title is present, differs from the title of every other audited page, and is not only the site name or a generic word",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/ef4dac027a5e1aee55546f8c0b8147593896af72526a71b4e88c87654ba835e4.html",
+    "measurement": {
+      "title": "Contact Brew",
+      "audited_pages": 10,
+      "site_name_only": false,
+      "generic_word_only": false
+    },
+    "site": "defect"
+  },
+  {
+    "check_id": "document-title",
+    "family_id": "document-title",
+    "unit_key": "document-title|http://127.0.0.1:PORT/dup",
+    "state": "fail",
+    "q": 0,
+    "partial_basis": null,
+    "reason": "Title duplicates the title of other pages",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/007526ad105b554a5386c19c25f62806b7564ac45657e352ea89a5c1bb5fc9b3.html",
+    "measurement": {
+      "duplicate_pages": [
+        "http://127.0.0.1:PORT/"
+      ]
+    },
+    "problem_messages": [
+      {
+        "message_key": "document-title.duplicate",
+        "message_values": {}
+      }
+    ],
+    "site": "defect"
+  },
+  {
+    "check_id": "document-title",
+    "family_id": "document-title",
+    "unit_key": "document-title|http://127.0.0.1:PORT/noindex",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "The title is present, differs from the title of every other audited page, and is not only the site name or a generic word",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/445743d8f42f88657af42c0a2d15eb71a92d473be906952a39a4396dc8755fb8.html",
+    "measurement": {
+      "title": "Hidden Brew",
+      "audited_pages": 10,
+      "site_name_only": false,
+      "generic_word_only": false
+    },
+    "site": "defect"
+  },
+  {
+    "check_id": "document-title",
+    "family_id": "document-title",
+    "unit_key": "document-title|http://127.0.0.1:PORT/orphan",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "The title is present, differs from the title of every other audited page, and is not only the site name or a generic word",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/82bcec8a591ef5b7f23889ddf176dae98dd988bbccd850fa0b5d3ef67f0b05fb.html",
+    "measurement": {
+      "title": "Orphan Brew",
+      "audited_pages": 10,
+      "site_name_only": false,
+      "generic_word_only": false
+    },
+    "site": "defect"
+  },
+  {
+    "check_id": "document-title",
+    "family_id": "document-title",
+    "unit_key": "document-title|http://127.0.0.1:PORT/private",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "The title is present, differs from the title of every other audited page, and is not only the site name or a generic word",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/2831a310a8db81bfd44e92641d41ce673a0ba8f7f7151a777a7bafb421a1c63b.html",
+    "measurement": {
+      "title": "Private Brew",
+      "audited_pages": 10,
+      "site_name_only": false,
+      "generic_word_only": false
+    },
+    "site": "defect"
+  },
+  {
+    "check_id": "entity-identity",
+    "family_id": "entity-identity",
+    "unit_key": "entity-identity|site",
+    "state": "fail",
+    "q": 0,
+    "partial_basis": null,
+    "reason": "Entity identity: Organization JSON-LD lacks sameAs on some pages",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/260ba0e7e892c57fcef46111d4a877daff635a4cf6df79c757ffdc076ee0cedc.html",
+    "measurement": {
+      "name_reference": null,
+      "name_differs_on": [],
+      "without_same_as_on": [
+        "http://127.0.0.1:PORT/"
+      ],
+      "home_page": "http://127.0.0.1:PORT/"
+    },
+    "problem_messages": [
+      {
+        "message_key": "entity-identity.no-same-as",
+        "message_values": {}
+      }
+    ],
+    "site": "defect"
+  },
+  {
+    "check_id": "fact-consistency",
+    "family_id": "fact-consistency",
+    "unit_key": "fact-consistency|http://127.0.0.1:PORT/",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "Facts on this page match the cross-page reference values (no approved fact list; consistency is not accuracy)",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/260ba0e7e892c57fcef46111d4a877daff635a4cf6df79c757ffdc076ee0cedc.html",
+    "site": "defect"
+  },
+  {
+    "check_id": "fact-consistency",
+    "family_id": "fact-consistency",
+    "unit_key": "fact-consistency|http://127.0.0.1:PORT/about",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "Facts on this page match the cross-page reference values (no approved fact list; consistency is not accuracy)",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/4d56853ee2b4dcb6174d7b9a7a37e253e9dffed80d43a8f0d0622e8607a0f435.html",
+    "site": "defect"
+  },
+  {
+    "check_id": "fact-consistency",
+    "family_id": "fact-consistency",
+    "unit_key": "fact-consistency|http://127.0.0.1:PORT/badcanon",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "Facts on this page match the cross-page reference values (no approved fact list; consistency is not accuracy)",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/bc4a85adb25e4de3462ba6326bb6bea59dcbeed2fbaf4a71087d473b965d4189.html",
+    "site": "defect"
+  },
+  {
+    "check_id": "fact-consistency",
+    "family_id": "fact-consistency",
+    "unit_key": "fact-consistency|http://127.0.0.1:PORT/badld",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "Facts on this page match the cross-page reference values (no approved fact list; consistency is not accuracy)",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/ab38ae9a9d9d58dd8b77c6dc5c5da40d301b69d4f0cdf40d50fa20112a0bbbe6.html",
+    "site": "defect"
+  },
+  {
+    "check_id": "fact-consistency",
+    "family_id": "fact-consistency",
+    "unit_key": "fact-consistency|http://127.0.0.1:PORT/bare",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "Facts on this page match the cross-page reference values (no approved fact list; consistency is not accuracy)",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/02cb3482406e7d0256280bbdf6f300ca959146a425c1729a7615e3017e147e91.html",
+    "site": "defect"
+  },
+  {
+    "check_id": "fact-consistency",
+    "family_id": "fact-consistency",
+    "unit_key": "fact-consistency|http://127.0.0.1:PORT/contact",
+    "state": "fail",
+    "q": 0,
+    "partial_basis": null,
+    "reason": "Cross-page fact comparison (no approved fact list): phone \"02-555-0199\" differs from \"02-555-0142\" on 9 pages",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/ef4dac027a5e1aee55546f8c0b8147593896af72526a71b4e88c87654ba835e4.html",
+    "problem_messages": [
+      {
+        "message_key": "fact-consistency.differs",
+        "message_values": {
+          "type": "phone",
+          "found": "02-555-0199",
+          "label": "02-555-0142",
+          "count": 9
+        }
+      }
+    ],
+    "site": "defect"
+  },
+  {
+    "check_id": "fact-consistency",
+    "family_id": "fact-consistency",
+    "unit_key": "fact-consistency|http://127.0.0.1:PORT/dup",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "Facts on this page match the cross-page reference values (no approved fact list; consistency is not accuracy)",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/007526ad105b554a5386c19c25f62806b7564ac45657e352ea89a5c1bb5fc9b3.html",
+    "site": "defect"
+  },
+  {
+    "check_id": "fact-consistency",
+    "family_id": "fact-consistency",
+    "unit_key": "fact-consistency|http://127.0.0.1:PORT/noindex",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "Facts on this page match the cross-page reference values (no approved fact list; consistency is not accuracy)",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/445743d8f42f88657af42c0a2d15eb71a92d473be906952a39a4396dc8755fb8.html",
+    "site": "defect"
+  },
+  {
+    "check_id": "fact-consistency",
+    "family_id": "fact-consistency",
+    "unit_key": "fact-consistency|http://127.0.0.1:PORT/orphan",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "Facts on this page match the cross-page reference values (no approved fact list; consistency is not accuracy)",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/82bcec8a591ef5b7f23889ddf176dae98dd988bbccd850fa0b5d3ef67f0b05fb.html",
+    "site": "defect"
+  },
+  {
+    "check_id": "fact-consistency",
+    "family_id": "fact-consistency",
+    "unit_key": "fact-consistency|http://127.0.0.1:PORT/private",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "Facts on this page match the cross-page reference values (no approved fact list; consistency is not accuracy)",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/2831a310a8db81bfd44e92641d41ce673a0ba8f7f7151a777a7bafb421a1c63b.html",
+    "site": "defect"
+  },
+  {
+    "check_id": "fetch-response",
+    "family_id": "fetch-response",
+    "unit_key": "fetch-response|http://127.0.0.1:PORT/",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "HTTP 200",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/260ba0e7e892c57fcef46111d4a877daff635a4cf6df79c757ffdc076ee0cedc.html",
+    "site": "defect"
+  },
+  {
+    "check_id": "fetch-response",
+    "family_id": "fetch-response",
+    "unit_key": "fetch-response|http://127.0.0.1:PORT/about",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "HTTP 200",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/4d56853ee2b4dcb6174d7b9a7a37e253e9dffed80d43a8f0d0622e8607a0f435.html",
+    "site": "defect"
+  },
+  {
+    "check_id": "fetch-response",
+    "family_id": "fetch-response",
+    "unit_key": "fetch-response|http://127.0.0.1:PORT/badcanon",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "HTTP 200",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/bc4a85adb25e4de3462ba6326bb6bea59dcbeed2fbaf4a71087d473b965d4189.html",
+    "site": "defect"
+  },
+  {
+    "check_id": "fetch-response",
+    "family_id": "fetch-response",
+    "unit_key": "fetch-response|http://127.0.0.1:PORT/badld",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "HTTP 200",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/ab38ae9a9d9d58dd8b77c6dc5c5da40d301b69d4f0cdf40d50fa20112a0bbbe6.html",
+    "site": "defect"
+  },
+  {
+    "check_id": "fetch-response",
+    "family_id": "fetch-response",
+    "unit_key": "fetch-response|http://127.0.0.1:PORT/bare",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "HTTP 200",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/02cb3482406e7d0256280bbdf6f300ca959146a425c1729a7615e3017e147e91.html",
+    "site": "defect"
+  },
+  {
+    "check_id": "fetch-response",
+    "family_id": "fetch-response",
+    "unit_key": "fetch-response|http://127.0.0.1:PORT/contact",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "HTTP 200",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/ef4dac027a5e1aee55546f8c0b8147593896af72526a71b4e88c87654ba835e4.html",
+    "site": "defect"
+  },
+  {
+    "check_id": "fetch-response",
+    "family_id": "fetch-response",
+    "unit_key": "fetch-response|http://127.0.0.1:PORT/dup",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "HTTP 200",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/007526ad105b554a5386c19c25f62806b7564ac45657e352ea89a5c1bb5fc9b3.html",
+    "site": "defect"
+  },
+  {
+    "check_id": "fetch-response",
+    "family_id": "fetch-response",
+    "unit_key": "fetch-response|http://127.0.0.1:PORT/gone",
+    "state": "fail",
+    "q": 0,
+    "partial_basis": null,
+    "reason": "HTTP 404",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/907ba78b4545338d3539683e63ecb51cf51c10adc9dabd86e92bd52339f298b9.bin",
+    "problem_messages": [
+      {
+        "message_key": "fetch-response.http-error",
+        "message_values": {
+          "status": 404
+        }
+      }
+    ],
+    "site": "defect"
+  },
+  {
+    "check_id": "fetch-response",
+    "family_id": "fetch-response",
+    "unit_key": "fetch-response|http://127.0.0.1:PORT/noindex",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "HTTP 200",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/445743d8f42f88657af42c0a2d15eb71a92d473be906952a39a4396dc8755fb8.html",
+    "site": "defect"
+  },
+  {
+    "check_id": "fetch-response",
+    "family_id": "fetch-response",
+    "unit_key": "fetch-response|http://127.0.0.1:PORT/orphan",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "HTTP 200",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/82bcec8a591ef5b7f23889ddf176dae98dd988bbccd850fa0b5d3ef67f0b05fb.html",
+    "site": "defect"
+  },
+  {
+    "check_id": "fetch-response",
+    "family_id": "fetch-response",
+    "unit_key": "fetch-response|http://127.0.0.1:PORT/private",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "HTTP 200",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/2831a310a8db81bfd44e92641d41ce673a0ba8f7f7151a777a7bafb421a1c63b.html",
+    "site": "defect"
+  },
+  {
+    "check_id": "index-policy",
+    "family_id": "index-policy",
+    "unit_key": "index-policy|http://127.0.0.1:PORT/",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "Raw response has no applicable noindex directive",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/260ba0e7e892c57fcef46111d4a877daff635a4cf6df79c757ffdc076ee0cedc.html",
+    "site": "defect"
+  },
+  {
+    "check_id": "index-policy",
+    "family_id": "index-policy",
+    "unit_key": "index-policy|http://127.0.0.1:PORT/about",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "Raw response has no applicable noindex directive",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/4d56853ee2b4dcb6174d7b9a7a37e253e9dffed80d43a8f0d0622e8607a0f435.html",
+    "site": "defect"
+  },
+  {
+    "check_id": "index-policy",
+    "family_id": "index-policy",
+    "unit_key": "index-policy|http://127.0.0.1:PORT/badcanon",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "Raw response has no applicable noindex directive",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/bc4a85adb25e4de3462ba6326bb6bea59dcbeed2fbaf4a71087d473b965d4189.html",
+    "site": "defect"
+  },
+  {
+    "check_id": "index-policy",
+    "family_id": "index-policy",
+    "unit_key": "index-policy|http://127.0.0.1:PORT/badld",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "Raw response has no applicable noindex directive",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/ab38ae9a9d9d58dd8b77c6dc5c5da40d301b69d4f0cdf40d50fa20112a0bbbe6.html",
+    "site": "defect"
+  },
+  {
+    "check_id": "index-policy",
+    "family_id": "index-policy",
+    "unit_key": "index-policy|http://127.0.0.1:PORT/bare",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "Raw response has no applicable noindex directive",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/02cb3482406e7d0256280bbdf6f300ca959146a425c1729a7615e3017e147e91.html",
+    "site": "defect"
+  },
+  {
+    "check_id": "index-policy",
+    "family_id": "index-policy",
+    "unit_key": "index-policy|http://127.0.0.1:PORT/contact",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "Raw response has no applicable noindex directive",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/ef4dac027a5e1aee55546f8c0b8147593896af72526a71b4e88c87654ba835e4.html",
+    "site": "defect"
+  },
+  {
+    "check_id": "index-policy",
+    "family_id": "index-policy",
+    "unit_key": "index-policy|http://127.0.0.1:PORT/dup",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "Raw response has no applicable noindex directive",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/007526ad105b554a5386c19c25f62806b7564ac45657e352ea89a5c1bb5fc9b3.html",
+    "site": "defect"
+  },
+  {
+    "check_id": "index-policy",
+    "family_id": "index-policy",
+    "unit_key": "index-policy|http://127.0.0.1:PORT/noindex",
+    "state": "fail",
+    "q": 0,
+    "partial_basis": null,
+    "reason": "Raw response blocks indexing for the target engine",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/445743d8f42f88657af42c0a2d15eb71a92d473be906952a39a4396dc8755fb8.html",
+    "problem_messages": [
+      {
+        "message_key": "index-policy.noindex",
+        "message_values": {}
+      }
+    ],
+    "site": "defect"
+  },
+  {
+    "check_id": "index-policy",
+    "family_id": "index-policy",
+    "unit_key": "index-policy|http://127.0.0.1:PORT/orphan",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "Raw response has no applicable noindex directive",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/82bcec8a591ef5b7f23889ddf176dae98dd988bbccd850fa0b5d3ef67f0b05fb.html",
+    "site": "defect"
+  },
+  {
+    "check_id": "index-policy",
+    "family_id": "index-policy",
+    "unit_key": "index-policy|http://127.0.0.1:PORT/private",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "Raw response has no applicable noindex directive",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/2831a310a8db81bfd44e92641d41ce673a0ba8f7f7151a777a7bafb421a1c63b.html",
+    "site": "defect"
+  },
+  {
+    "check_id": "inp-field",
+    "family_id": "inp-field",
+    "unit_key": "inp-field|http://127.0.0.1:PORT",
+    "state": "unknown",
+    "q": null,
+    "partial_basis": null,
+    "reason": "field_data_unavailable",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/260ba0e7e892c57fcef46111d4a877daff635a4cf6df79c757ffdc076ee0cedc.html",
+    "site": "defect"
+  },
+  {
+    "check_id": "internal-navigation",
+    "family_id": "internal-navigation",
+    "unit_key": "internal-navigation|http://127.0.0.1:PORT/",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "Reached within the click limit; anchors are within the limit",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/260ba0e7e892c57fcef46111d4a877daff635a4cf6df79c757ffdc076ee0cedc.html",
+    "measurement": {
+      "click_depth": 0,
+      "max_click_depth": 3,
+      "weak_anchor_pages": 0,
+      "linked_pages": 9,
+      "allowed_weak_ratio": 0.25
+    },
+    "site": "defect"
+  },
+  {
+    "check_id": "internal-navigation",
+    "family_id": "internal-navigation",
+    "unit_key": "internal-navigation|http://127.0.0.1:PORT/about",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "Reached within the click limit; anchors are within the limit",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/4d56853ee2b4dcb6174d7b9a7a37e253e9dffed80d43a8f0d0622e8607a0f435.html",
+    "measurement": {
+      "click_depth": 1,
+      "max_click_depth": 3,
+      "weak_anchor_pages": 0,
+      "linked_pages": 0,
+      "allowed_weak_ratio": 0.25
+    },
+    "site": "defect"
+  },
+  {
+    "check_id": "internal-navigation",
+    "family_id": "internal-navigation",
+    "unit_key": "internal-navigation|http://127.0.0.1:PORT/badcanon",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "Reached within the click limit; anchors are within the limit",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/bc4a85adb25e4de3462ba6326bb6bea59dcbeed2fbaf4a71087d473b965d4189.html",
+    "measurement": {
+      "click_depth": 1,
+      "max_click_depth": 3,
+      "weak_anchor_pages": 0,
+      "linked_pages": 0,
+      "allowed_weak_ratio": 0.25
+    },
+    "site": "defect"
+  },
+  {
+    "check_id": "internal-navigation",
+    "family_id": "internal-navigation",
+    "unit_key": "internal-navigation|http://127.0.0.1:PORT/badld",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "Reached within the click limit; anchors are within the limit",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/ab38ae9a9d9d58dd8b77c6dc5c5da40d301b69d4f0cdf40d50fa20112a0bbbe6.html",
+    "measurement": {
+      "click_depth": 1,
+      "max_click_depth": 3,
+      "weak_anchor_pages": 0,
+      "linked_pages": 0,
+      "allowed_weak_ratio": 0.25
+    },
+    "site": "defect"
+  },
+  {
+    "check_id": "internal-navigation",
+    "family_id": "internal-navigation",
+    "unit_key": "internal-navigation|http://127.0.0.1:PORT/bare",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "Reached within the click limit; anchors are within the limit",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/02cb3482406e7d0256280bbdf6f300ca959146a425c1729a7615e3017e147e91.html",
+    "measurement": {
+      "click_depth": 1,
+      "max_click_depth": 3,
+      "weak_anchor_pages": 0,
+      "linked_pages": 0,
+      "allowed_weak_ratio": 0.25
+    },
+    "site": "defect"
+  },
+  {
+    "check_id": "internal-navigation",
+    "family_id": "internal-navigation",
+    "unit_key": "internal-navigation|http://127.0.0.1:PORT/contact",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "Reached within the click limit; anchors are within the limit",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/ef4dac027a5e1aee55546f8c0b8147593896af72526a71b4e88c87654ba835e4.html",
+    "measurement": {
+      "click_depth": 1,
+      "max_click_depth": 3,
+      "weak_anchor_pages": 0,
+      "linked_pages": 0,
+      "allowed_weak_ratio": 0.25
+    },
+    "site": "defect"
+  },
+  {
+    "check_id": "internal-navigation",
+    "family_id": "internal-navigation",
+    "unit_key": "internal-navigation|http://127.0.0.1:PORT/dup",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "Reached within the click limit; anchors are within the limit",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/007526ad105b554a5386c19c25f62806b7564ac45657e352ea89a5c1bb5fc9b3.html",
+    "measurement": {
+      "click_depth": 1,
+      "max_click_depth": 3,
+      "weak_anchor_pages": 0,
+      "linked_pages": 0,
+      "allowed_weak_ratio": 0.25
+    },
+    "site": "defect"
+  },
+  {
+    "check_id": "internal-navigation",
+    "family_id": "internal-navigation",
+    "unit_key": "internal-navigation|http://127.0.0.1:PORT/noindex",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "Reached within the click limit; anchors are within the limit",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/445743d8f42f88657af42c0a2d15eb71a92d473be906952a39a4396dc8755fb8.html",
+    "measurement": {
+      "click_depth": 1,
+      "max_click_depth": 3,
+      "weak_anchor_pages": 0,
+      "linked_pages": 0,
+      "allowed_weak_ratio": 0.25
+    },
+    "site": "defect"
+  },
+  {
+    "check_id": "internal-navigation",
+    "family_id": "internal-navigation",
+    "unit_key": "internal-navigation|http://127.0.0.1:PORT/private",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "Reached within the click limit; anchors are within the limit",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/2831a310a8db81bfd44e92641d41ce673a0ba8f7f7151a777a7bafb421a1c63b.html",
+    "measurement": {
+      "click_depth": 1,
+      "max_click_depth": 3,
+      "weak_anchor_pages": 0,
+      "linked_pages": 0,
+      "allowed_weak_ratio": 0.25
+    },
+    "site": "defect"
+  },
+  {
+    "check_id": "lcp-field",
+    "family_id": "lcp-field",
+    "unit_key": "lcp-field|http://127.0.0.1:PORT",
+    "state": "unknown",
+    "q": null,
+    "partial_basis": null,
+    "reason": "field_data_unavailable",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/260ba0e7e892c57fcef46111d4a877daff635a4cf6df79c757ffdc076ee0cedc.html",
+    "site": "defect"
+  },
+  {
+    "check_id": "locale-links",
+    "family_id": "locale-links",
+    "unit_key": "locale-links|http://127.0.0.1:PORT/",
+    "state": "not_applicable",
+    "q": null,
+    "partial_basis": null,
+    "reason": "No hreflang link on this page and no collected page lists it as an alternate",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/260ba0e7e892c57fcef46111d4a877daff635a4cf6df79c757ffdc076ee0cedc.html",
+    "applicability_decision": {
+      "condition": "single_locale",
+      "reason": "No hreflang link on this page and no collected page lists it as an alternate",
+      "evidence_ref": "<out>/evidence/260ba0e7e892c57fcef46111d4a877daff635a4cf6df79c757ffdc076ee0cedc.html"
+    },
+    "site": "defect"
+  },
+  {
+    "check_id": "locale-links",
+    "family_id": "locale-links",
+    "unit_key": "locale-links|http://127.0.0.1:PORT/about",
+    "state": "not_applicable",
+    "q": null,
+    "partial_basis": null,
+    "reason": "No hreflang link on this page and no collected page lists it as an alternate",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/4d56853ee2b4dcb6174d7b9a7a37e253e9dffed80d43a8f0d0622e8607a0f435.html",
+    "applicability_decision": {
+      "condition": "single_locale",
+      "reason": "No hreflang link on this page and no collected page lists it as an alternate",
+      "evidence_ref": "<out>/evidence/4d56853ee2b4dcb6174d7b9a7a37e253e9dffed80d43a8f0d0622e8607a0f435.html"
+    },
+    "site": "defect"
+  },
+  {
+    "check_id": "locale-links",
+    "family_id": "locale-links",
+    "unit_key": "locale-links|http://127.0.0.1:PORT/badcanon",
+    "state": "not_applicable",
+    "q": null,
+    "partial_basis": null,
+    "reason": "No hreflang link on this page and no collected page lists it as an alternate",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/bc4a85adb25e4de3462ba6326bb6bea59dcbeed2fbaf4a71087d473b965d4189.html",
+    "applicability_decision": {
+      "condition": "single_locale",
+      "reason": "No hreflang link on this page and no collected page lists it as an alternate",
+      "evidence_ref": "<out>/evidence/bc4a85adb25e4de3462ba6326bb6bea59dcbeed2fbaf4a71087d473b965d4189.html"
+    },
+    "site": "defect"
+  },
+  {
+    "check_id": "locale-links",
+    "family_id": "locale-links",
+    "unit_key": "locale-links|http://127.0.0.1:PORT/badld",
+    "state": "not_applicable",
+    "q": null,
+    "partial_basis": null,
+    "reason": "No hreflang link on this page and no collected page lists it as an alternate",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/ab38ae9a9d9d58dd8b77c6dc5c5da40d301b69d4f0cdf40d50fa20112a0bbbe6.html",
+    "applicability_decision": {
+      "condition": "single_locale",
+      "reason": "No hreflang link on this page and no collected page lists it as an alternate",
+      "evidence_ref": "<out>/evidence/ab38ae9a9d9d58dd8b77c6dc5c5da40d301b69d4f0cdf40d50fa20112a0bbbe6.html"
+    },
+    "site": "defect"
+  },
+  {
+    "check_id": "locale-links",
+    "family_id": "locale-links",
+    "unit_key": "locale-links|http://127.0.0.1:PORT/bare",
+    "state": "not_applicable",
+    "q": null,
+    "partial_basis": null,
+    "reason": "No hreflang link on this page and no collected page lists it as an alternate",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/02cb3482406e7d0256280bbdf6f300ca959146a425c1729a7615e3017e147e91.html",
+    "applicability_decision": {
+      "condition": "single_locale",
+      "reason": "No hreflang link on this page and no collected page lists it as an alternate",
+      "evidence_ref": "<out>/evidence/02cb3482406e7d0256280bbdf6f300ca959146a425c1729a7615e3017e147e91.html"
+    },
+    "site": "defect"
+  },
+  {
+    "check_id": "locale-links",
+    "family_id": "locale-links",
+    "unit_key": "locale-links|http://127.0.0.1:PORT/contact",
+    "state": "not_applicable",
+    "q": null,
+    "partial_basis": null,
+    "reason": "No hreflang link on this page and no collected page lists it as an alternate",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/ef4dac027a5e1aee55546f8c0b8147593896af72526a71b4e88c87654ba835e4.html",
+    "applicability_decision": {
+      "condition": "single_locale",
+      "reason": "No hreflang link on this page and no collected page lists it as an alternate",
+      "evidence_ref": "<out>/evidence/ef4dac027a5e1aee55546f8c0b8147593896af72526a71b4e88c87654ba835e4.html"
+    },
+    "site": "defect"
+  },
+  {
+    "check_id": "locale-links",
+    "family_id": "locale-links",
+    "unit_key": "locale-links|http://127.0.0.1:PORT/dup",
+    "state": "not_applicable",
+    "q": null,
+    "partial_basis": null,
+    "reason": "No hreflang link on this page and no collected page lists it as an alternate",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/007526ad105b554a5386c19c25f62806b7564ac45657e352ea89a5c1bb5fc9b3.html",
+    "applicability_decision": {
+      "condition": "single_locale",
+      "reason": "No hreflang link on this page and no collected page lists it as an alternate",
+      "evidence_ref": "<out>/evidence/007526ad105b554a5386c19c25f62806b7564ac45657e352ea89a5c1bb5fc9b3.html"
+    },
+    "site": "defect"
+  },
+  {
+    "check_id": "locale-links",
+    "family_id": "locale-links",
+    "unit_key": "locale-links|http://127.0.0.1:PORT/noindex",
+    "state": "not_applicable",
+    "q": null,
+    "partial_basis": null,
+    "reason": "No hreflang link on this page and no collected page lists it as an alternate",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/445743d8f42f88657af42c0a2d15eb71a92d473be906952a39a4396dc8755fb8.html",
+    "applicability_decision": {
+      "condition": "single_locale",
+      "reason": "No hreflang link on this page and no collected page lists it as an alternate",
+      "evidence_ref": "<out>/evidence/445743d8f42f88657af42c0a2d15eb71a92d473be906952a39a4396dc8755fb8.html"
+    },
+    "site": "defect"
+  },
+  {
+    "check_id": "locale-links",
+    "family_id": "locale-links",
+    "unit_key": "locale-links|http://127.0.0.1:PORT/orphan",
+    "state": "not_applicable",
+    "q": null,
+    "partial_basis": null,
+    "reason": "No hreflang link on this page and no collected page lists it as an alternate",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/82bcec8a591ef5b7f23889ddf176dae98dd988bbccd850fa0b5d3ef67f0b05fb.html",
+    "applicability_decision": {
+      "condition": "single_locale",
+      "reason": "No hreflang link on this page and no collected page lists it as an alternate",
+      "evidence_ref": "<out>/evidence/82bcec8a591ef5b7f23889ddf176dae98dd988bbccd850fa0b5d3ef67f0b05fb.html"
+    },
+    "site": "defect"
+  },
+  {
+    "check_id": "locale-links",
+    "family_id": "locale-links",
+    "unit_key": "locale-links|http://127.0.0.1:PORT/private",
+    "state": "not_applicable",
+    "q": null,
+    "partial_basis": null,
+    "reason": "No hreflang link on this page and no collected page lists it as an alternate",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/2831a310a8db81bfd44e92641d41ce673a0ba8f7f7151a777a7bafb421a1c63b.html",
+    "applicability_decision": {
+      "condition": "single_locale",
+      "reason": "No hreflang link on this page and no collected page lists it as an alternate",
+      "evidence_ref": "<out>/evidence/2831a310a8db81bfd44e92641d41ce673a0ba8f7f7151a777a7bafb421a1c63b.html"
+    },
+    "site": "defect"
+  },
+  {
+    "check_id": "naver-markup",
+    "family_id": "naver-markup",
+    "unit_key": "naver-markup|naver|http://127.0.0.1:PORT/",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "Open Graph, description, canonical, viewport and title checks pass",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/260ba0e7e892c57fcef46111d4a877daff635a4cf6df79c757ffdc076ee0cedc.html",
+    "site": "defect"
+  },
+  {
+    "check_id": "naver-markup",
+    "family_id": "naver-markup",
+    "unit_key": "naver-markup|naver|http://127.0.0.1:PORT/about",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "Open Graph, description, canonical, viewport and title checks pass",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/4d56853ee2b4dcb6174d7b9a7a37e253e9dffed80d43a8f0d0622e8607a0f435.html",
+    "site": "defect"
+  },
+  {
+    "check_id": "naver-markup",
+    "family_id": "naver-markup",
+    "unit_key": "naver-markup|naver|http://127.0.0.1:PORT/badcanon",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "Open Graph, description, canonical, viewport and title checks pass",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/bc4a85adb25e4de3462ba6326bb6bea59dcbeed2fbaf4a71087d473b965d4189.html",
+    "site": "defect"
+  },
+  {
+    "check_id": "naver-markup",
+    "family_id": "naver-markup",
+    "unit_key": "naver-markup|naver|http://127.0.0.1:PORT/badld",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "Open Graph, description, canonical, viewport and title checks pass",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/ab38ae9a9d9d58dd8b77c6dc5c5da40d301b69d4f0cdf40d50fa20112a0bbbe6.html",
+    "site": "defect"
+  },
+  {
+    "check_id": "naver-markup",
+    "family_id": "naver-markup",
+    "unit_key": "naver-markup|naver|http://127.0.0.1:PORT/bare",
+    "state": "fail",
+    "q": 0,
+    "partial_basis": null,
+    "reason": "og:title is missing; og:description is missing; og:image is missing; og:url is missing; og:type is missing; meta description is missing; canonical link is missing; meta viewport is missing",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/02cb3482406e7d0256280bbdf6f300ca959146a425c1729a7615e3017e147e91.html",
+    "measurement": {
+      "problems": [
+        "og:title is missing",
+        "og:description is missing",
+        "og:image is missing",
+        "og:url is missing",
+        "og:type is missing",
+        "meta description is missing",
+        "canonical link is missing",
+        "meta viewport is missing"
+      ]
+    },
+    "problem_messages": [
+      {
+        "message_key": "naver-markup.no-og",
+        "message_values": {
+          "name": "title"
+        }
+      },
+      {
+        "message_key": "naver-markup.no-og",
+        "message_values": {
+          "name": "description"
+        }
+      },
+      {
+        "message_key": "naver-markup.no-og",
+        "message_values": {
+          "name": "image"
+        }
+      },
+      {
+        "message_key": "naver-markup.no-og",
+        "message_values": {
+          "name": "url"
+        }
+      },
+      {
+        "message_key": "naver-markup.no-og",
+        "message_values": {
+          "name": "type"
+        }
+      },
+      {
+        "message_key": "naver-markup.no-description",
+        "message_values": {}
+      },
+      {
+        "message_key": "naver-markup.no-canonical",
+        "message_values": {}
+      },
+      {
+        "message_key": "naver-markup.no-viewport",
+        "message_values": {}
+      }
+    ],
+    "site": "defect"
+  },
+  {
+    "check_id": "naver-markup",
+    "family_id": "naver-markup",
+    "unit_key": "naver-markup|naver|http://127.0.0.1:PORT/contact",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "Open Graph, description, canonical, viewport and title checks pass",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/ef4dac027a5e1aee55546f8c0b8147593896af72526a71b4e88c87654ba835e4.html",
+    "site": "defect"
+  },
+  {
+    "check_id": "naver-markup",
+    "family_id": "naver-markup",
+    "unit_key": "naver-markup|naver|http://127.0.0.1:PORT/dup",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "Open Graph, description, canonical, viewport and title checks pass",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/007526ad105b554a5386c19c25f62806b7564ac45657e352ea89a5c1bb5fc9b3.html",
+    "site": "defect"
+  },
+  {
+    "check_id": "naver-markup",
+    "family_id": "naver-markup",
+    "unit_key": "naver-markup|naver|http://127.0.0.1:PORT/noindex",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "Open Graph, description, canonical, viewport and title checks pass",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/445743d8f42f88657af42c0a2d15eb71a92d473be906952a39a4396dc8755fb8.html",
+    "site": "defect"
+  },
+  {
+    "check_id": "naver-markup",
+    "family_id": "naver-markup",
+    "unit_key": "naver-markup|naver|http://127.0.0.1:PORT/orphan",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "Open Graph, description, canonical, viewport and title checks pass",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/82bcec8a591ef5b7f23889ddf176dae98dd988bbccd850fa0b5d3ef67f0b05fb.html",
+    "site": "defect"
+  },
+  {
+    "check_id": "naver-markup",
+    "family_id": "naver-markup",
+    "unit_key": "naver-markup|naver|http://127.0.0.1:PORT/private",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "Open Graph, description, canonical, viewport and title checks pass",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/2831a310a8db81bfd44e92641d41ce673a0ba8f7f7151a777a7bafb421a1c63b.html",
+    "site": "defect"
+  },
+  {
+    "check_id": "render-content",
+    "family_id": "render-content",
+    "unit_key": "render-content|http://127.0.0.1:PORT/",
+    "state": "unknown",
+    "q": null,
+    "partial_basis": null,
+    "reason": "chrome_missing",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/260ba0e7e892c57fcef46111d4a877daff635a4cf6df79c757ffdc076ee0cedc.html",
+    "site": "defect"
+  },
+  {
+    "check_id": "search-crawl-policy",
+    "family_id": "search-crawl-policy",
+    "unit_key": "search-crawl-policy|google|http://127.0.0.1:PORT/",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "Collected robots.txt allows Googlebot path",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/4708097df35ceea31e915b04f525da91678bfe5906b9780bf1ebd270178d5656.bin",
+    "site": "defect"
+  },
+  {
+    "check_id": "search-crawl-policy",
+    "family_id": "search-crawl-policy",
+    "unit_key": "search-crawl-policy|google|http://127.0.0.1:PORT/about",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "Collected robots.txt allows Googlebot path",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/4708097df35ceea31e915b04f525da91678bfe5906b9780bf1ebd270178d5656.bin",
+    "site": "defect"
+  },
+  {
+    "check_id": "search-crawl-policy",
+    "family_id": "search-crawl-policy",
+    "unit_key": "search-crawl-policy|google|http://127.0.0.1:PORT/badcanon",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "Collected robots.txt allows Googlebot path",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/4708097df35ceea31e915b04f525da91678bfe5906b9780bf1ebd270178d5656.bin",
+    "site": "defect"
+  },
+  {
+    "check_id": "search-crawl-policy",
+    "family_id": "search-crawl-policy",
+    "unit_key": "search-crawl-policy|google|http://127.0.0.1:PORT/badld",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "Collected robots.txt allows Googlebot path",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/4708097df35ceea31e915b04f525da91678bfe5906b9780bf1ebd270178d5656.bin",
+    "site": "defect"
+  },
+  {
+    "check_id": "search-crawl-policy",
+    "family_id": "search-crawl-policy",
+    "unit_key": "search-crawl-policy|google|http://127.0.0.1:PORT/bare",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "Collected robots.txt allows Googlebot path",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/4708097df35ceea31e915b04f525da91678bfe5906b9780bf1ebd270178d5656.bin",
+    "site": "defect"
+  },
+  {
+    "check_id": "search-crawl-policy",
+    "family_id": "search-crawl-policy",
+    "unit_key": "search-crawl-policy|google|http://127.0.0.1:PORT/contact",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "Collected robots.txt allows Googlebot path",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/4708097df35ceea31e915b04f525da91678bfe5906b9780bf1ebd270178d5656.bin",
+    "site": "defect"
+  },
+  {
+    "check_id": "search-crawl-policy",
+    "family_id": "search-crawl-policy",
+    "unit_key": "search-crawl-policy|google|http://127.0.0.1:PORT/dup",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "Collected robots.txt allows Googlebot path",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/4708097df35ceea31e915b04f525da91678bfe5906b9780bf1ebd270178d5656.bin",
+    "site": "defect"
+  },
+  {
+    "check_id": "search-crawl-policy",
+    "family_id": "search-crawl-policy",
+    "unit_key": "search-crawl-policy|google|http://127.0.0.1:PORT/noindex",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "Collected robots.txt allows Googlebot path",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/4708097df35ceea31e915b04f525da91678bfe5906b9780bf1ebd270178d5656.bin",
+    "site": "defect"
+  },
+  {
+    "check_id": "search-crawl-policy",
+    "family_id": "search-crawl-policy",
+    "unit_key": "search-crawl-policy|google|http://127.0.0.1:PORT/orphan",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "Collected robots.txt allows Googlebot path",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/4708097df35ceea31e915b04f525da91678bfe5906b9780bf1ebd270178d5656.bin",
+    "site": "defect"
+  },
+  {
+    "check_id": "search-crawl-policy",
+    "family_id": "search-crawl-policy",
+    "unit_key": "search-crawl-policy|google|http://127.0.0.1:PORT/private",
+    "state": "fail",
+    "q": 0,
+    "partial_basis": null,
+    "reason": "Collected robots.txt disallows Googlebot path",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/4708097df35ceea31e915b04f525da91678bfe5906b9780bf1ebd270178d5656.bin",
+    "problem_messages": [
+      {
+        "message_key": "search-crawl-policy.disallowed",
+        "message_values": {
+          "agent": "Googlebot"
+        }
+      }
+    ],
+    "site": "defect"
+  },
+  {
+    "check_id": "search-crawl-policy",
+    "family_id": "search-crawl-policy",
+    "unit_key": "search-crawl-policy|naver|http://127.0.0.1:PORT/",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "Collected robots.txt allows Yeti path",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/4708097df35ceea31e915b04f525da91678bfe5906b9780bf1ebd270178d5656.bin",
+    "site": "defect"
+  },
+  {
+    "check_id": "search-crawl-policy",
+    "family_id": "search-crawl-policy",
+    "unit_key": "search-crawl-policy|naver|http://127.0.0.1:PORT/about",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "Collected robots.txt allows Yeti path",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/4708097df35ceea31e915b04f525da91678bfe5906b9780bf1ebd270178d5656.bin",
+    "site": "defect"
+  },
+  {
+    "check_id": "search-crawl-policy",
+    "family_id": "search-crawl-policy",
+    "unit_key": "search-crawl-policy|naver|http://127.0.0.1:PORT/badcanon",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "Collected robots.txt allows Yeti path",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/4708097df35ceea31e915b04f525da91678bfe5906b9780bf1ebd270178d5656.bin",
+    "site": "defect"
+  },
+  {
+    "check_id": "search-crawl-policy",
+    "family_id": "search-crawl-policy",
+    "unit_key": "search-crawl-policy|naver|http://127.0.0.1:PORT/badld",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "Collected robots.txt allows Yeti path",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/4708097df35ceea31e915b04f525da91678bfe5906b9780bf1ebd270178d5656.bin",
+    "site": "defect"
+  },
+  {
+    "check_id": "search-crawl-policy",
+    "family_id": "search-crawl-policy",
+    "unit_key": "search-crawl-policy|naver|http://127.0.0.1:PORT/bare",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "Collected robots.txt allows Yeti path",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/4708097df35ceea31e915b04f525da91678bfe5906b9780bf1ebd270178d5656.bin",
+    "site": "defect"
+  },
+  {
+    "check_id": "search-crawl-policy",
+    "family_id": "search-crawl-policy",
+    "unit_key": "search-crawl-policy|naver|http://127.0.0.1:PORT/contact",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "Collected robots.txt allows Yeti path",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/4708097df35ceea31e915b04f525da91678bfe5906b9780bf1ebd270178d5656.bin",
+    "site": "defect"
+  },
+  {
+    "check_id": "search-crawl-policy",
+    "family_id": "search-crawl-policy",
+    "unit_key": "search-crawl-policy|naver|http://127.0.0.1:PORT/dup",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "Collected robots.txt allows Yeti path",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/4708097df35ceea31e915b04f525da91678bfe5906b9780bf1ebd270178d5656.bin",
+    "site": "defect"
+  },
+  {
+    "check_id": "search-crawl-policy",
+    "family_id": "search-crawl-policy",
+    "unit_key": "search-crawl-policy|naver|http://127.0.0.1:PORT/noindex",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "Collected robots.txt allows Yeti path",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/4708097df35ceea31e915b04f525da91678bfe5906b9780bf1ebd270178d5656.bin",
+    "site": "defect"
+  },
+  {
+    "check_id": "search-crawl-policy",
+    "family_id": "search-crawl-policy",
+    "unit_key": "search-crawl-policy|naver|http://127.0.0.1:PORT/orphan",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "Collected robots.txt allows Yeti path",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/4708097df35ceea31e915b04f525da91678bfe5906b9780bf1ebd270178d5656.bin",
+    "site": "defect"
+  },
+  {
+    "check_id": "search-crawl-policy",
+    "family_id": "search-crawl-policy",
+    "unit_key": "search-crawl-policy|naver|http://127.0.0.1:PORT/private",
+    "state": "fail",
+    "q": 0,
+    "partial_basis": null,
+    "reason": "Collected robots.txt disallows Yeti path",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/4708097df35ceea31e915b04f525da91678bfe5906b9780bf1ebd270178d5656.bin",
+    "problem_messages": [
+      {
+        "message_key": "search-crawl-policy.disallowed",
+        "message_values": {
+          "agent": "Yeti"
+        }
+      }
+    ],
+    "site": "defect"
+  },
+  {
+    "check_id": "structured-data-truth",
+    "family_id": "structured-data-truth",
+    "unit_key": "structured-data-truth|http://127.0.0.1:PORT/",
+    "state": "unknown",
+    "q": null,
+    "partial_basis": null,
+    "reason": "The JSON-LD states a fact that the page text neither shows nor contradicts, so not every fact is confirmed",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/260ba0e7e892c57fcef46111d4a877daff635a4cf6df79c757ffdc076ee0cedc.html",
+    "measurement": {
+      "jsonld_blocks": 1,
+      "matched": [],
+      "mismatched": [],
+      "unevaluated": [
+        {
+          "type": "name",
+          "jsonld": "Brew Cafe"
+        }
+      ]
+    },
+    "site": "defect"
+  },
+  {
+    "check_id": "structured-data-truth",
+    "family_id": "structured-data-truth",
+    "unit_key": "structured-data-truth|http://127.0.0.1:PORT/about",
+    "state": "not_applicable",
+    "q": null,
+    "partial_basis": null,
+    "reason": "The page has no JSON-LD, microdata or RDFa markup",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/4d56853ee2b4dcb6174d7b9a7a37e253e9dffed80d43a8f0d0622e8607a0f435.html",
+    "measurement": {
+      "jsonld_blocks": 0
+    },
+    "applicability_decision": {
+      "condition": "markup_not_used_or_selected",
+      "reason": "The page has no JSON-LD, microdata or RDFa markup",
+      "evidence_ref": "<out>/evidence/4d56853ee2b4dcb6174d7b9a7a37e253e9dffed80d43a8f0d0622e8607a0f435.html"
+    },
+    "site": "defect"
+  },
+  {
+    "check_id": "structured-data-truth",
+    "family_id": "structured-data-truth",
+    "unit_key": "structured-data-truth|http://127.0.0.1:PORT/badcanon",
+    "state": "not_applicable",
+    "q": null,
+    "partial_basis": null,
+    "reason": "The page has no JSON-LD, microdata or RDFa markup",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/bc4a85adb25e4de3462ba6326bb6bea59dcbeed2fbaf4a71087d473b965d4189.html",
+    "measurement": {
+      "jsonld_blocks": 0
+    },
+    "applicability_decision": {
+      "condition": "markup_not_used_or_selected",
+      "reason": "The page has no JSON-LD, microdata or RDFa markup",
+      "evidence_ref": "<out>/evidence/bc4a85adb25e4de3462ba6326bb6bea59dcbeed2fbaf4a71087d473b965d4189.html"
+    },
+    "site": "defect"
+  },
+  {
+    "check_id": "structured-data-truth",
+    "family_id": "structured-data-truth",
+    "unit_key": "structured-data-truth|http://127.0.0.1:PORT/badld",
+    "state": "fail",
+    "q": 0,
+    "partial_basis": null,
+    "reason": "JSON-LD block(s) fail to parse",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/ab38ae9a9d9d58dd8b77c6dc5c5da40d301b69d4f0cdf40d50fa20112a0bbbe6.html",
+    "measurement": {
+      "parse_errors": 1
+    },
+    "problem_messages": [
+      {
+        "message_key": "structured-data-truth.parse-error",
+        "message_values": {}
+      }
+    ],
+    "site": "defect"
+  },
+  {
+    "check_id": "structured-data-truth",
+    "family_id": "structured-data-truth",
+    "unit_key": "structured-data-truth|http://127.0.0.1:PORT/bare",
+    "state": "not_applicable",
+    "q": null,
+    "partial_basis": null,
+    "reason": "The page has no JSON-LD, microdata or RDFa markup",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/02cb3482406e7d0256280bbdf6f300ca959146a425c1729a7615e3017e147e91.html",
+    "measurement": {
+      "jsonld_blocks": 0
+    },
+    "applicability_decision": {
+      "condition": "markup_not_used_or_selected",
+      "reason": "The page has no JSON-LD, microdata or RDFa markup",
+      "evidence_ref": "<out>/evidence/02cb3482406e7d0256280bbdf6f300ca959146a425c1729a7615e3017e147e91.html"
+    },
+    "site": "defect"
+  },
+  {
+    "check_id": "structured-data-truth",
+    "family_id": "structured-data-truth",
+    "unit_key": "structured-data-truth|http://127.0.0.1:PORT/contact",
+    "state": "not_applicable",
+    "q": null,
+    "partial_basis": null,
+    "reason": "The page has no JSON-LD, microdata or RDFa markup",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/ef4dac027a5e1aee55546f8c0b8147593896af72526a71b4e88c87654ba835e4.html",
+    "measurement": {
+      "jsonld_blocks": 0
+    },
+    "applicability_decision": {
+      "condition": "markup_not_used_or_selected",
+      "reason": "The page has no JSON-LD, microdata or RDFa markup",
+      "evidence_ref": "<out>/evidence/ef4dac027a5e1aee55546f8c0b8147593896af72526a71b4e88c87654ba835e4.html"
+    },
+    "site": "defect"
+  },
+  {
+    "check_id": "structured-data-truth",
+    "family_id": "structured-data-truth",
+    "unit_key": "structured-data-truth|http://127.0.0.1:PORT/dup",
+    "state": "not_applicable",
+    "q": null,
+    "partial_basis": null,
+    "reason": "The page has no JSON-LD, microdata or RDFa markup",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/007526ad105b554a5386c19c25f62806b7564ac45657e352ea89a5c1bb5fc9b3.html",
+    "measurement": {
+      "jsonld_blocks": 0
+    },
+    "applicability_decision": {
+      "condition": "markup_not_used_or_selected",
+      "reason": "The page has no JSON-LD, microdata or RDFa markup",
+      "evidence_ref": "<out>/evidence/007526ad105b554a5386c19c25f62806b7564ac45657e352ea89a5c1bb5fc9b3.html"
+    },
+    "site": "defect"
+  },
+  {
+    "check_id": "structured-data-truth",
+    "family_id": "structured-data-truth",
+    "unit_key": "structured-data-truth|http://127.0.0.1:PORT/noindex",
+    "state": "not_applicable",
+    "q": null,
+    "partial_basis": null,
+    "reason": "The page has no JSON-LD, microdata or RDFa markup",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/445743d8f42f88657af42c0a2d15eb71a92d473be906952a39a4396dc8755fb8.html",
+    "measurement": {
+      "jsonld_blocks": 0
+    },
+    "applicability_decision": {
+      "condition": "markup_not_used_or_selected",
+      "reason": "The page has no JSON-LD, microdata or RDFa markup",
+      "evidence_ref": "<out>/evidence/445743d8f42f88657af42c0a2d15eb71a92d473be906952a39a4396dc8755fb8.html"
+    },
+    "site": "defect"
+  },
+  {
+    "check_id": "structured-data-truth",
+    "family_id": "structured-data-truth",
+    "unit_key": "structured-data-truth|http://127.0.0.1:PORT/orphan",
+    "state": "not_applicable",
+    "q": null,
+    "partial_basis": null,
+    "reason": "The page has no JSON-LD, microdata or RDFa markup",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/82bcec8a591ef5b7f23889ddf176dae98dd988bbccd850fa0b5d3ef67f0b05fb.html",
+    "measurement": {
+      "jsonld_blocks": 0
+    },
+    "applicability_decision": {
+      "condition": "markup_not_used_or_selected",
+      "reason": "The page has no JSON-LD, microdata or RDFa markup",
+      "evidence_ref": "<out>/evidence/82bcec8a591ef5b7f23889ddf176dae98dd988bbccd850fa0b5d3ef67f0b05fb.html"
+    },
+    "site": "defect"
+  },
+  {
+    "check_id": "structured-data-truth",
+    "family_id": "structured-data-truth",
+    "unit_key": "structured-data-truth|http://127.0.0.1:PORT/private",
+    "state": "not_applicable",
+    "q": null,
+    "partial_basis": null,
+    "reason": "The page has no JSON-LD, microdata or RDFa markup",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/2831a310a8db81bfd44e92641d41ce673a0ba8f7f7151a777a7bafb421a1c63b.html",
+    "measurement": {
+      "jsonld_blocks": 0
+    },
+    "applicability_decision": {
+      "condition": "markup_not_used_or_selected",
+      "reason": "The page has no JSON-LD, microdata or RDFa markup",
+      "evidence_ref": "<out>/evidence/2831a310a8db81bfd44e92641d41ce673a0ba8f7f7151a777a7bafb421a1c63b.html"
+    },
+    "site": "defect"
+  }
+]

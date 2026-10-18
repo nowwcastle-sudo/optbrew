@@ -8,19 +8,20 @@ import os from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
-import { createBundleManifest, verifyBundle } from '../skills/optbrew/scripts/core/bundle.mjs';
+import { createBundleManifest, evaluationSourcePaths, protocolSourcePaths, verifyBundle } from '../skills/optbrew/scripts/core/bundle.mjs';
 import { install } from '../lib/install.mjs';
-import { resolveTargets } from '../lib/paths.mjs';
+import { resolveTargets, scopePaths } from '../lib/paths.mjs';
 import { readInstallRecord } from '../lib/records.mjs';
 import { fixture as updateFixture } from './fixtures/releases/create.mjs';
+import { tempDir } from './support/temp-dir.mjs';
 import { update } from '../lib/update.mjs';
-import { recoverTransaction } from '../lib/transaction.mjs';
+import { recoverTransaction, validateScope } from '../lib/transaction.mjs';
 
 const repositoryRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 
 const hash = bytes => createHash('sha256').update(bytes).digest('hex');
 async function fixture() {
-  const root = await mkdtemp(path.join(os.tmpdir(), 'optbrew 한글 (8) '));
+  const root = await tempDir('optbrew 한글 (8) ');
   const home = path.join(root, 'home (테스트)');
   const bundleRoot = path.join(root, 'bundle');
   await mkdir(bundleRoot, { recursive: true });
@@ -43,12 +44,28 @@ test('install preserves other skill/config and adds only selected targets', asyn
   assert.equal(result.record.targets.length, 1);
   assert.deepEqual([hash(await readFile(seo)), hash(await readFile(config))], before);
   const codex = resolveTargets({ agents: ['codex'], scope: 'user', home })[0].path;
-  assert.equal(await realpath(codex), path.join(home, '.optbrew/installs/user/bundle'));
+  assert.equal(await realpath(codex), await realpath(path.join(home, '.optbrew/installs/user/bundle')));
   const claude = resolveTargets({ agents: ['claude-code'], scope: 'user', home })[0].path;
   await assert.rejects(lstat(claude), { code: 'ENOENT' });
   const added = await install({ bundleRoot, agents: ['claude-code'], scope: 'user', home });
   assert.deepEqual(added.record.targets.map(t => t.agent).sort(), ['claude-code', 'codex']);
   assert.equal(await realpath(codex), await realpath(claude));
+});
+
+// GitHub's Windows runner points TEMP at C:\Users\RUNNER~1\...: a home spelled in the 8.3 short form must install and add a target.
+test('a home folder given in its 8.3 short form installs and adds a target', async () => {
+  if (process.platform !== 'win32') return; // 8.3 short names exist on Windows only (a skip would trip scripts/check-skips.mjs)
+  const { root, bundleRoot } = await fixture();
+  const longHome = path.join(root, 'a home folder with a long name');
+  await mkdir(longHome);
+  const short = execFileSync('cmd.exe', ['/d', '/c', `for %I in ("${longHome}") do @echo %~sI`], { encoding: 'utf8', windowsVerbatimArguments: true }).trim();
+  if (short.toLowerCase() === longHome.toLowerCase() || !short.includes('~')) return; // short names are switched off on this volume
+  await install({ bundleRoot, agents: ['codex'], scope: 'user', home: short });
+  const added = await install({ bundleRoot, agents: ['claude-code'], scope: 'user', home: short });
+  assert.deepEqual(added.record.targets.map(t => t.agent).sort(), ['claude-code', 'codex']);
+  // The check every update, rollback and recovery starts with.
+  const { managedRoot } = scopePaths({ scope: 'user', home: short });
+  assert.equal(await validateScope(managedRoot, await readInstallRecord(managedRoot)), path.resolve(short));
 });
 
 test('dry-run writes nothing and shows selected targets', async () => {
@@ -224,4 +241,21 @@ test('final review M3: the recovery hint uses literal single quotes for PowerShe
     assert.equal(error.message.includes(`"${managed}"`), false, 'double quotes would let a shell expand $ in the path');
     return true;
   });
+});
+
+test('verifyBundle accepts a bundle whose manifest lists fewer protocol sources than the current constant', async t => {
+  const root = await mkdtemp(path.join(os.tmpdir(), 'optbrew-older-bundle-'));
+  t.after(() => rm(root, { recursive: true, force: true }));
+  for (const name of new Set([...evaluationSourcePaths, ...protocolSourcePaths])) {
+    await mkdir(path.dirname(path.join(root, name)), { recursive: true });
+    await fs.copyFile(path.join(repositoryRoot, 'skills/optbrew', name), path.join(root, name));
+  }
+  const older = protocolSourcePaths.filter(name => name !== 'references/limits.json');
+  assert.ok(older.length < protocolSourcePaths.length);
+  const manifest = await createBundleManifest({ bundleRoot: root, releaseVersion: '0.1.0', sources: { evaluation: evaluationSourcePaths, protocol: older } });
+  assert.equal(manifest.protocol_sources.length, older.length);
+  assert.equal((await verifyBundle({ bundleRoot: root, manifest })).status, 'valid');
+  await writeFile(path.join(root, 'scripts/core/protocol.mjs'), 'tampered');
+  assert.deepEqual((await verifyBundle({ bundleRoot: root, manifest })).errors.map(error => error.code).sort(),
+    ['bundle_hash_mismatch', 'hash_mismatch', 'protocol_hash_mismatch', 'protocol_sources_mismatch']);
 });

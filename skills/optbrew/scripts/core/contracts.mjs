@@ -1,10 +1,13 @@
 import { readFileSync } from 'node:fs';
+import { limits, versions } from './config.mjs';
 
 const schema = JSON.parse(readFileSync(new URL('../../references/schemas/contract.schema.json', import.meta.url)));
 const registry = JSON.parse(readFileSync(new URL('../../references/check-registry.json', import.meta.url)));
 const families = new Map(registry.families.map(family => [family.family_id, family]));
 const tolerance = 1e-9;
-const cwv = { 'lcp-field': [2500, 4000, 'ms'], 'inp-field': [200, 500, 'ms'], 'cls-field': [0.1, 0.25, 'unitless'] };
+// [good, poor, unit] of each field CWV family, read from the registry so the thresholds are part of the evaluation source.
+const cwv = Object.fromEntries(registry.families.filter(family => family.thresholds?.good !== undefined)
+  .map(({ family_id, thresholds }) => [family_id, [thresholds.good, thresholds.poor, thresholds.unit]]));
 
 export class ContractError extends Error {
   constructor(message) { super(message); this.name = 'ContractError'; }
@@ -26,13 +29,19 @@ function jsonSafe(value, path = '$', seen = new Set()) {
   }
 }
 
+/** Whether a value satisfies a rule; the `if` and `not` keywords test this instead of failing. */
+function matches(rule, value) {
+  try { checkRule(rule, value, '$'); return true; } catch (error) { if (error instanceof ContractError) return false; throw error; }
+}
+
 function checkRule(rule, value, path) {
   if (rule.$ref) return checkRule(schema.$defs[rule.$ref.split('/').at(-1)], value, path);
   if ('const' in rule && value !== rule.const) fail(path, `expected ${JSON.stringify(rule.const)}`);
+  if (rule.not && matches(rule.not, value)) fail(path, 'value not allowed here');
   if (rule.enum && !rule.enum.includes(value)) fail(path, 'unrecognized value');
   if (rule.type) {
     const types = Array.isArray(rule.type) ? rule.type : [rule.type];
-    const valid = types.some(type => type === 'null' ? value === null : type === 'array' ? Array.isArray(value) : type === 'object' ? plainObject(value) : typeof value === type);
+    const valid = types.some(type => type === 'null' ? value === null : type === 'integer' ? Number.isInteger(value) : type === 'array' ? Array.isArray(value) : type === 'object' ? plainObject(value) : typeof value === type);
     if (!valid) fail(path, `expected ${types.join(' or ')}`);
   }
   if (typeof value === 'number') {
@@ -44,7 +53,10 @@ function checkRule(rule, value, path) {
     if (rule.additionalProperties === false) for (const key of Object.keys(value))
       if (!Object.hasOwn(rule.properties ?? {}, key)) fail(`${path}.${key}`, 'unexpected field');
     for (const [key, child] of Object.entries(rule.properties ?? {})) if (Object.hasOwn(value, key)) checkRule(child, value[key], `${path}.${key}`);
+    if (rule.if && rule.then && matches(rule.if, value)) checkRule(rule.then, value, path);
   }
+  if (typeof value === 'string' && rule.minLength !== undefined && value.length < rule.minLength) fail(path, 'too short');
+  if (Array.isArray(value) && rule.minItems !== undefined && value.length < rule.minItems) fail(path, 'too few items');
   if (Array.isArray(value) && rule.items) value.forEach((item, i) => checkRule(rule.items, item, `${path}[${i}]`));
 }
 
@@ -131,12 +143,29 @@ function checkMetric(value) {
       /(?:^|:)citation_response_rate$/.test(value.metric_id)) fail(path, 'positive-only sample cannot estimate all-question citation rate');
 }
 
+/** The request limit a run may ask for: a whole number from 1 up to the configured cap. */
+function checkMaxUrls(value, path) {
+  if (!Number.isInteger(value) || value < 1 || value > limits().max_urls_cap) fail(path, `must be a whole number from 1 to ${limits().max_urls_cap}`);
+}
+
 /** Validate a persisted entity and return its original value. */
 export function validateEntity(typeName, value) {
   const rule = schema.$defs[typeName];
   if (!rule) throw new ContractError(`unknown entity type: ${typeName}`);
   jsonSafe(value);
+  // Answers are written by an agent from the installed skill's text: a different contract version means the text and the scripts disagree.
+  // Checked before the schema so the user reads one plain sentence, not a schema path.
+  if (typeName === 'IntakeAnswers' && value?.schema_version !== versions().contract_schema)
+    fail('IntakeAnswers.schema_version', `the answers file ${value?.schema_version === undefined ? 'has no schema_version' : `says ${JSON.stringify(value.schema_version)}`} but this optbrew needs ${JSON.stringify(versions().contract_schema)}; copy the contract_schema value from references/versions.json`);
   checkRule(rule, value, typeName);
+  if (typeName === 'RunContext' && value.scope?.max_urls !== undefined) checkMaxUrls(value.scope.max_urls, 'RunContext.scope.max_urls');
+  if (typeName === 'IntakeAnswers') {
+    checkMaxUrls(value.max_urls, 'IntakeAnswers.max_urls');
+    // The start question is "sample or raise the limit": the two answers and the number must agree.
+    const raised = value.sample_mode === 'raise';
+    if (raised ? value.max_urls <= limits().max_urls_default : value.max_urls !== limits().max_urls_default)
+      fail('IntakeAnswers.max_urls', raised ? 'a raised limit must be above the default' : `a sample uses the default limit (${limits().max_urls_default}); answer "raise" to go higher`);
+  }
   if (typeName === 'CheckObservation') checkObservation(value);
   if (typeName === 'ScoreInput') value.observations.forEach(checkObservation);
   if (typeName === 'MetricObservation') checkMetric(value);

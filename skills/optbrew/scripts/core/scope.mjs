@@ -40,13 +40,31 @@ export function assertUrlInScope(input, scope) {
   return url;
 }
 
-/** Check origin, path segment, and every resolved address before a request. */
-export function assertInScope(input, scope, resolvedAddresses) {
+export const unbracket = host => host.replace(/^\[|\]$/g, '');
+
+/** Host without IPv6 brackets and the port the URL connects to. */
+export const urlTarget = url => ({ host: unbracket(url.hostname), port: Number(url.port || (url.protocol === 'https:' ? 443 : 80)) });
+
+/**
+ * Check origin, path segment, and every resolved address before a request.
+ * Through a proxy (`addressVetting: 'proxy'`) the proxy resolves names, so only DNS-name vetting is skipped:
+ * IP literals and localhost names are still checked here.
+ */
+export function assertInScope(input, scope, resolvedAddresses, { addressVetting = 'direct' } = {}) {
   const url = assertUrlInScope(input, scope);
-  if (!Array.isArray(resolvedAddresses) || !resolvedAddresses.length) throw new Error('resolved addresses required');
-  const host = url.hostname.replace(/^\[|\]$/g, '');
-  const port = Number(url.port || (url.protocol === 'https:' ? 443 : 80));
+  const target = urlTarget(url);
+  const { port } = target;
+  // A trailing dot is the same name (`localhost.` resolves like `localhost`), so compare without it.
+  const host = target.host.replace(/\.$/, '');
   const local = (scope.local_targets ?? []).some(x => x.host === host && Number(x.port) === port);
+  if (addressVetting === 'proxy') {
+    if (local) return url;
+    if (isIP(host)) {
+      if (privateAddress(host)) throw new Error('private or reserved address outside local target');
+    } else if (host === 'localhost' || host.endsWith('.localhost')) throw new Error('localhost outside local target');
+    return url;
+  }
+  if (!Array.isArray(resolvedAddresses) || !resolvedAddresses.length) throw new Error('resolved addresses required');
   for (const address of resolvedAddresses) if (privateAddress(address) && !local) throw new Error('private or reserved address outside local target');
   return url;
 }
