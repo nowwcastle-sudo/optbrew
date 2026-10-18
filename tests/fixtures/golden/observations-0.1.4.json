@@ -36,6 +36,23 @@
     "site": "after"
   },
   {
+    "check_id": "conversion-path",
+    "family_id": "conversion-path",
+    "unit_key": "conversion-path|site",
+    "state": "unknown",
+    "q": null,
+    "partial_basis": null,
+    "reason": "chrome_missing",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/239b66f2f58e6d41d966cb7da2240e8415189925030bd5b8a3ed957fb3717d77.html",
+    "measurement": {
+      "pages_read": 1,
+      "renders_read": 0
+    },
+    "site": "after"
+  },
+  {
     "check_id": "discovery",
     "family_id": "discovery",
     "unit_key": "discovery|http://127.0.0.1:PORT/",
@@ -319,6 +336,23 @@
     "evaluator_type": "code",
     "source_ref": "optbrew:collector",
     "evidence_ref": "<out>/evidence/c79271fb4d98447734a702cd72feb167ec5dd825e82817cfc672f24045e1d7a0.html",
+    "site": "before"
+  },
+  {
+    "check_id": "conversion-path",
+    "family_id": "conversion-path",
+    "unit_key": "conversion-path|site",
+    "state": "unknown",
+    "q": null,
+    "partial_basis": null,
+    "reason": "chrome_missing",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/c79271fb4d98447734a702cd72feb167ec5dd825e82817cfc672f24045e1d7a0.html",
+    "measurement": {
+      "pages_read": 1,
+      "renders_read": 0
+    },
     "site": "before"
   },
   {
@@ -759,6 +793,35 @@
     "evaluator_type": "code",
     "source_ref": "optbrew:collector",
     "evidence_ref": "<out>/evidence/947ad3ecd2d39c1fb45e87fb89ecf4e871b1ff74aaa4d4af9a7acb14a216fc5e.html",
+    "site": "clean"
+  },
+  {
+    "check_id": "conversion-path",
+    "family_id": "conversion-path",
+    "unit_key": "conversion-path|site",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "An audited page offers a contact route",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/947ad3ecd2d39c1fb45e87fb89ecf4e871b1ff74aaa4d4af9a7acb14a216fc5e.html",
+    "measurement": {
+      "routes": [
+        {
+          "kind": "inquiry_page",
+          "value": "http://127.0.0.1:PORT/contact",
+          "url": "http://127.0.0.1:PORT/",
+          "from": "raw"
+        },
+        {
+          "kind": "shown_phone",
+          "value": "025550142",
+          "url": "http://127.0.0.1:PORT/",
+          "from": "raw"
+        }
+      ]
+    },
     "site": "clean"
   },
   {
@@ -1928,6 +1991,35 @@
     "evaluator_type": "code",
     "source_ref": "optbrew:collector",
     "evidence_ref": "<out>/evidence/260ba0e7e892c57fcef46111d4a877daff635a4cf6df79c757ffdc076ee0cedc.html",
+    "site": "defect"
+  },
+  {
+    "check_id": "conversion-path",
+    "family_id": "conversion-path",
+    "unit_key": "conversion-path|site",
+    "state": "pass",
+    "q": 1,
+    "partial_basis": null,
+    "reason": "An audited page offers a contact route",
+    "evaluator_type": "code",
+    "source_ref": "optbrew:collector",
+    "evidence_ref": "<out>/evidence/260ba0e7e892c57fcef46111d4a877daff635a4cf6df79c757ffdc076ee0cedc.html",
+    "measurement": {
+      "routes": [
+        {
+          "kind": "inquiry_page",
+          "value": "http://127.0.0.1:PORT/contact",
+          "url": "http://127.0.0.1:PORT/",
+          "from": "raw"
+        },
+        {
+          "kind": "shown_phone",
+          "value": "025550142",
+          "url": "http://127.0.0.1:PORT/",
+          "from": "raw"
+        }
+      ]
+    },
     "site": "defect"
   },
   {

@@ -84,6 +84,17 @@ test('context stage plans question-coverage with its panel, or records why it ca
   assert.equal(plan(naver, 'naver-markup').applicable, true);
 });
 
+test('the conversion goal plans the contact route check and is kept as a goal id in the protocol', async () => {
+  const contextOf = async goals => (await begin(['context'], { goals })).state.context;
+  const plan = (context, id) => context.protocol.families.find(family => family.family_id === id);
+  const booking = await contextOf(['검색 유입', '예약 문의 늘리기']);
+  assert.deepEqual(booking.protocol.goals, ['search', 'conversion']);
+  assert.equal(plan(booking, 'conversion-path').applicable, true);
+  const search = await contextOf(['검색 유입']);
+  assert.deepEqual(search.protocol.goals, ['search']);
+  assert.equal(plan(search, 'conversion-path').applicability_decision.condition, 'conversion_not_goal');
+});
+
 test('an AI citation goal targets the AI answer engines, and the AI crawler check follows them', async () => {
   const contextOf = async goals => (await begin(['context'], { goals })).state.context;
   const plan = (context, id) => context.protocol.families.find(family => family.family_id === id);

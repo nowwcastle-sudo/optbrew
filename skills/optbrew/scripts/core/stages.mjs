@@ -139,7 +139,7 @@ async function contextFrom(answers, { out, localTargets = [] }) {
   const wantsNaver = goals.includes(NAVER_GOAL) || (answers.owner_exports ?? []).some(x => x.kind === NAVER_ENGINE) ||
     preflight.korean || target.host.endsWith(KOREAN_DOMAIN);
   const engines = targetEngines({ goals, naver: wantsNaver });
-  const families = planFamilies({ engines, questions: answers.questions, evidence_ref: INTAKE_FILE });
+  const families = planFamilies({ engines, goals, questions: answers.questions, evidence_ref: INTAKE_FILE });
   // Handing over an export of this site is the owner's approval of the property it describes: the site's own host, whole site.
   const providers = [...new Set((answers.owner_exports ?? []).map(x => x.kind))];
   const mapping = provider => ({ provider, property: target.host, hostname: target.host, path_prefix: '/' });
@@ -148,7 +148,7 @@ async function contextFrom(answers, { out, localTargets = [] }) {
   const context = {
     schema_version: versions().contract_schema, run_id: `optbrew-${randomUUID()}`, target: home.normalized,
     environment: scope.local_targets ? 'local' : 'production', goals: answers.goals, allowed_changes: [], scope,
-    protocol: { page_types: pageTypes, engines, families, auxiliary_resources: auxiliary, locale: 'und', region: 'ZZ', browser: 'Chrome', device: 'mobile',
+    protocol: { page_types: pageTypes, engines, goals, families, auxiliary_resources: auxiliary, locale: 'und', region: 'ZZ', browser: 'Chrome', device: 'mobile',
       question_panel: answers.questions, surfaces: [], models: [], search_enabled: null,
       render: { enabled: true, pages: selectRenderPages(pageTypes), max_render_requests: limits().max_render_requests }, ...targetIdentity },
     evaluation_version: versions().evaluation, protocol_version: versions().protocol, data_sources: [], cost_decision: {},

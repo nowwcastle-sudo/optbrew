@@ -19,13 +19,16 @@ const coveredEngines = (definition, protocol) => definition.engines ? definition
 
 /**
  * The inapplicable conditions the run's own fixed facts decide, in the order a held one names the reason: the question panel, the
- * target engines (`no_target_engine`, or a `*_not_target` condition of a family with registry engines), and the public index targets
- * (`no_public_index_target` of a `public_only` family). `holds` answers whether the condition is true for this run.
+ * target engines (`no_target_engine`, or a `*_not_target` condition of a family with registry engines), the goals (a `*_not_goal`
+ * condition of a family with registry goals), and the public index targets (`no_public_index_target` of a `public_only` family).
+ * `holds` answers whether the condition is true for this run.
  */
 const FIXED_CONDITIONS = [
   { matches: code => code === 'no_fixed_questions', holds: ({ protocol }) => !protocol.question_panel.length },
   { matches: (code, definition) => code === 'no_target_engine' || (code.endsWith('_not_target') && definition.engines?.length > 0),
     holds: ({ definition, protocol }) => !coveredEngines(definition, protocol).length },
+  { matches: (code, definition) => code.endsWith('_not_goal') && definition.goals?.length > 0,
+    holds: ({ definition, protocol }) => !definition.goals.some(goal => (protocol.goals ?? []).includes(goal)) },
   { matches: (code, definition) => code === 'no_public_index_target' && definition.public_only === true, holds: ({ publicCount }) => publicCount === 0 },
 ];
 
@@ -60,6 +63,7 @@ export function freezeProtocol(context) {
       throw new ContractError(`protocol ${key} differs from RunContext`);
   unique(p.page_types.map(x => x.id), 'page_types');
   unique(p.engines, 'engines');
+  unique(p.goals ?? [], 'goals');
   unique(p.families.map(x => x.family_id), 'families');
   unique(p.question_panel.map(x => x.id), 'question_panel');
   if (p.question_panel.some(x => !x.question.trim())) throw new ContractError('question_panel: empty question');
@@ -136,6 +140,7 @@ export function freezeProtocol(context) {
     ...(p.auxiliary_resources ? { auxiliary_resources: [...resources].sort((a, b) => compare(a.normalized, b.normalized)) } : {}),
     render: { ...render, pages: [...render.pages].sort((a, b) => compare(a.normalized, b.normalized)) },
     engines: [...p.engines].sort(),
+    ...(p.goals ? { goals: [...p.goals].sort() } : {}),
     families: [...p.families].sort((a, b) => compare(a.family_id, b.family_id)).map(f => ({ ...f,
       ...(f.urls ? { urls: [...f.urls].sort() } : {}),
       ...(f.engines ? { engines: [...f.engines].sort() } : {}) })),

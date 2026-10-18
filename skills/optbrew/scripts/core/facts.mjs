@@ -266,6 +266,14 @@ function numbersIn(text) {
   }
   return keys;
 }
+// A number shown without a label counts as a phone only in a dialling shape (a Korean number with its leading 0, or a nationwide
+// representative number), so a business registration or bank account number is not read as one.
+const DIALLING = /^(?:0\d{8,10}|1[568]\d{6})$/;
+/** The phone keys of the numbers a page shows: every labelled one `pageFacts` reads, and an unlabelled one in a dialling shape. */
+export function shownPhones(html) {
+  const live = stripComments(html);
+  return [...new Set([...pageFacts(live).visible.phone.keys(), ...[...numbersIn(hardText(live))].filter(key => DIALLING.test(key))])];
+}
 /** True when `tokens` stand next to each other, in that order, among `words`. */
 const runIn = (words, tokens) => words.some((_, i) => tokens.every((token, k) => words[i + k] === token));
 /** True when `tokens` (at least two, one of them a word) stand next to each other, in that order, among `words`. */

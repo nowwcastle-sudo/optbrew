@@ -32,6 +32,7 @@
         { "family_id": "structured-data-truth", "applicable": false, "applicability_decision": {"condition":"markup_not_used_or_selected","reason":"Synthetic intake confirms this condition is absent","evidence_ref":"synthetic/intake"} },
         { "family_id": "locale-links", "applicable": false, "applicability_decision": {"condition":"single_locale","reason":"Synthetic intake confirms this condition is absent","evidence_ref":"synthetic/intake"} },
         { "family_id": "naver-markup", "applicable": false, "applicability_decision": {"condition":"naver_not_target","reason":"Synthetic intake confirms this condition is absent","evidence_ref":"synthetic/intake"} },
+        { "family_id": "conversion-path", "applicable": false, "applicability_decision": {"condition":"conversion_not_goal","reason":"Synthetic intake confirms this condition is absent","evidence_ref":"synthetic/intake"} },
         { "family_id": "lcp-field", "applicable": true },
         { "family_id": "inp-field", "applicable": true },
         { "family_id": "cls-field", "applicable": true },

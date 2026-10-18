@@ -154,6 +154,15 @@
         }
       },
       {
+        "family_id": "conversion-path",
+        "applicable": false,
+        "applicability_decision": {
+          "condition": "conversion_not_goal",
+          "reason": "Synthetic intake confirms this condition is absent",
+          "evidence_ref": "intake.json"
+        }
+      },
+      {
         "family_id": "lcp-field",
         "applicable": true
       },

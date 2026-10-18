@@ -24,7 +24,7 @@ test('no family is registered twice', () => {
 
 test('code-judged families equal the code-judged ids, in registry order', () => {
   assert.deepEqual(blocks.map(block => block.family_id), ['fetch-response', 'search-crawl-policy', 'ai-crawler-policy', 'index-policy', 'render-content',
-    'discovery', 'document-title', 'canonical-consistency', 'internal-navigation', 'structured-data-truth', 'locale-links', 'naver-markup',
+    'discovery', 'document-title', 'canonical-consistency', 'internal-navigation', 'structured-data-truth', 'locale-links', 'naver-markup', 'conversion-path',
     'lcp-field', 'inp-field', 'cls-field', 'entity-identity', 'fact-consistency']);
   const order = registry.map(family => family.family_id);
   const positions = blocks.map(block => order.indexOf(block.family_id));

@@ -65,6 +65,7 @@ const runs = [
   naverRuns,
   () => block('ai-crawler-policy').derive({ context: { protocol: { engines: ['perplexity'] } }, textOf: () => 'User-agent: PerplexityBot\nDisallow: /\n',
     pageRows: [row(PAGE, { robots: { status: 200, evidence_ref: 'evidence/robots.txt' } })] }),
+  () => block('conversion-path').derive({ pageRows: [row(PAGE, { html: '<html><body><p>Coffee</p></body></html>' })], renders: [], planned: new Set() }),
   () => block('entity-identity').derive({ facts: [orgFact(PAGE, []), orgFact(OTHER, [{ sameAs: false }])],
     comparison: { separate: new Set(), references: { name: { label: 'Brew' } }, deviations: new Map([[OTHER, ['name "Other" differs from "Brew" on 2 pages']]]) } }),
   () => block('fact-consistency').derive({ facts: conflicting, comparison: compareFacts(conflicting) }),

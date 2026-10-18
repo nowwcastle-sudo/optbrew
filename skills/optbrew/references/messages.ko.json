@@ -27,6 +27,7 @@
   "naver-markup.title-keyword-repeat": "<title>에서 같은 단어가 세 번 이상 반복됩니다: {words}. 반복을 줄여 제목을 짧게 쓰세요.",
   "naver-markup.no-viewport": "meta viewport가 없습니다. 휴대폰 화면에 맞도록 meta viewport를 넣으세요.",
   "naver-markup.resource-blocked": "robots.txt가 네이버 크롤러(Yeti)에게 이 페이지가 쓰는 파일 {path}을(를) 막고 있습니다. robots.txt에서 이 파일을 막는 Disallow 규칙을 지우세요.",
+  "conversion-path.no-contact-route": "감사한 페이지 어디에서도 연락할 방법을 찾지 못했습니다. 전화·문자·메일 링크(tel:, sms:, mailto:), 화면에 보이는 전화번호, 카카오톡 채널·오픈채팅, 네이버 톡톡, 네이버 예약 링크, 문의·상담·예약 페이지로 가는 링크를 찾아봤습니다. 첫 화면에서 바로 누를 수 있는 연락 방법을 하나 이상 넣으세요.",
   "entity-identity.name-differs": "페이지마다 사업체 이름이 다릅니다. 모든 페이지에서 같은 이름을 쓰세요.",
   "entity-identity.no-same-as": "Organization JSON-LD에 sameAs가 없는 페이지가 있습니다. 공식 SNS나 지도 주소를 sameAs에 넣으세요.",
   "entity-identity.no-home-organization": "홈 페이지에 Organization이나 LocalBusiness JSON-LD가 없습니다. 홈 페이지에 사업체 정보를 JSON-LD로 넣으세요.",

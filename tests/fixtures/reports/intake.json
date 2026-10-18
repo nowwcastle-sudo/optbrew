@@ -1,7 +1,7 @@
 {
   "run_id": "synthetic-report",
   "target": "example.com",
-  "protocol_hash": "44b403407615287fbd010ea7c4a421507800584742c4b6de108a31df7630c6d6",
+  "protocol_hash": "4d12c3834b71af2a16c6755d759b9f1dfb45888a96b553726580662d5900be0c",
   "approved_by": "synthetic-fixture",
   "decisions": [
     {
@@ -44,6 +44,12 @@
       "scope": "family",
       "family_id": "naver-markup",
       "condition": "naver_not_target",
+      "reason": "Synthetic intake confirms this condition is absent"
+    },
+    {
+      "scope": "family",
+      "family_id": "conversion-path",
+      "condition": "conversion_not_goal",
       "reason": "Synthetic intake confirms this condition is absent"
     },
     {

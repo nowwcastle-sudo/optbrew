@@ -255,6 +255,25 @@ test('the fixed applicability rules agree with the registry public_only flags (S
   }
 });
 
+test('a goal-bound family follows the goals: conversion-path needs the conversion goal', () => {
+  const planned = (goals, family) => {
+    const changed = context();
+    if (goals) changed.protocol.goals = goals;
+    changed.protocol.families.push({ family_id: 'conversion-path', ...family });
+    return changed;
+  };
+  const off = { applicable: false, applicability_decision: { condition: 'conversion_not_goal', reason: 'fixed condition', evidence_ref: 'e/fixed' } };
+  assert.doesNotThrow(() => freezeProtocol(planned(null, off)), 'a protocol without goals has no conversion goal');
+  assert.doesNotThrow(() => freezeProtocol(planned(['search'], off)));
+  assert.throws(() => freezeProtocol(planned(['search'], { applicable: true })), /contradicts fixed/);
+  assert.doesNotThrow(() => freezeProtocol(planned(['conversion', 'search'], { applicable: true })));
+  assert.throws(() => freezeProtocol(planned(['conversion'], off)), /contradicts fixed/);
+  assert.throws(() => freezeProtocol(planned(['conversion', 'conversion'], { applicable: true })), /goals: blank or duplicate/);
+  assert.throws(() => freezeProtocol(planned(['sales'], off)), ContractError, 'goals are the five ids');
+  assert.equal(freezeProtocol(planned(['search', 'conversion'], { applicable: true })).protocol_hash,
+    freezeProtocol(planned(['conversion', 'search'], { applicable: true })).protocol_hash, 'goal order does not change the hash');
+});
+
 test('an engine-bound family follows its own engines among the targets', () => {
   const planned = (engines, family) => {
     const changed = context();

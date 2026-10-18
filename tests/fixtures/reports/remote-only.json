@@ -156,6 +156,15 @@
           }
         },
         {
+          "family_id": "conversion-path",
+          "applicable": false,
+          "applicability_decision": {
+            "condition": "conversion_not_goal",
+            "reason": "Synthetic intake confirms this condition is absent",
+            "evidence_ref": "intake.json"
+          }
+        },
+        {
           "family_id": "lcp-field",
           "applicable": true
         },
@@ -396,6 +405,15 @@
               "applicable": false,
               "applicability_decision": {
                 "condition": "naver_not_target",
+                "reason": "Synthetic intake confirms this condition is absent",
+                "evidence_ref": "intake.json"
+              }
+            },
+            {
+              "family_id": "conversion-path",
+              "applicable": false,
+              "applicability_decision": {
+                "condition": "conversion_not_goal",
                 "reason": "Synthetic intake confirms this condition is absent",
                 "evidence_ref": "intake.json"
               }
@@ -822,13 +840,13 @@
   "evidence_index": [
     {
       "ref": "context.json",
-      "sha256": "4f188c721781b6ceb59511c6f4f9273d6a5a9da536604cc1ca9c3b1d356f192e",
+      "sha256": "76b84c76cfe5ced2f39deef4c8e52c5efa60cc8330e80d8f563a6908adb3958a",
       "kind": "context",
       "run_id": "synthetic-report"
     },
     {
       "ref": "intake.json",
-      "sha256": "fe5682cf8ce4d11dbc35e59115f524a03a1fb57a180e07d8b27d4924e881c1d4",
+      "sha256": "c987c550b40c4c4a7aae186a793d058428ae2727eeef606095cc8da9ab544501",
       "kind": "intake",
       "run_id": "synthetic-report"
     },
