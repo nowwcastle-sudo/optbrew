@@ -33,6 +33,7 @@
   "entity-identity.no-home-organization": "홈 페이지에 Organization이나 LocalBusiness JSON-LD가 없습니다. 홈 페이지에 사업체 정보를 JSON-LD로 넣으세요.",
   "fact-consistency.differs": "{type:fact-type} 값이 페이지마다 다릅니다. 이 페이지는 \"{found}\"이고, 다른 {count}개 페이지는 \"{label}\"입니다. 사실 확인용 목록이 없어 페이지끼리만 비교한 결과입니다. 어느 쪽이 맞는지 확인한 뒤 모든 페이지를 같은 값으로 고치세요.",
   "fact-consistency.jsonld-differs": "JSON-LD의 {type:fact-type} 값과 화면 글이 다릅니다. JSON-LD는 \"{linked}\", 화면은 \"{visible}\"입니다. 두 값을 맞추세요.",
+  "fact-consistency.confirmed-differs": "{type:fact-type} 값이 시작할 때 확인한 사실과 다릅니다. 이 페이지는 \"{found}\"이고, 확인한 값은 \"{confirmed}\"입니다. 이 페이지의 값을 확인한 값으로 고치세요.",
   "lcp-field.slow": "방문자 실측 LCP(가장 큰 내용이 뜨는 시간)가 {value} ms입니다. {poor} ms를 넘으면 느린 것으로 봅니다(좋음은 {good} ms 이하). 자료 출처는 {source:cwv-source}입니다. 큰 이미지나 글이 더 빨리 뜨게 고치세요.",
   "inp-field.slow": "방문자 실측 INP(누른 뒤 화면이 반응하는 시간)가 {value} ms입니다. {poor} ms를 넘으면 느린 것으로 봅니다(좋음은 {good} ms 이하). 자료 출처는 {source:cwv-source}입니다. 누를 때 오래 걸리는 자바스크립트를 줄이세요.",
   "cls-field.slow": "방문자 실측 CLS(화면이 갑자기 밀리는 정도)가 {value}입니다. {poor}를 넘으면 나쁜 것으로 봅니다(좋음은 {good} 이하). 자료 출처는 {source:cwv-source}입니다. 이미지와 광고가 들어갈 자리를 미리 잡아 두세요.",

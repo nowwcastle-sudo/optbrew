@@ -53,6 +53,7 @@ test('context stage fixes the render pages with selectRenderPages', async () => 
   assert.deepEqual(protocol.page_types.map(type => type.id), ['home', 'pages']);
   assert.deepEqual(protocol.render.pages, selectRenderPages(protocol.page_types));
   assert.deepEqual(protocol.render.pages.map(page => page.normalized), [`${SITE}/`, `${SITE}/about`]);
+  assert.deepEqual(protocol.confirmed_facts, [{ key: 'phone', value: '02-555-0142' }, { key: 'email', value: 'a@brew.test' }], 'the confirmed facts are the yardstick of the run');
   assert.equal(protocol.render.enabled, true);
   assert.equal(state.context.audited, true);
   assert.deepEqual(state.context.environment_probe, state.answers.probe, 'the probe is copied from the answers, not taken again');

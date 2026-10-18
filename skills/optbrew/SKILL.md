@@ -125,7 +125,7 @@ node "<SKILL_DIR>/scripts/cli.mjs" runbook --ids "<id>" --level <수준>
 ```
 
 - `goals`는 4단계 2번에서 확정한 목표 이름을 그대로 쓴 목록이다. 실행은 이 이름을 읽어 점검할 엔진과 항목을 정한다.
-- `facts`는 `fact_candidates`의 `key`, `value`, `source_url`을 그대로 쓴다. 사용자가 뺀 사실은 뺀다.
+- `facts`는 `fact_candidates`의 `key`, `value`, `source_url`을 그대로 쓴다. 사용자가 뺀 사실은 뺀다. 이 사실은 점검의 기준이 된다. 페이지의 이름, 전화번호, 주소, 연도가 이와 다르면 그 페이지가 실패로 적힌다.
 - `sample_mode`는 5번 질문이 없었으면 `null`이고 `max_urls`는 50이다. "표본"이면 `sample`이고 `max_urls`는 50이다. "상한을 올림"이면 `raise`이고 `max_urls`는 `sitemap_pages`에 2와 `start.json`의 `sitemap_declared`(없으면 1)를 더한 수 N에, N의 10%(소수는 올림, 최소 2)를 다시 더한 수다(시작 쪽 1개, robots.txt 1개, 사이트맵 파일 `sitemap_declared`개도 요청 한도에 들어가고, 쪽이 다른 주소로 넘어갈 때 쓰는 요청 여유가 `redirect_reserve`로 따로 남는다). 계산한 수가 200을 넘으면 200으로 줄인다(요청 상한은 200이고, 실행도 200까지만 받는다). `sitemap_pages_basis`가 `lower_bound`일 때도 200이다. `intake-answers.json`의 `max_urls`는 실행에 실제로 쓰이는 수와 같아야 한다.
 - `owner_exports`는 5단계에서 경로를 받았을 때만 쓴다. 받은 것이 없으면 이 필드를 통째로 뺀다. 파일이 없거나 읽을 수 없으면 감사는 멈추지 않고, 그 칸이 보고서에 "알 수 없음"과 이유로 남는다.
 - `url`은 `start.json`의 `final_url`을 그대로 쓴다. `www`나 `https`로 넘어간 뒤의 주소다. `final_url`이 `null`이면 사용자가 말한 주소를 쓴다. 이 주소가 같은 사이트의 다른 이름이면 감사는 넘어간 주소로 돈다. 다른 사이트이면 7단계에서 한 문장으로 멈춘다.

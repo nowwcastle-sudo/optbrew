@@ -141,6 +141,7 @@ export function freezeProtocol(context) {
     render: { ...render, pages: [...render.pages].sort((a, b) => compare(a.normalized, b.normalized)) },
     engines: [...p.engines].sort(),
     ...(p.goals ? { goals: [...p.goals].sort() } : {}),
+    ...(p.confirmed_facts ? { confirmed_facts: [...p.confirmed_facts].sort((a, b) => compare(a.key, b.key) || compare(a.value, b.value)) } : {}),
     families: [...p.families].sort((a, b) => compare(a.family_id, b.family_id)).map(f => ({ ...f,
       ...(f.urls ? { urls: [...f.urls].sort() } : {}),
       ...(f.engines ? { engines: [...f.engines].sort() } : {}) })),

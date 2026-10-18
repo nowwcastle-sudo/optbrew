@@ -68,8 +68,9 @@ const runs = [
   () => block('conversion-path').derive({ pageRows: [row(PAGE, { html: '<html><body><p>Coffee</p></body></html>' })], renders: [], planned: new Set() }),
   () => block('entity-identity').derive({ facts: [orgFact(PAGE, []), orgFact(OTHER, [{ sameAs: false }])],
     comparison: { separate: new Set(), references: { name: { label: 'Brew' } }, deviations: new Map([[OTHER, ['name "Other" differs from "Brew" on 2 pages']]]) } }),
-  () => block('fact-consistency').derive({ facts: conflicting, comparison: compareFacts(conflicting) }),
-  () => block('fact-consistency').derive({ facts: jsonLdOff, comparison: compareFacts(jsonLdOff) }),
+  () => block('fact-consistency').derive({ context: { protocol: {} }, facts: conflicting, comparison: compareFacts(conflicting) }),
+  () => block('fact-consistency').derive({ context: { protocol: {} }, facts: jsonLdOff, comparison: compareFacts(jsonLdOff) }),
+  () => block('fact-consistency').derive({ context: { protocol: { confirmed_facts: [{ key: 'phone', value: '02-555-0100' }] } }, facts: jsonLdOff, comparison: compareFacts(jsonLdOff) }),
   ...['lcp-field', 'inp-field', 'cls-field'].map(familyId => () => block(familyId).derive(fieldInput)),
 ];
 

@@ -149,7 +149,7 @@ async function contextFrom(answers, { out, localTargets = [] }) {
     schema_version: versions().contract_schema, run_id: `optbrew-${randomUUID()}`, target: home.normalized,
     environment: scope.local_targets ? 'local' : 'production', goals: answers.goals, allowed_changes: [], scope,
     protocol: { page_types: pageTypes, engines, goals, families, auxiliary_resources: auxiliary, locale: 'und', region: 'ZZ', browser: 'Chrome', device: 'mobile',
-      question_panel: answers.questions, surfaces: [], models: [], search_enabled: null,
+      question_panel: answers.questions, confirmed_facts: answers.facts.map(({ key, value }) => ({ key, value })), surfaces: [], models: [], search_enabled: null,
       render: { enabled: true, pages: selectRenderPages(pageTypes), max_render_requests: limits().max_render_requests }, ...targetIdentity },
     evaluation_version: versions().evaluation, protocol_version: versions().protocol, data_sources: [], cost_decision: {},
     evidence_ref: CONTEXT_FILE, environment_probe: answers.probe, audited: true,
