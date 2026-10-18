@@ -30,7 +30,7 @@
     },
     {
       "path": "scripts/core/weights.mjs",
-      "sha256": "45bd145e586b105f328426db8b815ec18f5a7f9654918404876ae51e66039d80"
+      "sha256": "9e02e7c5a5d65f333f71c169c6a50abe15c0b5f5cf76ce1e8aeb5fe59e190f62"
     },
     {
       "path": "scripts/core/contracts.mjs",
@@ -145,7 +145,7 @@
       "sha256": "7b41a2f2039735e35b1f015ac3f3e8cf7ab9383dbbc758c15fcaa9149874575d"
     }
   ],
-  "evaluation_hash": "35949a8cc23dbd6afb3212f20c095e9da55cbb217ead52f0c20ac8013cac16f3",
+  "evaluation_hash": "c3b962972c978d494da804de18767efd8ff211a8295a0d4ca87a2c2825950237",
   "protocol_sources": [
     {
       "path": "references/schemas/contract.schema.json",
@@ -1028,7 +1028,7 @@
     },
     {
       "path": "scripts/core/weights.mjs",
-      "sha256": "45bd145e586b105f328426db8b815ec18f5a7f9654918404876ae51e66039d80"
+      "sha256": "9e02e7c5a5d65f333f71c169c6a50abe15c0b5f5cf76ce1e8aeb5fe59e190f62"
     },
     {
       "path": "scripts/key.mjs",
@@ -1047,5 +1047,5 @@
       "sha256": "dca0bbd03fbf591c4aca6a568be76615eb48d69f7df0c634886f652b54f3f46d"
     }
   ],
-  "bundle_hash": "518963ec77aacc8038532446bc53ace684bdc3e3567cc092433c6b18797caec6"
+  "bundle_hash": "2bcf43574df079bb59cb5e2cd57c10ebfa42a7d45a6c3cd67e7e3b7d07f83797"
 }
