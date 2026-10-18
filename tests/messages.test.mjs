@@ -129,7 +129,7 @@ test('the follow-up rows, export problems and cost notes have Korean entries', (
   const codes = [...stages.slice(stages.indexOf('const EXPORT_PROBLEMS'), stages.indexOf('};', stages.indexOf('const EXPORT_PROBLEMS'))).matchAll(/(export_[a-z_]+):/g)].map(match => match[1]);
   assert.ok(codes.length >= 10, codes.join());
   for (const code of codes) assert.equal(typeof catalog[`export-problem.${code}`], 'string', code);
-  for (const key of ['follow-up.preflight-unreadable', 'follow-up.export-unusable', 'follow-up.production-pending'])
+  for (const key of ['follow-up.preflight-unreadable', 'follow-up.export-unusable', 'follow-up.production-pending', 'follow-up.naver-ownership'])
     for (const line of ['problem', 'reason', 'input', 'next', 'when']) assert.equal(typeof catalog[`${key}.${line}`], 'string', `${key}.${line}`);
   for (const line of ['input', 'next', 'when']) assert.equal(typeof catalog[`follow-up.finding.${line}`], 'string');
   for (const key of ['cost.reservation', 'cost.host-policy', 'cost.bulk-crawl-unverified', 'cost.anthropic', 'cost-status.unknown', 'cost-status.overrun', 'word.unknown'])
@@ -175,6 +175,7 @@ const everyFailing = () => {
   const follow = [
     { problem: 'English problem', reason: 'preflight_unreadable', required_input_or_authority: 'English', next_action: 'English', reobserve_when: 'English', message_key: 'follow-up.preflight-unreadable', message_values: {} },
     { problem: 'English problem', reason: 'export_file_missing', required_input_or_authority: 'English', next_action: 'English', reobserve_when: 'English', message_key: 'follow-up.export-unusable', message_values: { kind: 'gsc', reason: 'export_zip_damaged' } },
+    { problem: 'English problem', reason: 'naver_ownership_unconfirmed', required_input_or_authority: 'English', next_action: 'English', reobserve_when: 'English', message_key: 'follow-up.naver-ownership', message_values: {} },
     { problem: 'English problem', reason: 'production_deployment_pending', required_input_or_authority: 'English', next_action: 'English', reobserve_when: 'English', finding_id: 'f0', message_key: 'follow-up.production-pending', message_values: { pages: 'https://s.test/a' } },
     { finding_id: 'r0', problem: 'English problem', reason: 'confirmed', required_input_or_authority: 'site_owner_edit', next_action: 'English', reobserve_when: 'English', message_key: 'follow-up.finding', message_values: {} },
     { finding_id: 'f0', problem: 'English problem', reason: 'confirmed', required_input_or_authority: 'English', next_action: 'English', reobserve_when: 'English', message_key: 'follow-up.finding', message_values: {} }];
@@ -195,7 +196,7 @@ test('report.html section 1 and the follow-ups have no English sentence for a fi
   assert.ok(fixes.includes('noindex') && fixes.includes('전화번호 값이'), 'the Korean texts are there');
   assert.doesNotMatch(fixes, /English message/);
   assert.doesNotMatch(fixes, SENTENCE);
-  assert.doesNotMatch(later, /English|site_owner_edit|preflight_unreadable/);
+  assert.doesNotMatch(later, /English|site_owner_edit|preflight_unreadable|naver_ownership_unconfirmed/);
   assert.doesNotMatch(later, SENTENCE);
   assert.match(later, /사이트 소유자의 수정 권한/);
   assert.match(later, /이 고침은 내 컴퓨터에서만 확인했습니다: (?!알 수 없음)\S+/, 'the production row names its fix');

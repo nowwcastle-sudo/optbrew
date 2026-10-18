@@ -22,7 +22,7 @@
     },
     {
       "path": "references/messages.ko.json",
-      "sha256": "a3ec94d9b15c2cc9e7f6dc1cd4a215e56555744ec7ad51e7dea9a07dacab6a18"
+      "sha256": "effb3192e8db71400c9acd76655ac927a1d1d07ca2b80116047307919f037a33"
     },
     {
       "path": "scripts/core/score.mjs",
@@ -153,7 +153,7 @@
       "sha256": "7b41a2f2039735e35b1f015ac3f3e8cf7ab9383dbbc758c15fcaa9149874575d"
     }
   ],
-  "evaluation_hash": "804c792056dbab9f895124fd620f886db7d0af50e35f8d09513815a3d5e43228",
+  "evaluation_hash": "804c19715c65fdd720445b3ab80683aecdd3702c7da23bc3f7ff3c7d9a1d5a83",
   "protocol_sources": [
     {
       "path": "references/schemas/contract.schema.json",
@@ -696,7 +696,7 @@
     },
     {
       "path": "references/messages.ko.json",
-      "sha256": "a3ec94d9b15c2cc9e7f6dc1cd4a215e56555744ec7ad51e7dea9a07dacab6a18"
+      "sha256": "effb3192e8db71400c9acd76655ac927a1d1d07ca2b80116047307919f037a33"
     },
     {
       "path": "references/policies.md",
@@ -712,7 +712,7 @@
     },
     {
       "path": "references/report.md",
-      "sha256": "8554606f5326802aeb0e0eda037e71bd28f6b8d9c9a7bede1c88389bff1d4c15"
+      "sha256": "767016548f222a0e7844e4fd4acff988f9cab8911af4bdc29c16a9b89275e2ce"
     },
     {
       "path": "references/routing.md",
@@ -995,6 +995,10 @@
       "sha256": "9190e8a2bb2cc2cbce56179ed411b4432ad4c3e65cf6af5b46a130ec7aa98992"
     },
     {
+      "path": "scripts/core/naver-ownership.mjs",
+      "sha256": "1c5c401a0706b2c7a65041638977fe132cb708e12a6cf5bfc2d76270102ac853"
+    },
+    {
       "path": "scripts/core/page-select.mjs",
       "sha256": "79d16301b8f29b82986f8a30a62228e5730bc007ae37218f3e28a5e49ca5dc00"
     },
@@ -1044,7 +1048,7 @@
     },
     {
       "path": "scripts/core/stages.mjs",
-      "sha256": "9a3aa1051f3a6953a39b401d71f96a6c15cd80b32656ebb33bc5453caff06f61"
+      "sha256": "3b3ca43ae5ab948c9008252de8d36fe9bc4a064bedbc910636919f7b22c2b87e"
     },
     {
       "path": "scripts/core/transport.mjs",
@@ -1071,5 +1075,5 @@
       "sha256": "dca0bbd03fbf591c4aca6a568be76615eb48d69f7df0c634886f652b54f3f46d"
     }
   ],
-  "bundle_hash": "6051b730988562886b4ac112f9d22025c1aea96f70495f56ec82575a9bd4ab24"
+  "bundle_hash": "d2af057fa6789f4221ed6c6b5b47b86855c53364ce96b8dff6ead6eca93d2deb"
 }

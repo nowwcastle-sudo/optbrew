@@ -20,6 +20,7 @@ import { notIndexTargets, withIndexTargets } from './index-targets.mjs';
 import { OBSERVATION_SOURCES, buildJudgeQueue, deriveQuestionCoverage, mergeJudgments } from './judgments.mjs';
 import { keyHome, readGoogleKey } from './keys.mjs';
 import { MigrationRequired, assertCurrentEvidence } from './migration.mjs';
+import { naverOwnershipFollowUps } from './naver-ownership.mjs';
 import { groupPages, pageBudget, readPreflight, sameSite, selectPages } from './page-select.mjs';
 import { pageNeutral, problemsOf } from './findings.mjs';
 import { freezeProtocol } from './protocol.mjs';
@@ -582,7 +583,8 @@ async function ownerExportResults(state) {
   if (selection?.sources?.preflight === 'unreadable') remaining.push({ problem: 'The read of the site made before the start questions could not be used, so only the start page and the pages with confirmed facts were audited',
     reason: 'preflight_unreadable', required_input_or_authority: 'A new read of the site', next_action: 'Run the start read again, then start the audit again in a new --out folder',
     reobserve_when: 'on the next run that starts from a readable start read', message_key: 'follow-up.preflight-unreadable', message_values: {} });
-  for (const entry of (await state.store.index()).owner_exports ?? []) {
+  const index = await state.store.index();
+  for (const entry of index.owner_exports ?? []) {
     if (entry.status === 'read') {
       const stored = JSON.parse(await readFile(path.join(state.out, entry.ref), 'utf8'));
       metrics.push(...normalizeImport(stored.provider, stored.rows, stored.metadata));
@@ -590,6 +592,7 @@ async function ownerExportResults(state) {
       required_input_or_authority: 'A new export file from the site owner', next_action: 'Export the report again as the runbook describes and give its path in the start answers',
       reobserve_when: 'on the next run that includes the new file', message_key: 'follow-up.export-unusable', message_values: { kind: entry.kind, reason: entry.reason } });
   }
+  remaining.push(...await naverOwnershipFollowUps({ context: state.context, index, store: state.store }));
   return { metrics, remaining };
 }
 
