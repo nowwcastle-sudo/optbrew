@@ -7,10 +7,11 @@ import { fileURLToPath } from 'node:url';
 import { findChrome } from './core/chrome.mjs';
 import { validateEntity } from './core/contracts.mjs';
 import { renderChrome } from './core/render.mjs';
-import { prepareOutput, restoreState, runStages, stages } from './core/stages.mjs';
+import { readJudgments } from './core/judgment-files.mjs';
+import { QUEUE_PAGES_DIR, prepareOutput, restoreState, runStages, stages } from './core/stages.mjs';
 import { selectTransport } from './core/transport.mjs';
 
-const USAGE = 'usage: node skills/optbrew/scripts/run.mjs --answers <intake-answers.json> --out <dir> [--judgments <judgments.json>]';
+const USAGE = 'usage: node skills/optbrew/scripts/run.mjs --answers <intake-answers.json> --out <dir> [--judgments <judgments folder or file>]';
 const RESUME_FROM = 'judge';
 const STATUS_DONE = 'done';
 
@@ -29,12 +30,6 @@ async function readJson(file, what) {
   catch { throw new Error(`The ${what} file cannot be read as JSON: ${file}`); }
 }
 
-/** The model's judgments: one bare JSON array, handed to the merge as it is. */
-function judgmentList(value) {
-  if (!Array.isArray(value)) throw new Error('The judgments file must hold one JSON array of judgments.');
-  return value;
-}
-
 /**
  * One audit: the first call runs context, collect, render, cwv, derive and judge, and stops at the judge queue; the second call
  * (same `out`, now with `judgmentsPath`) rebuilds its state from the evidence in `out` and runs judge, score and report.
@@ -50,13 +45,14 @@ export async function run({ answersPath, out, judgmentsPath = null }, overrides 
     const answers = await readJson(answersPath, 'answers');
     try { validateEntity('IntakeAnswers', answers); }
     catch (error) { throw new Error(`The start answers are not valid (${error.message}).`); }
-    const judgments = judgmentsPath ? judgmentList(await readJson(judgmentsPath, 'judgments')) : null;
+    const judgments = judgmentsPath ? await readJudgments(path.resolve(judgmentsPath), { queueDir: path.join(outDir, QUEUE_PAGES_DIR) }) : null;
     const deps = { env, home: overrides.home, chrome, fetchFn: overrides.fetchFn, localTargets: overrides.localTargets,
       selectTransport: overrides.selectTransport ?? (input => selectTransport({ ...input, resolve: host => lookup(host, { all: true, verbatim: true }) })) };
     const resuming = await prepareOutput(outDir) === 'resume';
     const state = resuming ? await restoreState({ out: outDir, answers }) : { answers, out: outDir, answersDir: path.dirname(path.resolve(answersPath)) };
     const { state: end, halt } = await runStages(overrides.stages ?? stages(), { ...state, judgments }, deps, { from: resuming ? RESUME_FROM : null });
-    return halt ? { status: halt, judge_queue: path.join(outDir, 'judge-queue.json'), queue_items: end.queue.items.length } :
+    return halt ? { status: halt, judge_queue: path.join(outDir, 'judge-queue.json'), judge_pages: path.join(outDir, QUEUE_PAGES_DIR),
+      pages: new Set(end.queue.items.map(item => item.url)).size, queue_items: end.queue.items.length } :
       { status: STATUS_DONE, reports: end.reports, score_input: path.join(outDir, 'score-input.json'), ...(end.lab_cwv ? { lab_cwv: end.lab_cwv } : {}) };
   } finally { await chrome.close(); }
 }

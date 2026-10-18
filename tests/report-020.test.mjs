@@ -503,7 +503,7 @@ test('the run conditions have no unit without a number and no raw reason code', 
 test('a profile card gives a verdict word, a meter and one plain sentence, and folds the long line', () => {
   const composed = composeReport(verifiedOf());
   const page = htmlOf(composed);
-  const card = page.slice(page.indexOf('<li class="profile">'), page.indexOf('</li>', page.indexOf('<li class="profile">')));
+  const card = page.slice(page.indexOf('<li class="profile"'), page.indexOf('</li>', page.indexOf('<li class="profile"')));
   assert.ok(card.includes('<span class="chip">확인 부족</span>') && card.includes('<meter') && card.includes('이상 확인해야 점수를 냅니다. 지금 '));
   assert.ok(card.indexOf('<details><summary>자세히</summary>') > card.indexOf('<meter'), 'the long line waits in a fold');
   const fold = card.slice(card.indexOf('<details>'));

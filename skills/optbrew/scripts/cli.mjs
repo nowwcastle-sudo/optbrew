@@ -7,10 +7,19 @@ import { compare } from './core/compare.mjs';
 import { writeReport } from './core/report.mjs';
 import { htmlReportWriter } from './core/report-page.mjs';
 import { MigrationRequired } from './core/migration.mjs';
+import { runbookText } from './core/runbooks.mjs';
+
+const SKILL_ROOT = path.resolve(fileURLToPath(new URL('..', import.meta.url)));
 
 /** Local calculation CLI. */
 export async function runCli(argv = process.argv.slice(2)) {
-  const usage = 'usage: cli.mjs score --input <file> --output <file> | compare --before <file> --after <file> --output <file> | report --input <packet.json> --output-dir <directory>';
+  const usage = 'usage: cli.mjs score --input <file> --output <file> | compare --before <file> --after <file> --output <file> | report --input <packet.json> --output-dir <directory> | runbook --ids <id,id> --level beginner|brief';
+  // The runbook text goes to stdout for the agent to paste into its reply as it is: the user does not see a file the agent only read.
+  if (argv.length === 5 && argv[0] === 'runbook' && argv[1] === '--ids' && argv[3] === '--level' && argv[2] && argv[4]) {
+    const text = runbookText(argv[2].split(',').filter(Boolean), argv[4], { skillRoot: SKILL_ROOT });
+    process.stdout.write(`${text}\n`);
+    return text;
+  }
   let result, destination;
   if (argv.length === 5 && argv[0] === 'report' && argv[1] === '--input' && argv[3] === '--output-dir' && argv[2] && argv[4]) {
     const input = path.resolve(argv[2]);

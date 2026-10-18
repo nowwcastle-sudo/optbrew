@@ -51,7 +51,7 @@ const json = async name => JSON.parse(await text(name));
 
 test('SKILL.md walks the one-call flow in order and links the new references', async () => {
   const entry = await text('SKILL.md');
-  const order = ['scripts/preflight.mjs', 'start_runbooks.blocking', '## 6단계', 'scripts/run.mjs', 'judge-queue.json', '--judgments', '## 9단계', '## 10단계', '## 11단계'];
+  const order = ['scripts/preflight.mjs', 'start_runbooks.blocking', '## 6단계', 'scripts/run.mjs', 'judge_pages', '--judgments', '## 9단계', '## 10단계', '## 11단계'];
   const positions = order.map(marker => entry.indexOf(marker));
   assert.ok(positions.every(position => position >= 0), `missing: ${order.filter((_, i) => positions[i] < 0)}`);
   assert.deepEqual(positions, [...positions].sort((a, b) => a - b));
@@ -122,8 +122,8 @@ test('the start screen shows at most one blocking runbook and three improving li
     }
 });
 
-test('every error phrase judging.md lists is one the merge code can throw', async () => {
-  const code = await readFile(path.join(skill, 'scripts/core/judgments.mjs'), 'utf8');
+test('every error phrase judging.md lists is one the merge or the judgments reader can throw', async () => {
+  const code = (await Promise.all(['judgments.mjs', 'judgment-files.mjs'].map(name => readFile(path.join(skill, 'scripts/core', name), 'utf8')))).join('\n');
   const table = (await text('references/judging.md')).split('| 오류 내용')[1];
   const phrases = [...table.matchAll(/^\| `([^`]+)` \|/gm)].map(match => match[1]);
   assert.ok(phrases.length >= 10);

@@ -84,20 +84,48 @@ const runbookHtml = (runbook, level) => {
     `<p class="note">확인일 ${esc(runbook.checked)}.${note}</p>${body}</details>`;
 };
 
-const fixHtml = fix => {
-  const chip = resolved(fix) ? '<span class="chip ok">이미 고침</span>' : fix.blocker ? '<span class="chip hot">가장 급함</span>' : `<span class="chip">${esc(fix.priority_label)}</span>`;
+/** Fixes the top of the section shows large; the rest are compact rows. */
+const FIXES_FEATURED = 3;
+const LEVEL_OF = fix => resolved(fix) ? 'ok' : fix.blocker ? 'hot' : fix.priority === 'P1' ? 'warm' : 'calm';
+const chipOf = fix => resolved(fix) ? '<span class="chip ok">이미 고침</span>' : fix.blocker ? '<span class="chip hot">가장 급함</span>' : `<span class="chip">${esc(fix.priority_label)}</span>`;
+
+/** One page a fix applies to: where, the quoted text, and the details fold. */
+const pageHtml = fix => {
   const rows = [['근거', fix.sources.map(x => `${x.source_ref} ${x.evidence_ref}`).join('; ') || UNKNOWN],
-    ['해결 방법', fixMethod(fix)], ['비용 / 노력', fixEffort(fix)],
-    ['확인 방법', fix.text_ko.remediation?.validation ?? UNKNOWN], ['상태', fix.status_label]];
-  return `<li class="fix"><div class="head">${chip}<span class="msg">${esc(fix.text_ko.message)}</span></div><p class="pages">${esc(pagesLabel(fix))}${fix.text_ko.cited ? ` ${esc(fix.text_ko.cited)}` : ''}</p>` +
-    `<p class="where"><strong>고칠 곳</strong> ${esc(fix.where)}</p><details><summary>자세히 보기</summary><dl>${rows.map(([term, value]) => `<dt>${term}</dt><dd>${esc(value)}</dd>`).join('')}</dl></details></li>`;
+    ['비용 / 노력', fixEffort(fix)], ['확인 방법', fix.text_ko.remediation?.validation ?? UNKNOWN], ['상태', fix.status_label]];
+  return `<div class="spot"><p class="pages">${esc(pagesLabel(fix))}${fix.text_ko.cited ? ` ${esc(fix.text_ko.cited)}` : ''}</p>` +
+    `<p class="where"><strong>고칠 곳</strong> ${esc(fix.where)}</p><details><summary>자세히 보기</summary><dl>${rows.map(([term, value]) => `<dt>${term}</dt><dd>${esc(value)}</dd>`).join('')}</dl></details></div>`;
+};
+
+/**
+ * One card per problem sentence: the same message on several pages is one thing to fix, so it is said once with each page under it.
+ * The fix method shows on the card itself (it is the same for every page of the group).
+ */
+const groupHtml = (group, rank, featured) => {
+  const [first] = group;
+  const count = group.length > 1 ? `<span class="count">${group.length}개 페이지</span>` : '';
+  return `<li class="fix ${featured ? 'top' : 'row'} ${LEVEL_OF(first)}"><div class="head"><span class="rank">${rank}</span>${chipOf(first)}${count}</div>` +
+    `<p class="msg">${esc(first.text_ko.message)}</p><p class="how"><strong>이렇게 고치세요</strong> ${esc(fixMethod(first))}</p>${group.map(pageHtml).join('')}</li>`;
+};
+
+/** Fixes in the composed order, grouped by their sentence and priority; a group stands where its first fix stood. */
+const groupsOf = fixes => {
+  const groups = new Map();
+  for (const fix of fixes) {
+    const key = `${resolved(fix)}|${fix.blocker}|${fix.priority}|${fix.text_ko.message}`;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(fix);
+  }
+  return [...groups.values()];
 };
 
 const fixesSection = ({ fixes }) => {
-  const shown = fixes.slice(0, FIXES_SHOWN), rest = fixes.slice(FIXES_SHOWN);
-  const list = items => `<ol class="fixes">${items.map(fixHtml).join('')}</ol>`;
-  return `<section id="fixes"><h2>${SECTION_TITLES.fixes}</h2>${fixes.length ? list(shown) : '<p>고칠 것이 없습니다. 확인한 범위에서는 실패한 검사가 없었습니다.</p>'}` +
-    `${rest.length ? `<details><summary>나머지 ${rest.length}건 보기</summary>${list(rest)}</details>` : ''}</section>`;
+  const groups = groupsOf(fixes);
+  const shown = groups.slice(0, FIXES_SHOWN), rest = groups.slice(FIXES_SHOWN);
+  const list = (items, offset) => `<ol class="fixes">${items.map((group, index) => groupHtml(group, offset + index + 1, offset + index < FIXES_FEATURED)).join('')}</ol>`;
+  const lead = groups.length < fixes.length ? `<p class="note">고칠 것 ${fixes.length}건을 같은 문제끼리 묶어 ${groups.length}가지로 보여 줍니다.</p>` : '';
+  return `<section id="fixes"><h2>${SECTION_TITLES.fixes}</h2>${fixes.length ? `${lead}${list(shown, 0)}` : '<p>고칠 것이 없습니다. 확인한 범위에서는 실패한 검사가 없었습니다.</p>'}` +
+    `${rest.length ? `<details><summary>나머지 ${rest.length}가지 보기</summary>${list(rest, FIXES_SHOWN)}</details>` : ''}</section>`;
 };
 
 /** One short plain sentence for the verdict of a phase; the full line waits in the fold. */
@@ -105,19 +133,25 @@ const sentenceOf = h => h.status === 'sufficient' ? `확인한 범위의 통과�
   h.status === 'insufficient_coverage' ? `${h.coverage_threshold}% 이상 확인해야 점수를 냅니다. 지금 ${percent(coverageOf(h))}입니다.` :
   h.status === 'insufficient_core' ? `접근·색인 검사 ${esc(h.unresolved_core)}건에 결과가 없어 점수를 내지 않습니다.` : '감사 기록이 없어 점수를 내지 않습니다.';
 
-const profileHtml = (row, excluded) => {
+const profileHtml = row => {
   const phase = row.after ?? row.before, h = phase.headline, shown = coverageOf(h);
   const difference = row.after ? `<p>확인 범위 이전 ${percent(coverageOf(row.before.headline))} → 이후 ${percent(coverageOf(row.after.headline))}; ${typeof row.difference === 'number' ? `이전 → 이후 차이 ${row.difference}점${row.between_measured_subsets ? ' (확인한 범위끼리의 비교)' : ''}` : '두 단계를 비교할 수 없어 차이는 알 수 없습니다'}</p>` : '';
-  return `<li class="profile"><div class="head"><strong>${esc(row.profile)}</strong><span class="chip">${esc(VERDICTS[h.status])}</span></div>` +
+  return `<li class="profile" data-state="${h.status === 'sufficient' ? 'good' : 'short'}"><div class="head"><strong>${esc(row.profile)}</strong><span class="chip">${esc(VERDICTS[h.status])}</span></div>` +
+    `<p class="big">${h.status === 'sufficient' ? `${esc(h.headline_score)}<small>점</small>` : '—'}</p>` +
     `${typeof shown === 'number' ? `<meter min="0" max="100" value="${shown}" aria-label="확인 범위 ${shown}%">${shown}%</meter>` : ''}` +
-    `<p class="big">확인 범위 ${percent(shown)}</p><p>${sentenceOf(h)}</p>` +
-    `${excluded ? `<p class="note">이번 실행에서 모델이 해당 없음으로 뺀 단위는 모두 ${excluded}건이고, 점수를 내는 영역에 따라 일부만 이 확인 범위에서 빠집니다.</p>` : ''}` +
+    `<p class="range">확인 범위 ${percent(shown)}</p><p class="say">${sentenceOf(h)}</p>` +
     `<details><summary>자세히</summary><p>${esc(headlineLine(h))}</p>${difference}<p class="note">방문자 실측(CWV)을 뺀 확인 범위 ${percent(row.coverage_without_cwv)}</p></details></li>`;
+};
+
+/** Said once under the profiles: the count is the run's, not any one profile's. */
+const excludedNote = ({ model_not_applicable: byFamily }) => {
+  const excluded = Object.values(byFamily).reduce((sum, n) => sum + n, 0);
+  return excluded ? `<p class="note">이번 실행에서 모델이 해당 없음으로 뺀 단위는 모두 ${excluded}건이고, 점수를 내는 영역에 따라 일부만 이 확인 범위에서 빠집니다.</p>` : '';
 };
 
 const completenessSection = ({ completeness, conditions }) =>
   `<section id="completeness"><h2>${SECTION_TITLES.completeness}</h2><p class="note">점수는 확인한 범위 안의 통과율입니다. 실제 검색 성과가 아닙니다.</p>` +
-  `${completeness.length ? `<ul class="profiles">${completeness.map(row => profileHtml(row, Object.values(conditions.model_not_applicable).reduce((sum, n) => sum + n, 0))).join('')}</ul>` : '<p>점수를 낼 영역이 없어 확인 범위를 알 수 없습니다.</p>'}</section>`;
+  `${completeness.length ? `<ul class="profiles">${completeness.map(profileHtml).join('')}</ul>${excludedNote(conditions)}` : '<p>점수를 낼 영역이 없어 확인 범위를 알 수 없습니다.</p>'}</section>`;
 
 const blankSection = (composed, runbooks, level) => {
   const byId = new Map(runbooks.map(runbook => [runbook.id, runbook]));
@@ -141,41 +175,70 @@ const conditionsSection = ({ conditions }) =>
   `${conditions.notes.map(note => `<p class="note">${esc(note)}</p>`).join('')}</details></section>`;
 
 const STYLE = `
-:root{color-scheme:light dark;--bg:#fff;--fg:#1d2430;--mut:#4d5868;--card:#f4f6f9;--line:#cfd6e0;--acc:#0b57d0;--on-acc:#fff;--hot:#a8201a;--ok:#146c2e;--chip:#e3ebfb;--hit:rgba(11,87,208,.18)}
-@media (prefers-color-scheme:dark){:root{--bg:#10151c;--fg:#e8ecf2;--mut:#a9b4c4;--card:#1a212b;--line:#35414f;--acc:#8ab4f8;--on-acc:#10151c;--hot:#f2b8b5;--ok:#8ddba3;--chip:#243452;--hit:rgba(138,180,248,.22)}}
+:root{color-scheme:light dark;--paper:#f7f4ee;--ink:#17162b;--mut:#57566b;--card:#fff;--line:#e2ddd2;--brand:#23205a;--on-brand:#fff;--brand-mut:#cfcbf2;
+--acc:#4b3fd1;--on-acc:#fff;--hot:#c2361f;--warm:#a85700;--ok:#0f7a62;--calm:#4b3fd1;--chip:#efeaf9;--hit:rgba(75,63,209,.18)}
+@media (prefers-color-scheme:dark){:root{--paper:#121120;--ink:#f1eff8;--mut:#b4b1c8;--card:#1c1b30;--line:#34324e;--brand:#2b2770;--on-brand:#fff;--brand-mut:#c9c5f0;
+--acc:#a99ff7;--on-acc:#121120;--hot:#ff8a73;--warm:#ffb057;--ok:#4fd1b0;--calm:#a99ff7;--chip:#2c2a48;--hit:rgba(169,159,247,.24)}}
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.65 system-ui,"Malgun Gothic","Apple SD Gothic Neo",sans-serif;word-break:keep-all;overflow-wrap:anywhere}
-main{max-width:46rem;margin:0 auto;padding:1.5rem 1rem 4rem}
-h1{font-size:1.5rem;margin:0 0 .25rem}h2{font-size:1.25rem;margin:2.25rem 0 .75rem}
+body{margin:0;background:var(--paper);color:var(--ink);font:500 16px/1.7 Pretendard,"Pretendard Variable","Apple SD Gothic Neo","Malgun Gothic","Noto Sans KR",system-ui,sans-serif;word-break:keep-all;overflow-wrap:anywhere}
+main{max-width:52rem;margin:0 auto;padding:0 1rem 4rem}
+h1{font-size:.95rem;font-weight:800;letter-spacing:.04em;margin:0;color:var(--brand-mut)}
+h2{font-size:1.6rem;font-weight:900;letter-spacing:-.01em;margin:3rem 0 1rem;padding-bottom:.4rem;border-bottom:3px solid var(--ink)}
 section{margin-top:1rem}p{margin:.4rem 0}ol,ul{padding-left:1.25rem;margin:.5rem 0}
-.target{color:var(--mut);margin:0 0 1rem}
-.banner{border:2px solid var(--hot);border-radius:10px;padding:.5rem .8rem;font-weight:700;margin:0 0 1rem}
-.hero{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:1.1rem 1.1rem 1.25rem}
-.hero .lead{font-size:1.25rem;font-weight:700;margin:0 0 .9rem}
-.tiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(8.5rem,1fr));gap:.6rem;margin:0;padding:0;list-style:none}
-.tiles li{background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:.6rem .8rem}
-.tiles b{display:block;font-size:1.6rem;line-height:1.2}
-.skipped{margin:.9rem 0 0;border-top:1px solid var(--line);padding-top:.7rem}
+strong,b{font-weight:800}
+.hero{background:var(--brand);color:var(--on-brand);margin:0 -1rem;padding:2rem 1.5rem 1.6rem;border-radius:0 0 20px 20px}
+.target{color:var(--brand-mut);font-weight:700;margin:.2rem 0 1rem;font-size:1.05rem}
+.hero .lead{font-size:clamp(1.7rem,5vw,2.4rem);line-height:1.25;font-weight:900;letter-spacing:-.02em;margin:0 0 1.4rem}
+.banner{border:2px solid var(--hot);background:var(--card);color:var(--ink);border-radius:12px;padding:.5rem .8rem;font-weight:800;margin:1rem 0 0}
+.tiles{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:.6rem;margin:0;padding:0;list-style:none}
+.tiles li{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.22);border-radius:14px;padding:.7rem .9rem;font-weight:700;color:var(--brand-mut)}
+.tiles li:first-child{background:var(--on-brand);color:var(--brand)}
+.tiles b{display:block;font-size:2.2rem;line-height:1.1;font-weight:900;color:inherit}
+.tiles li:not(:first-child) b{color:var(--on-brand)}
+.skipped{margin:1.1rem 0 0;border-top:1px solid rgba(255,255,255,.25);padding-top:.8rem;color:var(--brand-mut);font-size:.95rem}
 .fixes,.blanks,.profiles{list-style:none;padding:0}
-.fix,.blank,.profile{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:.8rem .9rem;margin:.6rem 0}
-.head{display:flex;gap:.5rem;align-items:baseline;flex-wrap:wrap}.msg{font-weight:700}
-.chip{display:inline-block;background:var(--chip);border-radius:999px;padding:0 .6rem;font-size:.85rem;font-weight:700}
-.chip.hot{color:var(--hot)}.chip.ok{color:var(--ok)}
-.pages,.note{color:var(--mut);font-size:.9rem}
-.big{font-size:1.35rem;font-weight:700}
-meter{width:100%;height:1rem}
-summary{cursor:pointer;font-weight:700;padding:.35rem 0}
+.fix,.blank{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:.9rem 1rem;margin:.7rem 0;border-left:6px solid var(--calm)}
+.fix.hot{border-left-color:var(--hot)}.fix.warm{border-left-color:var(--warm)}.fix.ok{border-left-color:var(--ok)}
+.fix.top{padding:1.3rem 1.3rem 1.1rem;box-shadow:0 2px 0 var(--line)}
+.fix.top .msg{font-size:1.35rem;line-height:1.4;font-weight:900;letter-spacing:-.01em;margin:.5rem 0}
+.fix.row .msg{font-size:1.05rem;font-weight:800;margin:.35rem 0}
+.head{display:flex;gap:.5rem;align-items:center;flex-wrap:wrap}
+.rank{display:inline-grid;place-items:center;min-width:1.9rem;height:1.9rem;border-radius:999px;background:var(--ink);color:var(--paper);font-weight:900}
+.fix.row .rank{min-width:1.5rem;height:1.5rem;font-size:.85rem}
+.msg{font-weight:800}
+.count{font-weight:800;color:var(--mut);font-size:.9rem}
+.how{background:var(--chip);border-radius:10px;padding:.55rem .75rem;margin:.6rem 0}
+.how strong{color:var(--acc);margin-right:.3rem}
+.spot{border-top:1px dashed var(--line);margin-top:.6rem;padding-top:.5rem}
+.where strong{margin-right:.3rem}
+.chip{display:inline-block;background:var(--chip);border-radius:999px;padding:.05rem .65rem;font-size:.85rem;font-weight:800}
+.chip.hot{background:var(--hot);color:var(--card)}.chip.ok{color:var(--ok)}
+.pages,.note{color:var(--mut);font-size:.92rem}
+.profiles{display:grid;grid-template-columns:repeat(auto-fit,minmax(8rem,1fr));gap:.7rem}
+.profile{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:.9rem;margin:0;border-top:5px solid var(--ok)}
+.profile[data-state=short]{border-top-color:var(--warm)}
+.profile .head{justify-content:space-between}.profile .head strong{font-size:1.15rem;font-weight:900}
+.big{font-size:2.4rem;line-height:1.1;font-weight:900;margin:.5rem 0 .3rem;letter-spacing:-.02em}.big small{font-size:1rem;font-weight:800;margin-left:.15rem}
+.range{font-weight:800;font-size:.95rem}.profile .say{font-size:.9rem;color:var(--mut)}
+meter{width:100%;height:.7rem}
+summary{cursor:pointer;font-weight:800;padding:.35rem 0}
 details details{margin-left:.25rem}
-dl{display:grid;grid-template-columns:minmax(6rem,max-content) 1fr;gap:.25rem .9rem;margin:.5rem 0}dt{color:var(--mut)}dd{margin:0}
+dl{display:grid;grid-template-columns:minmax(6rem,max-content) 1fr;gap:.25rem .9rem;margin:.5rem 0}dt{color:var(--mut);font-weight:700}dd{margin:0}
 .runbook{border-top:1px solid var(--line);margin-top:.5rem}
 .runbook li{margin:.5rem 0}
 .step{display:flex;gap:.8rem;align-items:flex-start;flex-wrap:wrap}.say{flex:1 1 14rem}
 .shot{flex:0 0 9rem;width:9rem;max-width:100%;height:auto}
-.win{fill:var(--bg);stroke:var(--line)}.bar{fill:var(--card)}.dot{fill:var(--line)}.pill{fill:var(--line)}.pane{fill:var(--chip)}.ln{fill:var(--line)}
+.win{fill:var(--card);stroke:var(--line)}.bar{fill:var(--paper)}.dot{fill:var(--line)}.pill{fill:var(--line)}.pane{fill:var(--chip)}.ln{fill:var(--line)}
 .term{fill:#1b1f27;stroke:var(--line)}.tl{fill:#8f9bb0}
 .hit{fill:var(--hit);stroke:var(--acc);stroke-width:2}.badge{fill:var(--acc)}.num{fill:var(--on-acc);font:700 10px system-ui,sans-serif}
 pre{background:var(--card);border:1px solid var(--line);border-radius:8px;padding:.6rem .8rem;overflow-x:auto}code{font-family:ui-monospace,Consolas,monospace;font-size:.92em}
+h2,section{scroll-margin-top:1rem}
+h2,.hero .lead,.fix .msg{text-wrap:balance}
+.big,.tiles b,.rank,.range{font-variant-numeric:tabular-nums}
+summary:hover{color:var(--acc)}
+summary:focus-visible{outline:3px solid var(--acc);outline-offset:3px;border-radius:6px}
 footer{margin-top:3rem;color:var(--mut);font-size:.9rem}
+@media (max-width:30rem){.tiles b{font-size:1.7rem}.fix.top .msg{font-size:1.2rem}h2{font-size:1.35rem}}
 `;
 
 /**
@@ -188,9 +251,10 @@ export function renderHtmlReport(composed, { runbooks, level, target, synthetic 
   const { headline } = composed;
   return `<!doctype html>\n<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">` +
     `<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'"><meta name="color-scheme" content="light dark">` +
-    `<title>optbrew 보고서</title><style>${STYLE}</style></head><body><main><h1>사이트 점검 결과</h1><p class="target">${esc(target)}</p>` +
-    `${synthetic ? `<p class="banner">${SYNTHETIC_BANNER}</p>` : ''}` +
-    `<section class="hero"><p class="lead">${esc(headline.text)}</p><ul class="tiles"><li><b>${esc(headline.open)}건</b>먼저 고칠 것</li>` +
+    `<meta name="theme-color" media="(prefers-color-scheme: light)" content="#23205a"><meta name="theme-color" media="(prefers-color-scheme: dark)" content="#2b2770">` +
+    `<title>optbrew 보고서</title><style>${STYLE}</style></head><body><main>` +
+    `<section class="hero"><h1>사이트 점검 결과</h1><p class="target" translate="no">${esc(target)}</p>${synthetic ? `<p class="banner">${SYNTHETIC_BANNER}</p>` : ''}` +
+    `<p class="lead">${esc(headline.text)}</p><ul class="tiles"><li><b>${esc(headline.open)}건</b>먼저 고칠 것</li>` +
     `<li><b>${esc(headline.blocking)}건</b>가장 급한 것</li><li><b>${esc(headline.already_fixed)}건</b>이미 고친 것</li></ul>` +
     `${headline.not_indexed ? `<p class="skipped">${esc(headline.not_indexed.text)}</p>` : ''}</section>` +
     `${fixesSection(composed)}${completenessSection(composed)}${blankSection(composed, runbooks, level)}${followUpsSection(composed)}${conditionsSection(composed)}` +

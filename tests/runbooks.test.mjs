@@ -76,7 +76,7 @@ test('no placeholder remains after loadRunbook', async () => {
       const runbook = loadRunbook(id, level, { skillRoot });
       assert.ok(!runbook.text.includes('{{'), `${id}/${level}: placeholder left`);
       assert.ok(!runbook.text.includes('\r'), `${id}/${level}: CRLF left`);
-      assert.deepEqual(Object.keys(runbook).sort(), ['checked', 'harness', 'id', 'kind', 'source', 'text']);
+      assert.deepEqual(Object.keys(runbook).sort(), ['checked', 'harness', 'id', 'kind', 'source', 'text', 'title']);
     }
   }
   const text = loadRunbook('key-set-local', 'beginner', { skillRoot }).text;
