@@ -51,7 +51,7 @@ export async function run({ answersPath, out, judgmentsPath = null }, overrides 
     const resuming = await prepareOutput(outDir) === 'resume';
     const state = resuming ? await restoreState({ out: outDir, answers }) : { answers, out: outDir, answersDir: path.dirname(path.resolve(answersPath)) };
     const { state: end, halt } = await runStages(overrides.stages ?? stages(), { ...state, judgments }, deps, { from: resuming ? RESUME_FROM : null });
-    return halt ? { status: halt, judge_queue: path.join(outDir, 'judge-queue.json'), judge_pages: path.join(outDir, QUEUE_PAGES_DIR),
+    return halt ? { status: halt, judge_pages: path.join(outDir, QUEUE_PAGES_DIR),
       pages: new Set(end.queue.items.map(item => item.url)).size, queue_items: end.queue.items.length } :
       { status: STATUS_DONE, reports: end.reports, score_input: path.join(outDir, 'score-input.json'), ...(end.lab_cwv ? { lab_cwv: end.lab_cwv } : {}) };
   } finally { await chrome.close(); }

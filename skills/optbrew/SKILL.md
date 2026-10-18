@@ -140,7 +140,7 @@ node "<SKILL_DIR>/scripts/cli.mjs" runbook --ids "<id>" --level <수준>
 node "<SKILL_DIR>/scripts/run.mjs" --answers "<OUT>/intake-answers.json" --out "<OUT>"
 ```
 
-3. 종료 코드가 0이면 마지막 줄의 JSON에서 `status`를 읽는다. 이 JSON의 `judge_queue`, `reports`, `score_input`은 경로이거나 경로를 담은 값이다. 파일 이름을 짐작하지 말고 이 값에서 읽는다. `reports`는 `json`, `md`, `html` 경로를 담고, `queue_items`는 판정할 항목 수다. `lab_cwv`가 있으면 크롬으로 잰 참고 값이며 채점하지 않는다.
+3. 종료 코드가 0이면 마지막 줄의 JSON에서 `status`를 읽는다. 이 JSON의 `judge_pages`, `reports`, `score_input`은 경로이거나 경로를 담은 값이다. 파일 이름을 짐작하지 말고 이 값에서 읽는다. `reports`는 `json`, `md`, `html` 경로를 담고, `queue_items`는 판정할 항목 수다. `lab_cwv`가 있으면 크롬으로 잰 참고 값이며 채점하지 않는다.
    - `awaiting_judgments`이면 8단계로 간다. 쪽별 판정 목록의 폴더는 `judge_pages`에, 쪽 수는 `pages`에 있다.
    - `done`이면 9단계로 간다.
 4. 종료 코드가 0이 아니면 실패다. stderr의 마지막 줄은 사람이 읽는 한 문장이다. 그 문장을 사용자 말로 한 줄로 옮기고 멈춘다. 같은 명령을 되풀이하지 않는다.

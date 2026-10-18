@@ -6,7 +6,7 @@ import { appendFile, mkdir, readdir, readFile, writeFile } from 'node:fs/promise
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { run } from '../skills/optbrew/scripts/run.mjs';
-import { answersFor, memorySite, passJudgments, quietEnv, SITE, workspace, zipOf } from './support/run-scenario.mjs';
+import { answersFor, memorySite, passJudgments, preflightOf, questions, quietEnv, readQueue, SITE, workspace, zipOf } from './support/run-scenario.mjs';
 
 const runScript = fileURLToPath(new URL('../skills/optbrew/scripts/run.mjs', import.meta.url));
 const readJson = async file => JSON.parse(await readFile(file, 'utf8'));
@@ -32,12 +32,12 @@ test('the CLI prints one JSON line on success and one plain sentence on failure'
     const ws = await workspace(answersFor(`${SITE}/`));
     const first = await run({ answersPath: ws.answersPath, out: ws.out }, { env: quietEnv(), home: ws.home, selectTransport: site.selectTransport });
     const judgmentsPath = path.join(ws.dir, 'judgments.json');
-    await writeFile(judgmentsPath, JSON.stringify(passJudgments(await readJson(first.judge_queue))));
+    await writeFile(judgmentsPath, JSON.stringify(passJudgments(await readQueue(first))));
     return { site, ws, first, judgmentsPath };
   };
   const { ws, first, judgmentsPath } = await call();
-  assert.deepEqual(Object.keys(first), ['status', 'judge_queue', 'judge_pages', 'pages', 'queue_items']);
-  const queue = await readJson(first.judge_queue);
+  assert.deepEqual(Object.keys(first), ['status', 'judge_pages', 'pages', 'queue_items']);
+  const queue = await readQueue(first);
   assert.ok(queue.pages.every(page => page.families.every(family => family.family_id && family.unit_key)), 'every unit names its family and unit_key');
   const second = await cli(['--answers', ws.answersPath, '--out', ws.out, '--judgments', judgmentsPath], ws);
   assert.equal(second.code, 0, second.stderr);
@@ -71,7 +71,7 @@ test('the judgments file is one bare array, handed to the merge as it is', async
   const overrides = { env: quietEnv(), home: ws.home, selectTransport: site.selectTransport };
   const first = await run({ answersPath: ws.answersPath, out: ws.out }, overrides);
   const wrapped = path.join(ws.dir, 'wrapped.json');
-  await writeFile(wrapped, JSON.stringify({ judgments: passJudgments(await readJson(first.judge_queue)) }));
+  await writeFile(wrapped, JSON.stringify({ judgments: passJudgments(await readQueue(first)) }));
   await assert.rejects(run({ answersPath: ws.answersPath, out: ws.out, judgmentsPath: wrapped }, overrides), /one JSON array/);
   const bad = path.join(ws.dir, 'bad.json');
   await writeFile(bad, '{ nope');
@@ -90,7 +90,7 @@ async function withExports(exports, files) {
   const overrides = { env: quietEnv(), home: ws.home, selectTransport: site.selectTransport };
   const first = await run({ answersPath, out: ws.out }, overrides);
   const judgmentsPath = path.join(ws.dir, 'judgments.json');
-  await writeFile(judgmentsPath, JSON.stringify(passJudgments(await readJson(first.judge_queue))));
+  await writeFile(judgmentsPath, JSON.stringify(passJudgments(await readQueue(first))));
   const second = await run({ answersPath, out: ws.out, judgmentsPath }, overrides);
   return { ws, report: await readJson(second.reports.json), index: await readJson(path.join(ws.out, 'evidence', 'evidence-index.json')) };
 }
@@ -124,7 +124,7 @@ test('owner exports: a missing or unreadable file is an unknown with a reason, n
   assert.equal(damaged.report.follow_ups.filter(row => row.reason.startsWith('export_')).length, 1);
 });
 
-test('--out may already hold preflight/ and the answers file; the queue file is pretty-printed', async () => {
+test('--out may already hold preflight/ and the answers file; the queue files are compact JSON', async () => {
   const site = memorySite();
   const ws = await workspace(answersFor(`${SITE}/`));
   await mkdir(path.join(ws.out, 'preflight', 'evidence'), { recursive: true });
@@ -134,29 +134,60 @@ test('--out may already hold preflight/ and the answers file; the queue file is 
   const first = await run({ answersPath: path.join(ws.out, 'intake-answers.json'), out: ws.out }, { env: quietEnv(), home: ws.home, selectTransport: site.selectTransport });
   assert.equal(first.status, 'awaiting_judgments');
   assert.equal(await readFile(path.join(ws.out, 'preflight', 'start.json'), 'utf8'), start, 'the preflight output is left as it was');
-  const text = await readFile(first.judge_queue, 'utf8');
-  assert.equal(text, `${JSON.stringify(JSON.parse(text), null, 2)}\n`, 'two-space indent, one trailing newline');
-  assert.ok(text.split('\n').length > 10, 'one value per line, not a single line');
+  const names = await readdir(first.judge_pages);
+  assert.ok(names.includes('site.json') && names.length > 1);
+  for (const name of names) {
+    const text = await readFile(path.join(first.judge_pages, name), 'utf8');
+    assert.equal(text, `${JSON.stringify(JSON.parse(text))}\n`, `${name}: no indentation, one trailing newline`);
+  }
   const judgmentsPath = path.join(ws.dir, 'judgments.json');
-  await writeFile(judgmentsPath, JSON.stringify(passJudgments(JSON.parse(text))));
+  await writeFile(judgmentsPath, JSON.stringify(passJudgments(await readQueue(first))));
   const second = await run({ answersPath: path.join(ws.out, 'intake-answers.json'), out: ws.out, judgmentsPath }, { env: quietEnv(), home: ws.home, selectTransport: site.selectTransport });
   assert.equal(second.status, 'done');
   assert.equal(await readFile(path.join(ws.out, 'preflight', 'start.json'), 'utf8'), start);
 });
 
-test('the queue comes as one file per page too, and a folder of page judgments is merged; a page left out stops the run', async () => {
+test('a page file lists its spans by id and text only, and a line every page repeats keeps its own span_id on each page', async () => {
+  const footer = '서울 마포구 월드컵로 12길 브루 카페, 전화 02-555-0142, 매일 오전 8시부터 오후 6시까지 엽니다';
+  const titles = ['홈', '소개해 드립니다', '메뉴', '오시는 길 안내', '문의하기', '자주 묻는 질문 모음'];
+  const pathOf = i => i === 0 ? '/' : `/page-${i}`;
+  const links = titles.map((_, i) => `<a href="${pathOf(i)}">${titles[i]}</a>`).join(' ');
+  const pages = { '/robots.txt': { type: 'text/plain', body: 'User-agent: *\nAllow: /\n' },
+    '/sitemap.xml': { type: 'application/xml', body: `<urlset>${titles.map((_, i) => `<url><loc>${SITE}${pathOf(i)}</loc></url>`).join('')}</urlset>` } };
+  for (const [i, title] of titles.entries())
+    pages[pathOf(i)] = { body: `<!doctype html><html lang="ko"><head><title>${title}</title></head><body><h1>${title}</h1><p>${title} 페이지의 소개 글입니다. 직접 볶은 원두로 커피를 내립니다.</p><p>${footer}</p>${i === 0 ? links : ''}</body></html>` };
+  const site = memorySite(pages);
+  const ws = await workspace(answersFor(`${SITE}/`));
+  await preflightOf(site, `${SITE}/`, ws.out);
+  const first = await run({ answersPath: ws.answersPath, out: ws.out }, { env: quietEnv(), home: ws.home, selectTransport: site.selectTransport });
+  const queue = await readQueue(first);
+  assert.deepEqual(queue.site_chrome, [footer], 'site.json lists the repeated line once');
+  assert.equal(queue.pages.length, titles.length);
+  const chromeIds = [];
+  for (const page of queue.pages) {
+    assert.deepEqual(Object.keys(page).sort(), ['evidence_ref', 'evidence_sha256', 'families', 'spans', 'url']);
+    const body = Buffer.from(pages[new URL(page.url).pathname].body);
+    const start = body.indexOf(footer);
+    const chrome = page.spans.filter(span => span.site_chrome);
+    assert.deepEqual(chrome, [{ span_id: `${start}-${start + Buffer.byteLength(footer)}`, text: footer, site_chrome: true }], `${page.url}: the span_id is the line's byte range in this page`);
+    chromeIds.push(chrome[0].span_id);
+    for (const span of page.spans.filter(span => !span.site_chrome)) assert.deepEqual(Object.keys(span).sort(), ['span_id', 'text'], `${page.url}: no hash or byte range on a span`);
+  }
+  assert.ok(new Set(chromeIds).size > 1, 'pages whose text before the line differs give it different ids');
+});
+
+test('the queue comes as one file per page, and a folder of page judgments is merged; a page left out stops the run', async () => {
   const site = memorySite();
   const ws = await workspace(answersFor(`${SITE}/`));
   const overrides = { env: quietEnv(), home: ws.home, selectTransport: site.selectTransport };
   const first = await run({ answersPath: ws.answersPath, out: ws.out }, overrides);
-  const queue = await readJson(first.judge_queue);
+  const queue = await readQueue(first);
   const files = (await readdir(first.judge_pages)).sort();
   assert.deepEqual(files, [...queue.pages.map((_, i) => `p${String(i + 1).padStart(3, '0')}.json`), 'site.json']);
   assert.equal(first.pages, queue.pages.length);
   const siteFile = await readJson(path.join(first.judge_pages, 'site.json'));
-  assert.deepEqual(siteFile.questions, queue.questions);
+  assert.deepEqual(siteFile.questions, questions.map(({ id, question }) => ({ id, question })));
   assert.equal(siteFile.pages, undefined, 'the site file holds no pages');
-  assert.deepEqual(await readJson(path.join(first.judge_pages, 'p001.json')), queue.pages[0]);
   const dir = path.join(ws.out, 'judgments');
   await mkdir(dir);
   const pageJudgments = page => passJudgments({ ...queue, pages: [page] });
