@@ -1,6 +1,6 @@
 {
   "name": "optbrew",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Pinned search audit and improvement skill bundle",
   "author": { "name": "nowwcastle-sudo", "url": "https://github.com/nowwcastle-sudo" },
   "skills": ["./skills/optbrew"]

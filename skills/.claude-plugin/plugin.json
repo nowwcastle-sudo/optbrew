@@ -1,6 +1,7 @@
 {
   "name": "optbrew",
   "displayName": "optbrew",
+  "version": "0.2.1",
   "description": "Audit a site for Google, Naver and AI answer engines, fix the local files you approve, re-check under the same conditions and write a scored report",
   "author": {
     "name": "nowwcastle-sudo",
@@ -19,5 +20,13 @@
   ],
   "skills": [
     "./optbrew"
-  ]
+  ],
+  "userConfig": {
+    "google_api_key": {
+      "type": "string",
+      "title": "Google API key (optional)",
+      "description": "Fills the real-visitor speed scores (LCP, INP, CLS) from Google's Chrome UX Report and PageSpeed Insights. Kept in your system credential store and sent only to Google. Leave it empty to audit without them.",
+      "sensitive": true
+    }
+  }
 }

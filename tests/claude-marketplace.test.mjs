@@ -27,11 +27,33 @@ test('the Claude marketplace serves a plugin root that claude.ai accepts', async
   }
 });
 
-test('the served plugin has no pinned version, so every commit reaches marketplace sync', async () => {
+// The directory flags a served manifest without a version (MANIFEST_VERSION_MISSING, 0.2.0 review). The manifest's version
+// overrides the entry's, so only the manifest carries it.
+test('the served plugin carries the release version and the marketplace entry carries none', async () => {
   const [entry] = (await readJson('.claude-plugin/marketplace.json')).plugins;
   const manifest = await readJson(path.join(entry.source, '.claude-plugin/plugin.json'));
   assert.ok(!('version' in entry));
-  assert.ok(!('version' in manifest));
+  assert.equal(manifest.version, (await readJson('package.json')).version);
+});
+
+// The directory asks for secrets through a sensitive userConfig option (MCP_FORWARDS_CREDENTIAL_ENV, 0.2.0 review).
+test('the served plugin asks for the Google key as a sensitive setting and hands it on in a SessionStart hook', async () => {
+  const [entry] = (await readJson('.claude-plugin/marketplace.json')).plugins;
+  const manifest = await readJson(path.join(entry.source, '.claude-plugin/plugin.json'));
+  const option = manifest.userConfig.google_api_key;
+  assert.equal(option.type, 'string');
+  assert.equal(option.sensitive, true);
+  assert.ok(option.title && option.description);
+  assert.ok(!option.required, 'the key stays optional: the audit runs without it');
+  // userConfig options are strict: an unknown key makes the plugin fail to load.
+  for (const key of Object.keys(option)) assert.ok(['type', 'title', 'description', 'required', 'default', 'sensitive'].includes(key), key);
+
+  const hooks = await readJson(path.join(entry.source, 'hooks/hooks.json'));
+  const [hook] = hooks.hooks.SessionStart[0].hooks;
+  // Exec form: no shell re-reads the arguments, and the hook gets CLAUDE_ENV_FILE on Windows too (a PowerShell hook does not).
+  assert.deepEqual({ type: hook.type, command: hook.command, args: hook.args },
+    { type: 'command', command: 'node', args: ['${CLAUDE_PLUGIN_ROOT}/hooks/plugin-key-env.mjs'] });
+  assert.ok((await stat(path.join(root, entry.source, 'hooks/plugin-key-env.mjs'))).isFile());
 });
 
 // The directory submission reads only the plugin folder (Plugin path = the marketplace source).

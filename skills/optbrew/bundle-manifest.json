@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0.0",
-  "release_version": "0.2.0",
+  "release_version": "0.2.1",
   "evaluation_version": "0.4.0",
   "protocol_version": "0.2.0",
   "evaluation_sources": [
@@ -724,7 +724,7 @@
     },
     {
       "path": "references/runbooks/google-api-key.md",
-      "sha256": "8c752ee46300fdd57e3a87efa4d3addc38c7a69ee2f409ddfba188c79cdf3d7d"
+      "sha256": "ca75745cceea090cb1f31926be3fdab5ceb0e27bf5e95fd83c74762ce6c4cfb7"
     },
     {
       "path": "references/runbooks/gsc-export.md",
@@ -744,7 +744,7 @@
     },
     {
       "path": "references/runbooks/key-set-local.md",
-      "sha256": "9f2a59e4e5e45fe2f2dfcc3651364d9549b26296ed4191c577cf8f57bd328c00"
+      "sha256": "43424c1b72766c3866e210c3a666ccca50a2fc6244a29c11d8519a36fff770fd"
     },
     {
       "path": "references/runbooks/naver-searchadvisor-export.md",
@@ -780,7 +780,7 @@
     },
     {
       "path": "references/versions.json",
-      "sha256": "105378f9955712e900290078224d0f21895f6fb9274323ebce69e536576acbb0"
+      "sha256": "838675b611fcc6fb243b253575f17af8536fa30d912e0e654be4a819ece3e908"
     },
     {
       "path": "scripts/adapters/anthropic.mjs",
@@ -948,7 +948,7 @@
     },
     {
       "path": "scripts/core/keys.mjs",
-      "sha256": "2796757270929679abe3fdb3b13f7f0a60a4f6cb6da395a9bb6af8e87c0b3a04"
+      "sha256": "ef7e5d7106628da61da448b170accdf834244c10035165cc96f6110101d2c9f0"
     },
     {
       "path": "scripts/core/link-graph.mjs",
@@ -1028,7 +1028,7 @@
     },
     {
       "path": "scripts/key.mjs",
-      "sha256": "b800a478d601bddf461c6237295fd54279fcd1a14459261e938f0b5a342c6467"
+      "sha256": "047fc58f97b978c33334375cb9ee824c9fe0d0d93d3b6ecddb7e1691afb48cb0"
     },
     {
       "path": "scripts/preflight.mjs",
@@ -1043,5 +1043,5 @@
       "sha256": "dca0bbd03fbf591c4aca6a568be76615eb48d69f7df0c634886f652b54f3f46d"
     }
   ],
-  "bundle_hash": "4f9cf4134069bf43e1243d9a1a925bf6712cc7fb858841161c26361d7b3a9e70"
+  "bundle_hash": "5b7087588e8fc817a3a5704e9b6418955bf5f615594ac9cbedf149bc5a3e707d"
 }

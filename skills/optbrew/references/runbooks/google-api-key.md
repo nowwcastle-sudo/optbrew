@@ -39,7 +39,7 @@ harness: any
 27. **만들기**(Create)를 누릅니다.
 28. **API 키 생성 완료**(API key created) 창에 키 문자열이 나옵니다. 키 옆 복사 아이콘을 눌러 복사합니다. 창을 닫기 전에 복사를 마칩니다.
 29. 키를 채팅창, 메모, 문서, 화면 공유에 붙여 넣지 않습니다.
-30. 키를 optbrew에 넣는 방법은 사용 중인 환경에 맞는 런북을 따릅니다. 내 컴퓨터의 터미널은 `key-set-local`, Claude Code 클라우드는 `key-set-claude-cloud`, Codex는 `key-set-codex`입니다.
+30. 키를 optbrew에 넣는 방법은 사용 중인 환경에 맞는 런북을 따릅니다. 내 컴퓨터의 터미널과 Claude Code 플러그인 설정은 `key-set-local`, Claude Code 클라우드는 `key-set-claude-cloud`, Codex는 `key-set-codex`입니다.
 
 키가 유출됐다고 의심되면 **사용자 인증 정보** 목록에서 그 키를 삭제하고 새로 만듭니다.
 

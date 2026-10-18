@@ -35,12 +35,12 @@ export async function releaseMetadataErrors(root, version) {
   expect(claude.name === 'optbrew' && claude.version === version &&
     JSON.stringify(claude.skills) === JSON.stringify(['./skills/optbrew']),
     '.claude-plugin/plugin.json', 'claude_release_mismatch');
-  // The marketplace serves skills/ (no top-level bin/, which claude.ai refuses) without a version,
-  // so every commit is a new plugin version and marketplace sync picks it up.
+  // The marketplace serves skills/ (no top-level bin/, which claude.ai refuses). The served manifest carries the release
+  // version (the directory asks for one; it overrides the entry), and the marketplace entry carries none.
   expect(marketplace.plugins?.length === 1 && marketplace.plugins[0]?.name === 'optbrew' &&
     marketplace.plugins[0]?.source === './skills' && !('version' in marketplace.plugins[0]),
   '.claude-plugin/marketplace.json', 'marketplace_release_mismatch');
-  expect(served.name === 'optbrew' && !('version' in served) &&
+  expect(served.name === 'optbrew' && served.version === version &&
     JSON.stringify(served.skills) === JSON.stringify(['./optbrew']),
   'skills/.claude-plugin/plugin.json', 'marketplace_plugin_mismatch');
   return errors;

@@ -49,7 +49,7 @@ Windows PowerShell에서 `npx`나 `optbrew`가 「스크립트를 실행할 수 
 ### 1. npm
 
 ```bash
-npm install -g optbrew@0.2.0
+npm install -g optbrew@0.2.1
 optbrew install --agents codex,claude-code --scope user --dry-run
 optbrew install --agents codex,claude-code --scope user
 optbrew doctor --agents codex,claude-code --scope user
@@ -62,20 +62,20 @@ optbrew doctor --agents codex,claude-code --scope user
 전역 설치 없이 같은 CLI를 실행합니다.
 
 ```bash
-npx optbrew@0.2.0 install --agents codex,claude-code --scope user
-npx optbrew@0.2.0 doctor --agents codex,claude-code --scope user
+npx optbrew@0.2.1 install --agents codex,claude-code --scope user
+npx optbrew@0.2.1 doctor --agents codex,claude-code --scope user
 ```
 
 ### 3. PowerShell (Windows)
 
 ```powershell
-irm https://raw.githubusercontent.com/nowwcastle-sudo/optbrew/v0.2.0/install.ps1 | iex
+irm https://raw.githubusercontent.com/nowwcastle-sudo/optbrew/v0.2.1/install.ps1 | iex
 ```
 
 이 스크립트는 이번 버전에 고정돼 있습니다. Node.js를 확인하고, 설치할 폴더를 보여 주고, Codex와 Claude Code에 설치합니다. `doctor`가 문제를 찾으면 오류로 멈춥니다. 먼저 읽어 보거나 에이전트·프로젝트 폴더를 고르려면 이렇게 실행합니다.
 
 ```powershell
-irm https://raw.githubusercontent.com/nowwcastle-sudo/optbrew/v0.2.0/install.ps1 -OutFile install.ps1
+irm https://raw.githubusercontent.com/nowwcastle-sudo/optbrew/v0.2.1/install.ps1 -OutFile install.ps1
 powershell -ExecutionPolicy Bypass -File .\install.ps1 -Agents codex,claude-code,cursor
 ```
 
@@ -106,7 +106,7 @@ claude.ai, Claude Desktop, Cowork: Customize > Plugins에서 Add > Add marketpla
 Codex, Claude Code 같은 코딩 에이전트에 아래 글을 붙여 넣으십시오.
 
 ```text
-optbrew 스킬을 설치해 줘. https://raw.githubusercontent.com/nowwcastle-sudo/optbrew/v0.2.0/AGENT_INSTALL.md 를 읽고 단계대로 따라 해. 어느 에이전트에, 어느 범위로 설치할지 먼저 묻고, 설치 전에 바뀔 내용을 보여 줘.
+optbrew 스킬을 설치해 줘. https://raw.githubusercontent.com/nowwcastle-sudo/optbrew/v0.2.1/AGENT_INSTALL.md 를 읽고 단계대로 따라 해. 어느 에이전트에, 어느 범위로 설치할지 먼저 묻고, 설치 전에 바뀔 내용을 보여 줘.
 ```
 
 [AGENT_INSTALL.md](AGENT_INSTALL.md)는 단계마다 실행할 명령과 통과 기준, 멈추고 사용자에게 물어야 할 경우를 적어 둔 에이전트용 안내서입니다.
@@ -135,7 +135,7 @@ optbrew key status
 optbrew key remove google
 ```
 
-`set`은 숨겨진 입력 창으로 키를 받습니다. `status`는 키가 있는지와 해시 앞 8자만 보여 줍니다. `remove`는 키를 지웁니다. npm으로 설치하지 않았다면 `npx optbrew@0.2.0 key set google`을 쓰거나, 「키」라고 답해 안내에 나온 명령을 그대로 복사하십시오. 스킬 폴더에도 같은 명령이 있습니다: `node <스킬 폴더>/scripts/key.mjs set google`. 키는 홈 폴더의 `.optbrew/credentials.json`에 저장되며 어느 프로젝트 안에도 들어가지 않습니다. 환경 변수 `OPTBREW_GOOGLE_API_KEY`가 있으면 그것이 먼저입니다. optbrew는 키를 요청 헤더로만 구글에 보내고, 보고서·로그·근거에는 쓰지 않습니다.
+`set`은 숨겨진 입력 창으로 키를 받습니다. `status`는 키가 있는지와 해시 앞 8자만 보여 줍니다. `remove`는 키를 지웁니다. npm으로 설치하지 않았다면 `npx optbrew@0.2.1 key set google`을 쓰거나, 「키」라고 답해 안내에 나온 명령을 그대로 복사하십시오. 스킬 폴더에도 같은 명령이 있습니다: `node <스킬 폴더>/scripts/key.mjs set google`. 키는 홈 폴더의 `.optbrew/credentials.json`에 저장되며 어느 프로젝트 안에도 들어가지 않습니다. 환경 변수 `OPTBREW_GOOGLE_API_KEY`가 있으면 그것이 먼저입니다. Claude Code 플러그인으로 설치했다면 `/plugin` → **Installed** → optbrew → **Configure options**에 키를 넣어도 됩니다. Claude Code가 운영체제의 자격 증명 저장소에 보관하고, 이 값이 둘보다 먼저 쓰이며, 새 세션부터 적용됩니다. optbrew는 키를 요청 헤더로만 구글에 보내고, 보고서·로그·근거에는 쓰지 않습니다.
 
 ## 업데이트
 
