@@ -182,7 +182,7 @@ test('remove deletes the file, tolerates a missing one, and names a still-set va
   assert.match(nothing.stdout, /nothing to remove/);
   const stillSet = await run(['remove', 'google'], { home, env: { OPTBREW_GOOGLE_API_KEY: KEY } });
   assert.equal(stillSet.code, 0);
-  assert.match(stillSet.stderr, /OPTBREW_GOOGLE_API_KEY is still set/);
+  assert.match(stillSet.stderr, /still set outside the key file: OPTBREW_GOOGLE_API_KEY or the Claude plugin setting/);
   assert.equal((stillSet.stdout + stillSet.stderr).includes(KEY), false);
 });
 

@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.2.1
+
+Answers the Claude plugin directory review of 0.2.0. The audit itself is unchanged; evaluation 0.4.0, audit protocol 0.2.0 and contract schema 2.0.0 stay.
+
+### What you see
+
+- **Google key in the Claude plugin settings.** With the Claude Code plugin you can enter the Google API key in `/plugin`, **Installed**, optbrew, **Configure options** instead of running `key set google` in a terminal. Claude Code keeps it in the system credential store. A new session picks it up. The key is optional, as before. The order optbrew reads the key in is now: the plugin setting, then `OPTBREW_GOOGLE_API_KEY`, then `.optbrew/credentials.json`. npm, Codex and the other hosts keep the variable and the key file.
+- **Key guides.** `key-set-local` and `google-api-key` name the plugin setting. `key remove google` now says a key is still set outside the key file when the variable or the plugin setting holds one.
+
+### Directory review answers
+
+- `MANIFEST_VERSION_MISSING`: the served `skills/.claude-plugin/plugin.json` now carries the release version. Before, it carried none so that every commit reached marketplace sync; now installed copies move only when a release changes the version. The marketplace entry still carries none (the manifest's version overrides it). The version-consistency test and `verify-release.mjs` check the served manifest.
+- `MCP_FORWARDS_CREDENTIAL_ENV`: the served manifest declares `userConfig.google_api_key` (`sensitive: true`). Claude Code gives a sensitive value only to hooks, so a new SessionStart hook (`skills/hooks/hooks.json`, exec form, `node` with `plugin-key-env.mjs`) appends it to `CLAUDE_ENV_FILE` as one single-quoted `CLAUDE_PLUGIN_OPTION_GOOGLE_API_KEY` line, and only when the value is letters, digits, `_` and `-`. The hook prints nothing and never echoes the value. Trade-off: the value then sits in the session's env file and in every shell command of the session, like the variable did. The flagged module guides (`seranking-seo` `seo-api` references, `seo-google/GUIDE.md`, `references/api.md`) are documentation only, and each sends a key to its own vendor (SE Ranking, Google, Anthropic); they are unchanged.
+- `UNREAD_ASSET_REFERENCED` on `modules/seranking-seo/skills/seo-api/references/api-surface-map.md`: the file names no image or font, and nothing runs it (only `seo-api/GUIDE.md` links it as a reference). Unchanged; it is a pinned vendored file (`source-lock.json`).
+- `RUNTIME_FETCH_EXEC` on `modules/magnus-seo/references/ghost-metadata.md`: its three `curl -s … | grep` lines read a page and filter it; nothing is run. Documentation only and pinned; unchanged.
+
+### Versions
+
+Release 0.2.1, evaluation 0.4.0, audit protocol 0.2.0, contract schema 2.0.0. Scores from 0.2.0 and 0.2.1 are comparable.
+
+### Not checked here
+
+- The hook was tested with a fake key and a temporary env file, not in a live Claude Code session with the plugin installed. Check after the merge: set the key in **Configure options**, start a new session, and `node "<skill folder>/scripts/key.mjs" status` shows `"present":true`. Check it on Windows too.
+- The Claude Code desktop app's plugin screen for **Configure options** was not seen.
+
 ## 0.2.0
 
 The beginner audit in one call. You answer one set of start questions, the agent runs the whole audit, and you get an HTML report in Korean with the fixes in order and the blanks explained.

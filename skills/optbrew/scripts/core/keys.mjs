@@ -5,6 +5,8 @@ import os from 'node:os';
 import path from 'node:path';
 
 const ENV_NAME = 'OPTBREW_GOOGLE_API_KEY';
+// The Claude plugin's `google_api_key` setting (userConfig, sensitive), handed to the session's shell commands by the plugin's SessionStart hook.
+const PLUGIN_ENV_NAME = 'CLAUDE_PLUGIN_OPTION_GOOGLE_API_KEY';
 const HASH_CHARS = 8;
 const OWNER_ONLY_FILE = 0o600;
 const OWNER_ONLY_DIR = 0o700;
@@ -37,9 +39,12 @@ function readCredentials(file) {
   try { return loadCredentials(file); } catch { return {}; }
 }
 
-/** Environment variable first, then the key file. An empty variable, a missing file or a corrupt file all mean "no key". */
+/**
+ * The Claude plugin setting first, then the environment variable, then the key file. An empty value, a missing file or a
+ * corrupt file all mean "no key".
+ */
 export function readGoogleKey({ env = process.env, home = keyHome(env) } = {}) {
-  return clean(env?.[ENV_NAME]) ?? clean(readCredentials(credentialsPath(home)).google);
+  return clean(env?.[PLUGIN_ENV_NAME]) ?? clean(env?.[ENV_NAME]) ?? clean(readCredentials(credentialsPath(home)).google);
 }
 
 /**

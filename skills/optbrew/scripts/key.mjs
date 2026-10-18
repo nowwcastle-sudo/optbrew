@@ -71,7 +71,7 @@ export async function runKeyCommand(argv, { stdin = process.stdin, stdout = proc
       stdout.write(`${JSON.stringify(googleKeyStatus({ env, home }))}\n`);
     } else if (action === 'remove') {
       stdout.write(await removeGoogleKey({ home }) ? 'google key removed\n' : 'no google key in the key file; nothing to remove\n');
-      if (googleKeyStatus({ env, home }).google.present) stderr.write('OPTBREW_GOOGLE_API_KEY is still set in the environment\n');
+      if (googleKeyStatus({ env, home }).google.present) stderr.write('a google key is still set outside the key file: OPTBREW_GOOGLE_API_KEY or the Claude plugin setting\n');
     } else {
       const key = (stdin.isTTY ? await readHidden(stdin, stdout) : await readLine(stdin)).trim();
       if (!key) { stderr.write('no key entered; nothing saved\n'); return 2; }

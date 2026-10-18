@@ -18,6 +18,7 @@ const jsonVersions = [
   ['plugin.json', manifest => manifest.version],
   ['plugin.json', manifest => manifest.extensions['com.openai'].release_version],
   ['.claude-plugin/plugin.json', manifest => manifest.version],
+  ['skills/.claude-plugin/plugin.json', manifest => manifest.version],
   ['.codex-plugin/plugin.json', manifest => manifest.version],
   ['.codex-plugin/plugin.json', manifest => manifest.extensions['com.openai'].release_version],
   ['skills/optbrew/bundle-manifest.json', manifest => manifest.release_version],
@@ -49,7 +50,7 @@ test('the lock file records the same Node floor as package.json', () => {
 
 test('a manifest that may carry a version either carries the release or carries none', () => {
   const marketplace = json('.claude-plugin/marketplace.json');
-  const carried = [json('skills/.claude-plugin/plugin.json').version, marketplace.version, ...marketplace.plugins.map(plugin => plugin.version)];
+  const carried = [marketplace.version, ...marketplace.plugins.map(plugin => plugin.version)];
   for (const version of carried.filter(value => value !== undefined)) assert.equal(version, release);
 });
 
