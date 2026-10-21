@@ -10,6 +10,26 @@ Fixes what the youthdc.com audit conversation showed: text the user never saw, a
 - **One judgments file per page.** The first call writes `judge-queue/site.json` and `judge-queue/p001.json`… in place of the single `judge-queue.json`, and its JSON names the folder (`judge_pages`) and the page count (`pages`). The `judge_queue` field is gone. The agent writes `judgments/p001.json`… as it goes, and `--judgments` takes that folder. A page left out, or an entry that is a stand-in (`…`, `TODO`, `나머지 동일`, a missing field), is refused by file name and position before anything is merged.
 - **Smaller files for the model to read.** A page file keeps the address, the evidence reference and hash, the units to judge, and for each span only `span_id` and `text` (plus `site_chrome` on a line most pages repeat). The hash and byte range of a span stay in the stored queue, where the merge reads them. The files are compact JSON with no indentation. A page of 30 Korean spans went from 10,340 to 5,436 bytes, and a 31-page audit from 51,376 bytes in one file to 30,303 bytes across the folder.
 - **A report page that reads by importance.** Bold type, a new palette, the conclusion largest, the first three fixes as large cards; the same problem on several pages is one card with each page under it, and the fix method shows on the card. Profiles sit in one grid with the excluded-units note said once. Visible focus, theme colour, tabular numbers; all text pairs at 4.5:1 or more in both themes.
+- **Goals choose the checks.** The goals of the start questions are read through one word table (`goals.mjs`) into five ids: `search`, `naver`, `ai_citation`, `brand_facts` and `conversion`. 문의, 예약, 상담 and 전화 mean conversion. The ids go into the audit protocol as `protocol.goals`, so a change of goals makes `compare` report `goals_changed`.
+- **AI search crawlers have their own check.** With the AI answer citation goal (one of the default goals), ChatGPT, Claude and Perplexity become target engines. The new `ai-crawler-policy` family reads robots.txt for OAI-SearchBot, Claude-SearchBot and PerplexityBot. A blocked AI bot lowers the score and is never a blocker. `search-crawl-policy` now covers Google and Naver only. In both families a robots.txt that answers 4xx (except 429) allows every path, as RFC 9309 says; 429, 5xx and an unanswered request stay undecided.
+- **A contact route when the goal is conversion.** The new `conversion-path` family passes when an audited page, raw or rendered, offers one way to get in touch: a `tel:`, `sms:` or `mailto:` link, a phone number shown as text, a KakaoTalk channel or open chat, Naver TalkTalk, Naver booking, or a same-site link to an inquiry, consultation or booking page. With none it fails, or stays unknown when the site shows its content only after rendering. Without the conversion goal it is not applicable.
+- **Confirmed facts are the reference.** The facts you confirm in the start questions go into the protocol as `protocol.confirmed_facts`. `fact-consistency` fails a page whose name, phone, address or founding year differs from them, with its own message (`fact-consistency.confirmed-differs`). A confirmed type is no longer voted on across pages, and one audited page alone can now be judged. A mobile `tel:` link beside a confirmed landline still passes.
+- **Naver ownership is remaining work, not a score.** When Naver is a target, no Naver export was read and the start page has no `naver-site-verification` meta tag, the report adds one row under 남은 일. It points to steps 1 to 4 of the Search Advisor runbook. A site verified by an uploaded HTML file loses nothing.
+
+### Versions
+
+Evaluation 0.5.0 (was 0.4.0), audit protocol 0.3.0 (was 0.2.0), contract schema 2.0.0. The registry gains `ai-crawler-policy` and `conversion-path`. Scores of 0.2.x runs are not comparable: `compare` reports `not_comparable` against a 0.2.x baseline, and a 0.2.x output folder is refused with `migration_required`.
+
+### Upgrading from 0.2.x
+
+- A managed 0.2.x install stops `optbrew update` with `migration_required` and changes nothing. Replace it with the blocks in `docs/platforms.md`, "Reinstall after a migration_required update".
+- Run the baseline audit again before you compare.
+
+### Known limitations
+
+- `conversion-path` does not see a form with no link to it, a button that opens a chat by script, or a contact route shown only in an image.
+- An unlabelled phone number in plain text counts only in a Korean dialling shape (a leading 0 and 9 to 11 digits, or an 8-digit 15xx, 16xx or 18xx number).
+- Confirmed facts are compared value by value. A page that writes the business name only in English beside a confirmed Korean name fails.
 
 ## 0.2.2
 

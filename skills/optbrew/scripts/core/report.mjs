@@ -567,8 +567,8 @@ function checkAuditPhase(input, phase, snapshot, requireRef) {
       if (obs.check_id === 'index-policy' && obs.state !== (replay.index_blocked ? 'fail' : 'pass'))
         throw new ContractError('title/index verdict differs from raw response and headers');
     }
-    if (obs.check_id === 'search-crawl-policy' && ['pass', 'fail'].includes(obs.state) && obs.unit_key.split('|')[1] === 'naver') {
-      const [, engine] = obs.unit_key.split('|');
+    // A robots.txt answered with 4xx gives the module no rules to read; the derivation replay below checks that verdict from the stored status.
+    if (obs.check_id === 'search-crawl-policy' && ['pass', 'fail'].includes(obs.state) && obs.unit_key.split('|')[1] === 'naver' && !artifacts.some(x => x.evidence_ref === obs.evidence_ref && x.status >= 400 && x.status < 500)) {
       const robotsArtifact = artifacts.find(x => x.evidence_ref === obs.evidence_ref && x.status === 200);
       const declared = robotsArtifact && (input.run_context.protocol.auxiliary_resources ?? []).some(resource =>
         resource.kind === 'robots' && resource.normalized === robotsArtifact.normalized_url);
@@ -578,7 +578,7 @@ function checkAuditPhase(input, phase, snapshot, requireRef) {
         const robotsUrl = new URL(robotsArtifact.final_url), pageUrl = new URL(pageArtifact.final_url);
         sameOriginRobots = robotsUrl.origin === pageUrl.origin && robotsUrl.pathname === '/robots.txt';
       } catch { /* missing or invalid URLs leave the binding false */ }
-      if (engine !== 'naver' || !engines.includes(engine) || !declared || !sameOriginRobots || !module ||
+      if (!engines.includes('naver') || !declared || !sameOriginRobots || !module ||
           robotsRaw.sha256 !== robotsArtifact.content_hash || module.robots_evidence_ref !== obs.evidence_ref || !module.robots)
         throw new ContractError('crawl verdict differs from bound robots evidence and module output');
       const target = new URL(pageArtifact.final_url);
@@ -610,7 +610,7 @@ function checkAuditPhase(input, phase, snapshot, requireRef) {
       throw new ContractError(`planned collector observation missing: ${expected.unit_key}`);
     const have = observations.find(x => x.unit_key === expected.unit_key);
     if (!same(shape(have), shape(expected)))
-      throw new ContractError(expected.family_id === 'search-crawl-policy' ? 'crawl verdict differs from bound robots evidence and module output' :
+      throw new ContractError(['search-crawl-policy', 'ai-crawler-policy'].includes(expected.family_id) ? 'crawl verdict differs from bound robots evidence and module output' :
         ['index-policy', 'document-title'].includes(expected.family_id) ? 'title/index verdict differs from raw response and headers' :
           `collector verdict differs from raw evidence: ${expected.unit_key}`);
   }

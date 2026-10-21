@@ -1,6 +1,6 @@
 # Search and AI crawler tokens (checked 2026-10-15)
 
-`search-crawl-policy` judges whether the robots.txt token that governs a target engine may fetch each selected public page. Tokens come from `ai-crawlers.json`. Each row below was read from the vendor's official page on the checked date; vendors change these pages, so re-read the source before relying on a token.
+`search-crawl-policy` (Google and Naver) and `ai-crawler-policy` (ChatGPT, Claude and Perplexity) judge whether the robots.txt token that governs a target engine may fetch each selected public page. Both use one derivation; only the engines differ. Tokens come from `ai-crawlers.json`. Each row below was read from the vendor's official page on the checked date; vendors change these pages, so re-read the source before relying on a token.
 
 | Protocol engine | robots.txt token | Role | Vendor statement (summary) |
 | --- | --- | --- | --- |
@@ -21,4 +21,4 @@ Tokens that are never scored, as the design rule "allowing training bots earns n
 | Perplexity-User | user-initiated fetch | generally ignores robots.txt |
 | Google-Extended | Gemini training and grounding | yes; it "does not impact a site's inclusion in Google Search" |
 
-Only engines present in `run_context.protocol.engines` have `search-crawl-policy` units. A GEO or AEO goal alone adds no unit: declare the AI engines (for example `chatgpt`, `claude`, `perplexity`) in the protocol to have their search tokens judged. An engine id not listed above gets no scripted observation and stays `unknown`. The verdict uses the declared `robots` auxiliary resource only; a missing or non-200 robots file yields no observation.
+Only engines present in `run_context.protocol.engines` have units, and each family keeps to the engines its registry entry lists. A goal that names AI citation (AI, 답변, 인용, GEO, AEO, LLM and the like; `scripts/core/goals.mjs`) adds `chatgpt`, `claude` and `perplexity` to the engines. `ai-crawler-policy` sits on the T axis: a blocked AI search token costs score but is not a blocker and never makes readiness `blocked`. An engine id not listed above gets no scripted observation and stays `unknown`. The verdict uses the declared `robots` auxiliary resource only. A robots file answered with a 4xx status other than 429 allows every path (RFC 9309 2.3.1.3, "Unavailable"); a 429, a 5xx, a redirect away from `/robots.txt` or no answer yields no observation.

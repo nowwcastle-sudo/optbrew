@@ -1,9 +1,15 @@
 {
   "run_id": "synthetic-report",
   "target": "example.com",
-  "protocol_hash": "25762b5c1e75f13c270329856fa64d0f997014fca620a29055ec22116f555aaa",
+  "protocol_hash": "93b7e145f1fe7baa465c226ac5515e52dacae933f8c0525ae0f8d17d0731774f",
   "approved_by": "synthetic-fixture",
   "decisions": [
+    {
+      "scope": "family",
+      "family_id": "ai-crawler-policy",
+      "condition": "ai_not_target",
+      "reason": "Synthetic intake confirms this condition is absent"
+    },
     {
       "scope": "family",
       "family_id": "render-content",
@@ -38,6 +44,12 @@
       "scope": "family",
       "family_id": "naver-markup",
       "condition": "naver_not_target",
+      "reason": "Synthetic intake confirms this condition is absent"
+    },
+    {
+      "scope": "family",
+      "family_id": "conversion-path",
+      "condition": "conversion_not_goal",
       "reason": "Synthetic intake confirms this condition is absent"
     },
     {

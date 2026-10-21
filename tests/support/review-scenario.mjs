@@ -8,6 +8,7 @@ import { runAudit } from '../../skills/optbrew/scripts/audit.mjs';
 import { score } from '../../skills/optbrew/scripts/core/score.mjs';
 import { compare } from '../../skills/optbrew/scripts/core/compare.mjs';
 import { freezeProtocol } from '../../skills/optbrew/scripts/core/protocol.mjs';
+import { checkRegistry } from '../../skills/optbrew/scripts/core/config.mjs';
 
 const template = new URL('../fixtures/scoring/before.json', import.meta.url);
 const sha = bytes => createHash('sha256').update(bytes).digest('hex');
@@ -33,7 +34,7 @@ export async function startSite(routes) {
 }
 
 /** Audit local pages and wrap the preserved run evidence in a replayable report packet. */
-export async function buildScenario(site, paths, { engines = ['google'], robots = false, sitemap = false, enable = [], modules = ['naver-searchadvisor'], maxUrls = 50, name = 'scenario', render = [], questions = [] } = {}) {
+export async function buildScenario(site, paths, { engines = ['google'], goals = [], robots = false, sitemap = false, enable = [], modules = ['naver-searchadvisor'], maxUrls = 50, name = 'scenario', render = [], questions = [] } = {}) {
   const dir = await tempDir(`optbrew-final-review-${name}-`);
   const { origin, port } = site;
   const context = structuredClone(JSON.parse(await readFile(template, 'utf8')).run_context);
@@ -45,13 +46,12 @@ export async function buildScenario(site, paths, { engines = ['google'], robots 
   context.scope = { allowed: [{ origin, path_prefix: '/' }], local_targets: [{ host: '127.0.0.1', port }], max_urls: maxUrls };
   context.protocol.page_types = [{ id: 'primary', urls: paths.map(p => ({ original: origin + p, normalized: origin + p })) }];
   context.protocol.engines = engines;
+  context.protocol.goals = goals;
   if (questions.length) context.protocol.question_panel = questions;
   for (const family of context.protocol.families) if (family.applicability_decision) family.applicability_decision.evidence_ref = 'intake.json';
-  if (engines.includes('naver')) {
-    const family = context.protocol.families.find(x => x.family_id === 'naver-markup');
-    family.applicable = true; delete family.applicability_decision;
-  }
-  for (const id of enable) {
+  const bound = checkRegistry().families.filter(family => family.engines?.some(engine => engines.includes(engine)) ||
+    family.goals?.some(goal => goals.includes(goal))).map(family => family.family_id);
+  for (const id of [...bound, ...enable]) {
     const family = context.protocol.families.find(x => x.family_id === id);
     family.applicable = true; delete family.applicability_decision;
   }

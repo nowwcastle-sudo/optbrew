@@ -2,7 +2,7 @@
 
 A search-readiness audit skill. optbrew checks a website for Google, Naver and AI answer engines, fixes only the local files you approve, checks again under the same conditions, and writes a scored report built from evidence you can replay.
 
-It covers five profiles: SEO, NEO (Naver), AEO, GEO and LLMO. Five pinned audit guide bundles are merged into 22 check families, so an issue that several guides report is counted once. When less than 80% of the applicable checks could be measured, the report shows the measured part and its bounds instead of one headline score.
+It covers five profiles: SEO, NEO (Naver), AEO, GEO and LLMO. Five pinned audit guide bundles are merged into one list of check families, so an issue that several guides report is counted once. When less than 80% of the applicable checks could be measured, the report shows the measured part and its bounds instead of one headline score.
 
 ## How to use it
 

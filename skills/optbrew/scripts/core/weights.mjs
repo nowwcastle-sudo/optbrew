@@ -54,7 +54,7 @@ export function compileUnits(input, profile) {
   const { protocol } = freezeProtocol(input.run_context);
   const plans = new Map(protocol.families.map(plan => [plan.family_id, plan]));
   if (plans.size !== registry.families.length || registry.families.some(def => !plans.has(def.family_id)))
-    throw new ContractError('protocol must state applicability for all 22 families');
+    throw new ContractError(`protocol must state applicability for all ${registry.families.length} families`);
   const observed = observationsByUnit(input);
   for (const obs of input.observations) if (obs.state === 'not_applicable') {
     const definition = familyById.get(obs.family_id);

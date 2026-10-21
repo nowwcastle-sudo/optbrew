@@ -119,16 +119,18 @@ const aiSite = await open({
 test('Fix 4: AI search bots are judged per declared engine; training bots earn and cost nothing', async t => {
   const engines = ['google', 'chatgpt', 'claude', 'perplexity'];
   const scenario = await run(t, aiSite, ['/ai-page', '/private/x'], { engines, robots: true });
-  const crawl = (engine, path) => stateOf(scenario, 'search-crawl-policy', path, engine);
+  const crawl = (engine, path) => stateOf(scenario, engine === 'google' ? 'search-crawl-policy' : 'ai-crawler-policy', path, engine);
   assert.equal(crawl('google', '/ai-page'), 'pass');
   assert.equal(crawl('chatgpt', '/ai-page'), 'pass');
   assert.equal(crawl('chatgpt', '/private/x'), 'fail');
   assert.equal(crawl('claude', '/ai-page'), 'pass', 'ClaudeBot (training) is blocked but Claude-SearchBot is allowed');
   assert.equal(crawl('perplexity', '/ai-page'), 'fail');
-  const units = scenario.packet.baseline.input.observations.filter(x => x.family_id === 'search-crawl-policy').map(x => x.unit_key);
-  assert.ok(!units.some(x => /gptbot|claudebot|google-extended/i.test(x)));
-  assert.equal(units.length, 8);
-  assert.doesNotThrow(() => buildReport(scenario.packet));
+  const unitsOf = family => scenario.packet.baseline.input.observations.filter(x => x.family_id === family).map(x => x.unit_key);
+  assert.ok(![...unitsOf('search-crawl-policy'), ...unitsOf('ai-crawler-policy')].some(x => /gptbot|claudebot|google-extended/i.test(x)));
+  assert.equal(unitsOf('search-crawl-policy').length, 2, 'the search crawl check judges Google only');
+  assert.equal(unitsOf('ai-crawler-policy').length, 6, 'the AI crawler check judges the three AI engines');
+  const report = buildReport(scenario.packet);
+  assert.equal(report.json.baseline.scores.find(x => x.profile === 'SEO').blockers.length, 0, 'a blocked AI bot blocks nothing');
   await scenario.forgeObservations(list => Object.assign(list.find(x => x.unit_key.includes('|perplexity|') && x.unit_key.endsWith('/ai-page')), { state: 'pass', q: 1, reason: 'forged' }));
   assert.throws(() => buildReport(scenario.packet), /crawl verdict differs from bound robots evidence/);
 });

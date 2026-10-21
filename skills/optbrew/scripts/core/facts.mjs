@@ -11,7 +11,7 @@ import { messageOf } from './messages.mjs';
  */
 const FACT_TYPES = ['name', 'phone', 'year', 'address'];
 /** The catalog keys of the two ways a page's fact can conflict; the check that states them lists them as its own. */
-export const FACT_MESSAGE_KEYS = { differs: 'fact-consistency.differs', jsonld: 'fact-consistency.jsonld-differs' };
+export const FACT_MESSAGE_KEYS = { differs: 'fact-consistency.differs', jsonld: 'fact-consistency.jsonld-differs', confirmed: 'fact-consistency.confirmed-differs' };
 const ORG_TYPES = /^(?:Organization|Corporation|LocalBusiness|Store|Restaurant|CafeOrCoffeeShop|OnlineStore|NGO|[A-Za-z]*Business)$/;
 const squash = value => String(value).toLowerCase().replace(/[^\p{L}\p{N}]+/gu, '');
 const BRANCH = /\b(?:branch)\b|지점|지사/i;
@@ -195,6 +195,36 @@ function evidenceOf(page, type) {
 }
 const keysOf = (page, type) => new Set(evidenceOf(page, type).keys());
 
+const factKey = (type, value) => type === 'phone' ? phoneKey(value) : type === 'address' ? addressKey(value) : type === 'name' ? squash(value) || null :
+  /\b((?:19|20)\d{2})\b/.exec(value)?.[1] ?? null;
+/**
+ * The facts the owner confirmed at the start, as the reference of each fact type they cover: a map of type to `{ keys, label }`, the
+ * comparison keys of its usable values and the values as confirmed. A landline and a mobile number can both be confirmed.
+ */
+export function confirmedReferences(confirmed) {
+  const references = new Map();
+  for (const type of FACT_TYPES) {
+    const usable = confirmed.filter(fact => fact.key === type && factKey(type, fact.value));
+    if (usable.length) references.set(type, { keys: usable.map(fact => factKey(type, fact.value)), label: usable.map(fact => fact.value).join(' / ') });
+  }
+  return references;
+}
+
+/**
+ * The page's values that meet no confirmed value of their type, one `{ type, found, confirmed }` per differing type. Values are compared
+ * by the keys of the cross-page comparison (and its address matching), and the page's values are the ones that comparison reads, so a
+ * mobile tel: link beside a labelled landline is not a value of the page.
+ */
+export function confirmedDeviations(page, references) {
+  const out = [];
+  for (const [type, { keys, label }] of references) {
+    const agrees = key => keys.some(other => type === 'address' ? sameAddress(key, other) : key === other);
+    const differing = [...evidenceOf(page, type).entries()].filter(([key]) => !agrees(key)).map(([, raw]) => raw);
+    if (differing.length) out.push({ type, found: differing.join(' / '), confirmed: label });
+  }
+  return out;
+}
+
 /**
  * Compare facts across the selected pages. A reference value needs at least two pages and a unique top count;
  * otherwise the type is insufficient and stays unknown. Branch pages and entities with a different JSON-LD @id are skipped.
@@ -265,6 +295,14 @@ function numbersIn(text) {
     if (key) keys.add(key);
   }
   return keys;
+}
+// A number shown without a label counts as a phone only in a dialling shape (a Korean number with its leading 0, or a nationwide
+// representative number), so a business registration or bank account number is not read as one.
+const DIALLING = /^(?:0\d{8,10}|1[568]\d{6})$/;
+/** The phone keys of the numbers a page shows: every labelled one `pageFacts` reads, and an unlabelled one in a dialling shape. */
+export function shownPhones(html) {
+  const live = stripComments(html);
+  return [...new Set([...pageFacts(live).visible.phone.keys(), ...[...numbersIn(hardText(live))].filter(key => DIALLING.test(key))])];
 }
 /** True when `tokens` stand next to each other, in that order, among `words`. */
 const runIn = (words, tokens) => words.some((_, i) => tokens.every((token, k) => words[i + k] === token));

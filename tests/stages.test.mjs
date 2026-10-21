@@ -53,6 +53,7 @@ test('context stage fixes the render pages with selectRenderPages', async () => 
   assert.deepEqual(protocol.page_types.map(type => type.id), ['home', 'pages']);
   assert.deepEqual(protocol.render.pages, selectRenderPages(protocol.page_types));
   assert.deepEqual(protocol.render.pages.map(page => page.normalized), [`${SITE}/`, `${SITE}/about`]);
+  assert.deepEqual(protocol.confirmed_facts, [{ key: 'phone', value: '02-555-0142' }, { key: 'email', value: 'a@brew.test' }], 'the confirmed facts are the yardstick of the run');
   assert.equal(protocol.render.enabled, true);
   assert.equal(state.context.audited, true);
   assert.deepEqual(state.context.environment_probe, state.answers.probe, 'the probe is copied from the answers, not taken again');
@@ -84,9 +85,32 @@ test('context stage plans question-coverage with its panel, or records why it ca
   assert.equal(plan(naver, 'naver-markup').applicable, true);
 });
 
+test('the conversion goal plans the contact route check and is kept as a goal id in the protocol', async () => {
+  const contextOf = async goals => (await begin(['context'], { goals })).state.context;
+  const plan = (context, id) => context.protocol.families.find(family => family.family_id === id);
+  const booking = await contextOf(['검색 유입', '예약 문의 늘리기']);
+  assert.deepEqual(booking.protocol.goals, ['search', 'conversion']);
+  assert.equal(plan(booking, 'conversion-path').applicable, true);
+  const search = await contextOf(['검색 유입']);
+  assert.deepEqual(search.protocol.goals, ['search']);
+  assert.equal(plan(search, 'conversion-path').applicability_decision.condition, 'conversion_not_goal');
+});
+
+test('an AI citation goal targets the AI answer engines, and the AI crawler check follows them', async () => {
+  const contextOf = async goals => (await begin(['context'], { goals })).state.context;
+  const plan = (context, id) => context.protocol.families.find(family => family.family_id === id);
+  const ai = await contextOf(['검색 유입', 'AI 답변 인용']);
+  assert.deepEqual(ai.protocol.engines, ['google', 'chatgpt', 'claude', 'perplexity']);
+  assert.equal(plan(ai, 'ai-crawler-policy').applicable, true);
+  const search = await contextOf(['검색 유입']);
+  assert.deepEqual(search.protocol.engines, ['google']);
+  assert.equal(plan(search, 'ai-crawler-policy').applicability_decision.condition, 'ai_not_target');
+  assert.equal(plan(search, 'search-crawl-policy').applicable, true);
+});
+
 test('Naver is a target when a goal names it, an owner export is Naver, the start page is Korean or the host is .kr; Google always', async () => {
   const engines = async over => (await begin(['context'], over)).state.context.protocol.engines;
-  assert.deepEqual(await engines({ goals: ['검색 유입', 'AI 답변 인용'] }), ['google']);
+  assert.deepEqual(await engines({ goals: ['검색 유입'] }), ['google']);
   assert.deepEqual(await engines({ goals: ['검색 유입'], owner_exports: [{ kind: 'naver', path: 'naver.txt' }] }), ['google', 'naver']);
   assert.deepEqual(await engines({ owner_exports: [{ kind: 'gsc', path: 'gsc.zip' }] }), ['google']);
   assert.deepEqual(await engines({ url: 'https://brew.example.kr/' }), ['google', 'naver']);

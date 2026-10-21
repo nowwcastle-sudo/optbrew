@@ -14,10 +14,13 @@ import { HTTP_OK, collectCwv, labCwv } from './cwv.mjs';
 import { deriveObservations } from './derive.mjs';
 import { lcpField, inpField, clsField } from './checks/cwv-field.mjs';
 import { openStore } from './evidence-store.mjs';
+import { planFamilies, targetEngines } from './family-plan.mjs';
+import { goalIds } from './goals.mjs';
 import { notIndexTargets, withIndexTargets } from './index-targets.mjs';
 import { OBSERVATION_SOURCES, buildJudgeQueue, deriveQuestionCoverage, mergeJudgments } from './judgments.mjs';
 import { keyHome, readGoogleKey } from './keys.mjs';
 import { MigrationRequired, assertCurrentEvidence } from './migration.mjs';
+import { naverOwnershipFollowUps } from './naver-ownership.mjs';
 import { groupPages, pageBudget, readPreflight, sameSite, selectPages } from './page-select.mjs';
 import { pageNeutral, problemsOf } from './findings.mjs';
 import { freezeProtocol } from './protocol.mjs';
@@ -54,15 +57,7 @@ const INDEX_CHANGED = 'index changed: the evidence in this folder no longer matc
 const APPROVED_BY = 'start answers (intake-answers.json)';
 const NAVER_ENGINE = 'naver';
 const KOREAN_DOMAIN = '.kr';
-const NAVER_GOAL = /naver|네이버/i;
-// Families the start answers can switch off; every other family of the registry is planned for every run.
-const NAVER_FAMILY = 'naver-markup';
-const QUESTION_FAMILIES = ['question-coverage', 'answer-clarity'];
-const NOT_APPLICABLE = {
-  [NAVER_FAMILY]: { condition: 'naver_not_target', reason: 'Naver is not among the target engines of this run' },
-  'question-coverage': { condition: 'no_fixed_questions', reason: 'The start answers fixed no question list' },
-  'answer-clarity': { condition: 'no_matching_questions', reason: 'The start answers fixed no question list to match answers against' },
-};
+const NAVER_GOAL = 'naver';
 
 const json = value => `${JSON.stringify(value, null, 2)}\n`;
 const compact = value => `${JSON.stringify(value)}\n`;
@@ -141,12 +136,11 @@ async function contextFrom(answers, { out, localTargets = [] }) {
   const { pages, dropped, sources } = selectPages({ home: home.normalized, factUrls, preflight, scope, budget: pageBudget(requestLimit(scope), auxiliary.length),
     auxiliary: known });
   const pageTypes = groupPages(pages, home.normalized).map(type => ({ id: type.id, urls: type.urls.map(ref) }));
-  const wantsNaver = NAVER_GOAL.test(answers.goals.join(' ')) || (answers.owner_exports ?? []).some(x => x.kind === NAVER_ENGINE) ||
+  const goals = goalIds(answers.goals);
+  const wantsNaver = goals.includes(NAVER_GOAL) || (answers.owner_exports ?? []).some(x => x.kind === NAVER_ENGINE) ||
     preflight.korean || target.host.endsWith(KOREAN_DOMAIN);
-  const engines = ['google', ...(wantsNaver ? [NAVER_ENGINE] : [])];
-  const planned = id => id === NAVER_FAMILY ? engines.includes(NAVER_ENGINE) : QUESTION_FAMILIES.includes(id) ? answers.questions.length > 0 : true;
-  const families = checkRegistry().families.map(({ family_id }) => planned(family_id) ? { family_id, applicable: true } :
-    { family_id, applicable: false, applicability_decision: { ...NOT_APPLICABLE[family_id], evidence_ref: INTAKE_FILE } });
+  const engines = targetEngines({ goals, naver: wantsNaver });
+  const families = planFamilies({ engines, goals, questions: answers.questions, evidence_ref: INTAKE_FILE });
   // Handing over an export of this site is the owner's approval of the property it describes: the site's own host, whole site.
   const providers = [...new Set((answers.owner_exports ?? []).map(x => x.kind))];
   const mapping = provider => ({ provider, property: target.host, hostname: target.host, path_prefix: '/' });
@@ -155,8 +149,8 @@ async function contextFrom(answers, { out, localTargets = [] }) {
   const context = {
     schema_version: versions().contract_schema, run_id: `optbrew-${randomUUID()}`, target: home.normalized,
     environment: scope.local_targets ? 'local' : 'production', goals: answers.goals, allowed_changes: [], scope,
-    protocol: { page_types: pageTypes, engines, families, auxiliary_resources: auxiliary, locale: 'und', region: 'ZZ', browser: 'Chrome', device: 'mobile',
-      question_panel: answers.questions, surfaces: [], models: [], search_enabled: null,
+    protocol: { page_types: pageTypes, engines, goals, families, auxiliary_resources: auxiliary, locale: 'und', region: 'ZZ', browser: 'Chrome', device: 'mobile',
+      question_panel: answers.questions, confirmed_facts: answers.facts.map(({ key, value }) => ({ key, value })), surfaces: [], models: [], search_enabled: null,
       render: { enabled: true, pages: selectRenderPages(pageTypes), max_render_requests: limits().max_render_requests }, ...targetIdentity },
     evaluation_version: versions().evaluation, protocol_version: versions().protocol, data_sources: [], cost_decision: {},
     evidence_ref: CONTEXT_FILE, environment_probe: answers.probe, audited: true,
@@ -589,7 +583,8 @@ async function ownerExportResults(state) {
   if (selection?.sources?.preflight === 'unreadable') remaining.push({ problem: 'The read of the site made before the start questions could not be used, so only the start page and the pages with confirmed facts were audited',
     reason: 'preflight_unreadable', required_input_or_authority: 'A new read of the site', next_action: 'Run the start read again, then start the audit again in a new --out folder',
     reobserve_when: 'on the next run that starts from a readable start read', message_key: 'follow-up.preflight-unreadable', message_values: {} });
-  for (const entry of (await state.store.index()).owner_exports ?? []) {
+  const index = await state.store.index();
+  for (const entry of index.owner_exports ?? []) {
     if (entry.status === 'read') {
       const stored = JSON.parse(await readFile(path.join(state.out, entry.ref), 'utf8'));
       metrics.push(...normalizeImport(stored.provider, stored.rows, stored.metadata));
@@ -597,6 +592,7 @@ async function ownerExportResults(state) {
       required_input_or_authority: 'A new export file from the site owner', next_action: 'Export the report again as the runbook describes and give its path in the start answers',
       reobserve_when: 'on the next run that includes the new file', message_key: 'follow-up.export-unusable', message_values: { kind: entry.kind, reason: entry.reason } });
   }
+  remaining.push(...await naverOwnershipFollowUps({ context: state.context, index, store: state.store }));
   return { metrics, remaining };
 }
 

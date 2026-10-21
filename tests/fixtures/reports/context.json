@@ -8,8 +8,8 @@
   ],
   "allowed_changes": [],
   "scope": {},
-  "evaluation_version": "0.4.0",
-  "protocol_version": "0.2.0",
+  "evaluation_version": "0.5.0",
+  "protocol_version": "0.3.0",
   "data_sources": [],
   "cost_decision": {},
   "environment_probe": {
@@ -79,6 +79,15 @@
         "applicable": true
       },
       {
+        "family_id": "ai-crawler-policy",
+        "applicable": false,
+        "applicability_decision": {
+          "condition": "ai_not_target",
+          "reason": "Synthetic intake confirms this condition is absent",
+          "evidence_ref": "intake.json"
+        }
+      },
+      {
         "family_id": "index-policy",
         "applicable": true
       },
@@ -140,6 +149,15 @@
         "applicable": false,
         "applicability_decision": {
           "condition": "naver_not_target",
+          "reason": "Synthetic intake confirms this condition is absent",
+          "evidence_ref": "intake.json"
+        }
+      },
+      {
+        "family_id": "conversion-path",
+        "applicable": false,
+        "applicability_decision": {
+          "condition": "conversion_not_goal",
           "reason": "Synthetic intake confirms this condition is absent",
           "evidence_ref": "intake.json"
         }

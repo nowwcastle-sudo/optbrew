@@ -10,8 +10,8 @@
     ],
     "allowed_changes": [],
     "scope": {},
-    "evaluation_version": "0.4.0",
-    "protocol_version": "0.2.0",
+    "evaluation_version": "0.5.0",
+    "protocol_version": "0.3.0",
     "data_sources": [],
     "cost_decision": {},
     "environment_probe": {
@@ -81,6 +81,15 @@
           "applicable": true
         },
         {
+          "family_id": "ai-crawler-policy",
+          "applicable": false,
+          "applicability_decision": {
+            "condition": "ai_not_target",
+            "reason": "Synthetic intake confirms this condition is absent",
+            "evidence_ref": "intake.json"
+          }
+        },
+        {
           "family_id": "index-policy",
           "applicable": true
         },
@@ -142,6 +151,15 @@
           "applicable": false,
           "applicability_decision": {
             "condition": "naver_not_target",
+            "reason": "Synthetic intake confirms this condition is absent",
+            "evidence_ref": "intake.json"
+          }
+        },
+        {
+          "family_id": "conversion-path",
+          "applicable": false,
+          "applicability_decision": {
+            "condition": "conversion_not_goal",
             "reason": "Synthetic intake confirms this condition is absent",
             "evidence_ref": "intake.json"
           }
@@ -246,8 +264,8 @@
         ],
         "allowed_changes": [],
         "scope": {},
-        "evaluation_version": "0.4.0",
-        "protocol_version": "0.2.0",
+        "evaluation_version": "0.5.0",
+        "protocol_version": "0.3.0",
         "data_sources": [],
         "cost_decision": {},
         "environment_probe": {
@@ -317,6 +335,15 @@
               "applicable": true
             },
             {
+              "family_id": "ai-crawler-policy",
+              "applicable": false,
+              "applicability_decision": {
+                "condition": "ai_not_target",
+                "reason": "Synthetic intake confirms this condition is absent",
+                "evidence_ref": "intake.json"
+              }
+            },
+            {
               "family_id": "index-policy",
               "applicable": true
             },
@@ -378,6 +405,15 @@
               "applicable": false,
               "applicability_decision": {
                 "condition": "naver_not_target",
+                "reason": "Synthetic intake confirms this condition is absent",
+                "evidence_ref": "intake.json"
+              }
+            },
+            {
+              "family_id": "conversion-path",
+              "applicable": false,
+              "applicability_decision": {
+                "condition": "conversion_not_goal",
                 "reason": "Synthetic intake confirms this condition is absent",
                 "evidence_ref": "intake.json"
               }
@@ -503,7 +539,7 @@
     "scores": [
       {
         "schema_version": "2.0.0",
-        "evaluation_version": "0.4.0",
+        "evaluation_version": "0.5.0",
         "profile": "SEO",
         "A": 100,
         "M": 5.769230769230769,
@@ -554,11 +590,11 @@
             "unit_key": "index-policy|https://example.com/help"
           }
         ],
-        "source_ref": "optbrew:scoring:0.4.0"
+        "source_ref": "optbrew:scoring:0.5.0"
       },
       {
         "schema_version": "2.0.0",
-        "evaluation_version": "0.4.0",
+        "evaluation_version": "0.5.0",
         "profile": "AEO",
         "A": 100,
         "M": 5,
@@ -609,11 +645,11 @@
             "unit_key": "index-policy|https://example.com/help"
           }
         ],
-        "source_ref": "optbrew:scoring:0.4.0"
+        "source_ref": "optbrew:scoring:0.5.0"
       },
       {
         "schema_version": "2.0.0",
-        "evaluation_version": "0.4.0",
+        "evaluation_version": "0.5.0",
         "profile": "GEO",
         "A": 100,
         "M": 6.944444444444445,
@@ -664,11 +700,11 @@
             "unit_key": "index-policy|https://example.com/help"
           }
         ],
-        "source_ref": "optbrew:scoring:0.4.0"
+        "source_ref": "optbrew:scoring:0.5.0"
       },
       {
         "schema_version": "2.0.0",
-        "evaluation_version": "0.4.0",
+        "evaluation_version": "0.5.0",
         "profile": "LLMO",
         "A": 100,
         "M": 6.25,
@@ -719,7 +755,7 @@
             "unit_key": "index-policy|https://example.com/help"
           }
         ],
-        "source_ref": "optbrew:scoring:0.4.0"
+        "source_ref": "optbrew:scoring:0.5.0"
       }
     ]
   },
@@ -804,13 +840,13 @@
   "evidence_index": [
     {
       "ref": "context.json",
-      "sha256": "1189ecbcfe78d5097562ea556ced5df4f8d48841dca67fa2ccf22ba69188489b",
+      "sha256": "03d8698d2f7972466d0b87b40736d8ebbef9b81353204baa1eeb88d280419c7e",
       "kind": "context",
       "run_id": "synthetic-report"
     },
     {
       "ref": "intake.json",
-      "sha256": "1f7bf489c6c8ba806c39cc5978162a157a439eadd9e8154baa0373e014940255",
+      "sha256": "7565904196a3797a0961c0d3229f1ddc4ae4c0e2de954685c090416e49a904e1",
       "kind": "intake",
       "run_id": "synthetic-report"
     },

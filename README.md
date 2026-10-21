@@ -9,7 +9,7 @@ A search-readiness audit skill for coding agents. optbrew checks a site for Goog
 
 - One skill for five profiles: **SEO**, **NEO** (Naver), **AEO**, **GEO** and **LLMO**.
 - One call for a beginner: answer one set of start questions, then the agent runs the whole audit and hands you an HTML report.
-- Five pinned audit guide bundles merged into 22 check families. An issue that several guides report is counted once.
+- Five pinned audit guide bundles merged into one list of check families. An issue that several guides report is counted once.
 - Every verdict in the report can be recomputed from the raw responses that were collected and hashed.
 - No headline score when the evidence is thin: below 80% coverage the report shows the measured part and its bounds.
 - Works with Codex, Claude Code, Cursor, OpenCode and Pi. Scoring and reports need no API account.
@@ -35,10 +35,11 @@ What the script measures by itself, and what still needs the guides and the agen
 | SEO | Google and web search | Fetch status, `noindex` in meta and `X-Robots-Tag`, titles, robots.txt for Googlebot, canonical, redirect chains, discovery through links and sitemap, JSON-LD syntax | Content quality and intent fit |
 | NEO | Naver | robots.txt for Yeti, Open Graph, description, canonical, viewport, title repetition, blocked CSS or JS | Naver-specific content guidance |
 | AEO, GEO | Answer engines and AI search | robots.txt for the AI search bots in [ai-crawlers.md](skills/optbrew/references/ai-crawlers.md) (training bots are never scored) | Answer structure, claims, authorship, freshness |
-| LLMO | How models describe you | Whether name, address, phone and founding year agree across pages, and whether the pages describe one business | Whether those facts are true |
+| LLMO | How models describe you | Whether name, address, phone and founding year agree with the facts you confirmed at the start and across pages, and whether the pages describe one business | Whether facts you did not confirm are true |
+| All | Getting in touch (when a goal is conversion) | Whether an audited page offers a contact route: a `tel:`, `sms:` or `mailto:` link, a phone number shown as text, a KakaoTalk channel or open chat, Naver TalkTalk or Naver booking, or a link to an inquiry, consultation or booking page | Whether the route works and is easy to find |
 | All | Speed and scripts | Whether the text still shows after JavaScript runs in Chrome. Field Core Web Vitals (LCP, INP, CLS) from Google's Chrome UX Report and PageSpeed Insights | Nothing. The Chrome lab values are shown as a run condition and are never scored |
 
-Engine-specific checks run for the engines you name as targets. Name the AI answer engines you care about, such as ChatGPT, Claude or Perplexity. Naver is added on its own when the goal names it, you give a Naver export, or the site is Korean (`lang="ko"` or an address ending in `.kr`). Google is always a target. The scoring rule is in [scoring.md](skills/optbrew/references/scoring.md). The 80% coverage threshold is optbrew's own rule, not a search engine standard.
+Your goals decide the target engines, and engine-specific checks run only for those. Google is always a target. ChatGPT, Claude and Perplexity are added together when a goal is AI answer citation, as in the default goals; a robots.txt that blocks their search bots lowers the score but does not block the audit. Naver is added when a goal names it, you give a Naver export, or the site is Korean (`lang="ko"` or an address ending in `.kr`). Whether the site is registered in Naver Search Advisor is not scored: without the verification meta tag or a Naver export, the report lists it under remaining work. The scoring rule is in [scoring.md](skills/optbrew/references/scoring.md). The 80% coverage threshold is optbrew's own rule, not a search engine standard.
 
 ## Install
 
@@ -153,6 +154,10 @@ With npx, run `npx optbrew@latest update --scope user`. `optbrew check-updates -
 - A managed install of any 0.1.x release stops with `migration_required`, and `optbrew update` changes nothing. Follow [Reinstall after a migration_required update](docs/platforms.md#reinstall-after-a-migration_required-update); the steps delete only paths that a read-only check printed and never touch your audit evidence.
 - A plugin install (Claude Code, Codex, claude.ai) follows `main`, so the plugin update commands of your host work as before.
 - An output folder or evidence packet from a 0.1.x run is refused with one sentence: run the audit again in a new folder. Scores from different evaluation versions are not comparable, so `compare` reports `not_comparable` against a 0.1.x baseline. Run the baseline audit again with 0.2.0.
+
+### Upgrading from 0.2.x
+
+The next release changes the evaluation version (0.5.0) and the audit protocol (0.3.0), because goals now choose checks. A managed 0.2.x install stops with `migration_required` in the same way; use the same [reinstall steps](docs/platforms.md#reinstall-after-a-migration_required-update). A 0.2.x output folder is refused, and `compare` reports `not_comparable` against a 0.2.x baseline, so run the baseline audit again.
 
 ## APIs and cost
 

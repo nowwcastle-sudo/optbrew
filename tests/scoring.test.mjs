@@ -34,10 +34,10 @@ test('weighted score keeps measured score, coverage and missing bounds separate'
     state: 'not_applicable', q: null }]), ContractError);
 });
 
-test('registry has 22 unique families and every profile sums to 100', () => {
+test('registry family ids are unique and every profile sums to 100', () => {
   const registry = JSON.parse(readFileSync(new URL('../skills/optbrew/references/check-registry.json', import.meta.url)));
   const profiles = JSON.parse(readFileSync(new URL('../skills/optbrew/references/profiles.json', import.meta.url)));
-  assert.equal(new Set(registry.families.map(x => x.family_id)).size, 22);
+  assert.equal(new Set(registry.families.map(x => x.family_id)).size, registry.families.length);
   for (const weights of Object.values(profiles.profiles))
     assert.equal(Object.values(weights).reduce((a, b) => a + b, 0), 100);
 });

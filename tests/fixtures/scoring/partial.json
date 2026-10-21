@@ -3,7 +3,7 @@
   "run_context": {
     "schema_version": "2.0.0", "run_id": "synthetic-partial", "target": "example.com",
     "environment": "local", "goals": ["SEO"], "allowed_changes": [], "scope": {},
-    "evaluation_version": "0.4.0", "protocol_version": "0.2.0",
+    "evaluation_version": "0.5.0", "protocol_version": "0.3.0",
     "data_sources": [], "cost_decision": {}, "environment_probe": {"harness":"other","transport":"direct","address_vetting":"direct","proxy":null,"block_reason":null,"chrome":{"found":true,"kind":"chrome","reason":null},"google_key":false,"source_tools":[],"sitemap_pages":null}, "evidence_ref": "synthetic/context",
     "protocol": {
       "page_types": [
@@ -22,6 +22,7 @@
       "families": [
         { "family_id": "fetch-response", "applicable": true },
         { "family_id": "search-crawl-policy", "applicable": true },
+        { "family_id": "ai-crawler-policy", "applicable": false, "applicability_decision": {"condition":"ai_not_target","reason":"Synthetic intake confirms this condition is absent","evidence_ref":"synthetic/intake"} },
         { "family_id": "index-policy", "applicable": true },
         { "family_id": "render-content", "applicable": false, "applicability_decision": {"condition":"not_render_dependent","reason":"Synthetic intake confirms this condition is absent","evidence_ref":"synthetic/intake"} },
         { "family_id": "discovery", "applicable": true },
@@ -31,6 +32,7 @@
         { "family_id": "structured-data-truth", "applicable": false, "applicability_decision": {"condition":"markup_not_used_or_selected","reason":"Synthetic intake confirms this condition is absent","evidence_ref":"synthetic/intake"} },
         { "family_id": "locale-links", "applicable": false, "applicability_decision": {"condition":"single_locale","reason":"Synthetic intake confirms this condition is absent","evidence_ref":"synthetic/intake"} },
         { "family_id": "naver-markup", "applicable": false, "applicability_decision": {"condition":"naver_not_target","reason":"Synthetic intake confirms this condition is absent","evidence_ref":"synthetic/intake"} },
+        { "family_id": "conversion-path", "applicable": false, "applicability_decision": {"condition":"conversion_not_goal","reason":"Synthetic intake confirms this condition is absent","evidence_ref":"synthetic/intake"} },
         { "family_id": "lcp-field", "applicable": true },
         { "family_id": "inp-field", "applicable": true },
         { "family_id": "cls-field", "applicable": true },

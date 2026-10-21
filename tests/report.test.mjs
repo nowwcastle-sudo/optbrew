@@ -192,7 +192,7 @@ function setNativeIdentity(run, property = 'example.com', provider = 'gsc') {
 function setPanelContext(run, { entity = 'Example', domains = ['example.com'], competitors = [], binding = true } = {}) {
   const context = run.packet.run_context;
   context.protocol.question_panel = [{ id: 'q1', question: 'What?', category: 'brand' }];
-  context.protocol.engines = ['claude']; context.protocol.surfaces = ['claude_api'];
+  context.protocol.engines = ['google', 'claude']; context.protocol.surfaces = ['claude_api'];
   context.protocol.models = ['synthetic']; context.protocol.search_enabled = false;
   if (binding) {
     const panel = { target_entity: entity, target_domains: domains, competitor_entities: competitors,
@@ -201,8 +201,9 @@ function setPanelContext(run, { entity = 'Example', domains = ['example.com'], c
     addEvidence(run, 'panel-target.json', { run_id: 'synthetic-report', target: 'example.com',
       panel, approved_by: 'synthetic-fixture' }, 'target_mapping');
   }
-  const family = context.protocol.families.find(x => x.family_id === 'question-coverage');
-  family.applicable = true; delete family.applicability_decision;
+  for (const family of context.protocol.families.filter(x => ['question-coverage', 'ai-crawler-policy'].includes(x.family_id))) {
+    family.applicable = true; delete family.applicability_decision;
+  }
   refreshContext(run);
 }
 function addPanel(run, { entity = 'Example', domains = ['example.com'], competitors = [], fact_list_ref = null,
