@@ -457,15 +457,15 @@ test('an empty completeness never reads as nothing left', () => {
 test('writeReport writes report.html beside the others, all or none', async () => {
   const dir = await tempDir('optbrew report html ');
   const first = await writeReport(fixturePacket(), path.join(dir, 'with'), { renderHtml: composed => htmlOf(composed) });
-  assert.deepEqual(Object.keys(first), ['jsonPath', 'markdownPath', 'htmlPath']);
-  assert.deepEqual(readdirSync(path.join(dir, 'with')).sort(), ['report.html', 'report.json', 'report.md']);
+  assert.deepEqual(Object.keys(first), ['jsonPath', 'markdownPath', 'fixesPath', 'htmlPath']);
+  assert.deepEqual(readdirSync(path.join(dir, 'with')).sort(), ['fixes.md', 'report.html', 'report.json', 'report.md']);
   assert.match(readFileSync(first.htmlPath, 'utf8'), /^<!doctype html>/);
   await assert.rejects(writeReport(fixturePacket(), path.join(dir, 'with'), { renderHtml: () => '<p>again</p>' }), /report output already exists/);
   assert.equal(readFileSync(first.htmlPath, 'utf8').includes('again'), false);
   await assert.rejects(writeReport(fixturePacket(), path.join(dir, 'broken'), { renderHtml: () => { throw new Error('render failed'); } }), /render failed/);
   assert.equal(existsSync(path.join(dir, 'broken')), false, 'nothing is written when the page cannot be made');
   const plain = await writeReport(fixturePacket(), path.join(dir, 'plain'));
-  assert.deepEqual(Object.keys(plain), ['jsonPath', 'markdownPath']);
+  assert.deepEqual(Object.keys(plain), ['jsonPath', 'markdownPath', 'fixesPath']);
 });
 
 test('a fix names its address, not the internal unit key', () => {

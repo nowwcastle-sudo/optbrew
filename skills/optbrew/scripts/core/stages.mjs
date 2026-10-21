@@ -596,7 +596,7 @@ async function ownerExportResults(state) {
   return { metrics, remaining };
 }
 
-/** Wrap the run's evidence in a replayable packet and write `report.json`, `report.md` and `report.html`; the report replays every verdict from it. */
+/** Wrap the run's evidence in a replayable packet and write `report.json`, `report.md`, `fixes.md` and `report.html`; the report replays every verdict from it. */
 const reportStage = {
   name: 'report',
   async run(state) {
@@ -613,8 +613,8 @@ const reportStage = {
       source_ref: RUN_SOURCE, data_class: 'real', lab_cwv: state.lab_cwv ?? null, start_redirect: state.start_redirect ?? null };
     const level = state.answers.guidance_level;
     const renderHtml = htmlReportWriter({ level, target: context.target, synthetic: packet.data_class === 'synthetic' });
-    const { jsonPath, markdownPath, htmlPath } = await writeReport(packet, out, { renderHtml });
-    return { state: { ...state, packet, reports: { json: jsonPath, md: markdownPath, html: htmlPath } } };
+    const { jsonPath, markdownPath, fixesPath, htmlPath } = await writeReport(packet, out, { renderHtml });
+    return { state: { ...state, packet, reports: { json: jsonPath, md: markdownPath, fixes: fixesPath, html: htmlPath } } };
   },
 };
 
