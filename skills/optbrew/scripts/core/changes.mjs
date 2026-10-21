@@ -35,6 +35,12 @@ async function writeJson(file, value) {
   } finally { await rm(temporary, { force: true }); }
 }
 
+async function writeNewJson(file, value) {
+  await mkdir(path.dirname(file), { recursive: true });
+  await writeFile(file, `${JSON.stringify(value, null, 2)}\n`, { flag: 'wx' });
+  return true;
+}
+
 async function readRecord(file) {
   try { return JSON.parse(await readFile(file, 'utf8')); }
   catch { throw new Error(`change record cannot be read: ${file}`); }
@@ -45,7 +51,7 @@ async function recordsIn(directory, accept = () => true) {
   const names = (await namesIn(directory)).filter(name => RECORD.test(name)).sort((a, b) => a.match(RECORD)[1] - b.match(RECORD)[1]);
   return Promise.all(names.map(async name => {
     const file = path.join(directory, name), record = await readRecord(file);
-    if (!accept(record)) throw new Error(`change record is damaged: ${file}`);
+    if (!accept(record) || record.change_id !== name.slice(0, -'.json'.length)) throw new Error(`change record is damaged: ${file}`);
     return { file, record };
   }));
 }
@@ -53,6 +59,8 @@ async function recordsIn(directory, accept = () => true) {
 const isStarted = record => ['change_id', 'path', 'root', 'backup_ref'].every(key => typeof record?.[key] === 'string' && record[key]) &&
   HASH.test(record.before_hash) && Array.isArray(record.finding_ids);
 const startedIn = changes => recordsIn(path.join(changes, PENDING), isStarted);
+const isRecord = record => { try { validateEntity('ChangeRecord', record); return true; } catch { return false; } };
+const finishedIn = changes => recordsIn(changes, isRecord);
 
 /**
  * The real path of `file` (relative paths are read from `root`), which must be a file inside the real `root`. A `..` that leaves the
@@ -83,17 +91,20 @@ export async function startChange({ out, root, file, findings }) {
     if (item) throw new Error(refusal(item.record.change_id));
   };
   covering(await startedIn(changes), id => `${id} is already started for ${file}; run change finish first`);
-  covering(await recordsIn(changes), id => `${id} already holds the change record of ${file}; a result folder has one record per file, so name every finding that changes a file when you start`);
-  const change_id = await nextChangeId(changes);
-  const backup_ref = path.join(changes, BACKUP, `${change_id}-${path.basename(source.file)}`);
-  await mkdir(path.dirname(backup_ref), { recursive: true });
-  // The backup is made once and never replaced. Its bytes, not a second read of the file, give the hash the record claims.
-  await copyFile(source.file, backup_ref, constants.COPYFILE_EXCL);
-  const pending = { schema_version: versions().contract_schema, change_id, finding_ids, environment: 'local', path: source.file, root: source.root,
-    before_hash: sha256(await readFile(backup_ref)), backup_ref };
-  try { await writeJson(path.join(changes, PENDING, `${change_id}.json`), pending); }
-  catch (error) { await rm(backup_ref, { force: true }); throw error; }
-  return { change_id, path: pending.path, backup_ref, before_hash: pending.before_hash, finding_ids };
+  covering(await finishedIn(changes), id => `${id} already holds the change record of ${file}; a result folder has one record per file, so name every finding that changes a file when you start`);
+  for (;;) {
+    const change_id = await nextChangeId(changes);
+    const backup_ref = path.join(changes, BACKUP, `${change_id}-${path.basename(source.file)}`);
+    await mkdir(path.dirname(backup_ref), { recursive: true });
+    // The backup is made once and never replaced. Its bytes, not a second read of the file, give the hash the record claims.
+    await copyFile(source.file, backup_ref, constants.COPYFILE_EXCL);
+    const pending = { schema_version: versions().contract_schema, change_id, finding_ids, environment: 'local', path: source.file, root: source.root,
+      before_hash: sha256(await readFile(backup_ref)), backup_ref };
+    // Creating the pending file exclusively reserves the id: a start running at the same time for another file takes the next one.
+    const written = await writeNewJson(path.join(changes, PENDING, `${change_id}.json`), pending)
+      .catch(async error => { await rm(backup_ref, { force: true }); if (error.code === 'EEXIST') return false; throw error; });
+    if (written) return { change_id, path: pending.path, backup_ref, before_hash: pending.before_hash, finding_ids };
+  }
 }
 
 /** The pending record of `file` (a relative path is read from the source folder the record names), or null. */

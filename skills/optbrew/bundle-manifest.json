@@ -824,7 +824,7 @@
     },
     {
       "path": "scripts/core/changes.mjs",
-      "sha256": "f98b309514cb60f9c848b71f2f6fe64dbef5a54e44ad06559ef910ec84d83d40"
+      "sha256": "cb66dfbdfe95760fb1b6e6826c8b314d49096b3bda5134b416c64573d48d144a"
     },
     {
       "path": "scripts/core/checks/canonical-consistency.mjs",
@@ -1083,5 +1083,5 @@
       "sha256": "dca0bbd03fbf591c4aca6a568be76615eb48d69f7df0c634886f652b54f3f46d"
     }
   ],
-  "bundle_hash": "30c920a92bf6d59211a559dac30114748d9a5a6c3f4725307411c067cd2521bc"
+  "bundle_hash": "bd5db3884c5ddb74bbf1e398f574c7c8ad5453a60c003f8e93c9543e0c261ab3"
 }

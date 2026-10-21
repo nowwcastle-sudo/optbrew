@@ -250,3 +250,24 @@ test('a pending record that was damaged is named, not guessed at', async () => {
   }
   assert.equal(finish(ws, 'index.html').status, 0, 'the intact note finishes');
 });
+
+test('two starts at the same time for different files take different ids, and each keeps its own pending record', async () => {
+  const ws = await workspace();
+  const [one, two] = await Promise.all([
+    startChange({ out: ws.out, root: ws.root, file: 'index.html', findings: ['f1'] }),
+    startChange({ out: ws.out, root: ws.root, file: path.join('pages', 'about.html'), findings: ['f2'] }),
+  ]);
+  assert.notEqual(one.change_id, two.change_id);
+  const pending = readdirSync(path.join(ws.out, 'changes', 'pending')).sort();
+  assert.deepEqual(pending, [`${one.change_id}.json`, `${two.change_id}.json`].sort());
+  assert.deepEqual(readdirSync(path.join(ws.out, 'changes', 'backup')).length, 2, 'no backup is left without its record');
+});
+
+test('a finished record that is not a whole ChangeRecord, or names another id than its file, stops start', async () => {
+  for (const damaged of [{}, { change_id: 'c9' }]) {
+    const ws = await workspace();
+    mkdirSync(path.join(ws.out, 'changes'), { recursive: true });
+    writeFileSync(path.join(ws.out, 'changes', 'c1.json'), JSON.stringify(damaged));
+    assert.match(lastLine(start(ws, 'index.html', 'f1').stderr), /change record is damaged/);
+  }
+});
