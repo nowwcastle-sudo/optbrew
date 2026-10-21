@@ -22,7 +22,7 @@
     },
     {
       "path": "references/messages.ko.json",
-      "sha256": "effb3192e8db71400c9acd76655ac927a1d1d07ca2b80116047307919f037a33"
+      "sha256": "cc47fe7774e46c8dfeddd64d62bdab80607fadf29a164a7923c6ba322a3e4c50"
     },
     {
       "path": "scripts/core/score.mjs",
@@ -153,7 +153,7 @@
       "sha256": "7b41a2f2039735e35b1f015ac3f3e8cf7ab9383dbbc758c15fcaa9149874575d"
     }
   ],
-  "evaluation_hash": "b51368ad77745e95603bd68a5f51666b6d957f6b7ef9a3d6904a9f9701e2f7c5",
+  "evaluation_hash": "71cffe49e47143a0f90e916aa7923e49cde56f3c711fd1d86a512610dcc1e8d5",
   "protocol_sources": [
     {
       "path": "references/schemas/contract.schema.json",
@@ -176,7 +176,7 @@
     },
     {
       "path": "SKILL.md",
-      "sha256": "ab73dce8ac93942372face2bc51659df9140b919b7c4e81357dd5b36f4b14e76"
+      "sha256": "94e6b6753f4882a1e6d7da426f6cf0223e9a5ba47fb0117b3e1b76102617c2f0"
     },
     {
       "path": "THIRD_PARTY_NOTICES.md",
@@ -672,7 +672,7 @@
     },
     {
       "path": "references/evidence.md",
-      "sha256": "784cdfd5cdf8ad1cb096a4a321c81708c9ffce63a785c31839d42348c5f02879"
+      "sha256": "e93c71724c8a0afdf949d1636b51106ba726b8663163a94229ea285fd304178d"
     },
     {
       "path": "references/harness-signals.json",
@@ -696,7 +696,7 @@
     },
     {
       "path": "references/messages.ko.json",
-      "sha256": "effb3192e8db71400c9acd76655ac927a1d1d07ca2b80116047307919f037a33"
+      "sha256": "cc47fe7774e46c8dfeddd64d62bdab80607fadf29a164a7923c6ba322a3e4c50"
     },
     {
       "path": "references/policies.md",
@@ -712,7 +712,7 @@
     },
     {
       "path": "references/report.md",
-      "sha256": "767016548f222a0e7844e4fd4acff988f9cab8911af4bdc29c16a9b89275e2ce"
+      "sha256": "42d7a35d5bfb1a799af8d0bfe46606f3d59e89ce143b5a130e2e2ef1890280cb"
     },
     {
       "path": "references/routing.md",
@@ -784,7 +784,7 @@
     },
     {
       "path": "references/source-analysis.md",
-      "sha256": "7efcfa344d5115bd37e14ca51aac100b26eff43d17283749c54d42d2622acc37"
+      "sha256": "7bb94d8d4ef1a711be91c49ccfec15570c95ab857e37a2a3d91f6590d2e09c7f"
     },
     {
       "path": "references/versions.json",
@@ -804,7 +804,7 @@
     },
     {
       "path": "scripts/cli.mjs",
-      "sha256": "fa1b2dbb669829df24a38d54e0455e77554a1b80a2f07b3294035c59ca321d18"
+      "sha256": "ff811a769b8d16d226147656224b7610568676b3c9220f2605ebfd96fdb26c12"
     },
     {
       "path": "scripts/core/bootstrap.mjs",
@@ -821,6 +821,10 @@
     {
       "path": "scripts/core/cdp.mjs",
       "sha256": "e871bb4ea38bae719c3ec38566644f5c21bf8f9265951a0270de4a5656f7c336"
+    },
+    {
+      "path": "scripts/core/changes.mjs",
+      "sha256": "cb66dfbdfe95760fb1b6e6826c8b314d49096b3bda5134b416c64573d48d144a"
     },
     {
       "path": "scripts/core/checks/canonical-consistency.mjs",
@@ -1016,7 +1020,11 @@
     },
     {
       "path": "scripts/core/report-compose.mjs",
-      "sha256": "61de3bf5c05ab642a15392cf48645f1efea97b3774ed93d78afd3f2d73a4ed74"
+      "sha256": "1ea339ab8bda3ed06cde8ce55066c09800bee305b87b5736731706da7e5e18e5"
+    },
+    {
+      "path": "scripts/core/report-fixes.mjs",
+      "sha256": "8b8159103068d371b6f62cf65c262c838f9da16901d1aea3bc2309ecea53e0ea"
     },
     {
       "path": "scripts/core/report-html.mjs",
@@ -1028,7 +1036,7 @@
     },
     {
       "path": "scripts/core/report.mjs",
-      "sha256": "1a390e64cb1ef8f327e6bc57ab50098095b50280bc4ec7d8186693650e5461e2"
+      "sha256": "51b913929ed4781d3ff4b2aca4e10bcfe4e3f1fad4c2f7f0de4e46a76dbf3140"
     },
     {
       "path": "scripts/core/runbooks.mjs",
@@ -1048,7 +1056,7 @@
     },
     {
       "path": "scripts/core/stages.mjs",
-      "sha256": "3b3ca43ae5ab948c9008252de8d36fe9bc4a064bedbc910636919f7b22c2b87e"
+      "sha256": "1c2a6d423723591bd0763405f0fd66f76c887f932175538e864a8a79c4c2b148"
     },
     {
       "path": "scripts/core/transport.mjs",
@@ -1075,5 +1083,5 @@
       "sha256": "dca0bbd03fbf591c4aca6a568be76615eb48d69f7df0c634886f652b54f3f46d"
     }
   ],
-  "bundle_hash": "c4b33799038d7002ba6f81d5d4359c7e570cdbd53c2b61ea2fe8506e6350c79d"
+  "bundle_hash": "bd5db3884c5ddb74bbf1e398f574c7c8ad5453a60c003f8e93c9543e0c261ab3"
 }

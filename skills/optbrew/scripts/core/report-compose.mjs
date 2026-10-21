@@ -23,8 +23,10 @@ export const SYNTHETIC_BANNER = '예시 보고서 — 실제 사이트나 외부
 export const SECTION_TITLES = { fixes: '먼저 고칠 것', completeness: '얼마나 확인했나', blank: '아직 비어 있는 곳', conditions: '실행 조건',
   remaining: '남은 일', outcomes: '실제 결과', judgments: '모델 판단' };
 
+/** Text from the site or the user as one line of markdown: backslash, `&`, `<`, `>` and `|` escaped, a line break written as `<br>`. */
 const html = value => String(value ?? UNKNOWN).replace(/\\/g, '\\\\').replace(/&/g, '&amp;').replace(/</g, '&lt;')
   .replace(/>/g, '&gt;').replace(/\|/g, '\\|').replace(/\r?\n/g, '<br>');
+export { html as markdownText };
 const table = (columns, rows) => `| ${columns.join(' | ')} |\n| ${columns.map(() => '---').join(' | ')} |\n${rows.map(row => `| ${row.map(html).join(' | ')} |`).join('\n') || `| ${columns.map(() => '—').join(' | ')} |`}`;
 /** One rounding rule for every coverage the report shows: the floor to a tenth, the value the 80% threshold is judged on. */
 const floorTenth = value => value === null ? null : Math.floor(value * 10 + 1e-9) / 10;
@@ -83,31 +85,45 @@ const addressOf = unit => {
   if (engine) return `${engine[2]} (${ENGINE_LABELS[engine[1]] ?? engine[1]})`;
   return address === SITE_UNIT ? '사이트 전체' : address;
 };
-/** How a fix row names its pages: the one address (a site-level check reads 「사이트 전체」), or the count and the first few addresses. */
-export const pagesLabel = finding => {
+/** Every address a finding affects (a site-level check reads 「사이트 전체」), in the order the finding lists them. */
+export const pageAddresses = finding => {
   const units = pagesOf(finding);
   // The site's identity is read and fixed on the home page, so that unit names the home page's address, not the whole site (T22 M-2).
-  if (units.length === 1) return units[0] === ENTITY_UNIT && finding.site_address ? finding.site_address : addressOf(units[0]);
-  const shown = units.slice(0, PAGES_SHOWN).map(addressOf).join(', ');
-  return `(${units.length}개 페이지: ${shown}${units.length > PAGES_SHOWN ? `, 외 ${units.length - PAGES_SHOWN}개` : ''})`;
+  if (units.length === 1 && units[0] === ENTITY_UNIT && finding.site_address) return [finding.site_address];
+  return units.map(addressOf);
+};
+/** How a fix row names its pages: the one address, or the count and the first few addresses. */
+export const pagesLabel = finding => {
+  const addresses = pageAddresses(finding);
+  if (addresses.length === 1) return addresses[0];
+  return `(${addresses.length}개 페이지: ${addresses.slice(0, PAGES_SHOWN).join(', ')}${addresses.length > PAGES_SHOWN ? `, 외 ${addresses.length - PAGES_SHOWN}개` : ''})`;
 };
 
 const REMEDIATION_FIELDS = ['mechanism', 'validation', 'effort', 'cost', 'location_hint'];
+/** The words of a fix that its message key owns; the catalog keeps the rest (`cost`) and is the fallback for a key with no words. */
+const STEP_FIELDS = ['mechanism', 'validation', 'effort', 'location_hint'];
 /**
- * The Korean text of one fix: the sentence for its message key and, when a remediation was chosen, the sentence for each of that
- * remediation's fields. Anything the catalog has no entry for (a model's finding, a remediation of someone's own catalog) keeps its own words.
+ * The steps the catalog keeps under a finding's message key (`<key>.mechanism`, `.validation`, `.effort`, `.location_hint`), or null
+ * when the key has none (R100). Every check message key and every model fix has them; they fill the key's own values.
  */
-const fixTextKo = finding => ({ message: koText(finding.message_key, finding.message_values, finding.message),
-  cited: citedOf(finding),
-  remediation: finding.remediation ? Object.fromEntries(REMEDIATION_FIELDS.map(field =>
-    [field, koText(`remediation.${finding.remediation.remediation_id}.${field}`, {}, finding.remediation[field])])) : stepsOf(finding) });
-
-/** A model's fix (and the question coverage's) has no catalogued remediation; the catalog gives its steps under the key of its problem (R100). */
-const MODEL_FIX_STEPS = ['mechanism', 'validation', 'effort'];
 const stepsOf = finding => {
-  const steps = Object.fromEntries(MODEL_FIX_STEPS.map(field => [field, koText(finding.message_key && `${finding.message_key}.${field}`, finding.message_values, null)]));
-  return steps.mechanism ? { ...steps, cost: null, location_hint: null } : null;
+  const steps = Object.fromEntries(STEP_FIELDS.map(field => [field, koText(finding.message_key && `${finding.message_key}.${field}`, finding.message_values, null)]));
+  return steps.mechanism ? { ...steps, cost: null } : null;
 };
+/**
+ * The Korean text of one fix: the sentence for its message key and its steps. A catalog remediation (chosen by the check, so it can
+ * cover several keys of one family) never overrides the words of the key: for each step the key's own text comes first, then the
+ * catalog's Korean text for that remediation, then its own words. The catalog alone supplies `cost`. A finding with no catalogued
+ * words at all (a remediation of someone's own catalog) keeps its own words.
+ */
+const fixTextKo = finding => {
+  const steps = stepsOf(finding);
+  const chosen = finding.remediation;
+  return { message: koText(finding.message_key, finding.message_values, finding.message), cited: citedOf(finding),
+    remediation: chosen ? Object.fromEntries(REMEDIATION_FIELDS.map(field =>
+      [field, steps?.[field] ?? koText(`remediation.${chosen.remediation_id}.${field}`, {}, chosen[field])])) : steps };
+};
+
 /** Where to look for a model's fix: the body text of the page it names (every page it names, for a grouped one). */
 const modelWhere = finding => finding.message_key?.startsWith('model-fix.') ? koText('model-fix.where', { pages: pagesLabel(finding) }, null) : null;
 /** The text a model's verdict cites, as the page shows it, so the owner sees where to look. */

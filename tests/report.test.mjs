@@ -491,7 +491,7 @@ test('CLI writes all three formats with readback (T22 N4: the replay writes repo
     const page = readFileSync(path.join(out, 'report.html'), 'utf8');
     assert.match(page, /^<!doctype html>/);
     assert.match(page, /예시 보고서/, 'a synthetic packet carries its banner into the page');
-    assert.deepEqual(readdirSync(out).sort(), ['report.html', 'report.json', 'report.md']);
+    assert.deepEqual(readdirSync(out).sort(), ['fixes.md', 'report.html', 'report.json', 'report.md']);
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 

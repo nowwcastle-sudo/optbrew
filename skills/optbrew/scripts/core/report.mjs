@@ -18,6 +18,7 @@ import { links } from './collector.mjs';
 import { checkRenderLedger } from './render.mjs';
 import { assertUrlInScope } from './scope.mjs';
 import { composeReport, pagesLabel, renderReport } from './report-compose.mjs';
+import { FIXES_FILE, fixesMarkdown } from './report-fixes.mjs';
 import { messageOf } from './messages.mjs';
 import { runbookEntry } from './runbooks.mjs';
 import { sensitive } from './secrets.mjs';
@@ -941,16 +942,18 @@ export function buildReport(packet) {
 }
 
 /**
- * Write the outputs after all validation; temporary files stay in the destination. `renderHtml`, when given, turns the composed
- * report into the page written as `report.html` beside the other two. All files appear or none does.
+ * Write the outputs after all validation; temporary files stay in the destination. `fixes.md`, the open fixes as a list, is written
+ * from the composed report beside `report.md`. `renderHtml`, when given, turns the composed report into the page written as
+ * `report.html`. All files appear or none does.
  */
 export async function writeReport(packet, outputDir, { renderHtml = null } = {}) {
   const built = buildReport(packet);
   const html = renderHtml ? renderHtml(built.json.composed) : null;
+  const fixes = fixesMarkdown(built.json.composed, { synthetic: built.json.data_class === 'synthetic' });
   await mkdir(outputDir, { recursive: true });
-  const jsonPath = path.resolve(outputDir, 'report.json'), markdownPath = path.resolve(outputDir, 'report.md');
+  const jsonPath = path.resolve(outputDir, 'report.json'), markdownPath = path.resolve(outputDir, 'report.md'), fixesPath = path.resolve(outputDir, FIXES_FILE);
   const htmlPath = html === null ? null : path.resolve(outputDir, 'report.html');
-  const outputs = [[jsonPath, `${JSON.stringify(built.json, null, 2)}\n`], [markdownPath, built.markdown], ...(html === null ? [] : [[htmlPath, html]])];
+  const outputs = [[jsonPath, `${JSON.stringify(built.json, null, 2)}\n`], [markdownPath, built.markdown], [fixesPath, fixes], ...(html === null ? [] : [[htmlPath, html]])];
   for (const [file] of outputs) {
     try { await access(file); throw new ContractError(`report output already exists: ${file}`); }
     catch (error) { if (error.code !== 'ENOENT') throw error; }
@@ -964,5 +967,5 @@ export async function writeReport(packet, outputDir, { renderHtml = null } = {})
     await Promise.all(written.map(file => rm(file, { force: true })));
     throw error;
   } finally { await Promise.all(temporary.map(file => rm(file, { force: true }))); }
-  return { jsonPath, markdownPath, ...(htmlPath ? { htmlPath } : {}) };
+  return { jsonPath, markdownPath, fixesPath, ...(htmlPath ? { htmlPath } : {}) };
 }

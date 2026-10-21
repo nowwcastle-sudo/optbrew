@@ -156,12 +156,14 @@ test('one run produces report.json and report.md', async () => {
   assert.deepEqual(Object.keys(second), ['status', 'reports', 'score_input']);
   assert.equal(second.reports.json, path.join(call.ws.out, 'report.json'));
   assert.equal(second.reports.md, path.join(call.ws.out, 'report.md'));
+  assert.equal(second.reports.fixes, path.join(call.ws.out, 'fixes.md'));
   assert.equal(second.reports.html, path.join(call.ws.out, 'report.html'));
   assert.equal(second.score_input, path.join(call.ws.out, 'score-input.json'));
   const report = await readJson(second.reports.json);
   assert.deepEqual(await readJson(second.score_input), report.baseline.input, 'the ScoreInput file is the one the report scored');
   const markdown = await readFile(second.reports.md, 'utf8');
   assert.match(markdown, /^# optbrew 보고서/);
+  assert.match(await readFile(second.reports.fixes, 'utf8'), /^# 고칠 것 목록\n/);
   const html = await readFile(second.reports.html, 'utf8');
   assert.match(html, /^<!doctype html>/);
   assert.doesNotMatch(html, /<script|<link|\ssrc=|\shref=|url\(/, 'the page needs no outside file');
