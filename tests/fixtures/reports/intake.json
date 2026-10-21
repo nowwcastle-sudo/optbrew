@@ -1,7 +1,7 @@
 {
   "run_id": "synthetic-report",
   "target": "example.com",
-  "protocol_hash": "4d12c3834b71af2a16c6755d759b9f1dfb45888a96b553726580662d5900be0c",
+  "protocol_hash": "93b7e145f1fe7baa465c226ac5515e52dacae933f8c0525ae0f8d17d0731774f",
   "approved_by": "synthetic-fixture",
   "decisions": [
     {

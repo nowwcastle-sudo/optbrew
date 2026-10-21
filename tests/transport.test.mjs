@@ -201,7 +201,7 @@ test('proxy credentials never reach evidence or errors', async () => {
     scope: { allowed: scope.allowed, local_targets: [{ host: 'example.test', port: targetPort }] },
     protocol: { page_types: [{ id: 'main', urls: [{ original: page, normalized: page }] }], engines: ['naver'], families: [], locale: 'ko-KR', region: 'KR',
       browser: 'Chrome', device: 'desktop', question_panel: [], surfaces: [], models: [], search_enabled: null, render: { enabled: false, pages: [], max_render_requests: 300 } },
-    evaluation_version: '0.4.0', protocol_version: '0.2.0', data_sources: [], cost_decision: {}, environment_probe: environmentProbe(), evidence_ref: 'test/context' };
+    evaluation_version: '0.5.0', protocol_version: '0.3.0', data_sources: [], cost_decision: {}, environment_probe: environmentProbe(), evidence_ref: 'test/context' };
   const dir = await mkdtemp(path.join(os.tmpdir(), 'optbrew-proxy-evidence-'));
   try {
     const result = await runAudit({ context: run, modules: ['naver-searchadvisor'], outputDir: dir, transport: chosen.transport,

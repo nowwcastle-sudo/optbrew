@@ -29,7 +29,7 @@ test('missing after is explicit; same protocol compares unrounded score', () => 
   assert.equal(result.score_deltas[0].percentage_point_delta, result.score_deltas[0].raw_difference);
 });
 
-test('target, URLs, page type, conditions, questions, surface, model, environment and evaluation version are comparison conditions', () => {
+test('target, URLs, page type, conditions, questions, goals, confirmed facts, surface, model, environment and evaluation version are comparison conditions', () => {
   const mutate = [
     x => { x.run_context.target = 'other.example'; },
     x => { x.run_context.protocol.page_types[0].urls[0].normalized = 'https://example.com/new'; },
@@ -39,7 +39,7 @@ test('target, URLs, page type, conditions, questions, surface, model, environmen
     x => { x.run_context.protocol.surfaces = ['claude_web']; },
     x => { x.run_context.protocol.models = ['model-v2']; },
     x => { x.run_context.environment = 'production'; },
-    x => { x.run_context.evaluation_version = '0.5.0'; },
+    x => { x.run_context.evaluation_version = '0.6.0'; },
   ];
   for (const change of mutate) {
     const before = fixture(), after = fixture(); change(after);
@@ -47,6 +47,24 @@ test('target, URLs, page type, conditions, questions, surface, model, environmen
     assert.equal(result.status, 'not_comparable');
     assert.ok(result.reasons.length, JSON.stringify(after.run_context));
     assert.deepEqual(result.score_deltas, []);
+  }
+  const named = change => { const after = fixture(); change(after.run_context.protocol); return compare(fixture(), after).reasons; };
+  assert.deepEqual(named(protocol => { protocol.goals = ['search']; }), ['goals_changed'], 'a goal that switches no family on still changes the conditions');
+  assert.deepEqual(named(protocol => { protocol.confirmed_facts = [{ key: 'phone', value: '02-555-0142' }]; }), ['confirmed_facts_changed']);
+});
+
+test('a baseline of the release before goals (evaluation 0.4.0, protocol 0.2.0) is not comparable with a current follow-up, without a crash', () => {
+  const current = fixture();
+  const previous = structuredClone(current);
+  Object.assign(previous.run_context, { evaluation_version: '0.4.0', protocol_version: '0.2.0' });
+  // That release planned neither goal-bound nor AI crawler families and wrote no goals or confirmed facts into the protocol.
+  delete previous.run_context.protocol.goals;
+  delete previous.run_context.protocol.confirmed_facts;
+  previous.run_context.protocol.families = previous.run_context.protocol.families.filter(family => !['ai-crawler-policy', 'conversion-path'].includes(family.family_id));
+  for (const [before, after, who] of [[previous, current, 'baseline'], [current, previous, 'follow-up']]) {
+    const result = compare(before, after);
+    assert.deepEqual([result.status, result.score_deltas], ['not_comparable', []]);
+    assert.deepEqual(result.reasons, [`the ${who} was made with audit protocol 0.2.0, which is older than the current one; run a new audit to compare`]);
   }
 });
 

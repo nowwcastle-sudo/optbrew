@@ -7,8 +7,8 @@ import { environmentProbe } from './support/probe.mjs';
 
 const context = () => ({
   schema_version: '2.0.0', run_id: 'run-a', target: 'example.com', environment: 'local',
-  goals: ['SEO'], allowed_changes: [], scope: {}, evaluation_version: '0.4.0',
-  protocol_version: '0.2.0', data_sources: [], cost_decision: {}, environment_probe: environmentProbe(), evidence_ref: 'evidence/context.json',
+  goals: ['SEO'], allowed_changes: [], scope: {}, evaluation_version: '0.5.0',
+  protocol_version: '0.3.0', data_sources: [], cost_decision: {}, environment_probe: environmentProbe(), evidence_ref: 'evidence/context.json',
   protocol: {
     page_types: [{ id: 'primary', urls: [{ original: 'https://example.com/', normalized: 'https://example.com/' }] }],
     engines: ['google'], families: [{ family_id: 'fetch-response', applicable: true }],

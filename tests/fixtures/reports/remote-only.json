@@ -10,8 +10,8 @@
     ],
     "allowed_changes": [],
     "scope": {},
-    "evaluation_version": "0.4.0",
-    "protocol_version": "0.2.0",
+    "evaluation_version": "0.5.0",
+    "protocol_version": "0.3.0",
     "data_sources": [],
     "cost_decision": {},
     "environment_probe": {
@@ -264,8 +264,8 @@
         ],
         "allowed_changes": [],
         "scope": {},
-        "evaluation_version": "0.4.0",
-        "protocol_version": "0.2.0",
+        "evaluation_version": "0.5.0",
+        "protocol_version": "0.3.0",
         "data_sources": [],
         "cost_decision": {},
         "environment_probe": {
@@ -539,7 +539,7 @@
     "scores": [
       {
         "schema_version": "2.0.0",
-        "evaluation_version": "0.4.0",
+        "evaluation_version": "0.5.0",
         "profile": "SEO",
         "A": 100,
         "M": 5.769230769230769,
@@ -590,11 +590,11 @@
             "unit_key": "index-policy|https://example.com/help"
           }
         ],
-        "source_ref": "optbrew:scoring:0.4.0"
+        "source_ref": "optbrew:scoring:0.5.0"
       },
       {
         "schema_version": "2.0.0",
-        "evaluation_version": "0.4.0",
+        "evaluation_version": "0.5.0",
         "profile": "AEO",
         "A": 100,
         "M": 5,
@@ -645,11 +645,11 @@
             "unit_key": "index-policy|https://example.com/help"
           }
         ],
-        "source_ref": "optbrew:scoring:0.4.0"
+        "source_ref": "optbrew:scoring:0.5.0"
       },
       {
         "schema_version": "2.0.0",
-        "evaluation_version": "0.4.0",
+        "evaluation_version": "0.5.0",
         "profile": "GEO",
         "A": 100,
         "M": 6.944444444444445,
@@ -700,11 +700,11 @@
             "unit_key": "index-policy|https://example.com/help"
           }
         ],
-        "source_ref": "optbrew:scoring:0.4.0"
+        "source_ref": "optbrew:scoring:0.5.0"
       },
       {
         "schema_version": "2.0.0",
-        "evaluation_version": "0.4.0",
+        "evaluation_version": "0.5.0",
         "profile": "LLMO",
         "A": 100,
         "M": 6.25,
@@ -755,7 +755,7 @@
             "unit_key": "index-policy|https://example.com/help"
           }
         ],
-        "source_ref": "optbrew:scoring:0.4.0"
+        "source_ref": "optbrew:scoring:0.5.0"
       }
     ]
   },
@@ -840,13 +840,13 @@
   "evidence_index": [
     {
       "ref": "context.json",
-      "sha256": "76b84c76cfe5ced2f39deef4c8e52c5efa60cc8330e80d8f563a6908adb3958a",
+      "sha256": "03d8698d2f7972466d0b87b40736d8ebbef9b81353204baa1eeb88d280419c7e",
       "kind": "context",
       "run_id": "synthetic-report"
     },
     {
       "ref": "intake.json",
-      "sha256": "c987c550b40c4c4a7aae186a793d058428ae2727eeef606095cc8da9ab544501",
+      "sha256": "7565904196a3797a0961c0d3229f1ddc4ae4c0e2de954685c090416e49a904e1",
       "kind": "intake",
       "run_id": "synthetic-report"
     },
