@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.3.0
 
 Fixes what the youthdc.com audit conversation showed: text the user never saw, a judgments file that kept filling with placeholders, and a plain report page.
 
