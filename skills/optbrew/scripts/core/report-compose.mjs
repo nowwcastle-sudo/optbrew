@@ -93,21 +93,30 @@ export const pagesLabel = finding => {
 };
 
 const REMEDIATION_FIELDS = ['mechanism', 'validation', 'effort', 'cost', 'location_hint'];
+/** The words of a fix that its message key owns; the catalog keeps the rest (`cost`) and is the fallback for a key with no words. */
+const STEP_FIELDS = ['mechanism', 'validation', 'effort', 'location_hint'];
 /**
- * The Korean text of one fix: the sentence for its message key and, when a remediation was chosen, the sentence for each of that
- * remediation's fields. Anything the catalog has no entry for (a model's finding, a remediation of someone's own catalog) keeps its own words.
+ * The steps the catalog keeps under a finding's message key (`<key>.mechanism`, `.validation`, `.effort`, `.location_hint`), or null
+ * when the key has none (R100). Every check message key and every model fix has them; they fill the key's own values.
  */
-const fixTextKo = finding => ({ message: koText(finding.message_key, finding.message_values, finding.message),
-  cited: citedOf(finding),
-  remediation: finding.remediation ? Object.fromEntries(REMEDIATION_FIELDS.map(field =>
-    [field, koText(`remediation.${finding.remediation.remediation_id}.${field}`, {}, finding.remediation[field])])) : stepsOf(finding) });
-
-/** A model's fix (and the question coverage's) has no catalogued remediation; the catalog gives its steps under the key of its problem (R100). */
-const MODEL_FIX_STEPS = ['mechanism', 'validation', 'effort'];
 const stepsOf = finding => {
-  const steps = Object.fromEntries(MODEL_FIX_STEPS.map(field => [field, koText(finding.message_key && `${finding.message_key}.${field}`, finding.message_values, null)]));
-  return steps.mechanism ? { ...steps, cost: null, location_hint: null } : null;
+  const steps = Object.fromEntries(STEP_FIELDS.map(field => [field, koText(finding.message_key && `${finding.message_key}.${field}`, finding.message_values, null)]));
+  return steps.mechanism ? { ...steps, cost: null } : null;
 };
+/**
+ * The Korean text of one fix: the sentence for its message key and its steps. A catalog remediation (chosen by the check, so it can
+ * cover several keys of one family) never overrides the words of the key: for each step the key's own text comes first, then the
+ * catalog's Korean text for that remediation, then its own words. The catalog alone supplies `cost`. A finding with no catalogued
+ * words at all (a remediation of someone's own catalog) keeps its own words.
+ */
+const fixTextKo = finding => {
+  const steps = stepsOf(finding);
+  const chosen = finding.remediation;
+  return { message: koText(finding.message_key, finding.message_values, finding.message), cited: citedOf(finding),
+    remediation: chosen ? Object.fromEntries(REMEDIATION_FIELDS.map(field =>
+      [field, steps?.[field] ?? koText(`remediation.${chosen.remediation_id}.${field}`, {}, chosen[field])])) : steps };
+};
+
 /** Where to look for a model's fix: the body text of the page it names (every page it names, for a grouped one). */
 const modelWhere = finding => finding.message_key?.startsWith('model-fix.') ? koText('model-fix.where', { pages: pagesLabel(finding) }, null) : null;
 /** The text a model's verdict cites, as the page shows it, so the owner sees where to look. */

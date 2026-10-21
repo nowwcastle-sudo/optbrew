@@ -277,7 +277,12 @@ test('a follow-up row about a fix is told from that fix', () => {
   const [composed] = composeReport(verifiedOf({ findings: [fix], follow_ups: [row] })).follow_ups;
   assert.match(composed.text_ko.problem, /^이 페이지가 noindex로 색인을 막고 있습니다/);
   assert.equal(composed.text_ko.reason, '확인됨');
-  assert.equal(composed.text_ko.next_action, catalog['follow-up.finding.next']);
+  assert.equal(composed.text_ko.next_action, catalog['index-policy.noindex.mechanism'], 'the key\'s own method is the next action');
+  assert.equal(composed.text_ko.reobserve_when, catalog['index-policy.noindex.validation']);
+  const keyless = { ...fix, finding_id: 'k', finding_ids: ['k'], unit_key: 'index-policy|https://s.test/k', message_key: 'not.in.catalog' };
+  const [generic] = composeReport(verifiedOf({ findings: [keyless], follow_ups: [{ ...row, finding_id: 'k' }] })).follow_ups;
+  assert.equal(generic.text_ko.next_action, catalog['follow-up.finding.next'], 'a fix with no method of its own gets the general line');
+  assert.equal(generic.text_ko.reobserve_when, catalog['follow-up.finding.when']);
 });
 
 // R100: the owner reads a model's fix in plain Korean from the catalog; the model's own reason stays in the data.
