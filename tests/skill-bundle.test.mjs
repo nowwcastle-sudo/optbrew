@@ -1,5 +1,7 @@
 import assert from 'node:assert/strict';
-import { readFile, readdir } from 'node:fs/promises';
+import { spawnSync } from 'node:child_process';
+import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from 'node:fs/promises';
+import os from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
@@ -82,12 +84,31 @@ test('judging.md covers exactly the families the judge queue offers, with the st
 
 const jsonBlocks = entry => [...entry.matchAll(/```json\n([\s\S]*?)\n```/g)].map(match => JSON.parse(match[1]));
 
-test('the ChangeRecord template in SKILL.md passes the contract schema', async () => {
+test('the change commands SKILL.md gives run as written, and the record they write passes the contract schema', async () => {
   const { validateEntity } = await import('../skills/optbrew/scripts/core/contracts.mjs');
-  const { versions } = await import('../skills/optbrew/scripts/core/config.mjs');
-  const record = jsonBlocks(await text('SKILL.md')).find(block => block.change_id);
-  assert.ok(record, 'SKILL.md has no ChangeRecord template');
-  validateEntity('ChangeRecord', { ...record, schema_version: versions().contract_schema });
+  const entry = await text('SKILL.md');
+  // The hash commands and the hand-written record are gone: the two commands do both.
+  assert.doesNotMatch(entry, /Get-FileHash|sha256sum|shasum -a 256|_백업_원본_/);
+  assert.equal(jsonBlocks(entry).find(block => block.change_id), undefined, 'SKILL.md does not ask for a hand-written ChangeRecord');
+  const commands = [...entry.matchAll(/^node "<SKILL_DIR>\/scripts\/cli\.mjs" (change (?:start|finish) .*)$/gm)].map(match => match[1]);
+  assert.deepEqual(commands.map(command => command.split(' ')[1]), ['start', 'finish']);
+  const dir = await mkdtemp(path.join(os.tmpdir(), 'optbrew skill change '));
+  try {
+    const source = path.join(dir, 'site'), out = path.join(dir, 'out');
+    await mkdir(source);
+    await writeFile(path.join(source, 'index.html'), '<html></html>\n');
+    const values = { '<OUT>': out, '<소스 폴더>': source, '<고칠 파일>': 'index.html', '<고친 파일>': 'index.html', '<finding_id>': 'f1', '<쓴 도구 이름>': 'graft', '<도구에 한 질의>': 'where is the title built' };
+    const argv = command => [...command.matchAll(/"([^"]*)"|(\S+)/g)].map(match => match[1] === undefined ? match[2] : values[match[1]] ?? assert.fail(`unknown placeholder ${match[1]}`));
+    const [start, finish] = commands.map(command => [path.join(skill, 'scripts/cli.mjs'), ...argv(command)]);
+    const started = spawnSync(process.execPath, start, { encoding: 'utf8' });
+    assert.equal(started.status, 0, started.stderr);
+    await writeFile(path.join(source, 'index.html'), '<html><head><title>t</title></head></html>\n');
+    const finished = spawnSync(process.execPath, finish, { encoding: 'utf8' });
+    assert.equal(finished.status, 0, finished.stderr);
+    const record = JSON.parse(await readFile(path.join(out, 'changes', 'c1.json'), 'utf8'));
+    validateEntity('ChangeRecord', record);
+    assert.deepEqual(record.analysis, { tools: ['graft'], queries: ['where is the title built'], self_analysis: false });
+  } finally { await rm(dir, { recursive: true, force: true }); }
 });
 
 test('the intake-answers template in SKILL.md has exactly the documented fields', async () => {

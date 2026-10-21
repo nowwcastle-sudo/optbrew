@@ -25,7 +25,7 @@
 
 ## 기록
 
-고친 파일의 `ChangeRecord.analysis`에 이렇게 쓴다.
+`change finish`가 고친 파일의 `ChangeRecord.analysis`에 이렇게 쓴다. `--tool`(여러 번 쓸 수 있다)이 `tools`, `--query`(여러 번 쓸 수 있다)가 `queries`, `--self-analysis`가 `self_analysis`다. `--tool` 없이 끝내면 `self_analysis`는 `true`이고, `--tool`을 쓰면 `false`다.
 
 ```json
 {
