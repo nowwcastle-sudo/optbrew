@@ -9,7 +9,7 @@
 
 - 스킬 하나로 다섯 가지를 봅니다: **SEO**, **NEO**(네이버), **AEO**, **GEO**, **LLMO**.
 - 초보자도 한 번에 끝냅니다. 시작 질문에 한 번 답하면 에이전트가 감사 전체를 돌리고 HTML 보고서를 건네 줍니다.
-- 고정된 감사 가이드 묶음 5개를 점검 항목 22개로 합쳤습니다. 여러 가이드가 같은 문제를 짚어도 한 번만 셉니다.
+- 고정된 감사 가이드 묶음 5개를 점검 항목 목록 하나로 합쳤습니다. 여러 가이드가 같은 문제를 짚어도 한 번만 셉니다.
 - 보고서의 판정은 모두 수집한 원본 응답(해시 기록)에서 다시 계산할 수 있습니다.
 - 근거가 모자라면 대표 점수를 내지 않습니다. 측정 범위가 80% 미만이면 잰 부분과 그 범위만 보여 줍니다.
 - Codex, Claude Code, Cursor, OpenCode, Pi에서 씁니다. 점수 계산과 보고서에는 API 계정이 필요 없습니다.
@@ -35,10 +35,11 @@ optbrew는 다섯 기준 모두에 같은 작업 순서와 같은 채점 규칙�
 | SEO | 구글과 웹 검색 | 응답 상태, meta와 `X-Robots-Tag`의 `noindex`, 제목, Googlebot용 robots.txt, canonical, 리다이렉트 단계, 링크·사이트맵으로 찾을 수 있는지, JSON-LD 문법 | 콘텐츠 품질, 검색 의도와 맞는지 |
 | NEO | 네이버 | Yeti용 robots.txt, Open Graph, description, canonical, viewport, 제목 반복, 막힌 CSS·JS | 네이버 콘텐츠 가이드 |
 | AEO, GEO | 답변 엔진과 AI 검색 | [ai-crawlers.md](skills/optbrew/references/ai-crawlers.md)에 적은 AI 검색 봇용 robots.txt(학습용 봇은 채점하지 않음) | 답변 구조, 주장, 작성자, 최신성 |
-| LLMO | AI가 우리를 설명하는 방식 | 상호·주소·전화·설립 연도가 페이지끼리 일치하는지, 페이지들이 한 업체를 설명하는지 | 그 사실이 맞는지 |
+| LLMO | AI가 우리를 설명하는 방식 | 상호·주소·전화·설립 연도가 시작할 때 확인한 사실과 같은지, 페이지끼리 일치하는지, 페이지들이 한 업체를 설명하는지 | 확인하지 않은 사실이 맞는지 |
+| 전체 | 연락 수단(목표가 전환일 때) | 감사한 페이지에 연락할 길이 있는지: `tel:`·`sms:`·`mailto:` 링크, 글로 쓴 전화번호, 카카오톡 채널이나 오픈채팅, 네이버 톡톡이나 네이버 예약, 문의·상담·예약 페이지 링크 | 그 길이 실제로 되는지, 찾기 쉬운지 |
 | 전체 | 속도와 스크립트 | 자바스크립트가 돈 뒤에도 글이 보이는지(크롬). 구글 Chrome UX Report와 PageSpeed Insights의 방문자 실측 점수(LCP, INP, CLS) | 없음. 크롬으로 잰 실험실 값은 실행 조건으로만 보이고 채점하지 않습니다 |
 
-엔진별 검사는 대상으로 밝힌 엔진에만 적용됩니다. ChatGPT·Claude·Perplexity처럼 신경 쓰는 AI 답변 엔진을 알려 주십시오. 목표에 네이버가 들어 있거나, 네이버 내보내기 파일을 주었거나, 사이트가 한국어(`lang="ko"` 또는 `.kr`로 끝나는 주소)이면 네이버는 저절로 대상이 됩니다. 구글은 항상 대상입니다. 채점 규칙은 [scoring.md](skills/optbrew/references/scoring.md)에 있습니다. 측정 범위 80% 기준은 optbrew가 정한 규칙이며, 검색엔진 표준이 아닙니다.
+목표가 대상 엔진을 정하고, 엔진별 검사는 그 엔진에만 적용됩니다. 구글은 항상 대상입니다. 목표에 AI 답변 인용이 있으면(기본 목표에 들어 있습니다) ChatGPT·Claude·Perplexity가 함께 대상이 됩니다. robots.txt가 이 엔진들의 검색 봇을 막으면 점수는 내려가지만 감사를 막는 문제로 치지는 않습니다. 목표에 네이버가 들어 있거나, 네이버 내보내기 파일을 주었거나, 사이트가 한국어(`lang="ko"` 또는 `.kr`로 끝나는 주소)이면 네이버도 대상이 됩니다. 네이버 서치어드바이저에 등록했는지는 채점하지 않습니다. 소유확인 메타 태그도 네이버 내보내기 파일도 없으면 보고서의 남은 일에 적습니다. 채점 규칙은 [scoring.md](skills/optbrew/references/scoring.md)에 있습니다. 측정 범위 80% 기준은 optbrew가 정한 규칙이며, 검색엔진 표준이 아닙니다.
 
 ## 설치
 
@@ -153,6 +154,10 @@ npx를 쓴다면 `npx optbrew@latest update --scope user`를 실행합니다. `o
 - 0.1.x 설치본(managed install)은 `migration_required`로 멈추며, `optbrew update`는 아무것도 바꾸지 않습니다. [migration_required 뒤 재설치](docs/platforms.md#reinstall-after-a-migration_required-update) 절차를 따르십시오. 이 절차는 읽기 전용 검사가 출력한 경로만 지우며, 감사 근거는 건드리지 않습니다.
 - 플러그인 설치(Claude Code, Codex, claude.ai)는 `main`을 따라가므로, 쓰는 도구의 플러그인 업데이트 명령이 그대로 됩니다.
 - 0.1.x 실행이 남긴 결과 폴더와 근거 묶음은 한 문장으로 거부됩니다. 새 폴더에서 감사를 다시 실행하십시오. 평가 버전이 다른 점수끼리는 비교할 수 없어서, 0.1.x 기준선과 `compare`하면 `not_comparable`이 나옵니다. 기준선 감사를 0.2.0으로 다시 돌리십시오.
+
+### 0.2.x에서 올리기
+
+다음 릴리스는 목표가 검사를 고르게 되면서 평가 버전(0.5.0)과 감사 프로토콜(0.3.0)을 바꿉니다. 0.2.x 설치본(managed install)도 같은 방식으로 `migration_required`에서 멈춥니다. 같은 [재설치 절차](docs/platforms.md#reinstall-after-a-migration_required-update)를 따르십시오. 0.2.x 결과 폴더는 거부되고, 0.2.x 기준선과 `compare`하면 `not_comparable`이 나오므로 기준선 감사를 다시 돌리십시오.
 
 ## API와 비용
 

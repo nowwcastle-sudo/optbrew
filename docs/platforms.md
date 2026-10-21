@@ -48,7 +48,7 @@ node bin/optbrew.mjs update --scope project --project ./site --json
 node bin/optbrew.mjs rollback --scope project --project ./site --release-version 0.2.2 --json
 ```
 
-Rollback works only between releases that share the evaluation version, so no release before 0.2.0 can be rolled back to. The shown command reports that no earlier release is retained on a fresh 0.2.2 install; it applies once a later release that shares evaluation version 0.4.0 has updated the install.
+Rollback works only between releases that share the evaluation version, so no release before 0.2.0 can be rolled back to. The shown command reports that no earlier release is retained on a fresh 0.2.2 install; it applies once a later release that shares the installed evaluation version has updated the install.
 
 The CLI validates bundle hashes before an install or update. `update` replaces every target in one managed record as a unit. An edited target makes the default update stop; the explicit `--local-changes backup-and-replace` policy retains a readable backup. `rollback --release-version VERSION` works only when that version is in the record's retained prior releases. A fresh installation has no older release.
 
@@ -57,6 +57,8 @@ After a public npm release, `npm install -g optbrew` and `npm update -g optbrew`
 ## Reinstall after a migration_required update
 
 Release 0.2.0 uses evaluation version 0.4.0, audit protocol 0.2.0 and contract schema 2.0.0. Release 0.1.3 used evaluation version 0.3.0 and 0.1.2 used 0.2.0. The managed updater refuses a change of evaluation version or of a scoring contract file, so `optbrew update` stops with `migration_required` and changes nothing on a managed install of any 0.1.x release. There is no `uninstall` command. Replace the install by hand: the blocks below delete the install's targets and then its managed root, and run `install` again from the 0.2.0 checkout. Scores and baselines made with a 0.1.x release are not comparable with 0.2.0; `compare` returns `not_comparable`, so run the baseline audit again. An output folder or evidence packet from a 0.1.x run is refused with one sentence that tells you to run the audit again in a new folder. A plugin install from a marketplace is not a managed install: it follows the repository and needs no reinstall.
+
+The first release after 0.2.2 uses evaluation version 0.5.0 and audit protocol 0.3.0, so a managed 0.2.x install stops the same way and the same blocks replace it. Scores, baselines and output folders of a 0.2.x run are not comparable with it and are refused in the same way.
 
 The blocks do not trust the install record. Each one first runs the read-only `node bin/optbrew.mjs reinstall-plan`, which resolves the home directory the way the CLI does (`HOME`, else the operating system's home directory), checks that the record belongs to this scope, that every recorded target is exactly the agent's `skills/optbrew` path (absolute, no `..`, no linked folder on the way, inside the scope or project), and that an existing target is a link to the managed bundle or a real folder holding a bundle manifest. If any check fails it prints the reason, exits with a nonzero code, and the block deletes nothing. Otherwise the shell deletes only the paths it printed: the targets first, then `<scope root>/.optbrew/installs/user` (user scope) or `<project>/.optbrew/install` (project scope), which holds the install record. Because the record goes last, you can run the same block again after a failure. The commands never touch `<scope root>/.optbrew/runs`, where the audit evidence of 0.1.x lives, and never touch an `optbrew-audit` folder; do not delete the whole `.optbrew` folder, which also holds the Google key file. Each agent is installed again with the strategy (`link` or `copy`) the record had, then `doctor` runs. Run the blocks from the 0.2.0 checkout root. If `reinstall-plan` refuses the record, fix or remove the named path by hand and look at it first; the CLI also refuses to overwrite a target it does not own.
 
@@ -128,7 +130,7 @@ while IFS=$'\t' read -r kind a b; do
 done <<< "$plan"
 ```
 
-Inside 0.2.0 and later releases that keep evaluation version 0.4.0 and the scoring contract files, `update` and `rollback` work as before. The same refusal and steps apply to any future release that changes the evaluation version or a scoring contract file.
+Between releases that keep the evaluation version and the scoring contract files, `update` and `rollback` work as before. The same refusal and steps apply to any future release that changes the evaluation version or a scoring contract file.
 
 ## Native host routes
 
