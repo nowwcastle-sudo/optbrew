@@ -18,8 +18,8 @@ const FIXED = '<html><head><title>고침</title></head><body>원본</body></html
 
 /** A source folder with two pages and a file beside it that is not part of the site, and an empty result folder path. */
 async function workspace() {
-  // The record names real paths, so the folder the test builds is a real path too (a temp folder can be reached through a link or a short name).
-  const dir = realpathSync(await tempDir('optbrew change '));
+  // The record names real paths, so the folder the test builds is a real path too (a temp folder can be reached through a link or a short name; only the native realpath expands a Windows 8.3 name).
+  const dir = realpathSync.native(await tempDir('optbrew change '));
   const root = path.join(dir, 'site');
   mkdirSync(path.join(root, 'pages'), { recursive: true });
   writeFileSync(path.join(root, 'index.html'), ORIGINAL);
