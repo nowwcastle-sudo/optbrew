@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0.0",
-  "release_version": "0.3.0",
+  "release_version": "0.3.1",
   "evaluation_version": "0.5.0",
   "protocol_version": "0.3.0",
   "evaluation_sources": [
@@ -788,7 +788,7 @@
     },
     {
       "path": "references/versions.json",
-      "sha256": "e0b205839c896d300fc898af243bda2668b285c693ab50b3192aa8dc417b6b6c"
+      "sha256": "78d914bc2f1c6aef0556985a11d4bd6e180e6bbc4ff23bf7cec3c8bf93ab7e52"
     },
     {
       "path": "scripts/adapters/anthropic.mjs",
@@ -1083,5 +1083,5 @@
       "sha256": "dca0bbd03fbf591c4aca6a568be76615eb48d69f7df0c634886f652b54f3f46d"
     }
   ],
-  "bundle_hash": "1fc63e6267013227b6ea714f5473f2dcccd38786c718e27c9afadd28f8f38203"
+  "bundle_hash": "ac8593d4bbc87fef87dd73513ff08d348ac878189238ff51ffc255bb8bb96f5c"
 }

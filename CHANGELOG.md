@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.3.1
 
 Fixes from a real 0.3.0 audit of youthdc.com in a Claude Code cloud session.
 
@@ -10,6 +10,10 @@ Fixes from a real 0.3.0 audit of youthdc.com in a Claude Code cloud session.
 - **The date fix shows a placeholder date.** The freshness fix said 「2026년 10월 17일 기준」, a fixed day that reads wrong on any other day. It now says 「○○○○년 ○월 ○일 기준」.
 - Lab CLS in 실행 조건 is shown to three decimals (it printed `0.000861425586819861`).
 - A particle typo in the `cwv-site-collection` runbook (페이지을 → 페이지를).
+
+### Versions
+
+Release 0.3.1, evaluation 0.5.0, audit protocol 0.3.0, contract schema 2.0.0. The evaluation version stays 0.5.0, so a managed 0.3.0 install updates in place and a 0.3.0 output folder is still accepted. The evaluation hash changed: `fact-consistency` now passes an address that 0.3.0 failed only for its order, so a `compare` against a 0.3.0 baseline can show that one change as a gain.
 
 ## 0.3.0
 
