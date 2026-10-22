@@ -11,9 +11,20 @@ Fixes from a real 0.3.0 audit of youthdc.com in a Claude Code cloud session.
 - Lab CLS in 실행 조건 is shown to three decimals (it printed `0.000861425586819861`).
 - A particle typo in the `cwv-site-collection` runbook (페이지을 → 페이지를).
 
+From the site team's review of that audit:
+
+- **A Korean PostalAddress is offered in Korean order.** The confirmed-fact candidate built from JSON-LD `streetAddress`, `addressLocality` and `addressRegion` read "진접읍 부평로 33-31, 남양주시, 경기도" (the English order with commas). When the parts are in Hangul it is now "경기도 남양주시 진접읍 부평로 33-31", the way the page prints it, so no fix asks the owner to rewrite a correct address. An English address keeps its commas.
+- **An organization's own operating facts are not unsourced claims.** `claim-support` (judging.md) no longer counts what the organization says about itself: hours, capacity, current number of users, contact, address, its own price list. The organization is the first-hand source of these facts, and `freshness-truth` checks when they were true. Effects, comparisons and figures taken from others still count.
+- **An empty-list notice is not a time-sensitive fact.** `freshness-truth` no longer fails a page only for 「아직 모아 둔 지난 식단이 없어요」, and the cited text must be the changeable fact itself (hours, dates, 「지금 26분 이용 중」), because the report shows it as 「해당 글」.
+- report.md says under the scores, as report.html does, that a score is the pass rate within the checked range, not search ranking or traffic.
+
 ### Versions
 
 Release 0.3.1, evaluation 0.5.0, audit protocol 0.3.0, contract schema 2.0.0. The evaluation version stays 0.5.0, so a managed 0.3.0 install updates in place and a 0.3.0 output folder is still accepted. The evaluation hash changed: `fact-consistency` now passes an address that 0.3.0 failed only for its order, so a `compare` against a 0.3.0 baseline can show that one change as a gain.
+
+### Not checked here
+
+- A site's own field Core Web Vitals collection (for example a web-vitals endpoint) is not read. Field CWV comes only from the Chrome UX Report with a Google key or from a Search Console export, so such a site still shows the field values as missing.
 
 ## 0.3.0
 

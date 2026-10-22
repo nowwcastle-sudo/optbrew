@@ -62,7 +62,7 @@
     },
     {
       "path": "scripts/core/facts.mjs",
-      "sha256": "9dc75d7c9f3416d9bf6e5a95f17a844139caf4de8d9ee3002a1782fa26c495dd"
+      "sha256": "3254be9af8747bf7cb6f65e526f99672bdcded98bab35ba3d3001d962d353458"
     },
     {
       "path": "scripts/core/link-graph.mjs",
@@ -153,7 +153,7 @@
       "sha256": "7b41a2f2039735e35b1f015ac3f3e8cf7ab9383dbbc758c15fcaa9149874575d"
     }
   ],
-  "evaluation_hash": "4fa08a18d2997fb73e729d587a9275f1b6d74fe7cb284d8854ac3907f27f708d",
+  "evaluation_hash": "bd708dc415ecb8203b3e179ac58d85edd859d93f4565ebb89d7e7f2ce5c1f09d",
   "protocol_sources": [
     {
       "path": "references/schemas/contract.schema.json",
@@ -684,7 +684,7 @@
     },
     {
       "path": "references/judging.md",
-      "sha256": "450fb9cbc22cdfcab30041a34009590fa7109f6d459c39c8d5b280bd469e9b58"
+      "sha256": "dafd2249798dd2fca687fb86d503e96f8f0539259c05a111b6683ae6259a5931"
     },
     {
       "path": "references/limits.json",
@@ -728,7 +728,7 @@
     },
     {
       "path": "references/runbooks/cwv-site-collection.md",
-      "sha256": "1df443d493ae1df392cebe1a7b20a6d54831e146c9763c7f6ecc3b0c7f6597fc"
+      "sha256": "16e1cbedb2dd9c7896ee8dc5e6aa1f16c01c02a163344d247812054ef480a851"
     },
     {
       "path": "references/runbooks/google-api-key.md",
@@ -948,7 +948,7 @@
     },
     {
       "path": "scripts/core/facts.mjs",
-      "sha256": "9dc75d7c9f3416d9bf6e5a95f17a844139caf4de8d9ee3002a1782fa26c495dd"
+      "sha256": "3254be9af8747bf7cb6f65e526f99672bdcded98bab35ba3d3001d962d353458"
     },
     {
       "path": "scripts/core/family-plan.mjs",
@@ -1020,7 +1020,7 @@
     },
     {
       "path": "scripts/core/report-compose.mjs",
-      "sha256": "5eb4af3ca585592138a04655dd7c56d6a4f0e8c3296a604f3c0069019d73f5a5"
+      "sha256": "c95dd6912415cef3ca685d22702a2edd0fd5b653cfbfde123eb5dde4ea422f77"
     },
     {
       "path": "scripts/core/report-fixes.mjs",
@@ -1083,5 +1083,5 @@
       "sha256": "dca0bbd03fbf591c4aca6a568be76615eb48d69f7df0c634886f652b54f3f46d"
     }
   ],
-  "bundle_hash": "ac8593d4bbc87fef87dd73513ff08d348ac878189238ff51ffc255bb8bb96f5c"
+  "bundle_hash": "3a4fd5b063a903ff158e9f3df5620185561c5bc6b39ea6338d4dde7f1361a450"
 }

@@ -381,7 +381,7 @@ export function renderReport(composed, verified) {
     `비교: ${html(verified.comparison.status)} (${html(verified.comparison.reasons.join(', ') || '없음')})  \n` +
     `결론: ${html(composed.headline.text)}${composed.headline.not_indexed ? `  \n색인 제외: ${html(composed.headline.not_indexed.text)}` : ''}\n\n` +
     `## ${SECTION_TITLES.fixes}\n\n${table(['우선순위', '문제 / 주소', '근거', '고르는 해결 방법', '고칠 위치 또는 사이트 소유자', '비용 / 노력', '확인 방법', '상태'], tables.remediation)}\n\n` +
-    `## ${SECTION_TITLES.completeness} (확인한 범위 안의 통과율)\n\n요약:  \n${latest.map(phase => `- ${html(headlineLine(phase.headline))}  \n`).join('')}\n` +
+    `## ${SECTION_TITLES.completeness} (확인한 범위 안의 통과율)\n\n점수는 확인한 범위 안의 통과율입니다. 실제 검색 순위나 유입이 아닙니다.\n\n요약:  \n${latest.map(phase => `- ${html(headlineLine(phase.headline))}  \n`).join('')}\n` +
     `${table(['영역', '이전', '이후', '차이', '확인 범위 이전 → 이후', '점수 범위', '상태', '방문자 실측(CWV)을 뺀 확인 범위(최신)'], tables.score)}\n\n` +
     `## ${SECTION_TITLES.blank}\n\n${table(['비어 있는 것과 채우면 알 수 있는 것', '런북'], blanks)}\n\n` +
     `## ${SECTION_TITLES.conditions}\n\n${[...composed.conditions.lines.map(({ label, value }) => `${label}: ${value}`), ...composed.conditions.notes].map(line => `- ${html(line)}\n`).join('')}\n` +

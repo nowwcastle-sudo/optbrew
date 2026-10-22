@@ -68,9 +68,13 @@ function nodesOf(value, out = []) {
   return out;
 }
 const typesOf = node => [].concat(node['@type'] ?? []).map(String);
-const addressText = address => typeof address === 'string' ? address : address && typeof address === 'object' ?
-  [address.streetAddress, address.addressLocality, address.addressRegion]
-    .filter(x => typeof x === 'string').join(', ') : '';
+// A Korean PostalAddress reads region, locality, street (경기도 남양주시 진접읍 부평로 33-31), as the page prints it.
+function addressText(address) {
+  if (typeof address === 'string') return address;
+  if (!address || typeof address !== 'object') return '';
+  const parts = [address.streetAddress, address.addressLocality, address.addressRegion].filter(x => typeof x === 'string');
+  return parts.some(part => /\p{Script=Hangul}/u.test(part)) ? parts.reverse().join(' ') : parts.join(', ');
+}
 
 function phoneKey(text) {
   const clean = String(text).replace(/\(0\)/g, '');
