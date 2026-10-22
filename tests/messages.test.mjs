@@ -373,10 +373,10 @@ test('a model fix names where to look: the page address at its body text, every 
 
 test('an answer-clarity fix names its question; the operator advice says the line goes in the body and that repeated lines do not count (R100, I-3, I-4)', () => {
   const finding = { ...modelFinding('q', 'costs'), check_id: 'answer-clarity', unit_key: 'answer-clarity|https://s.test/costs', message_key: 'model-fix.answer-clarity',
-    message_values: { quote: '비용은 상담 후 안내합니다', question: '더청춘 요양원·주야간보호 비용은 한 달에 얼마인가요?' } };
+    message_values: { quote: '비용은 상담 후 안내합니다', question: '가나다 요양원·주야간보호 비용은 한 달에 얼마인가요?' } };
   const [fix] = composeReport(verifiedOf({ findings: [finding] })).fixes;
-  assert.equal(fix.text_ko.message, '이 페이지는 「더청춘 요양원·주야간보호 비용은 한 달에 얼마인가요?」에 답하려는 페이지인데, 그 답이 틀렸거나 빠져 있습니다.');
-  assert.match(fix.text_ko.remediation.mechanism, /^「더청춘 요양원·주야간보호 비용은 한 달에 얼마인가요\?」의 답/);
+  assert.equal(fix.text_ko.message, '이 페이지는 「가나다 요양원·주야간보호 비용은 한 달에 얼마인가요?」에 답하려는 페이지인데, 그 답이 틀렸거나 빠져 있습니다.');
+  assert.match(fix.text_ko.remediation.mechanism, /^「가나다 요양원·주야간보호 비용은 한 달에 얼마인가요\?」의 답/);
   const method = catalog['model-fix.source-transparency.absence.mechanism'];
   assert.match(method, /페이지 본문 안에/);
   assert.match(method, /똑같이 되풀이되는 줄은 검사가 그 페이지의 글로 세지 않습니다/);

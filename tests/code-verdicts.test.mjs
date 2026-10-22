@@ -293,7 +293,7 @@ test('jsonLdTruth: an address matches by its street run, and a name only matches
   assert.deepEqual(longer.matched, [], 'Lab is not a word of "laboratory"');
   const inside = truth(doc('<p>Brew Cafeteria opens at nine</p>', ld(node({ telephone: undefined }))));
   assert.deepEqual(inside.matched, [], 'Brew Cafe is not a word run of Brew Cafeteria');
-  const korean = truth(doc('<p>더청춘요양원 안내</p>', ld(node({ telephone: undefined, name: '더청춘' }))));
+  const korean = truth(doc('<p>가나다요양원 안내</p>', ld(node({ telephone: undefined, name: '가나다' }))));
   assert.deepEqual(korean.matched.map(x => x.type), ['name'], 'an unspaced script is found as a run of characters');
 });
 
@@ -322,8 +322,8 @@ test('document-title: the site name alone or a generic word stays unknown, and a
 
 test('document-title: og:site_name and the organization name of the JSON-LD are the site name too', () => {
   const result = judge('document-title', {
-    '/': doc('', '<meta property="og:site_name" content="Brew House Co">' + ld(node({ name: '청춘데이케어' })), 'Brew House Co'),
-    '/ko': doc('', '', '청춘데이케어'), '/about': doc('', '', 'About the roastery') });
+    '/': doc('', '<meta property="og:site_name" content="Brew House Co">' + ld(node({ name: '가나다데이케어' })), 'Brew House Co'),
+    '/ko': doc('', '', '가나다데이케어'), '/about': doc('', '', 'About the roastery') });
   assert.deepEqual(states(result), { '/': 'unknown', '/ko': 'unknown', '/about': 'pass' });
 });
 

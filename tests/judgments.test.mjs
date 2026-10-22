@@ -1004,19 +1004,19 @@ test('every fail of an absence family names its basis; absence needs the coverag
   assert.equal((await mergeOne(wide, failFor('original-value'))).made.state, 'fail', 'a family outside the absence families needs no basis');
 });
 
-const HISTORY_DATED = '39명 주야간보호 이용정원 · 2026-10-17 기준';
+const HISTORY_DATED = '40명 주야간보호 이용정원 · 2026-10-17 기준';
 
 test('a covered page that shows dates the queue did not offer gets no freshness absence fail (R82, the /history shape)', async () => {
   const longs = Array.from({ length: 35 }, (_, i) => `<p>${String.fromCharCode(65 + i % 26)}${i} ${'z'.repeat(86)}</p>`).join('');
   const labels = Array.from({ length: 12 }, (_, i) => `<p>2017 10월 ${10 + i}일</p>`).join('');
-  const html = bare(`${longs}<p>${HISTORY_DATED}</p><p>031-553-1288 연중무휴 08:00~18:00</p>${labels}`);
+  const html = bare(`${longs}<p>${HISTORY_DATED}</p><p>031-555-0188 연중무휴 08:00~18:00</p>${labels}`);
   const { store, observations } = await fixtureStore(html);
   const queue = await buildJudgeQueue({ observations, store });
   const spans = queuedItem(queue, 'freshness-truth').spans;
   const texts = spans.map(span => span.text);
   assert.ok(texts.includes(HISTORY_DATED), 'a long line with a full date comes ahead of the longer lines under the cap');
   assert.equal(texts.filter(text => /^2017 10월 \d+일$/.test(text)).length, limits().judge_short_spans_per_unit - 1, 'the short allowance takes the "YYYY M월 D일" labels (one place goes to the hours line)');
-  const hours = spans.find(span => span.text.startsWith('031-553-1288'));
+  const hours = spans.find(span => span.text.startsWith('031-555-0188'));
   const absence = await mergeJudgments({ observations, store, judgments: [failFor('freshness-truth', { basis: 'absence', span_ids: [hours.span_id] })] });
   const refused = absence.find(x => x.unit_key === unit('freshness-truth'));
   assert.deepEqual([refused.state, refused.reason, refused.measurement], ['unknown', 'a date is visible outside the queued spans', { not_accepted: 'visible' }]);
@@ -1190,31 +1190,31 @@ test('numbers are not dates: business and phone numbers, impossible parts and ye
   const outcome = async line => (await mergeOne(bare(`${LONG_LINE}<p>${'m'.repeat(60)}</p><p>${line}</p>`), failFor('freshness-truth', { basis: 'absence' }))).made.state;
   for (const line of ['2026-10-17', '2017 10월 26일', '10월 26일', '2026.10', '2026년 9월', 'Oct 3, 2026', 'March 2026', '3 Mar 2026', '26/10/2026', '2026 10월'])
     assert.equal(await outcome(line), 'unknown', `${line} is a date`);
-  for (const line of ['요양원 142-80-39228', '586-80-00898', '031-553-1288', '010-2026-1234', '02-555-0142', '2026-13-45', '1985-10-17', '1588-1234', 'the vote may 3 times', 'Market 3 opens', 'Decimal 8 places', 'Mark 12 says'])
+  for (const line of ['요양원 123-80-45678', '987-80-00123', '031-555-0188', '010-2026-1234', '02-555-0142', '2026-13-45', '1985-10-17', '1588-1234', 'the vote may 3 times', 'Market 3 opens', 'Decimal 8 places', 'Mark 12 says'])
     assert.equal(await outcome(line), 'fail', `${line} is not a date`);
-  const footer = bare(`${LONG_LINE}<p>${'m'.repeat(60)}</p><p>요양원 142-80-39228 · 주야간보호센터 586-80-00898</p><p>031-553-1288 연중무휴 08:00~18:00</p>`);
+  const footer = bare(`${LONG_LINE}<p>${'m'.repeat(60)}</p><p>요양원 123-80-45678 · 주야간보호센터 987-80-00123</p><p>031-555-0188 연중무휴 08:00~18:00</p>`);
   const { store, observations } = await fixtureStore(footer);
   const texts = queuedItem(await buildJudgeQueue({ observations, store }), 'freshness-truth').spans.map(span => span.text);
-  assert.equal(texts.some(text => text.includes('142-80-39228')), true, 'the long footer line is offered as text');
-  const shorts = candidateSpans(Buffer.from(bare('<p>586-80-00898</p><p>142-80-39228</p>')), 'h');
+  assert.equal(texts.some(text => text.includes('123-80-45678')), true, 'the long footer line is offered as text');
+  const shorts = candidateSpans(Buffer.from(bare('<p>987-80-00123</p><p>123-80-45678</p>')), 'h');
   assert.deepEqual(shorts, [], 'a business number is not a date, so the short-text allowance does not offer it');
 });
 
 test('operator names come from the owner\'s answers, the code identity check and the host (N3)', async () => {
   const entity = name => makeObservation({ family_id: 'entity-identity', unit_key: ENTITY_UNIT, state: 'pass', reason: 'x', evidence_ref: 'entity.json',
     extra: { evaluator_type: 'code', source_ref: 'optbrew:collector', measurement: { name_reference: name } } });
-  assert.deepEqual(operatorNames({ confirmed: ['더청춘', ' ', '더청춘'], observations: [entity('더청춘센터')], url: 'https://www.youthdc.com/history' }), { names: ['더청춘', '더청춘센터'], host: 'youthdc' });
+  assert.deepEqual(operatorNames({ confirmed: ['가나다', ' ', '가나다'], observations: [entity('가나다센터')], url: 'https://www.ganada.example/history' }), { names: ['가나다', '가나다센터'], host: 'ganada' });
   assert.deepEqual(operatorNames({ observations: [], url: 'entity-identity|site' }), { names: [], host: null }, 'a site unit has no host label');
   assert.deepEqual(operatorNames({ observations: [], url: 'http://127.0.0.1:8080/' }), { names: [], host: null }, 'an IP address has no name');
-  const own = `<p>${'x'.repeat(40)} 더청춘센터 안내 ${'y'.repeat(20)}</p>`;
+  const own = `<p>${'x'.repeat(40)} 가나다센터 안내 ${'y'.repeat(20)}</p>`;
   const body = bare(`${LONG_LINE}<p>${'m'.repeat(60)}</p>${own}`);
   const absence = failFor('source-transparency', { basis: 'absence' });
   assert.equal((await mergeOne(body, absence)).made.state, 'fail', 'no name known: the line is only text');
-  assert.equal((await mergeOne(body, absence, { extra: [entity('더청춘센터')] })).made.state, 'unknown', 'code judged the identity: its organization name counts');
+  assert.equal((await mergeOne(body, absence, { extra: [entity('가나다센터')] })).made.state, 'unknown', 'code judged the identity: its organization name counts');
   const plain = bare(`${LONG_LINE}<p>${'m'.repeat(60)}</p><p>${'x'.repeat(40)} example is a product name ${'y'.repeat(20)}</p>`);
   assert.equal((await mergeOne(plain, absence)).made.state, 'fail', 'the host label alone is a product name, not an operator (example.com)');
   assert.equal((await mergeOne(bare(`${LONG_LINE}<p>${'m'.repeat(60)}</p><p>${'x'.repeat(40)} Published by Example Corp ${'y'.repeat(20)}</p>`), absence)).made.state, 'unknown', 'the host label on a credit line');
-  assert.equal((await mergeOne(body, absence, { names: ['더청춘센터'] })).made.state, 'unknown', 'a name the owner confirmed in the start answers');
+  assert.equal((await mergeOne(body, absence, { names: ['가나다센터'] })).made.state, 'unknown', 'a name the owner confirmed in the start answers');
 });
 
 test('a fail must cite some of the page\'s own text, not only site chrome (N4, N5)', { timeout: 120000 }, async () => {
@@ -1290,13 +1290,13 @@ test('a fail labelled shown must cite the page\'s own text; on an empty page rep
 });
 
 // Task 21e (R90-R92): the false fixes the fourth real-flow run found.
-const BOOKINGS = '<p>금액은 <!-- -->2026<!-- -->년 보건복지부 고시 장기요양 수가와 더청춘이 정한 비급여 금액으로 계산합니다</p>';
+const BOOKINGS = '<p>금액은 <!-- -->2026<!-- -->년 보건복지부 고시 장기요양 수가와 가나다이 정한 비급여 금액으로 계산합니다</p>';
 
 test('an HTML comment is not a text boundary: React hydration markers do not cut a sentence (R90)', () => {
   const bytes = Buffer.from(bare(BOOKINGS));
   const [span, ...rest] = candidateSpans(bytes, 'h');
   assert.equal(rest.length, 0, 'one sentence, one span');
-  assert.equal(span.text, '금액은 2026년 보건복지부 고시 장기요양 수가와 더청춘이 정한 비급여 금액으로 계산합니다', 'the text has the comments left out');
+  assert.equal(span.text, '금액은 2026년 보건복지부 고시 장기요양 수가와 가나다이 정한 비급여 금액으로 계산합니다', 'the text has the comments left out');
   const range = bytes.subarray(span.start, span.end).toString('utf8');
   assert.ok(range.startsWith('금액은 <!-- -->2026') && range.endsWith('계산합니다'), 'the byte range covers the comments');
   assert.doesNotThrow(() => checkSpan(bytes, span), 'the range is a valid span for checkSpan and replay');
