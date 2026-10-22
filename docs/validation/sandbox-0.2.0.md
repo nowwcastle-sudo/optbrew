@@ -19,14 +19,14 @@ No API key and no export file were given, so the field-data families (LCP, INP, 
 
 ## Sites
 
-- **youthdc.com**: a Korean care-facility site (Next.js, server-rendered, Korean text, Naver as a target engine).
+- **site A**: a Korean care-facility site (Next.js, server-rendered, Korean text, Naver as a target engine).
 - **htmx.org**: an English product documentation site. The goal named search only, so Naver is not a target and the NEO profile does not apply.
 
 ## Results
 
 Coverage is the share of weighted units with a pass or fail verdict, without and with the three CWV families. The C16 line is 85% without CWV on every profile that applies.
 
-| Line | Pass line | youthdc.com (run 5) | htmx.org (run 4) |
+| Line | Pass line | site A (run 5) | htmx.org (run 4) |
 |---|---|---|---|
 | Extra questions after the start question | 0 | 0 | 0 |
 | Work the user must do by hand | account runbooks only | 0 | 0 |
@@ -40,7 +40,7 @@ Coverage is the share of weighted units with a pass or fail verdict, without and
 | report.json, report.md and report.html agree | same numbers | 15 of 15 values, same headline | 12 of 12 values, same headline |
 | Calls, time and cost | report only | 2 calls, 6.4 min, $3.93 | 2 calls, 6.5 min, $3.42 |
 
-SEO on youthdc shows no headline score: with CWV unknown its coverage is 77.1%, below the 80% line for a score. The report says so and names the missing key.
+SEO on site A shows no headline score: with CWV unknown its coverage is 77.1%, below the 80% line for a score. The report says so and names the missing key.
 
 ## Model not-applicable verdicts (R86)
 
@@ -48,10 +48,10 @@ An independent reviewer read the visible text of every page with a model not-app
 
 | Site | Model N/A | Wrong | Result |
 |---|---|---|---|
-| youthdc.com (run 5) | 33 of 180 units (18.3%) | 0 in every family | pass |
+| site A (run 5) | 33 of 180 units (18.3%) | 0 in every family | pass |
 | htmx.org (run 4) | 137 of 216 units (63.4%) | 0 in every family | pass |
 
-htmx has many not-applicable verdicts because most of its pages are attribute reference pages. The judging rules mark those as not needing an operator name, claims support or a date. Turning every youthdc not-applicable verdict into unknown still leaves every profile at 87.2% or more without CWV.
+htmx has many not-applicable verdicts because most of its pages are attribute reference pages. The judging rules mark those as not needing an operator name, claims support or a date. Turning every site A not-applicable verdict into unknown still leaves every profile at 87.2% or more without CWV.
 
 ## What the runs changed
 
@@ -65,11 +65,11 @@ Five runs found problems that tests had not found. Each became a ruling and a ta
 | 4 | 8 of 10 headline fixes were not real problems: a year split by HTML comments, a deliberate noindex on form pages, duplicate titles on query variants of one page; news stories judged as making no claims | Task 21e |
 | 5 | Fix rows that began with an English reason and gave no fix method; a final message that called answered questions unanswered | Task 21f |
 
-After run 5 the youthdc headline lists 3 fixes, and an independent reading of the live pages found all 3 true. Task 21f changed only the wording of fix rows and question lines, not verdicts or coverage; replaying the run 5 evidence through it gives each fix a Korean problem sentence, the page, the cited text, a fix method, the effort and a check, and the two unanswered questions read "이번에 읽은 페이지에서는 이 질문에 답하는 페이지를 찾지 못했습니다." instead of "없음".
+After run 5 the site A headline lists 3 fixes, and an independent reading of the live pages found all 3 true. Task 21f changed only the wording of fix rows and question lines, not verdicts or coverage; replaying the run 5 evidence through it gives each fix a Korean problem sentence, the page, the cited text, a fix method, the effort and a check, and the two unanswered questions read "이번에 읽은 페이지에서는 이 질문에 답하는 페이지를 찾지 못했습니다." instead of "없음".
 
 Code measured: runs 4 and 5 used commits a35dc08 and 67c61ca; the release branch adds Task 21f (447b839) on top.
 
-Replay at the release code (Task 22 fixes): the stored evidence of both runs was replayed through it (a copy at a same-length sibling path, no model call, no network). The release code gives the same coverage as the table on every profile, without and with CWV, and the same headline counts: 10 fixes for htmx.org (run 4, which predates Task 21e) and 3 for youthdc.com (run 5). Verdicts derived again from the stored evidence equal the recorded ones. The only change in the reports is wording: the youthdc report now names its 3 pages left out of the index (inquiry, inquiry?about=grade, request-change) next to the headline, and the htmx fixes read in Korean from the catalog.
+Replay at the release code (Task 22 fixes): the stored evidence of both runs was replayed through it (a copy at a same-length sibling path, no model call, no network). The release code gives the same coverage as the table on every profile, without and with CWV, and the same headline counts: 10 fixes for htmx.org (run 4, which predates Task 21e) and 3 for site A (run 5). Verdicts derived again from the stored evidence equal the recorded ones. The only change in the reports is wording: the site A report now names its 3 pages left out of the index (inquiry, inquiry?about=grade, request-change) next to the headline, and the htmx fixes read in Korean from the catalog.
 
 ## Not measured here
 

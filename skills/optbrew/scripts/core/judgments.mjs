@@ -96,7 +96,7 @@ const SENTENCE_TAIL = /[.!?。！？]+["'”’」)\]]*\s*$/u;
 // Tags inside a line of text: they do not end a span, and the text shown to the model has them taken out.
 const INLINE_TAGS = new Set(['a', 'abbr', 'b', 'br', 'code', 'em', 'i', 'mark', 'small', 'span', 'strong', 'sub', 'sup', 'time']);
 // A date form is a pattern plus a check of its parts: digits stand alone (no digit right before or after, so a business number such as
-// 142-80-39228 or a phone number is not read as a date), the year is 1990-2099, the month 1-12 and the day 1-31.
+// 123-80-45678 or a phone number is not read as a date), the year is 1990-2099, the month 1-12 and the day 1-31.
 const YEAR = value => value >= 1990 && value <= 2099;
 const MONTH = value => value >= 1 && value <= 12;
 const DAY = value => value >= 1 && value <= 31;
@@ -424,7 +424,7 @@ function absenceRefuted(family_id, bytes, spans, { chrome, names, host }) {
 
 /**
  * The names that tell a page names its operator, from every source the run has: the names the owner confirmed (`confirmed`) and the
- * organization name the code identity check found (JSON-LD) are `names`; the site's host label (`youthdc` of youthdc.com) is `host`
+ * organization name the code identity check found (JSON-LD) are `names`; the site's host label (`example` of www.example.com) is `host`
  * and counts only on a credit line. A name under two characters is not used.
  */
 export function operatorNames({ confirmed = [], observations = [], url }) {

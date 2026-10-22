@@ -74,17 +74,17 @@ test('an empty confirmed list leaves the cross-page comparison as it was', () =>
 });
 
 test('a Korean address written in the other order agrees with the confirmed one (도/시 written out on either side)', () => {
-  const confirmed = [{ key: 'address', value: '진접읍 부평로 33-31, 남양주시, 경기도' }];
-  assert.equal(judge({ '/privacy': page('<p>주소: 경기도 남양주시 진접읍 부평로 33-31</p>') }, confirmed)['/privacy'].state, 'pass');
-  assert.equal(judge({ '/privacy': page('<p>주소: 경기도 남양주시 진접읍 부평로 33-13</p>') }, confirmed)['/privacy'].state, 'fail', 'a different number still differs');
+  const confirmed = [{ key: 'address', value: '예시읍 샘플로 12-34, 가상시, 경기도' }];
+  assert.equal(judge({ '/privacy': page('<p>주소: 경기도 가상시 예시읍 샘플로 12-34</p>') }, confirmed)['/privacy'].state, 'pass');
+  assert.equal(judge({ '/privacy': page('<p>주소: 경기도 가상시 예시읍 샘플로 12-43</p>') }, confirmed)['/privacy'].state, 'fail', 'a different number still differs');
 });
 
 test('a Korean PostalAddress in JSON-LD is offered in Korean order, an English one keeps its commas', () => {
   const ld = address => page(`<script type="application/ld+json">${JSON.stringify({ '@context': 'https://schema.org', '@type': 'LocalBusiness',
     name: '동네 꽃집', address: { '@type': 'PostalAddress', ...address } })}</script>`);
   const linkedAddress = html => [...pageFacts(html).linked.address.values()];
-  assert.deepEqual(linkedAddress(ld({ streetAddress: '진접읍 부평로 33-31', addressLocality: '남양주시', addressRegion: '경기도' })),
-    ['경기도 남양주시 진접읍 부평로 33-31']);
+  assert.deepEqual(linkedAddress(ld({ streetAddress: '예시읍 샘플로 12-34', addressLocality: '가상시', addressRegion: '경기도' })),
+    ['경기도 가상시 예시읍 샘플로 12-34']);
   assert.deepEqual(linkedAddress(ld({ streetAddress: '27 Wausan-ro', addressLocality: 'Mapo-gu', addressRegion: 'Seoul' })),
     ['27 Wausan-ro, Mapo-gu, Seoul']);
 });

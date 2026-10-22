@@ -2,21 +2,23 @@
 
 ## 0.3.1
 
-Fixes from a real 0.3.0 audit of youthdc.com in a Claude Code cloud session.
+Fixes from a real 0.3.0 audit of a public Korean care-facility site in a Claude Code cloud session.
 
 - **Chrome renders behind an environment proxy.** A direct (pinned) launch now passes `--no-proxy-server`. Before, a proxy named in `https_proxy` took over, the host rules sent Chrome to the wrong address for it, and every rendered page failed with `net::ERR_PROXY_CONNECTION_FAILED`. The render checks stayed unknown, and the SEO profile could fall under its coverage floor.
 - **The Playwright Chromium of cloud containers is found.** `findChrome` also looks for the older `chrome-linux/chrome` layout (and `chrome-win`, `chrome-mac`) under `PLAYWRIGHT_BROWSERS_PATH`.
-- **A Korean address in the other order is the same address.** `fact-consistency` no longer fails "경기도 남양주시 진접읍 부평로 33-31" against a confirmed "진접읍 부평로 33-31, 남양주시, 경기도" (the JSON-LD order). 시/도 endings are dropped on both sides before the order-free comparison. `facts.mjs` and `messages.ko.json` are evaluation sources, so the evaluation hash changes.
+- **A Korean address in the other order is the same address.** `fact-consistency` no longer fails "경기도 가상시 예시읍 샘플로 12-34" against a confirmed "예시읍 샘플로 12-34, 가상시, 경기도" (the JSON-LD order). 시/도 endings are dropped on both sides before the order-free comparison. `facts.mjs` and `messages.ko.json` are evaluation sources, so the evaluation hash changes.
 - **The date fix shows a placeholder date.** The freshness fix said 「2026년 10월 17일 기준」, a fixed day that reads wrong on any other day. It now says 「○○○○년 ○월 ○일 기준」.
 - Lab CLS in 실행 조건 is shown to three decimals (it printed `0.000861425586819861`).
 - A particle typo in the `cwv-site-collection` runbook (페이지을 → 페이지를).
 
 From the site team's review of that audit:
 
-- **A Korean PostalAddress is offered in Korean order.** The confirmed-fact candidate built from JSON-LD `streetAddress`, `addressLocality` and `addressRegion` read "진접읍 부평로 33-31, 남양주시, 경기도" (the English order with commas). When the parts are in Hangul it is now "경기도 남양주시 진접읍 부평로 33-31", the way the page prints it, so no fix asks the owner to rewrite a correct address. An English address keeps its commas.
+- **A Korean PostalAddress is offered in Korean order.** The confirmed-fact candidate built from JSON-LD `streetAddress`, `addressLocality` and `addressRegion` read "예시읍 샘플로 12-34, 가상시, 경기도" (the English order with commas). When the parts are in Hangul it is now "경기도 가상시 예시읍 샘플로 12-34", the way the page prints it, so no fix asks the owner to rewrite a correct address. An English address keeps its commas.
 - **An organization's own operating facts are not unsourced claims.** `claim-support` (judging.md) no longer counts what the organization says about itself: hours, capacity, current number of users, contact, address, its own price list. The organization is the first-hand source of these facts, and `freshness-truth` checks when they were true. Effects, comparisons and figures taken from others still count.
-- **An empty-list notice is not a time-sensitive fact.** `freshness-truth` no longer fails a page only for 「아직 모아 둔 지난 식단이 없어요」, and the cited text must be the changeable fact itself (hours, dates, 「지금 26분 이용 중」), because the report shows it as 「해당 글」.
+- **An empty-list notice is not a time-sensitive fact.** `freshness-truth` no longer fails a page only for 「아직 올린 지난 식단이 없어요」, and the cited text must be the changeable fact itself (hours, dates, 「지금 31명 이용 중」), because the report shows it as 「해당 글」.
 - report.md says under the scores, as report.html does, that a score is the pass rate within the checked range, not search ranking or traffic.
+
+Examples in judging.md, code comments, tests and design notes now use made-up names, addresses and numbers instead of a real organization's.
 
 ### Versions
 
@@ -28,7 +30,7 @@ Release 0.3.1, evaluation 0.5.0, audit protocol 0.3.0, contract schema 2.0.0. Th
 
 ## 0.3.0
 
-Fixes what the youthdc.com audit conversation showed: text the user never saw, a judgments file that kept filling with placeholders, and a plain report page.
+Fixes what a real audit conversation showed: text the user never saw, a judgments file that kept filling with placeholders, and a plain report page.
 
 ### What you see
 

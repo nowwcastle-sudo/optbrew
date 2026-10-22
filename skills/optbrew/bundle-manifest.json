@@ -58,11 +58,11 @@
     },
     {
       "path": "scripts/core/judgments.mjs",
-      "sha256": "0896c1cfad5a27f1b30bd5b00f0d1421449af71f5e65d08fbc75c004106586d5"
+      "sha256": "d61f7a5f3f194b5f07cb5690cc5b8e0dbe6ad0758da0ab5dbe719e65833bdc82"
     },
     {
       "path": "scripts/core/facts.mjs",
-      "sha256": "3254be9af8747bf7cb6f65e526f99672bdcded98bab35ba3d3001d962d353458"
+      "sha256": "fc8b538a9655d9d90c9a2d1b7767c5cbd2a335e6e5abe084a1eaac0014bd7b5d"
     },
     {
       "path": "scripts/core/link-graph.mjs",
@@ -153,7 +153,7 @@
       "sha256": "7b41a2f2039735e35b1f015ac3f3e8cf7ab9383dbbc758c15fcaa9149874575d"
     }
   ],
-  "evaluation_hash": "bd708dc415ecb8203b3e179ac58d85edd859d93f4565ebb89d7e7f2ce5c1f09d",
+  "evaluation_hash": "173fb158d9a5a823bb1f9c7495f17db7afd01635a866fd5a7b15742c4e945b9d",
   "protocol_sources": [
     {
       "path": "references/schemas/contract.schema.json",
@@ -684,7 +684,7 @@
     },
     {
       "path": "references/judging.md",
-      "sha256": "dafd2249798dd2fca687fb86d503e96f8f0539259c05a111b6683ae6259a5931"
+      "sha256": "5440f33230dd8df24d99d60e1e0151e88ac0c573fa51dae977cf2a6c7ce217ce"
     },
     {
       "path": "references/limits.json",
@@ -948,7 +948,7 @@
     },
     {
       "path": "scripts/core/facts.mjs",
-      "sha256": "3254be9af8747bf7cb6f65e526f99672bdcded98bab35ba3d3001d962d353458"
+      "sha256": "fc8b538a9655d9d90c9a2d1b7767c5cbd2a335e6e5abe084a1eaac0014bd7b5d"
     },
     {
       "path": "scripts/core/family-plan.mjs",
@@ -976,7 +976,7 @@
     },
     {
       "path": "scripts/core/judgments.mjs",
-      "sha256": "0896c1cfad5a27f1b30bd5b00f0d1421449af71f5e65d08fbc75c004106586d5"
+      "sha256": "d61f7a5f3f194b5f07cb5690cc5b8e0dbe6ad0758da0ab5dbe719e65833bdc82"
     },
     {
       "path": "scripts/core/keys.mjs",
@@ -1083,5 +1083,5 @@
       "sha256": "dca0bbd03fbf591c4aca6a568be76615eb48d69f7df0c634886f652b54f3f46d"
     }
   ],
-  "bundle_hash": "3a4fd5b063a903ff158e9f3df5620185561c5bc6b39ea6338d4dde7f1361a450"
+  "bundle_hash": "15fc3fa9d49c927037481eb3b88d1a6ed21a058fab4ae3b375eccc998f306c6b"
 }
