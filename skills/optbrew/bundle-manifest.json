@@ -22,7 +22,7 @@
     },
     {
       "path": "references/messages.ko.json",
-      "sha256": "f199c49ccb935adcfca11e0471591fa9b92fa6f797f43f48ef8ef84b3f721832"
+      "sha256": "cff81d3cf43738554272b8e11800ca09754cffa95794d7adea2df2952d17d1e1"
     },
     {
       "path": "scripts/core/score.mjs",
@@ -62,7 +62,7 @@
     },
     {
       "path": "scripts/core/facts.mjs",
-      "sha256": "1e3e257b85606258fd2dd8a983d81c3704904601c4bb95944f2e13127c337b6e"
+      "sha256": "9dc75d7c9f3416d9bf6e5a95f17a844139caf4de8d9ee3002a1782fa26c495dd"
     },
     {
       "path": "scripts/core/link-graph.mjs",
@@ -153,7 +153,7 @@
       "sha256": "7b41a2f2039735e35b1f015ac3f3e8cf7ab9383dbbc758c15fcaa9149874575d"
     }
   ],
-  "evaluation_hash": "64f4721453d76a386a16c5c262ab7a133d136521088263ec5d9dd68ec8da70b6",
+  "evaluation_hash": "4fa08a18d2997fb73e729d587a9275f1b6d74fe7cb284d8854ac3907f27f708d",
   "protocol_sources": [
     {
       "path": "references/schemas/contract.schema.json",
@@ -664,7 +664,7 @@
     },
     {
       "path": "references/chrome-paths.json",
-      "sha256": "fb3c0ef60b1bcf8257b908ce30259e10373f94d13383fa656e91107166edeac5"
+      "sha256": "63159a93ba95944172806ee4dcf2d401b099e38764d88a59aeeb75c78357e383"
     },
     {
       "path": "references/endpoints.json",
@@ -696,7 +696,7 @@
     },
     {
       "path": "references/messages.ko.json",
-      "sha256": "f199c49ccb935adcfca11e0471591fa9b92fa6f797f43f48ef8ef84b3f721832"
+      "sha256": "cff81d3cf43738554272b8e11800ca09754cffa95794d7adea2df2952d17d1e1"
     },
     {
       "path": "references/policies.md",
@@ -728,7 +728,7 @@
     },
     {
       "path": "references/runbooks/cwv-site-collection.md",
-      "sha256": "fc224bd56ed2716bd142e6e5ee5a31e12f7daf26f6c283bdc2264a7847d2554e"
+      "sha256": "1df443d493ae1df392cebe1a7b20a6d54831e146c9763c7f6ecc3b0c7f6597fc"
     },
     {
       "path": "references/runbooks/google-api-key.md",
@@ -904,7 +904,7 @@
     },
     {
       "path": "scripts/core/chrome.mjs",
-      "sha256": "c356f1b01dfd30e321499828cdf2a36493a43dbd4499a736b9312d8aa4532270"
+      "sha256": "8589c11c8e15ebbc52c2d95d652d7ff7c2bb1e646042b1ee9d2c65581d203c6e"
     },
     {
       "path": "scripts/core/collector.mjs",
@@ -948,7 +948,7 @@
     },
     {
       "path": "scripts/core/facts.mjs",
-      "sha256": "1e3e257b85606258fd2dd8a983d81c3704904601c4bb95944f2e13127c337b6e"
+      "sha256": "9dc75d7c9f3416d9bf6e5a95f17a844139caf4de8d9ee3002a1782fa26c495dd"
     },
     {
       "path": "scripts/core/family-plan.mjs",
@@ -1020,7 +1020,7 @@
     },
     {
       "path": "scripts/core/report-compose.mjs",
-      "sha256": "1ea339ab8bda3ed06cde8ce55066c09800bee305b87b5736731706da7e5e18e5"
+      "sha256": "5eb4af3ca585592138a04655dd7c56d6a4f0e8c3296a604f3c0069019d73f5a5"
     },
     {
       "path": "scripts/core/report-fixes.mjs",
@@ -1083,5 +1083,5 @@
       "sha256": "dca0bbd03fbf591c4aca6a568be76615eb48d69f7df0c634886f652b54f3f46d"
     }
   ],
-  "bundle_hash": "07f8f72df7f6e811a457925ff2865e4aea81b304cf6c57eeeac383023946b182"
+  "bundle_hash": "1fc63e6267013227b6ea714f5473f2dcccd38786c718e27c9afadd28f8f38203"
 }

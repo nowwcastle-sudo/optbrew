@@ -91,6 +91,12 @@ describe('chrome block', async () => {
     assert.equal(findChrome({ env: { PLAYWRIGHT_BROWSERS_PATH: '0' }, platform: 'linux', list, exists: () => false }), null);
   });
 
+  test('finds a Playwright Chromium in the older chrome-linux layout (cloud containers ship it)', () => {
+    const wanted = '/opt/pw-browsers/chromium-1194/chrome-linux/chrome';
+    assert.deepEqual(findChrome({ env: { PLAYWRIGHT_BROWSERS_PATH: '/opt/pw-browsers' }, platform: 'linux', list: () => ['chromium-1194', 'chromium_headless_shell-1194'],
+      exists: file => file === wanted }), { path: wanted, kind: 'chromium' });
+  });
+
   test('the pipe transport frames NUL-terminated messages across chunks', async () => {
     const toChrome = new PassThrough();
     const fromChrome = new PassThrough();
@@ -234,7 +240,8 @@ describe('chrome block', async () => {
   test('never reuses or closes a user\'s running chrome', { skip }, async () => {
     // A separate Chrome with its own profile stands in for the user's; it must survive a full launch and close.
     const userProfile = path.join(root, 'user-profile');
-    const user = spawn(found.path, ['--headless=new', `--user-data-dir=${userProfile}`, '--remote-debugging-port=0', '--no-first-run'], { stdio: 'ignore', windowsHide: true });
+    const user = spawn(found.path, ['--headless=new', `--user-data-dir=${userProfile}`, '--remote-debugging-port=0', '--no-first-run',
+      ...(process.getuid?.() === 0 ? ['--no-sandbox'] : [])], { stdio: 'ignore', windowsHide: true });
     try {
       for (let waited = 0; waited < 200; waited++) {
         if (await stat(path.join(userProfile, 'DevToolsActivePort')).then(() => true, () => false)) break;
@@ -395,6 +402,25 @@ describe('chrome block', async () => {
         assert.ok(!targetSeen.includes('GET /frame.html'));
       } finally { await page.close(); }
     });
+  });
+
+  test('a proxy named in the environment does not take over a direct, pinned launch', { skip }, async () => {
+    // Host rules pin every name to the site, so an environment proxy would be dialled at the wrong address (ERR_PROXY_CONNECTION_FAILED).
+    const names = ['https_proxy', 'http_proxy', 'HTTPS_PROXY', 'HTTP_PROXY'];
+    const saved = names.map(name => process.env[name]);
+    names.forEach(name => { process.env[name] = 'http://127.0.0.1:9'; });
+    try {
+      await withChrome({ hostRules }, async chrome => {
+        // A name, not 127.0.0.1: Chrome never sends a loopback address through a proxy.
+        const named = `http://owner.example.test:${ownerPort}`;
+        const page = await scopedPage({ chrome, context: { scope: { allowed: [{ origin: named }] } }, budget: 100 });
+        try {
+          const result = await page.goto(`${named}/page`);
+          assert.equal(result.blocked_reason, null);
+          assert.equal(result.status, 200);
+        } finally { await page.close(); }
+      });
+    } finally { names.forEach((name, index) => { if (saved[index] === undefined) delete process.env[name]; else process.env[name] = saved[index]; }); }
   });
 
   test('scopedPage checks every redirect hop again', { skip }, async () => {

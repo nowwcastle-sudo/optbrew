@@ -307,7 +307,7 @@ test('every failing model family (and each basis) has a problem, a method, an ef
     }
   }
   assert.equal(catalog['model-fix.freshness-truth.absence'], '이 페이지에 바뀔 수 있는 내용(운영 시간·정원·가격 등)이 있는데 언제 기준인지 날짜가 없습니다.');
-  assert.equal(catalog['model-fix.freshness-truth.absence.mechanism'], '그 내용 옆에 「2026년 10월 17일 기준」처럼 확인한 날짜를 적으세요.');
+  assert.equal(catalog['model-fix.freshness-truth.absence.mechanism'], '그 내용 옆에 「○○○○년 ○월 ○일 기준」처럼 내용을 확인한 날짜를 적으세요.');
   assert.equal(catalog['model-fix.freshness-truth.absence.effort'], '작음 — 문장 한 줄');
   assert.equal(catalog['model-fix.freshness-truth.absence.validation'], '다시 검사하면 이 항목이 통과로 바뀝니다.');
   assert.deepEqual(namesOf(catalog['model-fix.cited']), ['quote']);

@@ -1,5 +1,16 @@
 # Changelog
 
+## Unreleased
+
+Fixes from a real 0.3.0 audit of youthdc.com in a Claude Code cloud session.
+
+- **Chrome renders behind an environment proxy.** A direct (pinned) launch now passes `--no-proxy-server`. Before, a proxy named in `https_proxy` took over, the host rules sent Chrome to the wrong address for it, and every rendered page failed with `net::ERR_PROXY_CONNECTION_FAILED`. The render checks stayed unknown, and the SEO profile could fall under its coverage floor.
+- **The Playwright Chromium of cloud containers is found.** `findChrome` also looks for the older `chrome-linux/chrome` layout (and `chrome-win`, `chrome-mac`) under `PLAYWRIGHT_BROWSERS_PATH`.
+- **A Korean address in the other order is the same address.** `fact-consistency` no longer fails "경기도 남양주시 진접읍 부평로 33-31" against a confirmed "진접읍 부평로 33-31, 남양주시, 경기도" (the JSON-LD order). 시/도 endings are dropped on both sides before the order-free comparison. `facts.mjs` and `messages.ko.json` are evaluation sources, so the evaluation hash changes.
+- **The date fix shows a placeholder date.** The freshness fix said 「2026년 10월 17일 기준」, a fixed day that reads wrong on any other day. It now says 「○○○○년 ○월 ○일 기준」.
+- Lab CLS in 실행 조건 is shown to three decimals (it printed `0.000861425586819861`).
+- A particle typo in the `cwv-site-collection` runbook (페이지을 → 페이지를).
+
 ## 0.3.0
 
 Fixes what the youthdc.com audit conversation showed: text the user never saw, a judgments file that kept filling with placeholders, and a plain report page.

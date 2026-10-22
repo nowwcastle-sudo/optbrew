@@ -153,19 +153,29 @@ async function readActivePort(userDataDir, deadline) {
   throw new Error('chrome did not publish a debugging port');
 }
 
+/**
+ * The command line of one launch. Without an audit proxy Chrome must connect directly, as the collector did: a proxy named in the
+ * environment (`https_proxy`) would otherwise take over, and host rules that pin every name to the audited site would send Chrome
+ * to the wrong address for that proxy (`net::ERR_PROXY_CONNECTION_FAILED` on every page).
+ */
+function chromeArgs({ userDataDir, kind, proxy = null, hostRules = null, root = false }) {
+  const args = ['--headless=new', `--user-data-dir=${userDataDir}`, '--no-first-run', '--no-default-browser-check',
+    '--disable-background-networking', '--disable-extensions',
+    kind === 'pipe' ? '--remote-debugging-pipe' : '--remote-debugging-port=0'];
+  // Chrome refuses to start as root without its sandbox disabled (containers, CI).
+  if (root) args.push('--no-sandbox');
+  args.push(proxy ? `--proxy-server=${proxy.host.includes(':') ? `[${proxy.host}]` : proxy.host}:${proxy.port}` : '--no-proxy-server');
+  if (hostRules) args.push(`--host-resolver-rules=${hostRules}`);
+  return args;
+}
+
 /** One launch attempt with one transport; on any failure it kills its own process tree and removes its profile directory. */
 async function attempt({ executable, proxy, hostRules, tmpRoot, transport: kind, launchTimeout }) {
   const { chrome_close_grace_ms: closeGrace, cdp_command_timeout_ms: commandTimeout } = limits();
   const userDataDir = await mkdtemp(path.join(tmpRoot, PROFILE_PREFIX));
   const tempDir = path.join(userDataDir, 'tmp');
   try { await mkdir(tempDir); } catch (error) { await rm(userDataDir, { recursive: true, force: true }); throw error; }
-  const args = ['--headless=new', `--user-data-dir=${userDataDir}`, '--no-first-run', '--no-default-browser-check',
-    '--disable-background-networking', '--disable-extensions',
-    kind === 'pipe' ? '--remote-debugging-pipe' : '--remote-debugging-port=0'];
-  // Chrome refuses to start as root without its sandbox disabled (containers, CI).
-  if (process.getuid?.() === 0) args.push('--no-sandbox');
-  if (proxy) args.push(`--proxy-server=${proxy.host.includes(':') ? `[${proxy.host}]` : proxy.host}:${proxy.port}`);
-  if (hostRules) args.push(`--host-resolver-rules=${hostRules}`);
+  const args = chromeArgs({ userDataDir, kind, proxy, hostRules, root: process.getuid?.() === 0 });
 
   const child = spawn(executable, args, { env: chromeEnv(process.env, tempDir), stdio: kind === 'pipe' ? ['ignore', 'ignore', 'pipe', 'pipe', 'pipe'] : ['ignore', 'ignore', 'pipe'],
     windowsHide: true, detached: process.platform !== 'win32' });

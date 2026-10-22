@@ -72,3 +72,9 @@ test('an empty confirmed list leaves the cross-page comparison as it was', () =>
   assert.equal(judge(pages, [])['/b'].state, 'fail');
   assert.match(judge(pages, [])['/b'].reason, /^Cross-page fact comparison \(no approved fact list\): phone/);
 });
+
+test('a Korean address written in the other order agrees with the confirmed one (도/시 written out on either side)', () => {
+  const confirmed = [{ key: 'address', value: '진접읍 부평로 33-31, 남양주시, 경기도' }];
+  assert.equal(judge({ '/privacy': page('<p>주소: 경기도 남양주시 진접읍 부평로 33-31</p>') }, confirmed)['/privacy'].state, 'pass');
+  assert.equal(judge({ '/privacy': page('<p>주소: 경기도 남양주시 진접읍 부평로 33-13</p>') }, confirmed)['/privacy'].state, 'fail', 'a different number still differs');
+});
