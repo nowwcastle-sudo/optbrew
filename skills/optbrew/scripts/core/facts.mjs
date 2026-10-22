@@ -47,8 +47,10 @@ export function addressKey(value) {
  */
 function sameAddress(a, b) {
   if (a === b) return true;
-  // The same words in another order (an English and a Korean address order) are not a difference.
-  if (a.split(' ').sort().join(' ') === b.split(' ').sort().join(' ')) return true;
+  // The same words in another order (an English and a Korean address order) are not a difference. Korean 시/도 suffixes are dropped
+  // here too, since `addressKey` drops them only from a leading token ("경기도 남양주시 …" against "…, 남양주시, 경기도").
+  const words = key => key.split(' ').map(token => token.replace(/^(\p{Script=Hangul}{2,})(?:시|도)$/u, '$1')).sort().join(' ');
+  if (words(a) === words(b)) return true;
   const [short, long] = a.length <= b.length ? [a, b] : [b, a];
   const shortTokens = short.split(' '), longTokens = long.split(' ');
   if (shortTokens.length < 2 || !shortTokens.some(token => /^\p{L}/u.test(token))) return false;

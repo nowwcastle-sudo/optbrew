@@ -101,7 +101,9 @@ test('lab CWV appears only under conditions', () => {
   assert.doesNotMatch(JSON.stringify({ ...composed, conditions: undefined, tables }), /1234\.5|0\.0421/);
   const before = markdown.slice(0, markdown.indexOf('## 실행 조건'));
   assert.doesNotMatch(before, /1234\.5|0\.0421|실험실 Core Web Vitals/);
-  assert.match(markdown.slice(markdown.indexOf('## 실행 조건')), /실험실 Core Web Vitals \(참고용, 점수에 넣지 않음\): LCP 1234\.5 ms; CLS 0\.0421/);
+  assert.match(markdown.slice(markdown.indexOf('## 실행 조건')), /실험실 Core Web Vitals \(참고용, 점수에 넣지 않음\): LCP 1234\.5 ms; CLS 0\.042$/m);
+  const tiny = renderReport(composeReport(verifiedOf({ lab_cwv: { lcp: 976, cls: 0.000861425586819861 } })), verifiedOf({ lab_cwv: { lcp: 976, cls: 0.000861425586819861 } })).markdown;
+  assert.match(tiny, /LCP 976 ms; CLS 0\.001$/m, 'CLS is shown to three decimals');
   const packet = fixturePacket(); packet.lab_cwv = lab;
   const { json } = buildReport(packet);
   assert.deepEqual(json.composed.conditions.lab_cwv, lab);

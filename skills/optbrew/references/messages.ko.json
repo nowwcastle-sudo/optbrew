@@ -298,7 +298,7 @@
   "model-fix.original-value.effort": "보통 — 문단 하나 쓰기",
   "model-fix.original-value.validation": "다시 검사하면 이 항목이 통과로 바뀝니다.",
   "model-fix.freshness-truth.absence": "이 페이지에 바뀔 수 있는 내용(운영 시간·정원·가격 등)이 있는데 언제 기준인지 날짜가 없습니다.",
-  "model-fix.freshness-truth.absence.mechanism": "그 내용 옆에 「2026년 10월 17일 기준」처럼 확인한 날짜를 적으세요.",
+  "model-fix.freshness-truth.absence.mechanism": "그 내용 옆에 「○○○○년 ○월 ○일 기준」처럼 내용을 확인한 날짜를 적으세요.",
   "model-fix.freshness-truth.absence.effort": "작음 — 문장 한 줄",
   "model-fix.freshness-truth.absence.validation": "다시 검사하면 이 항목이 통과로 바뀝니다.",
   "model-fix.freshness-truth.shown": "이 페이지의 날짜가 내용과 맞지 않거나, 중요한 내용이 오래된 것으로 보입니다.",

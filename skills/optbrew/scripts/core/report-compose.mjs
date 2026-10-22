@@ -361,7 +361,7 @@ function conditionLines(conditions, verified) {
     { label: '실제 결과', value: verified.metrics.length ? "아래 '실제 결과'의 측정·빈칸 상태 참고" : '연결 안 됨 / 알 수 없음' },
     { label: '비용·기능 제한', value: costIssuesKo(verified).join('; ') || '기록 없음' },
     { label: '지표 출처 제한', value: verified.metric_origin_limitations.map((text, index) => koText(verified.metric_origin_limitation_messages?.[index]?.message_key, {}, text)).join('; ') || '측정된 제공자 입력 없음' },
-    { label: '실험실 Core Web Vitals (참고용, 점수에 넣지 않음)', value: lab ? `LCP ${lab.lcp ?? UNKNOWN} ms; CLS ${lab.cls ?? UNKNOWN}` : '측정하지 않음' },
+    { label: '실험실 Core Web Vitals (참고용, 점수에 넣지 않음)', value: lab ? `LCP ${lab.lcp ?? UNKNOWN} ms; CLS ${lab.cls == null ? UNKNOWN : Number(lab.cls.toFixed(3))}` : '측정하지 않음' },
     ...(conditions.start_redirect ? [{ label: '시작 주소', value: `${conditions.start_redirect.from} → ${conditions.start_redirect.to} (이 주소로 연결되므로 감사는 ${conditions.start_redirect.to}에서 실행했습니다)` }] : []),
   ];
 }
