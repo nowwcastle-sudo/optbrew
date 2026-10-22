@@ -78,3 +78,13 @@ test('a Korean address written in the other order agrees with the confirmed one 
   assert.equal(judge({ '/privacy': page('<p>주소: 경기도 남양주시 진접읍 부평로 33-31</p>') }, confirmed)['/privacy'].state, 'pass');
   assert.equal(judge({ '/privacy': page('<p>주소: 경기도 남양주시 진접읍 부평로 33-13</p>') }, confirmed)['/privacy'].state, 'fail', 'a different number still differs');
 });
+
+test('a Korean PostalAddress in JSON-LD is offered in Korean order, an English one keeps its commas', () => {
+  const ld = address => page(`<script type="application/ld+json">${JSON.stringify({ '@context': 'https://schema.org', '@type': 'LocalBusiness',
+    name: '동네 꽃집', address: { '@type': 'PostalAddress', ...address } })}</script>`);
+  const linkedAddress = html => [...pageFacts(html).linked.address.values()];
+  assert.deepEqual(linkedAddress(ld({ streetAddress: '진접읍 부평로 33-31', addressLocality: '남양주시', addressRegion: '경기도' })),
+    ['경기도 남양주시 진접읍 부평로 33-31']);
+  assert.deepEqual(linkedAddress(ld({ streetAddress: '27 Wausan-ro', addressLocality: 'Mapo-gu', addressRegion: 'Seoul' })),
+    ['27 Wausan-ro, Mapo-gu, Seoul']);
+});
