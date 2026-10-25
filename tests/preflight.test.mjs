@@ -206,3 +206,15 @@ test('a count that is only a lower bound raises to the cap, and an unreachable s
   const { startJson } = await run(site({}));
   assert.equal(startJson.max_urls_raise, null);
 });
+
+test('a second check into the same folder starts clean, so the first one\'s pages and failures do not remain', async () => {
+  const fake = site({ '/': html(page('Home', ['/missing'])) });
+  const { out } = await run(fake);
+  const index = () => readFile(path.join(out, 'preflight', 'evidence', 'evidence-index.json'), 'utf8').then(JSON.parse);
+  const first = await index();
+  await preflight({ url: `${origin}/`, out, skillRoot, env: { CLAUDECODE: '1' }, selectTransport: fake.selectTransport,
+    findChrome: () => ({ path: '/usr/bin/chrome', kind: 'chrome' }), readGoogleKey: () => 'key', home: '/no/such/home' });
+  const second = await index();
+  assert.ok(first.raw.length > 0);
+  assert.deepEqual([second.raw.length, (second.failures ?? []).length], [first.raw.length, (first.failures ?? []).length]);
+});

@@ -134,8 +134,8 @@ node "<SKILL_DIR>/scripts/run.mjs" --answers "<OUT>/intake-answers.json" --out "
 |---|---|
 | `index changed:`로 시작 | 결과 폴더의 증거가 바뀌어 이어갈 수 없다는 뜻이다. 새 `<OUT>` 폴더로 1단계부터 다시 한다고 알린다. |
 | `migration_required:`로 시작 | 다른 판의 optbrew가 만든 폴더다. 새 `<OUT>` 폴더로 1단계부터 다시 한다고 알린다. |
-| `This folder already holds a finished audit` 또는 `This folder holds files this audit did not make`로 시작 | 실행이 그 폴더를 거부한 것이다. 결과 폴더에서 아무것도 지우지 않는다. 같은 답 파일을 `--answers`로 두고, 뒤에 `-2`, `-3`을 붙인 새 `<OUT>`을 `--out`으로 해 7단계를 다시 한다고 한 문장으로 알린다. |
-| `The answers are not the ones this run was made from`으로 시작 | 이 폴더를 만든 답 파일과 다른 답 파일을 넘겼다. 그 폴더의 `intake-answers.json`을 그대로 쓰거나, 답을 바꿨으면 새 `<OUT>`에서 7단계를 한다. |
+| `This folder already holds a finished audit` 또는 `This folder holds files this audit did not make`로 시작 | 실행이 그 폴더를 거부한 것이다. 결과 폴더에서 아무것도 지우지 않는다. 뒤에 `-2`, `-3`을 붙인 새 `<OUT>`을 정하고, 이전 `<OUT>`의 `preflight` 폴더를 새 폴더로 복사한다(실행은 감사할 쪽을 그 폴더에서 고른다. 없으면 첫 화면과 사실 쪽만 감사한다). 같은 답 파일을 `--answers`로 두고 새 `<OUT>`을 `--out`으로 해 7단계를 다시 한다고 한 문장으로 알린다. |
+| `The answers are not the ones this run was made from`으로 시작 | 이 폴더를 만든 답 파일과 다른 답 파일을 넘겼다. 그 폴더의 `intake-answers.json`을 그대로 쓰거나, 답을 바꿨으면 새 `<OUT>`에 이전 `<OUT>`의 `preflight` 폴더를 복사한 뒤 7단계를 한다. |
 | `The address`로 시작하고 `leads to another site`가 든 문장 | 주소가 다른 사이트로 넘어간다. "이 주소는 다른 사이트로 넘어갑니다. 그 사이트가 감사할 곳이면 그 주소를 알려 주세요."라고 말하고 멈춘다. 사용자가 새 주소를 주면 새 `<OUT>`으로 3단계부터 한다. |
 | `None of the selected pages could be fetched`로 시작 | "고른 페이지를 하나도 읽지 못했습니다. 주소가 맞는지, 이 컴퓨터에서 사이트에 접속되는지 확인해 주세요."라고 말하고 멈춘다. 사용자가 새 주소를 주면 새 `<OUT>`으로 3단계부터 한다. |
 | 그 밖의 문장 | 그 문장을 사용자 말로 한 줄로 옮기고 멈춘다. 같은 명령을 되풀이하지 않는다(위 「이 감사가 답하는 것」의 넷째 질문). |
@@ -198,6 +198,7 @@ node "<SKILL_DIR>/scripts/run.mjs" --answers "<OUT>/intake-answers.json" --out "
 
 | 문서 | 여는 때 | 열지 않는 때 |
 |---|---|---|
+| [prepare.md](references/prepare.md) | 5단계에서 「준비」 답이나 SE Ranking 요청이 있을 때(반드시), 7단계 6번의 런북을 펼칠 때 | 그 밖 |
 | [intake.md](references/intake.md) | 4단계(반드시, 처음부터 끝까지), 사용자가 시작 질문의 항목 뜻이나 수집 한도를 물을 때 | 7단계 이후 |
 | [judging.md](references/judging.md) | 8단계(반드시) | 8단계 밖 |
 | [source-analysis.md](references/source-analysis.md) | 2단계의 도구 표, 10단계에서 원인을 찾을 때 | 그 밖 |

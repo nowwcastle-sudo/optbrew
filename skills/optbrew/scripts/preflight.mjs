@@ -2,7 +2,7 @@
 import { lookup } from 'node:dns/promises';
 import { realpathSync } from 'node:fs';
 import { isIP } from 'node:net';
-import { mkdir, writeFile } from 'node:fs/promises';
+import { mkdir, rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { fetchScoped, links } from './core/collector.mjs';
@@ -73,6 +73,8 @@ export async function preflight({ url, out, sourceTools = [], skillRoot = defaul
   let scope = scopeOf(sameSiteOrigins(start));
   const dir = path.join(out, 'preflight');
   const evidenceDir = path.join(dir, 'evidence');
+  // A second check (after the user prepared a key or Chrome) starts clean: old failures and pages would misroute step 3 and the raise.
+  await rm(dir, { recursive: true, force: true });
   await mkdir(evidenceDir, { recursive: true });
   const store = openStore(evidenceDir);
   const budget = limits().preflight_pages;

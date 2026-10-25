@@ -75,7 +75,7 @@ SKILL.md 8단계의 절차다. 코드가 판정하지 못하는 내용 항목을
 | answer-clarity | `no_matching_questions` | 된다 | 쓰지 않는다 | 된다(사이트 공통 글이 답한 질문) | 없음 |
 | original-value | `simple_contact_or_support` | 된다 | 쓰지 않는다 | 따로 정하지 않음 | 없음 |
 | freshness-truth | `no_date_or_currentness` | 없다 | `shown` 또는 `absence`가 반드시 있다 | 안 된다(`unknown`이 된다) | `no_date_or_currentness`의 `not_applicable`, `absence`의 `fail` |
-| source-transparency | `not_required_for_purpose` | 없다 | `shown` 또는 `absence`가 반드시 있다 | 안 된다(`unknown`이 된다) | `absence`의 `fail`, 조각이 모두 `site_chrome`인 `fail` |
+| source-transparency | `not_required_for_purpose` | 없다 | `shown` 또는 `absence`가 반드시 있다 | 안 된다. 코드는 이 `pass`를 바꾸지 않으므로 쪽 자신의 글로 직접 지킨다 | `absence`의 `fail`, 조각이 모두 `site_chrome`인 `fail` |
 | entity-identity\|site | 쓸 수 없다 | 된다(이름만 보임) | 쓰지 않는다 | 홈 쪽 조각으로 본다 | 없음 |
 
 글이 없는 쪽(`empty_page`)은 어느 항목이든 코드가 `unknown`으로 바꾼다. 그런 쪽에는 `fail`도 `not_applicable`도 쓰지 않는다.
