@@ -242,6 +242,6 @@ node "<SKILL_DIR>/scripts/cli.mjs" compare --before "<이전 score_input>" --aft
 - [scoring.md](references/scoring.md): 점수 계산과 적용 조건. 사용자가 점수가 왜 그렇게 나왔는지 물을 때만 연다. 13번째 줄은 2,000자가 넘으므로 줄을 잘라 읽는 도구라면 그 줄을 나눠 읽는다.
 - [measurement.md](references/measurement.md): 전후 비교와 실제 검색 성과 자료의 경계. 11단계의 `compare` 결과를 설명할 때, 또는 사용자가 내보내기 파일이나 실제 결과 표를 물을 때 연다.
 - [ai-crawlers.md](references/ai-crawlers.md): 검색·AI 크롤러 robots.txt 토큰과 출처. 크롤러 허용 판정을 설명할 때, 또는 10단계에서 robots.txt 수정안을 쓸 때 연다.
-- [api.md](references/api.md): 수집 범위와 선택 API의 경계. 사용자가 수집 한도나 외부 API를 물을 때, 또는 [routing.md](references/routing.md)가 가리킬 때 연다.
+- [api.md](references/api.md): 수집 범위와 선택 API의 경계. 사용자가 수집 한도나 외부 API를 물을 때만 연다.
 - `references/runbooks/`: 사용자 계정이 필요한 일의 단계별 안내. 파일 이름은 `index.json`에 있다.
 - `bundle-manifest.json`, `source-lock.json`: 스크립트가 읽는 파일이다(채점 때 번들 확인, 설치 때 출처 확인). 지우거나 옮기지 않는다. 에이전트가 직접 열 필요는 없다.
