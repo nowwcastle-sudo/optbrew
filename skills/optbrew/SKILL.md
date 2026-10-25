@@ -1,6 +1,6 @@
 ---
 name: optbrew
-description: 웹사이트 주소를 받아 검색 유입, 네이버 노출, AI 답변 인용, 브랜드 사실 정확성, 전환을 감사하고 고칠 것을 냅니다. 동봉된 Node 스크립트가 페이지를 수집·렌더링·점검하고 에이전트가 내용을 판정해 HTML·Markdown 보고서를 만듭니다. 요청하면 로컬 소스 파일을 백업 후 고치고, 배포 뒤 다시 감사해 비교합니다. 'SEO 감사', '사이트 점검', '왜 네이버에 안 나와요', 'ChatGPT가 우리 회사를 인용하지 않아요' 같은 요청에 씁니다. 키워드 조사, 글 작성, 광고, 순위 추적에는 쓰지 않습니다. Use when a user gives a website URL and asks for an SEO, Naver Search Advisor, AEO/GEO/LLMO, AI-citation or site audit (robots.txt, sitemap, noindex, canonical, structured data, Core Web Vitals), or wants its fixes applied to local source files. Needs Node.js 22.4+ and network.
+description: 웹사이트 주소를 받아 검색 유입, 네이버 노출, AI 답변 인용, 브랜드 사실 정확성, 전환을 감사하고 고칠 것을 냅니다. 동봉된 Node 스크립트가 페이지를 수집·렌더링·점검하고 에이전트가 내용을 판정해 HTML·Markdown 보고서를 만듭니다. 요청하면 로컬 소스 파일을 백업 후 고치고, 배포 뒤 다시 감사해 비교합니다. 'SEO 감사', '사이트 점검', '왜 네이버에 안 나와요', '구글에 안 떠요', 'ChatGPT가 우리 회사를 인용하지 않아요' 같은 요청과 고친 뒤 다시 감사하는 요청에 씁니다. 키워드 조사, 글 작성, 광고, 순위 추적에는 쓰지 않습니다. Use when a user gives a website URL and asks for an SEO, Naver Search Advisor, AEO/GEO/LLMO, AI-citation or site audit (robots.txt, sitemap, noindex, canonical, structured data, Core Web Vitals), or wants its fixes applied to local source files. Needs Node.js 22.4+ and network.
 ---
 
 # optbrew
@@ -76,35 +76,7 @@ node "<SKILL_DIR>/scripts/preflight.mjs" --url "<주소>" --out "<OUT>" --source
 
 ## 4단계. 시작 질문을 한 번에 보낸다
 
-**먼저 읽는다**: 질문 목록을 만들기 전에 [intake.md](references/intake.md)의 「시작 질문 만들기」 절을 끝까지 읽는다. 질문 개수, 섞는 법, 만들지 않는 질문이 거기 있다. 이 단계에서 다른 참고 문서는 열지 않는다.
-
-한 메시지로 보낸다. 항목의 순서를 바꾸지 않는다. 항목마다 기본값을 적는다. 사용자가 처음부터 "간단히"라고 했으면(3단계에서 `--level brief`를 붙였으면) 「안내 수준」의 `(기본)`을 "간단히" 쪽에 붙인다. 아래 틀의 각 항목에는 이름(「안내 수준」, 「주소와 목표」, 「질문」, 「사실」, 「표본」, 「준비」)이 있다. 빠지는 항목이 있으면 남은 항목에 1부터 번호를 다시 붙인다.
-
-```
-감사를 시작하기 전에 한 번만 확인합니다. 번호마다 답하셔도 되고, 괜찮으면 '시작'만 답하셔도 됩니다. '시작'은 아래 기본값을 모두 받아들인다는 뜻입니다.
-
-1. 안내 수준: 단계별로 자세히 (기본) / 간단히
-2. 주소와 목표: <주소> / 목표: <목표 후보>
-3. 사람들이 찾을 질문 <개수>개 (틀린 것만 알려 주세요):
-   <번호. 질문 — 브랜드/일반>
-4. 사이트에서 읽은 사실 (틀린 것만 알려 주세요):
-   <종류: 값 (읽은 페이지)>
-5. 사이트맵에 <N>페이지가 있습니다: 표본 50페이지 (기본) / 상한을 올려 최대 200페이지 (robots·sitemap 요청도 함께 세므로 모든 페이지가 들어가지 않을 수 있습니다)
-6. 있으면 결과가 더 채워지는 것 (원하는 것의 말만 답하세요):
-   <improving 항목의 line을 한 줄씩>
-
-준비를 못 한 항목이 있어도 감사는 끝까지 갑니다. 빠진 칸은 보고서의 '남은 일'에 방법과 함께 적힙니다. 답을 받기 전에는 아무것도 실행하지 않습니다.
-```
-
-이 메시지가 이 턴의 마지막 메시지다. 보낸 뒤 진행 문장이나 요약을 쓰지 않고 턴을 끝낸다.
-
-- 「안내 수준」(틀의 1번): 안내 수준을 묻는다.
-- 「주소와 목표」(틀의 2번): 주소는 확인만 받는다. 목표는 사용자가 이미 말한 것이 기본이다. 없으면 "검색 유입, AI 답변 인용"을 기본으로 둔다. 고를 수 있는 목표는 검색 유입, 네이버 노출, AI 답변 인용, 브랜드 사실 정확성, 전환이다. 사용자의 말이 이 중 하나를 가리키면 그 목표 이름으로 보여 준다. 문의, 예약, 상담, 전화는 전환이다.
-- 「질문」(틀의 3번): `question_candidates_input`을 읽고 intake.md대로 질문을 만든다.
-- 「사실」(틀의 4번): `fact_candidates`를 `종류: 값 (읽은 페이지)`으로 보여 준다. 후보가 없으면 이 항목을 뺀다.
-- 「표본」(틀의 5번): `start.json`의 `max_urls_raise`가 `null`이 아닐 때만 넣는다. 사이트맵이 50을 넘거나 쪽수가 하한값일 때 그렇다. `null`이면 뺀다.
-- 「준비」(틀의 6번): `start_runbooks.improving`의 `line`을 고치지 않고 한 줄씩 그대로 넣는다. 항목이 없으면 뺀다.
-- 런북 본문은 이 메시지에 넣지 않는다. 사용자가 "키", "크롬", "내보내기"처럼 답할 때만 5단계에서 보여 준다.
+**반드시 먼저 읽는다**: [intake.md](references/intake.md)의 「시작 질문 보내기」 절을 끝까지 읽고, 그 틀대로 한 메시지를 보낸다. 틀, 항목마다 넣고 빼는 조건, 질문을 만드는 법이 거기 있다. 이 단계에서 다른 참고 문서는 열지 않는다. 이 메시지가 이 턴의 마지막 메시지다. 답을 받기 전에는 아무것도 실행하지 않는다.
 
 ## 5단계. 답을 처리한다
 
@@ -152,7 +124,7 @@ node "<SKILL_DIR>/scripts/preflight.mjs" --url "<주소>" --out "<OUT>" --source
 node "<SKILL_DIR>/scripts/run.mjs" --answers "<OUT>/intake-answers.json" --out "<OUT>"
 ```
 
-3. 종료 코드가 0이면 마지막 줄의 JSON에서 `status`를 읽는다. 이 JSON의 `judge_pages`, `reports`, `score_input`은 경로이거나 경로를 담은 값이다. 파일 이름을 짐작하지 말고 이 값에서 읽는다. `reports`는 `json`, `md`, `fixes`, `html` 경로를 담고, `queue_items`는 판정할 항목 수다. `lab_cwv`가 있으면 크롬으로 잰 참고 값이며 채점하지 않는다.
+3. 종료 코드가 0이면 마지막 줄의 JSON에서 `status`를 읽는다. 값은 `awaiting_judgments`와 `done` 둘 중 하나다. 이 JSON의 `judge_pages`, `reports`, `score_input`은 경로이거나 경로를 담은 값이다. 파일 이름을 짐작하지 말고 이 값에서 읽는다. `reports`는 `json`, `md`, `fixes`, `html` 경로를 담고, `queue_items`는 판정할 항목 수다. `lab_cwv`가 있으면 크롬으로 잰 참고 값이며 채점하지 않는다.
    - `awaiting_judgments`이면 8단계로 간다. 쪽별 판정 목록의 폴더는 `judge_pages`에, 쪽 수는 `pages`에 있다.
    - `done`이면 9단계로 간다.
    - 그 밖의 값이면 그 JSON의 `status`와 함께 한 줄로 알리고 멈춘다. 짐작해서 다음 단계로 가지 않는다.
@@ -203,21 +175,7 @@ node "<SKILL_DIR>/scripts/run.mjs" --answers "<OUT>/intake-answers.json" --out "
 
 ## 11단계. 다시 확인한다
 
-고친 파일은 사용자의 컴퓨터에만 있다. 사이트에 배포되기 전에는 다시 감사해도 사이트는 그대로다. 사용자가 배포했는지부터 묻는다.
-
-(a) 사용자가 배포했다고 답하면 이렇게 한다.
-1. 새 결과 폴더 `<OUT>-after`를 정한다. 이미 있으면 뒤에 `-2`, `-3`을 붙인다.
-2. 같은 `intake-answers.json`으로 7단계와 8단계를 한다. `--out`에만 새 폴더를 쓴다. 3단계 점검을 다시 하지 않고 `probe`도 그대로 둔다. 그 사이 키나 크롬을 준비했어도 바꾸지 않는다. 답 파일을 바꾸면 표본과 검사가 달라져 비교할 수 없게 된다.
-3. 이전 실행과 이후 실행의 `done` JSON에서 `score_input` 경로를 읽는다. 아래 명령에 넣는다.
-
-```
-node "<SKILL_DIR>/scripts/cli.mjs" compare --before "<이전 score_input>" --after "<이후 score_input>" --output "<OUT>-after/comparison.json"
-```
-
-4. 결과에서 같은 검사와 같은 표본일 때만 "해결됨"이라고 쓴다. 조건이 달라졌으면 `not_comparable`과 그 이유를 쓴다.
-5. 확인은 사이트에서 읽은 결과다. 색인, 유입, 인용이 좋아졌다는 증명은 아니라고 한 줄 덧붙인다. 사용자가 「해결됨」의 조건을 더 물을 때만 [evidence.md](references/evidence.md)를 연다.
-
-(b) 사용자가 아직 배포하지 않았다고 답하면 이렇게 말하고 멈춘다: "로컬 수정은 아직 확인되지 않았습니다. 사이트에 배포한 뒤 알려 주시면 다시 확인합니다."
+**반드시 먼저 읽는다**: [recheck.md](references/recheck.md)를 처음부터 끝까지 읽고 그대로 따른다. 배포했는지 묻는 법, 새 결과 폴더, `compare` 명령, 「해결됨」을 쓰는 조건이 거기 있다. 사용자가 배포 뒤 다시 감사해 비교하자고 할 때도 이 단계로 온다.
 
 ## 이어서 할 때
 
@@ -244,6 +202,7 @@ node "<SKILL_DIR>/scripts/cli.mjs" compare --before "<이전 score_input>" --aft
 | [routing.md](references/routing.md) | 10단계에서 수정안의 근거 가이드를 고를 때. 고른 가이드 하나만 연다 | 감사 중. `modules/` 아래 파일은 감사에서 쓰지 않는다 |
 | [policies.md](references/policies.md) | 10단계에서 수정안을 낼 때, 사용자가 게시·제출·예약·계정 변경을 말할 때 | 그 밖 |
 | [ai-crawlers.md](references/ai-crawlers.md) | 크롤러 허용 판정을 설명할 때, 10단계에서 robots.txt 수정안을 쓸 때 | 그 밖 |
+| [recheck.md](references/recheck.md) | 11단계(반드시) | 고친 것이 없고 비교를 묻지 않았을 때 |
 | [evidence.md](references/evidence.md) | 사용자가 증거나 「해결됨」의 조건을 물을 때 | 그 밖 |
 
 [scoring.md](references/scoring.md)와 [measurement.md](references/measurement.md)는 스크립트가 지키는 채점·비교 계약이다. 감사, 판정, 결과 설명 중에는 열지 않는다. 점수가 왜 그렇게 나왔는지는 보고서의 검사별 결과로 답한다. 사용자가 계산식, 또는 11단계 `not_comparable`의 조건 자체를 물을 때만 연다. 두 문서의 명령은 저장소 기준이라 `skills/optbrew/`가 `<SKILL_DIR>`이고, `docs/`, `tests/` 링크는 설치본에 없으므로 따라가지 않는다. scoring.md 13번째 줄은 2,000자가 넘으므로 줄을 잘라 읽는 도구라면 그 줄을 나눠 읽는다. 수집 한도를 물으면 intake.md의 「표본과 상한」으로 답한다.

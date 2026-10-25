@@ -176,7 +176,7 @@
     },
     {
       "path": "SKILL.md",
-      "sha256": "99c7ddaf5431544e3757cb21e50dcc99dd625257d6f846a405de3eb2061eee94"
+      "sha256": "eda201e3b0630aa5e4853ca854bc274299ea554d2076775dfbbeafa79560bd6a"
     },
     {
       "path": "THIRD_PARTY_NOTICES.md",
@@ -680,7 +680,7 @@
     },
     {
       "path": "references/intake.md",
-      "sha256": "3c2d46bf49cf27e6d9eb53fcc94997e3f3ea2783b91dca17fad5889f2afa2cfa"
+      "sha256": "d8bdd0d6e5713a8afac6be612a650bc5ff3864f259439f0b878fe13539b71528"
     },
     {
       "path": "references/judging.md",
@@ -709,6 +709,10 @@
     {
       "path": "references/profiles.json",
       "sha256": "71be1492fa8fc9c8321d0e9b511b2bb56097b4ce607c6ee02e2df537949b3ac7"
+    },
+    {
+      "path": "references/recheck.md",
+      "sha256": "f05e8831540cdf7a33e0d5420b5b0b0db9c9fd10dca133e89f660e172472c667"
     },
     {
       "path": "references/remediations.json",
@@ -1079,5 +1083,5 @@
       "sha256": "dca0bbd03fbf591c4aca6a568be76615eb48d69f7df0c634886f652b54f3f46d"
     }
   ],
-  "bundle_hash": "c6e27fa5bc3d494d1eca9e8e21c86cdfd65935ba15df647d283a15936dce7de2"
+  "bundle_hash": "8fe37912a9b1831b3a43cea311c34afc7a56c7a9aa764a26104c3826fd7e7e5c"
 }
