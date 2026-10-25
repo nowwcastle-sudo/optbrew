@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.3.2
+
+Fixes from a `skill-judge` review of the 0.3.1 skill (101/120). Each item was checked against the code first; only real problems were changed. No verdict, score or report output changes.
+
+- **SKILL.md no longer names release 0.2.0 in step 10.** The note about change records said "0.2.0 보고서는 …". The behavior is the same in this release (the report still reads no change record, `verification` stays `pending`, `backup_ref` is a file path), so the note now states it without a version.
+- **The `anthropic-api-key` runbook is removed.** It said the key turns on a feature where optbrew calls the Claude API directly, but no audit step and no `cli.mjs` command calls that adapter, and SKILL.md says the flow has no paid call. `api.md` now says so too. The guarded adapter and its tests stay. The `seranking` runbook stays: SKILL.md now says to open it only when the user asks for SE Ranking and approves.
+- **SKILL.md says when to read each reference.** `scoring.md`, `measurement.md`, `ai-crawlers.md` and `api.md` each get a one-line condition, and `bundle-manifest.json` and `source-lock.json` are marked as install files that an audit does not read. The two JSON files stay in the skill folder: `score.mjs` and the installer read them there.
+- **The progress-language rule is in one place.** It stood in three places (지킬 것, the borrowed caveman paragraph, 진행 문장의 언어); it now stands once under 진행 보고. The caveman source and change notice above that paragraph stays, because Apache-2.0 asks for a notice on a changed file.
+- **`references/report.md` and `api.md` break long paragraphs at sentence ends.** report.md had a 6,251-character line, and some read tools cut a line at 2,000 characters. The words are unchanged; only line breaks were added.
+
+### Versions
+
+Release 0.3.2, evaluation 0.5.0, audit protocol 0.3.0, contract schema 2.0.0. No evaluation source changed, so the evaluation hash is the same as 0.3.1, a managed 0.3.1 install updates in place, and a 0.3.1 output folder is still accepted.
+
 ## 0.3.1
 
 Fixes from a real 0.3.0 audit of a public Korean care-facility site in a Claude Code cloud session.

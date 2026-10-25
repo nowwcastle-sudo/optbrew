@@ -43,7 +43,7 @@ test('index ids match files', async () => {
   const files = (await readdir(dir)).filter(name => name.endsWith('.md')).map(name => name.slice(0, -3)).sort();
   assert.deepEqual(index.map(entry => entry.id).sort(), files);
   assert.equal(new Set(index.map(entry => entry.id)).size, index.length);
-  assert.deepEqual(files, ['anthropic-api-key', 'chrome-install', 'cwv-site-collection', 'google-api-key', 'gsc-export', 'key-set-claude-cloud',
+  assert.deepEqual(files, ['chrome-install', 'cwv-site-collection', 'google-api-key', 'gsc-export', 'key-set-claude-cloud',
     'key-set-codex', 'key-set-local', 'naver-searchadvisor-export', 'network-claude-cloud-custom', 'network-codex-approval', 'network-codex-config',
     'seranking']);
 });
@@ -172,7 +172,7 @@ test('each export runbook opens by naming its service and when to skip', () => {
 });
 
 test('runbooks reached only from another runbook never appear at start', () => {
-  const reached = ['network-codex-config', 'naver-searchadvisor-export', 'key-set-local', 'key-set-claude-cloud', 'key-set-codex', 'cwv-site-collection', 'anthropic-api-key', 'seranking'];
+  const reached = ['network-codex-config', 'naver-searchadvisor-export', 'key-set-local', 'key-set-claude-cloud', 'key-set-codex', 'cwv-site-collection', 'seranking'];
   const { improving } = startRunbooks(probe({ block_reason: 'codex_sandbox', google_key: false, chrome: { found: false, kind: null } }), { level: 'brief', skillRoot });
   assert.deepEqual(improving.filter(item => reached.includes(item.id)), []);
 });
