@@ -16,7 +16,7 @@ This checkout is version 0.3.2. A package name, local manifest, or generated ZIP
 
 The bundle includes five pinned source bundles plus seven selected marketing guides. The Naver source articles under `references/guide/` (55 original bodies) remain excluded; the index links to official pages and full offline article lookup is unavailable. The published notice must retain upstream MIT/ISC permission texts and modifications. Optbrew's own code uses MIT. These code licenses do not grant service subscriptions or API data rights.
 
-The direct Anthropic adapter keeps its text-only scope and four model IDs in [API boundaries](../skills/optbrew/references/api.md). No live paid result, search indexing, traffic change, or customer adoption is established by a passing package check. See [platform paths](platforms.md) for update mechanisms after release.
+The direct Anthropic adapter keeps its text-only scope and four model IDs in [API boundaries](contracts/api.md). No live paid result, search indexing, traffic change, or customer adoption is established by a passing package check. See [platform paths](platforms.md) for update mechanisms after release.
 
 ## Confirmation records
 

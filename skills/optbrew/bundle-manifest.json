@@ -176,7 +176,7 @@
     },
     {
       "path": "SKILL.md",
-      "sha256": "db72322620f305070643675cb620585d6e9d2e665f4c87cfb9d2a5b920685178"
+      "sha256": "4bdef1d73e732319642b2acd2fb9d529eaa712909f13a86020be6addf9f7a4de"
     },
     {
       "path": "THIRD_PARTY_NOTICES.md",
@@ -655,10 +655,6 @@
       "sha256": "43a1d3c7536257db171c60bb49140480987983ecfbb5c13283933ad9cf3c321c"
     },
     {
-      "path": "references/api.md",
-      "sha256": "a7e5badf0714bffae886b18298af973bd25f024ab0504b633b902be8f60f3e83"
-    },
-    {
       "path": "references/check-registry.json",
       "sha256": "b86870ee91e7c9c7573814c035b2c464b6c8685ef87009a953c3797f8301491d"
     },
@@ -672,7 +668,7 @@
     },
     {
       "path": "references/evidence.md",
-      "sha256": "e93c71724c8a0afdf949d1636b51106ba726b8663163a94229ea285fd304178d"
+      "sha256": "925c9cacde64ff9830c14a818c4ae68693052a97caa7179b0be7e8c1b85d0352"
     },
     {
       "path": "references/fixing.md",
@@ -719,12 +715,8 @@
       "sha256": "97ea1207007f2944c7530d6eb11e7af0580948f61670ac2e4653c0d2923ff9fc"
     },
     {
-      "path": "references/report.md",
-      "sha256": "5622b1ca141c95b0a2899fcd7365e954938672f61d0590a50527e7bd8e84783b"
-    },
-    {
       "path": "references/routing.md",
-      "sha256": "84e31cc1d954b5b2f711c56def5fb74d8cd3f929e3aefa83456a18772ccac77b"
+      "sha256": "60e619ce7557aad9d9d319e449cdf86e01bb0dbcafda83cb476d6a9ce8b8ba29"
     },
     {
       "path": "references/runbooks/chrome-install.md",
@@ -1087,5 +1079,5 @@
       "sha256": "dca0bbd03fbf591c4aca6a568be76615eb48d69f7df0c634886f652b54f3f46d"
     }
   ],
-  "bundle_hash": "e2de4eeb7ca0307c3f0a8ca4915632b24933e2cdb88e35575b868621e3eba367"
+  "bundle_hash": "80d7b11ba385d0fd771b0efed872e14facc9f020e6c5d6a30eb08b4af2bf69f5"
 }

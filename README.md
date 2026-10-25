@@ -161,12 +161,12 @@ Release 0.3.0 changes the evaluation version (0.5.0) and the audit protocol (0.3
 
 ## APIs and cost
 
-Nothing here requires a paid account, and the audit makes no paid call. An [SE Ranking](https://seranking.com/api.html) connection is optional: the agent opens its guide only when you ask for it, and a paid call needs your approval, a recorded budget and a stop condition first. A Claude subscription does not include API billing. The Google key above is your own, and the Google speed services it calls are free. Keys stay in your environment variables or the key file and never go into a report. Details: [API boundaries](skills/optbrew/references/api.md).
+Nothing here requires a paid account, and the audit makes no paid call. An [SE Ranking](https://seranking.com/api.html) connection is optional: the agent opens its guide only when you ask for it, and a paid call needs your approval, a recorded budget and a stop condition first. A Claude subscription does not include API billing. The Google key above is your own, and the Google speed services it calls are free. Keys stay in your environment variables or the key file and never go into a report. Details: [API boundaries](docs/contracts/api.md).
 
 ## Documentation
 
 - [Platform support](docs/platforms.md): install paths per agent, checkout commands, reinstall steps
-- [Scoring](skills/optbrew/references/scoring.md), [measurement](skills/optbrew/references/measurement.md) and [report evidence](skills/optbrew/references/report.md)
+- [Scoring](skills/optbrew/references/scoring.md), [measurement](skills/optbrew/references/measurement.md) and [report evidence](docs/contracts/report.md)
 - [Changelog](CHANGELOG.md) and [release process](docs/release.md)
 
 ## Contributing

@@ -13,7 +13,7 @@ import { versions } from '../skills/optbrew/scripts/core/config.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const cli = path.join(root, 'bin/optbrew.mjs');
-const docs = ['README.md', 'README.ko.md', 'docs/platforms.md', 'docs/release.md', 'skills/optbrew/references/api.md'];
+const docs = ['README.md', 'README.ko.md', 'docs/platforms.md', 'docs/release.md', 'docs/contracts/api.md'];
 
 function run(args, cwd) {
   const result = spawnSync(process.execPath, [cli, ...args], { cwd, encoding: 'utf8', env: { ...process.env, HOME: path.join(cwd, 'unused-home') } });
