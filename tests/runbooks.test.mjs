@@ -171,7 +171,7 @@ test('each export runbook opens by naming its service and when to skip', () => {
     }
 });
 
-test('runbooks reached only from another runbook never appear at start', () => {
+test('runbooks reached only from another runbook or a user request never appear at start', () => {
   const reached = ['network-codex-config', 'naver-searchadvisor-export', 'key-set-local', 'key-set-claude-cloud', 'key-set-codex', 'cwv-site-collection', 'seranking'];
   const { improving } = startRunbooks(probe({ block_reason: 'codex_sandbox', google_key: false, chrome: { found: false, kind: null } }), { level: 'brief', skillRoot });
   assert.deepEqual(improving.filter(item => reached.includes(item.id)), []);

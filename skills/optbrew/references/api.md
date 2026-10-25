@@ -35,8 +35,7 @@ Known limit: a page can still open a WebSocket or preconnect to a host the rules
 No audit step and no `cli.mjs` command calls the direct Anthropic Messages adapter: the audit makes no paid call, and the adapter is a guarded building block kept with its tests.
 The adapter accepts only text-only `{model,max_tokens,messages}` requests.
 Each message has only `{role,content}` with string content.
-It accepts these exact model IDs:
-`claude-fable-5-1`, `claude-opus-5-5`, `claude-sonnet-5-5`, `claude-haiku-5-5`.
+It accepts these exact model IDs: `claude-fable-5-1`, `claude-opus-5-5`, `claude-sonnet-5-5`, `claude-haiku-5-5`.
 Anthropic's [model overview](https://platform.claude.com/docs/en/models/overview), checked 2026-10-14, lists a 1,000,000-token context window and 128,000 maximum output tokens for each.
 Every attempt must reserve at least `1,000,000 + request.max_tokens` in the `tokens` unit.
 The adapter requires exactly one token upper bound, a matching ledger budget and approval reference, and an `ANTHROPIC_API_KEY` environment variable.
@@ -45,8 +44,7 @@ The official [token-counting guide](https://platform.claude.com/docs/en/build-wi
 
 The reserved worst-case token bound is not an estimate of actual billing.
 Record estimated spend, its price source/date and the user-approved stop condition separately in the cost decision.
-`CostLedger` keeps credits, tokens, search calls and minor currency units separate;
-`currency_minor` requires a currency code.
+`CostLedger` keeps credits, tokens, search calls and minor currency units separate; `currency_minor` requires a currency code.
 This direct adapter enforces only its verified token boundary.
 Tools, paid search and other API shapes remain unavailable in direct mode until their hard bounds are verified.
 They may be routed through separately approved host capabilities or other provider data with `cost_enforcement: host_policy` explicitly reported when code cannot lock spending.
@@ -58,25 +56,15 @@ Successful responses are redacted and stored beside the ledger under `evidence/p
 
 Primary syntax checked 2026-10-14: [Anthropic Messages API](https://docs.anthropic.com/en/api/messages), [Anthropic web search tool](https://platform.claude.com/docs/en/agents-and-tools/tool-use/web-search-tool), [Node HTTPS request](https://nodejs.org/api/https.html#httpsrequesturl-options-callback), [Node DNS lookup](https://nodejs.org/api/dns.html#dnslookuphostname-options-callback). These describe API/CLI mechanics, not a price approval or evidence of an actual paid call.
 
-## Getting an Anthropic API key
+## The adapter's key and paid attempts
 
-An Anthropic Console API key is separate from a Claude web or Claude Code subscription. Follow the official [API key guide](https://platform.claude.com/docs/en/get-api-key): open the Console, go to **Settings → API keys**, and create a key with the intended scope. Put it in the local `ANTHROPIC_API_KEY` environment variable. These examples contain placeholders only; replace the placeholder in your own shell, never in a report, issue, or shared command log.
-
-```bash
-export ANTHROPIC_API_KEY="<YOUR_ANTHROPIC_API_KEY>"
-```
-
-```powershell
-$env:ANTHROPIC_API_KEY = '<YOUR_ANTHROPIC_API_KEY>'
-```
-
-The current key guide notes that a key spanning multiple Anthropic workspaces can require `anthropic-workspace-id`. The direct adapter sends `x-api-key`, `anthropic-version`, and JSON content headers; it does **not** set a workspace ID header. Do not promise this direct path for a key requiring that header. Use a compatible key or a separately approved host capability. The env-var examples configure a shell only; they do not initiate a paid request or confirm account access.
+No audit step uses an Anthropic API key, so the audit never asks for one. Someone who calls the guarded adapter from their own code creates the key with the official [API key guide](https://platform.claude.com/docs/en/get-api-key) and puts it in the `ANTHROPIC_API_KEY` environment variable. The adapter does not set the `anthropic-workspace-id` header that a key spanning several workspaces can require.
 
 Before the first paid attempt, record a current pricing source/date, estimated spend, a user-approved limit or stop condition, and the separate token reservation described above. Unknown price is not zero price. A host subscription is not an API allowance. The ledger's reserved token capacity is intentionally conservative and differs from provider-billed usage. Provider timeout or uncertain usage remains `unknown`; reported usage over a reservation remains an overrun and blocks further spending.
 
 ## SE Ranking is a separate capability
 
-SE Ranking has a separate [API Dashboard and account plan](https://seranking.com/api.html). Its [MCP guide](https://seranking.com/api/integrations/mcp) documents a Streamable HTTP endpoint at `https://api.seranking.com/mcp`, OAuth 2.1 and an explicit `X-Api-Key` option where supported. Available tools and credits depend on the subscribed account. An Anthropic key neither authenticates SE Ranking nor pays its credits. A connected host capability must disclose its cost enforcement and tool access before use; the direct Anthropic token guard does not cover SE Ranking.
+SE Ranking has a separate [API Dashboard and account plan](https://seranking.com/api.html). Its [MCP guide](https://seranking.com/api/integrations/mcp) documents a Streamable HTTP endpoint at `https://api.seranking.com/mcp`, OAuth 2.1 and an explicit `X-Api-Key` option where supported. Available tools and credits depend on the subscribed account. A connected host capability must disclose its cost enforcement and tool access before use; the direct Anthropic token guard does not cover SE Ranking.
 
 The installed Codex CLI's `codex mcp add --help` accepts `NAME --url URL` for Streamable HTTP and an optional bearer-token env var. It does not expose a generic header option in the checked version. For the SE Ranking OAuth route, registration syntax is:
 
