@@ -1,5 +1,18 @@
 # Changelog
 
+## 0.3.4
+
+Fixes from the 0.3.3 re-audit of the same public Korean care-facility site in a Claude Code cloud session (2026-10-25). The site's own finding (a past event still written as upcoming) is a site content fix and is not part of this release. No verdict or score changes.
+
+- **Judging goes one page at a time through a command.** The auditor read three or four page files at once and then wrote a judgment file per page, against the "one page at a time" rule. `cli.mjs judge next --out <OUT>` now hands over the first queued page whose judgment file is not written yet, as one JSON line (`page`, `write_to`, `position`, `total`), and hands over the same page until that file exists; it ends with `all_judged`. Before it hands over a page it checks every judgment file already written for stand-ins, so a placeholder stops the run at that page and not at the end. SKILL.md step 8, `judging.md` and resuming use it instead of opening the page files.
+- **A refused model verdict has its own row in the report.** A model verdict that code turns into unknown (the queue covered too little of the page, the page shows a date or operator, only site chrome was cited, the page is empty) was only counted under 실행 조건. It now has a row in the model judgment table of `report.md`, with the reason (`알 수 없음 (받아들이지 않음: …)`) and the page evidence.
+- **The cloud key runbook says the key reaches only a new session.** A key saved in the cloud environment's variables is read by sessions started after the save, never by the running one, and a key in a local optbrew install does not reach the cloud. `key-set-claude-cloud` says so, and `prepare.md` ends that runbook with "start a new session, or say 시작 to go on without the key"; on 시작 the audit goes on without the key and does not re-run the start check for the key alone.
+- **A tool counts in step 2 whatever form its name takes.** The source-tool table listed `graft` only as MCP tools; a session that had only a `graft` skill had no rule. The table now lists the skill too, and says the form is not a condition: a name in the table counts as a skill, an MCP tool or a plugin, with a plugin prefix (`personal:graft`) matched after the colon.
+
+### Versions
+
+Release 0.3.4, evaluation 0.5.0, audit protocol 0.3.0, contract schema 2.0.0. No evaluation source changed, so the evaluation hash is the same as 0.3.3, a managed 0.3.3 install updates in place, and a 0.3.3 output folder is still accepted.
+
 ## 0.3.3
 
 Fixes from repeated `skill-judge` reviews of the 0.3.2 skill (median of three reviewers: 96/120 before; 105 to 108 after, 106 on the final text). Each finding was checked against the code before a change. No verdict, score or report output changes.

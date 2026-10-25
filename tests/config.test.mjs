@@ -9,7 +9,7 @@ test('limits hold the collection bounds', () => {
 });
 
 test('versions hold today\'s release, evaluation, protocol and schema versions', () => {
-  assert.deepEqual(versions(), { release: '0.3.3', evaluation: '0.5.0', protocol: '0.3.0', contract_schema: '2.0.0',
+  assert.deepEqual(versions(), { release: '0.3.4', evaluation: '0.5.0', protocol: '0.3.0', contract_schema: '2.0.0',
     install_record_schema: '1.0.0', bundle_manifest_schema: '1.0.0', evidence_record: '1' });
 });
 

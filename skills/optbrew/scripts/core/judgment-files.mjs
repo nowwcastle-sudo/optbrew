@@ -29,6 +29,22 @@ async function readList(file) {
 }
 
 /**
+ * The one page file to judge next: the first queued page, in number order, whose judgments file is not written yet. Each page that
+ * comes before it is checked as `readJudgments` checks it, so a stand-in stops here and not at the end. The page is handed over whole,
+ * one at a time, so the agent judges and writes a page before it can read the next one. `null` when every queued page has its file.
+ */
+export async function nextJudgePage({ queueDir, judgmentsDir }) {
+  const listed = await readdir(queueDir).catch(() => { throw new Error(`There is no judge queue at ${queueDir}; run the audit (step 7) first.`); });
+  const queued = listed.filter(name => PAGE_FILE.test(name)).sort();
+  const written = new Set((await readdir(judgmentsDir).catch(() => [])).filter(name => PAGE_FILE.test(name)));
+  const next = queued.find(name => !written.has(name));
+  for (const name of queued.filter(name => written.has(name))) await readList(path.join(judgmentsDir, name));
+  if (!next) return { status: 'all_judged', total: queued.length };
+  const page = JSON.parse(await readFile(path.join(queueDir, next), 'utf8'));
+  return { status: 'next', file: next, position: queued.indexOf(next) + 1, total: queued.length, write_to: path.join(judgmentsDir, next), page };
+}
+
+/**
  * The model's judgments from one file, or from a folder of page files (`p001.json` …, one per page file of the queue in
  * `queueDir`). A folder must hold a file for every queued page, so a page left out stops the run before anything is merged.
  */
