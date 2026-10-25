@@ -19,7 +19,7 @@ The audit then runs in one go. It writes `report.html`, `report.md` and `report.
 - **Your export files.** If you give the path of a Search Console zip or a Naver Search Advisor text file, the audit reads that file from disk. It sends nothing from it.
 - **Local scripts.** The skill tells Claude to run the Node.js and Python scripts bundled in this folder for collection, scoring, comparison and reports. They need Node.js 22 or later; Python 3.10 or later is optional.
 - **Local changes.** It edits only local files you approve, after keeping a backup copy. It does not deploy, publish, or submit a site to a search engine.
-- **Optional paid APIs.** Nothing requires an account. If you choose to use the Anthropic API, the bundled adapter reads your `ANTHROPIC_API_KEY` environment variable and sends it only to `api.anthropic.com`, and only after you approve a budget and a stop condition. The SE Ranking guides describe SE Ranking's own API and MCP with your own SE Ranking key, sent only to SE Ranking. Keys never go into a report.
+- **Optional paid APIs.** Nothing requires an account, and no audit step makes a paid call. The bundle keeps a guarded Anthropic API adapter with its tests, but no step or command calls it. The SE Ranking guides describe SE Ranking's own API and MCP with your own SE Ranking key, sent only to SE Ranking. Keys never go into a report.
 - **No other network use.** The plugin has no hooks, MCP servers or background tasks, and it does not download or run code at install time.
 
 ## License

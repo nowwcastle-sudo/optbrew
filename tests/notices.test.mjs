@@ -44,3 +44,22 @@ test('the caveman paragraph sits in one SKILL.md section, under its source, lice
   assert.equal(title, '진행 보고');
   for (const part of ['Julius Brussee', 'Apache-2.0', '변경함']) assert.ok(lead.includes(part), `${part} is missing above the borrowed paragraph`);
 });
+
+test('the agent-read docs keep every line under 2,000 characters, except the evaluation sources', async () => {
+  const { evaluationSourcePaths } = await import('../skills/optbrew/scripts/core/bundle.mjs');
+  const { readdir } = await import('node:fs/promises');
+  const names = ['SKILL.md', ...(await readdir(path.join(root, 'skills/optbrew/references'))).filter(name => name.endsWith('.md')).map(name => `references/${name}`)];
+  for (const name of names.filter(name => !evaluationSourcePaths.includes(name))) {
+    const long = (await read(`skills/optbrew/${name}`)).split('\n').findIndex(line => line.length > 2000);
+    assert.equal(long, -1, `${name}:${long + 1} is longer than 2,000 characters; some read tools cut it there`);
+  }
+});
+
+test('SKILL.md states the progress-language rule once, under 진행 보고, and names no release number', async () => {
+  const skill = await read('skills/optbrew/SKILL.md');
+  const rule = '영어 문장을 쓰지 않는다';
+  assert.equal(skill.split(rule).length - 1, 1, 'the language rule stands in one place');
+  assert.ok(skill.split(/^## /m).find(section => section.startsWith('진행 보고')).includes(rule));
+  // A release number in the steps goes stale on the next release (0.3.1 still said 0.2.0).
+  assert.doesNotMatch(skill, /\b\d+\.\d+\.\d+\b/);
+});

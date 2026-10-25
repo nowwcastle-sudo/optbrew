@@ -1,13 +1,13 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "optbrew",
-  "version": "0.3.1",
+  "version": "0.3.2",
   "description": "Pinned search audit and improvement skill bundle",
   "license": "MIT",
   "extensions": {
     "com.openai": {
       "skills": ["./skills/optbrew"],
-      "release_version": "0.3.1"
+      "release_version": "0.3.2"
     }
   }
 }

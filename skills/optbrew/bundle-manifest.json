@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0.0",
-  "release_version": "0.3.1",
+  "release_version": "0.3.2",
   "evaluation_version": "0.5.0",
   "protocol_version": "0.3.0",
   "evaluation_sources": [
@@ -176,7 +176,7 @@
     },
     {
       "path": "SKILL.md",
-      "sha256": "94e6b6753f4882a1e6d7da426f6cf0223e9a5ba47fb0117b3e1b76102617c2f0"
+      "sha256": "ed5b8434bf9d9459d4f8452127d3e4fa931638849e1b13eb557c0b67c2e7d652"
     },
     {
       "path": "THIRD_PARTY_NOTICES.md",
@@ -656,7 +656,7 @@
     },
     {
       "path": "references/api.md",
-      "sha256": "6deb2345ce7fce0f8e25fc7327b45ab246134389766b4a541aa1ac668ff543ae"
+      "sha256": "a7e5badf0714bffae886b18298af973bd25f024ab0504b633b902be8f60f3e83"
     },
     {
       "path": "references/check-registry.json",
@@ -712,15 +712,11 @@
     },
     {
       "path": "references/report.md",
-      "sha256": "42d7a35d5bfb1a799af8d0bfe46606f3d59e89ce143b5a130e2e2ef1890280cb"
+      "sha256": "5622b1ca141c95b0a2899fcd7365e954938672f61d0590a50527e7bd8e84783b"
     },
     {
       "path": "references/routing.md",
-      "sha256": "f7b08e5e89a033246f7ba336203110c48ecafea99f42a7685a6cd10592a802e3"
-    },
-    {
-      "path": "references/runbooks/anthropic-api-key.md",
-      "sha256": "1661c15103044e9c953bd85934ab7ac315e0351500da7185b63db5a242c18e7e"
+      "sha256": "84e31cc1d954b5b2f711c56def5fb74d8cd3f929e3aefa83456a18772ccac77b"
     },
     {
       "path": "references/runbooks/chrome-install.md",
@@ -740,7 +736,7 @@
     },
     {
       "path": "references/runbooks/index.json",
-      "sha256": "cdc9b2cc9524a9f9a42e1b3aeb17d91fcca00c7c61a66f9f540d53123cb83bae"
+      "sha256": "37fc8753696e00df9a9e79a6c8536385faec4630924393e860a9e669d16e77a5"
     },
     {
       "path": "references/runbooks/key-set-claude-cloud.md",
@@ -772,7 +768,7 @@
     },
     {
       "path": "references/runbooks/seranking.md",
-      "sha256": "1dc9c0a969eecf8abd099c95437f943d1b32ccea53962933c6f245f3ed2f5868"
+      "sha256": "431ba3715a4640cbad409f481e318579ce81581bfbaec4f8de9327afd9a72885"
     },
     {
       "path": "references/schemas/contract.schema.json",
@@ -788,7 +784,7 @@
     },
     {
       "path": "references/versions.json",
-      "sha256": "78d914bc2f1c6aef0556985a11d4bd6e180e6bbc4ff23bf7cec3c8bf93ab7e52"
+      "sha256": "569c61a5448ce4b8bda6ab1a9f00ab85f5ac4ee02f8d284afb283b2c06b036d7"
     },
     {
       "path": "scripts/adapters/anthropic.mjs",
@@ -1083,5 +1079,5 @@
       "sha256": "dca0bbd03fbf591c4aca6a568be76615eb48d69f7df0c634886f652b54f3f46d"
     }
   ],
-  "bundle_hash": "15fc3fa9d49c927037481eb3b88d1a6ed21a058fab4ae3b375eccc998f306c6b"
+  "bundle_hash": "ff4903f7c1ecb1c78424ef0ad4352d2aa162f862cafefd1c03bb1fadd0d1d4c6"
 }
