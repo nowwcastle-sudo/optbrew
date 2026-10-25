@@ -213,6 +213,7 @@ function absenceBasisCounts(verified) {
   for (const row of verified.model_judgments) if (row.phase === phase && row.basis) counts[row.sentence_basis ?? row.basis]++;
   return counts;
 }
+const NOT_ACCEPTED_LABEL = '판정은 모델, 코드가 받아들이지 않아 알 수 없음';
 const NOT_ACCEPTED_REASONS = { queue_coverage: '조각이 페이지를 충분히 덮지 못함', visible: '페이지에 날짜나 운영 주체가 보임', chrome: '인용한 조각이 모두 사이트 공통 글', empty_page: '페이지에 글이 없음' };
 /** The model verdicts of the latest phase that rested on absence and were turned into unknown by the code, by reason. */
 function notAcceptedCounts(input) {
@@ -335,7 +336,18 @@ function tableRows(composed, verified) {
     actual_outcomes: verified.outcome_rows.map(cells => cells.map(outcomeCell)),
     remaining_work: composed.follow_ups.map(({ text_ko: x }) => [x.problem, x.reason, x.required_input_or_authority, x.next_action, x.reobserve_when]),
     model_judgments: composed.conditions.model_judgments.map(x => [x.phase, `${x.family_id} ${x.unit_key}`, wordFor('state', x.state) + (x.identity_basis ? ` (${wordFor('identity-basis', x.identity_basis)})` : ''),
-      `${x.evidence_ref} 바이트 ${x.evidence_span.map(span => `${span.start}–${span.end}`).join(', ')}`, x.label]) };
+      `${x.evidence_ref} 바이트 ${x.evidence_span.map(span => `${span.start}–${span.end}`).join(', ')}`, x.label]).concat(notAcceptedRows(verified)) };
+}
+
+/**
+ * The model verdicts that code turned into unknown, one row each, so a reader finds the unit in the same table as the accepted ones.
+ * Such a verdict keeps no span (the code did not accept what it cited), so the evidence cell names the page evidence only.
+ */
+function notAcceptedRows(verified) {
+  return [['baseline', verified.baseline.input], ['after', verified.after?.input]].flatMap(([phase, input]) => (input?.observations ?? [])
+    .filter(obs => obs.evaluator_type === 'host_model' && obs.state === 'unknown' && NOT_ACCEPTED_REASONS[obs.measurement?.not_accepted])
+    .map(obs => [phase, `${obs.family_id} ${obs.unit_key}`, `${wordFor('state', 'unknown')} (받아들이지 않음: ${NOT_ACCEPTED_REASONS[obs.measurement.not_accepted]})`,
+      obs.evidence_ref, NOT_ACCEPTED_LABEL]));
 }
 
 /** The run conditions as label and value pairs, the one list both formats print. */

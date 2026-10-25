@@ -1142,6 +1142,8 @@ test('replay re-derives the visible-operator gate: a forged absence fail on a pa
     forge(run, list => list.push(refused));
     const report = buildReport(run.scenario.packet);
     assert.ok(report.json.composed.conditions.lines.some(x => x.label === '페이지에 없다는 판정 중 받아들이지 않은 것' && x.value === '페이지에 날짜나 운영 주체가 보임 1건'));
+    assert.ok(report.markdown.includes(`| baseline | source-transparency ${unit_key.replaceAll('|', '\\|')} | 알 수 없음 (받아들이지 않음: 페이지에 날짜나 운영 주체가 보임) |`),
+      'the refused verdict has its own row in the model judgment table, not only a count (re-audit 2026-10-25)');
     forge(run, list => list.pop());
     const forged = { ...refused, state: 'fail', q: 0, reason: '운영 주체가 보이지 않는다', measurement: { basis: 'absence' }, evidence_span: [{ evidence_sha256: span.evidence_sha256, start: span.start, end: span.end }] };
     forge(run, list => list.push(forged));

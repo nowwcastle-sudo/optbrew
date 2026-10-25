@@ -8,10 +8,12 @@
 
 | 이름 | 어디서 보이는가 | 쓰임 |
 |---|---|---|
-| `graft` | MCP 도구 `graft_find_code`, `graft_find_all`, `graft_trace_calls`, `graft_file_api`, `graft_repo_map` | 기호가 정의된 파일·줄 찾기, 누가 부르는지 따라가기, 파일 하나의 전체 목록 보기 |
+| `graft` | MCP 도구 `graft_find_code`, `graft_find_all`, `graft_trace_calls`, `graft_file_api`, `graft_repo_map`, 또는 스킬 `graft` | 기호가 정의된 파일·줄 찾기, 누가 부르는지 따라가기, 파일 하나의 전체 목록 보기 |
 | `understand-anything` | 스킬 `understand`, `understand-chat`, `understand-diff` | 소스 폴더를 지식 그래프로 만들고 질문으로 구조를 묻기 |
 | `graphify` | 스킬 또는 명령 이름 | 소스 폴더를 그래프로 만들어 위치와 연결을 묻는 도구로 알려진 이름. 이 저장소는 동작을 확인하지 않았다. 도구의 자체 안내를 먼저 읽는다 |
 | `rea` | MCP 도구 `inspect_web_page`, `analyze_web_bundle`, `recover_javascript_sources`, `trace_web_source_location` | 소스 폴더가 없고 배포된 쪽·번들만 있을 때, 번들에서 원래 소스 위치를 되짚기 |
+
+「어디서 보이는가」는 흔히 보이는 형태다. 형태는 조건이 아니다. 표의 이름과 같은 이름이 스킬, MCP, 플러그인 중 어느 형태로든 보이면 그 도구가 있는 것으로 센다(예: MCP 도구 없이 스킬 `graft`만 보여도 `graft`를 센다). 스킬 이름 앞에 플러그인 이름이 붙어 있으면(`personal:graft`) 콜론 뒤의 이름으로 맞춘다. 셀 때 그 도구를 실행해 보지 않는다. 10단계에서 써 보니 질의를 할 수 없으면 아래 「쓰는 법」 5번으로 간다.
 
 목록에 없어도 "소스를 색인해 위치와 호출 관계를 묻게 해 주는 도구"라면 같은 방식으로 쓸 수 있다. 이름을 `source_tools`에 그대로 적는다.
 

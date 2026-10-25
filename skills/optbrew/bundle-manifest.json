@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0.0",
-  "release_version": "0.3.3",
+  "release_version": "0.3.4",
   "evaluation_version": "0.5.0",
   "protocol_version": "0.3.0",
   "evaluation_sources": [
@@ -176,7 +176,7 @@
     },
     {
       "path": "SKILL.md",
-      "sha256": "9106ed29603d717cd114f4a5eec32e1f74481b250ffba0f5fd4dc59f7e3babef"
+      "sha256": "1099eb6ef566e73b8870bac6af0d5fda944e1bc206efa631402ad748ab34e84b"
     },
     {
       "path": "THIRD_PARTY_NOTICES.md",
@@ -684,7 +684,7 @@
     },
     {
       "path": "references/judging.md",
-      "sha256": "b2dbdcb3dedae7b704c4c1aed9945038a52b70deaf4c44dace44b8ce6aec3c77"
+      "sha256": "f25a8b2b6b658547927ed358d62f203898e25732d2e5abbb230bd4a03c74281f"
     },
     {
       "path": "references/limits.json",
@@ -704,7 +704,7 @@
     },
     {
       "path": "references/prepare.md",
-      "sha256": "47ccc05f42d4d3411e68364214675905ed1812b8166cd3b92db8da174a1feffe"
+      "sha256": "5a560d9d24fa0f7301baaa789c2f7af6cc13d2fa84556bd68c1a183794c7cd64"
     },
     {
       "path": "references/profiles.json",
@@ -744,7 +744,7 @@
     },
     {
       "path": "references/runbooks/key-set-claude-cloud.md",
-      "sha256": "7d1c852dcd3f3ad382cc7792872ddd193d4fb906c8820b49281c6596b9423d75"
+      "sha256": "cb2b0d0a281dcd0ce30b850b1a474a3dacf9c3f5cc8120c6cc23857bfe937621"
     },
     {
       "path": "references/runbooks/key-set-codex.md",
@@ -784,11 +784,11 @@
     },
     {
       "path": "references/source-analysis.md",
-      "sha256": "7bb94d8d4ef1a711be91c49ccfec15570c95ab857e37a2a3d91f6590d2e09c7f"
+      "sha256": "3041994e65f327d3f7a448ad09cc2b10eb7dcf263a2a1e30f8654e3621fa9810"
     },
     {
       "path": "references/versions.json",
-      "sha256": "e271493fa8f18856c0fecd5abbf9499031edf24fdcd29414d9332a046a107725"
+      "sha256": "56b16712514ea0b7335614af64f23f3d63094cd98cc9a5e98d6119dc58f30832"
     },
     {
       "path": "scripts/adapters/anthropic.mjs",
@@ -804,7 +804,7 @@
     },
     {
       "path": "scripts/cli.mjs",
-      "sha256": "ff811a769b8d16d226147656224b7610568676b3c9220f2605ebfd96fdb26c12"
+      "sha256": "ad74f383f31eaf822e0093dc9db9f9282888b1f5ff1fc1caf49ca5fa26d86557"
     },
     {
       "path": "scripts/core/bootstrap.mjs",
@@ -972,7 +972,7 @@
     },
     {
       "path": "scripts/core/judgment-files.mjs",
-      "sha256": "4e94034414d54fce1b39b21cd5b9ead45b4e4b3d826261445d31cedc4986b6db"
+      "sha256": "598368bf0cc248fac5d1ef2d91914556381d88d7d515c42b2606f19ad97a564c"
     },
     {
       "path": "scripts/core/judgments.mjs",
@@ -1020,7 +1020,7 @@
     },
     {
       "path": "scripts/core/report-compose.mjs",
-      "sha256": "c95dd6912415cef3ca685d22702a2edd0fd5b653cfbfde123eb5dde4ea422f77"
+      "sha256": "67d9ffe1751e68ef94ec76731c12e219fa37535d20f97e39452b77f380a28e15"
     },
     {
       "path": "scripts/core/report-fixes.mjs",
@@ -1083,5 +1083,5 @@
       "sha256": "dca0bbd03fbf591c4aca6a568be76615eb48d69f7df0c634886f652b54f3f46d"
     }
   ],
-  "bundle_hash": "f34b4c4594bede91172a05f2461e97dc30bbac9959dd34ae92367057c95189ae"
+  "bundle_hash": "01daa6b8973c95f0269fdc364fb70cf4cdc361860fcedc29042ce7acb202ef27"
 }

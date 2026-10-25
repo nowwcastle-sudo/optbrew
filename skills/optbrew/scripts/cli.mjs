@@ -10,9 +10,11 @@ import { htmlReportWriter } from './core/report-page.mjs';
 import { MigrationRequired } from './core/migration.mjs';
 import { runbookText } from './core/runbooks.mjs';
 import { finishChange, startChange } from './core/changes.mjs';
+import { nextJudgePage } from './core/judgment-files.mjs';
+import { QUEUE_PAGES_DIR } from './core/stages.mjs';
 
 const SKILL_ROOT = path.resolve(fileURLToPath(new URL('..', import.meta.url)));
-const USAGE = 'usage: cli.mjs score --input <file> --output <file> | compare --before <file> --after <file> --output <file> | report --input <packet.json> --output-dir <directory> | runbook --ids <id,id> --level beginner|brief | change start --out <directory> --root <source directory> --path <file> --finding <id> [--finding <id> ...] | change finish --out <directory> --path <file> [--tool <name> ...] [--query <text> ...] [--self-analysis]';
+const USAGE = 'usage: cli.mjs score --input <file> --output <file> | compare --before <file> --after <file> --output <file> | report --input <packet.json> --output-dir <directory> | runbook --ids <id,id> --level beginner|brief | change start --out <directory> --root <source directory> --path <file> --finding <id> [--finding <id> ...] | change finish --out <directory> --path <file> [--tool <name> ...] [--query <text> ...] [--self-analysis] | judge next --out <directory>';
 
 const text = { type: 'string' };
 const texts = { type: 'string', multiple: true };
@@ -56,7 +58,7 @@ const printed = async work => {
 
 /**
  * Every subcommand: the options it takes (each must be given, once unless it repeats) and what it runs. A command is the first word
- * of the arguments, or the first two for `change`.
+ * of the arguments, or the first two for `change` and `judge`.
  */
 const COMMANDS = {
   score: { options: { input: text, output: text }, required: ['input', 'output'],
@@ -69,6 +71,8 @@ const COMMANDS = {
     run: v => printed(startChange({ out: v.out, root: v.root, file: v.path, findings: v.finding })) },
   'change finish': { options: { out: text, path: text, tool: texts, query: texts, 'self-analysis': { type: 'boolean' } }, required: ['out', 'path'],
     run: v => printed(finishChange({ out: v.out, file: v.path, tools: v.tool, queries: v.query, selfAnalysis: v['self-analysis'] })) },
+  'judge next': { options: { out: text }, required: ['out'],
+    run: v => printed(nextJudgePage({ queueDir: path.resolve(v.out, QUEUE_PAGES_DIR), judgmentsDir: path.resolve(v.out, 'judgments') })) },
 };
 
 /** The option values of a command, or the usage line: an unknown option, a stray word, a missing or empty value and a repeated single option are all refused. */
@@ -89,7 +93,7 @@ function parseOptions(args, { options, required }) {
 
 /** Local calculation CLI. */
 export async function runCli(argv = process.argv.slice(2)) {
-  const name = argv[0] === 'change' ? `change ${argv[1]}` : argv[0];
+  const name = ['change', 'judge'].includes(argv[0]) ? `${argv[0]} ${argv[1]}` : argv[0];
   if (!Object.hasOwn(COMMANDS, name)) throw new Error(USAGE);
   return COMMANDS[name].run(parseOptions(argv.slice(name.split(' ').length), COMMANDS[name]));
 }

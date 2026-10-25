@@ -1,7 +1,7 @@
 {
   "name": "optbrew",
   "displayName": "optbrew",
-  "version": "0.3.3",
+  "version": "0.3.4",
   "description": "Audit a site for Google, Naver and AI answer engines, fix the local files you approve, re-check under the same conditions and write a scored report",
   "author": {
     "name": "nowwcastle-sudo",
