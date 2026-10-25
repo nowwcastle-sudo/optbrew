@@ -1,5 +1,23 @@
 # Changelog
 
+## 0.3.3
+
+Fixes from repeated `skill-judge` reviews of the 0.3.2 skill (median of three reviewers: 96/120 before, 108/120 after). Each finding was checked against the code before a change. No verdict, score or report output changes.
+
+- **Preflight computes the raised request limit.** `start.json` has a new `max_urls_raise`: the smallest limit, within the 200 cap, at which every sitemap page plus robots.txt, `/sitemap.xml` and the declared sitemap files fit the run's request budget (`pageBudget`). It is `null` when the sitemap holds no more than 50 pages, and the cap when the page count is only a lower bound. Step 6 copies it into `max_urls`; the agent no longer computes it. A test checks the value is minimal and fits for several sitemap sizes.
+- **SKILL.md keeps the flow and moves branch detail into references read at their step.** The start-question template and per-item rules move to `intake.md` (read in full at step 4); runbook handling to `prepare.md`; fixing to `fixing.md`; the after-deploy re-check to the new `recheck.md`. Step 4 to step 11 each name the one file to read in full and what not to open.
+- **Start answers are mapped by item name, not number.** The start question renumbers when items are left out, so step 5 reads each answer by the item's name. A reply with a different address goes back to step 3; an ambiguous answer is asked again for that item only.
+- **Failure tables match exact stderr text.** Step 7 has rows for `index changed:`, `migration_required:`, `This folder already holds a finished audit`, `This folder holds files this audit did not make`, `The answers are not the ones this run was made from` and `None of the selected pages could be fetched`. Step 3 runs `node --version` first, because an old Node fails with a syntax error that looks like another failure. A blocked sandbox or cloud network now stops before the start question. `run.mjs` status is `awaiting_judgments` or `done`; any other value stops.
+- **Thinking checks before the risky steps.** SKILL.md opens with four questions to ask before telling the user anything (is it in the report, does it go past what was measured, not found versus absent, will repeating help); judging, fixing and re-checking start with their own checks. A table of prohibitions gives the reason for each.
+- **Judging and resuming.** `judging.md` gains an at-a-glance table per family (`not_applicable` condition, `partial`, `basis`, `site_chrome`, verdicts the code re-checks) and a row for a judgment file cut off mid-write; on resume the last page file is checked and rewritten if it is not a JSON array. After a context compaction the agent reads `judging.md` again.
+- **`evidence.md` says what the code does.** It described a four-table report and an AI panel that the audit does not produce; it now describes the evidence index, change records (`verification` stays `pending`) and the three `compare` results with their `<field>_changed` reasons.
+- **Developer contracts leave the installed skill.** `references/report.md` and `references/api.md` move to `docs/contracts/` (still in the npm package). `scoring.md` and `measurement.md` stay: they are evaluation sources.
+- **The description leads with triggers.** It is shorter (548 characters) and adds user phrasings such as '구글에 안 떠요' and "my site doesn't show up on Google", and re-checking after deploy.
+
+### Versions
+
+Release 0.3.3, evaluation 0.5.0, audit protocol 0.3.0, contract schema 2.0.0. No evaluation source changed, so the evaluation hash is the same as 0.3.2, a managed 0.3.2 install updates in place, and a 0.3.2 output folder is still accepted.
+
 ## 0.3.2
 
 Fixes from a `skill-judge` review of the 0.3.1 skill (101/120). Each item was checked against the code first; only real problems were changed. No verdict, score or report output changes.

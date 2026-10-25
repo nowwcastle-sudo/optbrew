@@ -50,7 +50,7 @@ In Windows PowerShell, if `npx` or `optbrew` reports that running scripts is dis
 ### 1. npm
 
 ```bash
-npm install -g optbrew@0.3.2
+npm install -g optbrew@0.3.3
 optbrew install --agents codex,claude-code --scope user --dry-run
 optbrew install --agents codex,claude-code --scope user
 optbrew doctor --agents codex,claude-code --scope user
@@ -63,20 +63,20 @@ The dry run prints the folders it will write. `doctor` checks the files and thei
 Runs the same CLI without a global install:
 
 ```bash
-npx optbrew@0.3.2 install --agents codex,claude-code --scope user
-npx optbrew@0.3.2 doctor --agents codex,claude-code --scope user
+npx optbrew@0.3.3 install --agents codex,claude-code --scope user
+npx optbrew@0.3.3 doctor --agents codex,claude-code --scope user
 ```
 
 ### 3. PowerShell (Windows)
 
 ```powershell
-irm https://raw.githubusercontent.com/nowwcastle-sudo/optbrew/v0.3.2/install.ps1 | iex
+irm https://raw.githubusercontent.com/nowwcastle-sudo/optbrew/v0.3.3/install.ps1 | iex
 ```
 
 The script is pinned to this release. It checks Node.js, shows the target folders, installs for Codex and Claude Code, and stops with an error if `doctor` finds a problem. To read it first, or to choose agents or a project folder:
 
 ```powershell
-irm https://raw.githubusercontent.com/nowwcastle-sudo/optbrew/v0.3.2/install.ps1 -OutFile install.ps1
+irm https://raw.githubusercontent.com/nowwcastle-sudo/optbrew/v0.3.3/install.ps1 -OutFile install.ps1
 powershell -ExecutionPolicy Bypass -File .\install.ps1 -Agents codex,claude-code,cursor
 ```
 
@@ -107,7 +107,7 @@ Plugins follow this repository's `main` branch and update through the host's plu
 Paste this into Codex, Claude Code or another coding agent:
 
 ```text
-Install the optbrew skill for me. Read https://raw.githubusercontent.com/nowwcastle-sudo/optbrew/v0.3.2/AGENT_INSTALL.md and follow it step by step. Ask me which agents and which scope to use, and show me the planned changes before you install.
+Install the optbrew skill for me. Read https://raw.githubusercontent.com/nowwcastle-sudo/optbrew/v0.3.3/AGENT_INSTALL.md and follow it step by step. Ask me which agents and which scope to use, and show me the planned changes before you install.
 ```
 
 [AGENT_INSTALL.md](AGENT_INSTALL.md) gives the agent a command and a pass check for each step, and the cases where it must stop and ask you.
@@ -136,7 +136,7 @@ optbrew key status
 optbrew key remove google
 ```
 
-`set` asks for the key with hidden input. `status` shows only whether a key exists and the first 8 characters of its hash. `remove` deletes it. If you did not install with npm, use `npx optbrew@0.3.2 key set google`, or answer "키" and copy the exact command from the guide. The skill folder has the same command too: `node <skill folder>/scripts/key.mjs set google`. The key is saved in `.optbrew/credentials.json` in your home folder, outside every project, and the environment variable `OPTBREW_GOOGLE_API_KEY` takes priority if it is set. With the Claude desktop app, use the key file (`key set google`): measured on 2026-10-18 on Windows, the plugin setting below did not reach a desktop-app session (bundled claude.exe 2.1.299), while terminal `claude` 2.1.302 received it; whether the app or the version makes the difference is not yet known. With the Claude Code plugin in terminal `claude`, you can instead open a terminal, run `claude`, and enter the key in `/plugin`, **Installed**, optbrew, **Configure options** (the desktop app's Code tab has no `/plugin` screen). Claude Code keeps it in your system credential store, a new session picks it up, and it comes before both only when it reaches the session. `key status` shows which source is used in `google.sources`. optbrew sends the key to Google only in a request header, and never writes it to a report, a log or the evidence.
+`set` asks for the key with hidden input. `status` shows only whether a key exists and the first 8 characters of its hash. `remove` deletes it. If you did not install with npm, use `npx optbrew@0.3.3 key set google`, or answer "키" and copy the exact command from the guide. The skill folder has the same command too: `node <skill folder>/scripts/key.mjs set google`. The key is saved in `.optbrew/credentials.json` in your home folder, outside every project, and the environment variable `OPTBREW_GOOGLE_API_KEY` takes priority if it is set. With the Claude desktop app, use the key file (`key set google`): measured on 2026-10-18 on Windows, the plugin setting below did not reach a desktop-app session (bundled claude.exe 2.1.299), while terminal `claude` 2.1.302 received it; whether the app or the version makes the difference is not yet known. With the Claude Code plugin in terminal `claude`, you can instead open a terminal, run `claude`, and enter the key in `/plugin`, **Installed**, optbrew, **Configure options** (the desktop app's Code tab has no `/plugin` screen). Claude Code keeps it in your system credential store, a new session picks it up, and it comes before both only when it reaches the session. `key status` shows which source is used in `google.sources`. optbrew sends the key to Google only in a request header, and never writes it to a report, a log or the evidence.
 
 ## Update
 
