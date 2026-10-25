@@ -119,10 +119,10 @@ test('the intake-answers template in SKILL.md has exactly the documented fields'
   assert.deepEqual(Object.keys(answers).sort(), documented.sort());
 });
 
-test('the runbooks SKILL.md names exist and fit the harness they are chosen for', async () => {
+test('the runbooks SKILL.md and prepare.md name exist and fit the harness they are chosen for', async () => {
   const { loadRunbook } = await import('../skills/optbrew/scripts/core/runbooks.mjs');
   const { runbookHarnesses } = await import('../skills/optbrew/scripts/core/probe.mjs');
-  const entry = await text('SKILL.md');
+  const entry = `${await text('SKILL.md')}\n${await text('references/prepare.md')}`;
   const keyRunbook = { 'claude-code': 'key-set-local', other: 'key-set-local', codex: 'key-set-codex', 'claude-code-cloud': 'key-set-claude-cloud' };
   for (const [harness, id] of Object.entries(keyRunbook)) {
     assert.ok(entry.includes(`\`${id}\``), id);

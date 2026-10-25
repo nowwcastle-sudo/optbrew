@@ -86,9 +86,11 @@ test('the identity fix of the site names the home page address as the place to f
 
 test('SKILL.md checks the key file with status only, states the 200 cap, and tells the summary to name pages left out of the index (M-4, M-5, I-1)', async () => {
   const skill = lf(await readFile(path.join(skillRoot, 'SKILL.md'), 'utf8'));
-  const check = skill.slice(skill.indexOf('4. 키 파일 점검'), skill.indexOf('5. 런북 뒤.'));
+  const prepare = lf(await readFile(path.join(skillRoot, 'references/prepare.md'), 'utf8'));
+  const check = prepare.slice(prepare.indexOf('3. 키 파일 점검'), prepare.indexOf('4. 런북 뒤.'));
+  assert.ok(check.length > 0 && skill.includes('](references/prepare.md)'), 'step 5 sends the agent to prepare.md for the key check');
   assert.ok(check.includes('key.mjs" status') && check.includes('google.corrupt') && check.includes('.optbrew/credentials.json'));
-  assert.equal(/key\.mjs"? ?remove/.test(skill), false, 'no command that changes the key file is used as a check');
+  assert.equal(/key\.mjs"? ?remove/.test(skill + prepare), false, 'no command that changes the key file is used as a check');
   assert.equal(/\bremove\b/.test(check), false);
   const rule = skill.slice(skill.indexOf('- `sample_mode`는'), skill.indexOf('- `owner_exports`는'));
   // The raised limit is copied from start.json (preflight computes it with the run's own page budget), never worked out by hand.
