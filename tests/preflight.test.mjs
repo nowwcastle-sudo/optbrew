@@ -4,7 +4,6 @@ import { access, readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { preflight, raisedLimit } from '../skills/optbrew/scripts/preflight.mjs';
-import { pageBudget } from '../skills/optbrew/scripts/core/page-select.mjs';
 import { limits } from '../skills/optbrew/scripts/core/config.mjs';
 import { tempDir } from './support/temp-dir.mjs';
 
@@ -200,13 +199,10 @@ test('start.json never holds the proxy authorization or the key', async () => {
   assert.match(text, /proxy\.local/);
 });
 
-test('the raised limit start.json offers is the smallest one whose page budget holds every sitemap page, and never past the cap', () => {
+test('a count that is only a lower bound raises to the cap, and an unreachable start offers no raise', async () => {
   const { max_urls_cap: cap } = limits();
-  for (const [pages, declared] of [[51, 1], [60, 1], [120, 4], [150, 1]]) {
-    const limit = raisedLimit(pages, 'exact', declared), auxiliary = 1 + declared;
-    assert.ok(pageBudget(limit, auxiliary) >= pages + 1, `${pages} pages fit in ${limit}`);
-    assert.ok(pageBudget(limit - 1, auxiliary) < pages + 1, `${limit - 1} would drop a page`);
-  }
-  assert.equal(raisedLimit(400, 'exact', 1), cap);
-  assert.equal(raisedLimit(30, 'lower_bound', 2), cap, 'a count that is only a lower bound raises to the cap');
+  const out = await tempDir('optbrew-raise-');
+  assert.equal(await raisedLimit(out, { sitemap_pages_basis: 'lower_bound', final_url: `${origin}/`, fact_candidates: [] }), cap);
+  const { startJson } = await run(site({}));
+  assert.equal(startJson.max_urls_raise, null);
 });

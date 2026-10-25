@@ -16,10 +16,9 @@
 
 ## 「해결됨」의 조건
 
-`cli.mjs compare`가 두 실행의 `score_input`을 비교한다([recheck.md](recheck.md)). 결과는 셋 중 하나다.
+`cli.mjs compare`가 두 실행의 `score_input`을 비교한다([recheck.md](recheck.md)). 결과는 `comparable` 또는 `not_comparable`이다.
 
 - `comparable`: 대상, 환경, 평가·프로토콜 판, 목표, 검사 묶음, 표본 조건, 확정 사실이 같고, 채점에 들어간 단위와 가중치도 같다. 이때만 프로필별 점수 차를 「해결됨」의 근거로 쓴다.
-- `not_comparable`: 위 조건 중 하나가 달라졌다. `reasons`에 바뀐 항목이 `<항목>_changed`로 적힌다. 예: `goals_changed`, `confirmed_facts_changed`, `applicable_units_changed`. 다른 판의 optbrew가 만든 입력이면 그 사유가 적힌다. 점수 차를 말하지 않고 사유를 그대로 알린다.
-- `no_after`: 이후 실행의 입력이 없다.
+- `not_comparable`: 위 조건 중 하나가 달라졌다. `reasons`에 바뀐 항목이 `<항목>_changed`로 적힌다. 예: `goals_changed`, `page_types_changed`, `confirmed_facts_changed`, `applicable_units_changed`. 어느 항목인지 가리지 못하면 `protocol_changed`다. 다른 판의 optbrew가 만든 입력이면 그 사유가 적힌다. 점수 차를 말하지 않고 사유를 그대로 알린다.
 
 `comparable`이어도 사이트에서 읽은 결과의 차이일 뿐이다. 색인, 유입, 인용, 매출이 늘었다는 증명이 아니다.

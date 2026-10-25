@@ -176,7 +176,7 @@
     },
     {
       "path": "SKILL.md",
-      "sha256": "3645c45e325faa899babe85411822b9ebde533b4ecd106c053549a0765fef0c1"
+      "sha256": "ea1c5a44b5caa8a7b3732074fc9387423b69430b19afbcd608c2f2624aa027e3"
     },
     {
       "path": "THIRD_PARTY_NOTICES.md",
@@ -668,7 +668,7 @@
     },
     {
       "path": "references/evidence.md",
-      "sha256": "394a6243c49a9da449b7629ba45e40994cdb594ac126d1246e01a988b7ba7a6c"
+      "sha256": "cdbbc34c838097e2ac860e93d6fb626daef769b3e738f64445bf576feca834e8"
     },
     {
       "path": "references/fixing.md",
@@ -680,7 +680,7 @@
     },
     {
       "path": "references/intake.md",
-      "sha256": "64f7128ffe1ed605c59714171238d01cdabce59907af157a45f24ab4c7596507"
+      "sha256": "c0f6905ea231b88eaeda554e75dd77169c432d7a68d201cf64ca34e64bc12108"
     },
     {
       "path": "references/judging.md",
@@ -712,7 +712,7 @@
     },
     {
       "path": "references/recheck.md",
-      "sha256": "11f2f043f25d4f519d4b1be5702db08cb01750af0b941ed196eb3601578fa270"
+      "sha256": "f6799447fda370b7011747be19299ab8fdf64b6a79d2a96f5e05d2d12b2c8f38"
     },
     {
       "path": "references/remediations.json",
@@ -1072,7 +1072,7 @@
     },
     {
       "path": "scripts/preflight.mjs",
-      "sha256": "0c720e1c80b96998afdcb8a30ae5927bed3d9f4d7b0bb2568e54639c2f058bac"
+      "sha256": "3bb9ce4b31985c80e6c349e5e178f69213ad54fbd0cfc2a4591797a668446014"
     },
     {
       "path": "scripts/run.mjs",
@@ -1083,5 +1083,5 @@
       "sha256": "dca0bbd03fbf591c4aca6a568be76615eb48d69f7df0c634886f652b54f3f46d"
     }
   ],
-  "bundle_hash": "b15a30ffc20131288316878fe65e7ffb4c8329095a204c81e0f052beca225a22"
+  "bundle_hash": "29a008fedbabc445ee8859b93b9083e7b4c0d214f20eff593e119977f8e1628b"
 }

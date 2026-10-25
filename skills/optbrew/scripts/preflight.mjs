@@ -9,7 +9,7 @@ import { fetchScoped, links } from './core/collector.mjs';
 import { findChrome as realFindChrome } from './core/chrome.mjs';
 import { limits } from './core/config.mjs';
 import { openStore } from './core/evidence-store.mjs';
-import { pageBudget } from './core/page-select.mjs';
+import { pageBudget, readPreflight, selectPages } from './core/page-select.mjs';
 import { pageFacts } from './core/facts.mjs';
 import { decodeEntities } from './core/html.mjs';
 import { readGoogleKey as realReadGoogleKey } from './core/keys.mjs';
@@ -154,27 +154,47 @@ export async function preflight({ url, out, sourceTools = [], skillRoot = defaul
     sitemap_pages: sitemapPages,
     sitemap_pages_basis: sitemapBasis,
     sitemap_declared: sitemapFiles.size,
-    max_urls_raise: raisedLimit(sitemapPages, sitemapBasis, sitemapFiles.size),
+    max_urls_raise: null,
     question_candidates_input: pages.map(({ artifact, html }) => questionInput(artifact, html)),
     fact_candidates: factCandidates(pages),
     start_runbooks: startRunbooks(probe, { level, skillRoot, harnesses: runbookHarnesses(probe.harness) }),
   };
   const startPath = path.join(dir, 'start.json');
   await writeFile(startPath, `${JSON.stringify(startJson, null, 2)}\n`);
+  // The raise is read back the way the run will read this folder, so both count the same pages and sitemap files.
+  if (startJson.final_url) {
+    startJson.max_urls_raise = await raisedLimit(out, startJson);
+    await writeFile(startPath, `${JSON.stringify(startJson, null, 2)}\n`);
+  }
   return { startJson, startPath };
 }
 
 /**
- * The `max_urls` a "raise" answer writes, so the agent does not do the arithmetic: the smallest request limit whose page budget
- * (the run's own `pageBudget`, robots.txt and each sitemap file fetched first) still holds the start page and every sitemap page,
- * never above the cap. A count that is only a lower bound gets the cap. `null` when the sample question is not asked.
+ * The `max_urls` a "raise" answer writes, so the agent does not do the arithmetic. It reads this preflight folder as the run does
+ * (`readPreflight`), declares the same robots and sitemap files, and selects pages with the run's `selectPages` and `pageBudget`,
+ * counting the fact-candidate pages as confirmed (they are chosen before sitemap pages). `null` when the default limit already
+ * holds every sitemap page, so the sample question is not asked; else the smallest limit that holds them all, never above the cap.
+ * A sitemap count that is only a lower bound gets the cap.
  */
-export function raisedLimit(pages, basis, declared) {
-  const { max_urls_default: base, max_urls_cap: cap } = limits();
-  if (basis === 'lower_bound') return cap;
-  if (!(pages > base)) return null;
-  const auxiliary = 1 + Math.max(1, declared);
-  for (let limit = base + 1; limit < cap; limit++) if (pageBudget(limit, auxiliary) >= pages + 1) return limit;
+export async function raisedLimit(out, startJson) {
+  const { max_urls_default: base, max_urls_cap: cap, preflight_pages: readLimit } = limits();
+  if (startJson.sitemap_pages_basis === 'lower_bound') return cap;
+  const start = new URL(startJson.final_url);
+  const preflightRead = await readPreflight(out, start.href);
+  const scope = { allowed: [{ origin: start.origin, path_prefix: '/' }] };
+  const inScope = href => { try { return assertUrlInScope(href, scope).href; } catch { return null; } };
+  const known = new Set(['/robots.txt', '/sitemap.xml'].map(pathname => new URL(pathname, start.origin).href));
+  let auxiliary = known.size;
+  for (const href of [...new Set(preflightRead.sitemapFiles)].slice(0, readLimit)) {
+    const normalized = inScope(href);
+    if (normalized && !known.has(normalized)) { known.add(normalized); auxiliary++; }
+  }
+  const factUrls = [...new Set(startJson.fact_candidates.map(fact => fact.source_url))];
+  const sitemapPages = budget => selectPages({ home: inScope(start.href), factUrls, preflight: preflightRead, scope, budget, auxiliary: known }).sources.sitemap_pages;
+  const all = sitemapPages(Infinity);
+  const fits = limit => sitemapPages(pageBudget(limit, auxiliary)) >= all;
+  if (fits(base)) return null;
+  for (let limit = base + 1; limit < cap; limit++) if (fits(limit)) return limit;
   return cap;
 }
 

@@ -81,7 +81,7 @@ node "<SKILL_DIR>/scripts/preflight.mjs" --url "<주소>" --out "<OUT>" --source
 ## 5단계. 답을 처리한다
 
 1. 사용자의 답을 번호별로 읽는다. 그 번호는 4단계에서 실제로 보낸 메시지의 번호다. 보낸 메시지에서 그 번호의 항목 이름을 찾아 읽는다(항목이 빠졌으면 「준비」가 4번일 수 있다). 답이 '시작'뿐이면 기본값을 모두 받아들인 것이다. 말이 없는 항목도 기본값이다.
-   - 답에 다른 주소가 들어 있으면 주소를 바꾼 것이다. 그 주소로 3단계부터 다시 한다. 이전 `start.json`은 다른 사이트의 것이라 쓰지 않는다.
+   - 답에 다른 주소가 들어 있으면 주소를 바꾼 것이다. 새 주소의 호스트로 새 `<OUT>`을 정하고 3단계부터 다시 한다. 이전 `<OUT>`의 `start.json`과 사전 점검 증거는 다른 사이트의 것이라 쓰지 않는다.
    - 한 항목의 답이 둘로 읽히면(예: 「표본」에 "다 봐 주세요"와 "빨리"를 함께 씀) 그 항목만 다시 묻는다. 나머지 항목의 답은 그대로 둔다.
 2. 사용자가 「준비」 항목의 단어(「키」, 「크롬」, 「내보내기」)로 답했거나 SE Ranking 연결을 따로 요청했으면, **반드시 먼저** [prepare.md](references/prepare.md)를 끝까지 읽고 그대로 따른다. 런북을 펼치는 명령, 키 파일 점검, 런북 뒤의 말이 거기 있다. 런북의 일을 마치면 아래 3번으로 간다. 그런 답이 없으면 이 문서를 열지 않는다.
 3. 사용자가 키, 크롬, 네트워크 중 하나라도 준비했으면 3단계의 점검 명령만 한 번 더 실행해 `start.json`을 새로 받는다. 점검은 시작할 때의 환경을 기록하므로, 다시 받지 않으면 준비한 것이 감사에 쓰이지 않는다. 이때 점검 결과가 막힘(`blocking`이나 `site_down`)이면 3단계 표를 다시 따른다.
@@ -110,9 +110,9 @@ node "<SKILL_DIR>/scripts/preflight.mjs" --url "<주소>" --out "<OUT>" --source
 - `schema_version`은 `<SKILL_DIR>/references/versions.json` 파일을 열어 `contract_schema`의 값을 그대로 쓴다.
 - `goals`는 「주소와 목표」에서 확정한 목표 이름을 그대로 쓴 목록이다. 실행은 이 이름을 읽어 점검할 엔진과 항목을 정한다.
 - `facts`는 `fact_candidates`의 `key`, `value`, `source_url`을 그대로 쓴다. 사용자가 뺀 사실은 뺀다. 이 사실은 점검의 기준이 된다. 페이지의 이름, 전화번호, 주소, 연도가 이와 다르면 그 페이지가 실패로 적힌다.
-- `sample_mode`는 「표본」 항목을 보내지 않았으면 `null`이고 `max_urls`는 50이다. "표본"이면 `sample`이고 `max_urls`는 50이다. "상한을 올림"이면 `raise`이고 `max_urls`는 `start.json`의 `max_urls_raise` 값을 그대로 쓴다. 이 값은 점검 스크립트가 실행과 같은 요청 계산(robots.txt와 사이트맵 파일도 요청에 들어가고, 쪽이 다른 주소로 넘어갈 때의 여유가 남는다)으로 구한 수이고 200을 넘지 않는다. 직접 계산하지 않는다.
+- `sample_mode`는 「표본」 항목을 보내지 않았으면 `null`이고 `max_urls`는 50이다. "표본"이면 `sample`이고 `max_urls`는 50이다. "상한을 올림"이면 `raise`이고 `max_urls`는 `start.json`의 `max_urls_raise` 값을 그대로 쓴다. 이 값은 점검 스크립트가 실행과 같은 방식으로 사전 점검 폴더를 읽어 구한 수다(robots.txt와 사이트맵 파일도 요청에 들어가고, 쪽이 다른 주소로 넘어갈 때의 여유가 남는다). 200을 넘지 않는다. 직접 계산하지 않는다.
 - `owner_exports`는 5단계에서 경로를 받았을 때만 쓴다. 받은 것이 없으면 이 필드를 통째로 뺀다. 파일이 없거나 읽을 수 없으면 감사는 멈추지 않고, 그 칸이 보고서에 "알 수 없음"과 이유로 남는다.
-- `url`은 `start.json`의 `final_url`을 그대로 쓴다. `www`나 `https`로 넘어간 뒤의 주소다. `final_url`이 `null`이면 사용자가 말한 주소를 쓴다. 이 주소가 같은 사이트의 다른 이름이면 감사는 넘어간 주소로 돈다. 다른 사이트이면 실행이 페이지를 읽지 못하고 멈춘다(7단계 실패 표의 `None of the selected pages` 줄).
+- `url`은 `start.json`의 `final_url`을 그대로 쓴다. `www`나 `https`로 넘어간 뒤의 주소다. `final_url`이 `null`이면 사용자가 말한 주소를 쓴다. 이 주소가 같은 사이트의 다른 이름이면 감사는 넘어간 주소로 돈다. 다른 사이트이면 실행이 아무것도 읽지 않고 멈춘다(7단계 실패 표의 `leads to another site` 줄).
 - 한도 숫자의 원천은 [limits.json](references/limits.json)이다.
 
 ## 7단계. 감사를 실행한다
@@ -136,11 +136,12 @@ node "<SKILL_DIR>/scripts/run.mjs" --answers "<OUT>/intake-answers.json" --out "
 | `migration_required:`로 시작 | 다른 판의 optbrew가 만든 폴더다. 새 `<OUT>` 폴더로 1단계부터 다시 한다고 알린다. |
 | `This folder already holds a finished audit` 또는 `This folder holds files this audit did not make`로 시작 | 실행이 그 폴더를 거부한 것이다. 결과 폴더에서 아무것도 지우지 않는다. 같은 답 파일을 `--answers`로 두고, 뒤에 `-2`, `-3`을 붙인 새 `<OUT>`을 `--out`으로 해 7단계를 다시 한다고 한 문장으로 알린다. |
 | `The answers are not the ones this run was made from`으로 시작 | 이 폴더를 만든 답 파일과 다른 답 파일을 넘겼다. 그 폴더의 `intake-answers.json`을 그대로 쓰거나, 답을 바꿨으면 새 `<OUT>`에서 7단계를 한다. |
-| `None of the selected pages could be fetched`로 시작 | "고른 페이지를 하나도 읽지 못했습니다. 주소가 맞는지, 이 컴퓨터에서 사이트에 접속되는지 확인해 주세요."라고 말하고 멈춘다. 주소가 다른 사이트로 넘어가는 경우도 이 줄이다. 사용자가 새 주소를 주면 새 `<OUT>`으로 3단계부터 한다. |
+| `The address`로 시작하고 `leads to another site`가 든 문장 | 주소가 다른 사이트로 넘어간다. "이 주소는 다른 사이트로 넘어갑니다. 그 사이트가 감사할 곳이면 그 주소를 알려 주세요."라고 말하고 멈춘다. 사용자가 새 주소를 주면 새 `<OUT>`으로 3단계부터 한다. |
+| `None of the selected pages could be fetched`로 시작 | "고른 페이지를 하나도 읽지 못했습니다. 주소가 맞는지, 이 컴퓨터에서 사이트에 접속되는지 확인해 주세요."라고 말하고 멈춘다. 사용자가 새 주소를 주면 새 `<OUT>`으로 3단계부터 한다. |
 | 그 밖의 문장 | 그 문장을 사용자 말로 한 줄로 옮기고 멈춘다. 같은 명령을 되풀이하지 않는다(위 「이 감사가 답하는 것」의 넷째 질문). |
 
 5. 첫 실행이 끝나기 전에 끊겼다면(터미널을 닫음, 도구 시간 제한) 실패 표를 따르지 않는다. 같은 `<OUT>`로 같은 명령을 다시 실행해도 된다. 실행이 스스로 지난 실행이 만든 파일만 지우고 처음부터 다시 한다. 에이전트는 결과 폴더에서 아무것도 지우지 않는다.
-6. `probe.harness`가 `codex`이고 승인 창이 떴다면 정상이다. `network-codex-approval` 런북을 [prepare.md](references/prepare.md)의 「런북 펼치기」 방법으로 보여 준다.
+6. `probe.harness`가 `codex`이고 승인 창이 떴다면 정상이다. `network-codex-approval` 런북을 [prepare.md](references/prepare.md)의 「런북 펼치기」 명령으로 펼쳐 그 출력만 보여 주고, 실행이 끝나기를 기다린다. prepare.md의 다른 항목(「'시작'」 안내, 5단계로 돌아가기)은 이때 따르지 않는다.
 
 ## 8단계. 내용 판정을 한다
 

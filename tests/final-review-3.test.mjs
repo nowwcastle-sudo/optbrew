@@ -95,11 +95,6 @@ test('SKILL.md checks the key file with status only, states the 200 cap, and tel
   const rule = skill.slice(skill.indexOf('- `sample_mode`는'), skill.indexOf('- `owner_exports`는'));
   // The raised limit is copied from start.json (preflight computes it with the run's own page budget), never worked out by hand.
   assert.ok(rule.includes('`max_urls_raise` 값을 그대로 쓴다') && rule.includes('직접 계산하지 않는다') && rule.includes(String(limits().max_urls_cap)));
-  // The formula cannot give a limit above the cap the run applies (requestLimit clamps to it).
-  for (const pages of [150, 181, 190, 200, 201]) {
-    const base = pages + 2 + 1, calculated = base + Math.max(2, Math.ceil(base * 0.1));
-    assert.ok(Math.min(calculated, limits().max_urls_cap) <= limits().max_urls_cap, `${pages} pages`);
-  }
   const summary = skill.slice(skill.indexOf('## 9단계'), skill.indexOf('## 10단계'));
   assert.ok(summary.includes('색인 제외:') && summary.includes('composed.headline.not_indexed') && summary.includes('noindex를 지우라는 말') && summary.includes('줄이 없으면 이 말을 하지 않는다'));
 });

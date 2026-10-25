@@ -64,7 +64,7 @@ test('the docs quote the limits that code reads from limits.json', async () => {
   const limit = await json('references/limits.json');
   const intake = await text('references/intake.md');
   assert.ok(intake.includes(`표본 ${limit.max_urls_default}페이지`) && intake.includes(`최대 ${limit.max_urls_cap}페이지`));
-  assert.ok(intake.includes(`사이트맵이 ${limit.max_urls_default}을 넘거나`) && intake.includes('`max_urls_raise`'));
+  assert.ok(intake.includes('기본 상한으로 사이트맵의 쪽을 다 읽지 못하거나') && intake.includes('`max_urls_raise`'));
   assert.ok((await text('SKILL.md')).includes('`max_urls_raise`'));
   const judging = await text('references/judging.md');
   assert.ok(judging.includes(`\`judge_span_min_bytes\` ${limit.judge_span_min_bytes}, \`judge_spans_per_unit\` ${limit.judge_spans_per_unit}`));
@@ -161,4 +161,15 @@ test('the preflight failure codes SKILL.md reacts to are codes the code raises',
     assert.ok((await text('SKILL.md')).includes(`\`${name}\``), name);
     assert.ok(code.includes(name), name);
   }
+});
+
+test('every stderr text the step 7 failure table matches is a sentence the scripts write', async () => {
+  const entry = await text('SKILL.md');
+  const table = entry.slice(entry.indexOf('| stderr 마지막 줄 또는 상황 |'), entry.indexOf('| 그 밖의 문장 |'));
+  const quoted = [...table.matchAll(/^\| (.+?) \|/gm)].slice(2).flatMap(([, cell]) => [...cell.matchAll(/`([^`]+)`/g)].map(match => match[1]));
+  assert.ok(quoted.length >= 7, quoted.join(' | '));
+  const core = path.join(skill, 'scripts', 'core');
+  const sources = (await Promise.all([path.join(skill, 'scripts', 'run.mjs'), ...(await readdir(core)).filter(name => name.endsWith('.mjs')).map(name => path.join(core, name))]
+    .map(file => readFile(file, 'utf8')))).join('\n');
+  for (const piece of quoted) assert.ok(sources.includes(piece), piece);
 });
