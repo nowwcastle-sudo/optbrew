@@ -1,6 +1,6 @@
 ---
 name: optbrew
-description: 웹사이트 주소를 받아 검색 유입, 네이버 노출, AI 답변 인용, 브랜드 사실 정확성, 전환을 감사합니다. HTML·Markdown 보고서와 고칠 것 목록을 내고, 요청하면 로컬 소스를 백업 후 고치고 배포 뒤 다시 감사해 비교합니다. 'SEO 감사', '사이트 점검', '왜 네이버에 안 나와요', '구글에 안 떠요', 'ChatGPT가 우리 회사를 인용하지 않아요' 같은 요청에 씁니다. 키워드 조사, 글 작성, 광고, 순위 추적에는 쓰지 않습니다. Use when an English request gives a site URL and asks for an SEO or site audit, Naver Search Advisor, AEO/GEO/LLMO or AI citation check, a robots.txt, sitemap, noindex, canonical, structured data or Core Web Vitals review, says "my site doesn't show up on Google", or asks to re-check after deploy and compare with the previous report. Runs bundled scripts on local Node.js 22.4+ and keeps an evidence index for every finding.
+description: 웹사이트 주소를 받아 검색 유입, 네이버 노출, AI 답변 인용, 브랜드 사실 정확성, 전환을 감사합니다. HTML·Markdown 보고서와 고칠 것 목록을 내고, 요청하면 로컬 소스를 백업 후 고치고 배포 뒤 다시 감사해 비교합니다. 'SEO 감사', '사이트 점검', 'AI 검색 최적화', 'llms.txt', '구조화 데이터', '왜 네이버에 안 나와요', '구글에 안 떠요', 'ChatGPT가 우리 회사를 인용하지 않아요' 같은 요청에 씁니다. 키워드 조사, 글 작성, 광고, 순위 추적에는 쓰지 않습니다. Use when a request in any language gives a site URL and asks for an SEO or site audit, Naver Search Advisor, AEO/GEO/LLMO or AI citation check, a robots.txt, sitemap, noindex, canonical, structured data or Core Web Vitals review, says "my site doesn't show up on Google", or asks to re-check after deploy and compare with the previous report. Runs bundled scripts on local Node.js 22.4+ and keeps an evidence index for every finding.
 ---
 
 # optbrew
@@ -91,7 +91,7 @@ node "<SKILL_DIR>/scripts/preflight.mjs" --url "<주소>" --out "<OUT>" --source
 
 ## 6단계. 답 파일을 쓴다
 
-`<OUT>/intake-answers.json`을 아래 모양으로 쓴다. 값은 5단계의 답과 `start.json`에서 가져온다. 새 필드를 만들지 않는다. 실행이 모르는 필드는 계약 검사에서 거절된다.
+`<OUT>/intake-answers.json`을 아래 모양으로 쓴다. 값은 5단계의 답과 `start.json`에서 가져온다. 새 필드를 만들지 않는다. 실행이 모르는 필드는 계약 검사에서 거절된다. 7단계를 이미 실행한 뒤 답을 바꾸면 새 `<OUT>`에 쓴다. 실행은 폴더를 만든 답 파일과 주소만 대조하므로, 같은 폴더에서 목표나 질문만 바꾸면 막히지 않고 판정과 답이 어긋난다.
 
 ```json
 {
@@ -137,7 +137,7 @@ node "<SKILL_DIR>/scripts/run.mjs" --answers "<OUT>/intake-answers.json" --out "
 | `index changed:`로 시작 | 결과 폴더의 증거가 바뀌어 이어갈 수 없다는 뜻이다. 새 `<OUT>` 폴더로 1단계부터 다시 한다고 알린다. |
 | `migration_required:`로 시작 | 다른 판의 optbrew가 만든 폴더다. 새 `<OUT>` 폴더로 1단계부터 다시 한다고 알린다. |
 | `This folder already holds a finished audit` 또는 `This folder holds files this audit did not make`로 시작 | 실행이 그 폴더를 거부한 것이다. 폴더를 비우지 않고 뒤에 `-2`, `-3`을 붙인 새 `<OUT>`을 정하고, 이전 `<OUT>`의 `preflight` 폴더를 새 폴더로 복사한다(실행은 감사할 쪽을 그 폴더에서 고른다. 없으면 첫 화면과 사실 쪽만 감사한다). 같은 답 파일을 `--answers`로 두고 새 `<OUT>`을 `--out`으로 해 7단계를 다시 한다고 한 문장으로 알린다. |
-| `The answers are not the ones this run was made from`으로 시작 | 이 폴더를 만든 답 파일과 주소(`url`)가 다른 답 파일을 넘겼다. 실행은 주소만 대조하므로, 같은 주소로 목표나 질문만 바꾼 답 파일은 이 줄로 잡히지 않는다. 답을 바꿨으면 이 오류가 없어도 새 `<OUT>`을 쓴다. 그 폴더의 `intake-answers.json`을 그대로 쓰거나, 답을 바꿨으면 새 `<OUT>`에 이전 `<OUT>`의 `preflight` 폴더를 복사한 뒤 7단계를 한다. |
+| `The answers are not the ones this run was made from`으로 시작 | 이 폴더를 만든 답 파일과 주소(`url`)가 다른 답 파일을 넘겼다. 그 폴더의 `intake-answers.json`을 그대로 쓰거나, 답을 바꿨으면 새 `<OUT>`에 이전 `<OUT>`의 `preflight` 폴더를 복사한 뒤 7단계를 한다. |
 | `The address`로 시작하고 `leads to another site`가 든 문장 | 주소가 다른 사이트로 넘어간다. "이 주소는 다른 사이트로 넘어갑니다. 그 사이트가 감사할 곳이면 그 주소를 알려 주세요."라고 말하고 멈춘다. 사용자가 새 주소를 주면 새 `<OUT>`으로 3단계부터 한다. |
 | `None of the selected pages could be fetched`로 시작 | "고른 페이지를 하나도 읽지 못했습니다. 주소가 맞는지, 이 컴퓨터에서 사이트에 접속되는지 확인해 주세요."라고 말하고 멈춘다. 사용자가 새 주소를 주면 새 `<OUT>`으로 3단계부터 한다. |
 | 그 밖의 문장 | 그 문장을 사용자 말로 한 줄로 옮기고 멈춘다. 같은 명령을 되풀이하지 않는다(위 「이 감사가 답하는 것」의 넷째 질문). |
@@ -201,7 +201,7 @@ node "<SKILL_DIR>/scripts/run.mjs" --answers "<OUT>/intake-answers.json" --out "
 | 문서 | 여는 때 | 열지 않는 때 |
 |---|---|---|
 | [prepare.md](references/prepare.md) | 5단계에서 「준비」 답이나 SE Ranking 요청이 있을 때(반드시), 7단계 6번의 런북을 펼칠 때 | 그 밖 |
-| [intake.md](references/intake.md) | 4단계(반드시, 처음부터 끝까지), 사용자가 시작 질문의 항목 뜻이나 수집 한도를 물을 때 | 7단계 이후 |
+| [intake.md](references/intake.md) | 4단계(반드시, 처음부터 끝까지), 사용자가 시작 질문의 항목 뜻이나 수집 한도를 물을 때(7단계 이후에는 「표본」 절만) | 7단계 이후의 그 밖 |
 | [judging.md](references/judging.md) | 8단계(반드시) | 8단계 밖 |
 | [source-analysis.md](references/source-analysis.md) | 2단계의 도구 표, 10단계에서 원인을 찾을 때 | 그 밖 |
 | [fixing.md](references/fixing.md) | 10단계(반드시) | 사용자가 고치라고 하지 않았을 때 |
@@ -211,6 +211,6 @@ node "<SKILL_DIR>/scripts/run.mjs" --answers "<OUT>/intake-answers.json" --out "
 | [recheck.md](references/recheck.md) | 11단계(반드시) | 고친 것이 없고 비교를 묻지 않았을 때 |
 | [evidence.md](references/evidence.md) | 사용자가 증거나 「해결됨」의 조건을 물을 때 | 그 밖 |
 
-[scoring.md](references/scoring.md)와 [measurement.md](references/measurement.md)는 스크립트가 지키는 채점·비교 계약이다. 감사, 판정, 결과 설명 중에는 열지 않는다. 점수가 왜 그렇게 나왔는지는 보고서의 검사별 결과로 답한다. 사용자가 계산식, 또는 11단계 `not_comparable`의 조건 자체를 물을 때만 연다. 두 문서의 명령은 저장소 기준이라 `skills/optbrew/`가 `<SKILL_DIR>`이고, `docs/`, `tests/` 링크는 설치본에 없으므로 따라가지 않는다. scoring.md 13번째 줄은 2,000자가 넘으므로 줄을 잘라 읽는 도구라면 그 줄을 나눠 읽는다. 수집 한도를 물으면 intake.md의 「표본」 절로 답한다.
+[scoring.md](references/scoring.md)와 [measurement.md](references/measurement.md)는 스크립트가 지키는 채점·비교 계약이다. 감사, 판정, 결과 설명 중에는 열지 않는다. 점수가 왜 그렇게 나왔는지는 보고서의 검사별 결과로 답한다. 사용자가 계산식, 또는 11단계 `not_comparable`의 조건 자체를 물을 때만 연다. 두 문서의 명령은 저장소 기준이라 `skills/optbrew/`가 `<SKILL_DIR>`이고, `docs/`, `tests/` 링크는 설치본에 없으므로 따라가지 않는다. scoring.md 13번째 줄은 2,000자가 넘으므로 줄을 잘라 읽는 도구라면 그 줄을 나눠 읽는다.
 
 그 밖의 파일: `references/runbooks/`는 `cli.mjs runbook`으로만 펼친다([prepare.md](references/prepare.md)의 「런북 펼치기」). `bundle-manifest.json`, `source-lock.json`은 스크립트가 읽는 파일이다(채점 때 번들 확인, 설치 때 출처 확인). 지우거나 옮기지 않는다. 에이전트가 직접 열 필요는 없다.
