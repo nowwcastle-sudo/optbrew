@@ -1,11 +1,11 @@
 ---
 name: optbrew
-description: 웹사이트 주소를 받아 검색 유입, 네이버 노출, AI 답변 인용, 브랜드 사실 정확성, 전환을 감사합니다. HTML·Markdown 보고서와 고칠 것 목록을 내고, 요청하면 로컬 소스를 백업 후 고치고 배포 뒤 다시 감사해 비교합니다. 'SEO 감사', '사이트 점검', '왜 네이버에 안 나와요', '구글에 안 떠요', 'ChatGPT가 우리 회사를 인용하지 않아요' 같은 요청에 씁니다. 키워드 조사, 글 작성, 광고, 순위 추적에는 쓰지 않습니다. Use for an English request with a site URL too, such as an SEO or site audit, Naver Search Advisor, AEO/GEO/LLMO, AI citation, robots.txt, sitemap, noindex, canonical, structured data, Core Web Vitals, "my site doesn't show up on Google", re-check after deploy, compare with the previous report.
+description: 웹사이트 주소를 받아 검색 유입, 네이버 노출, AI 답변 인용, 브랜드 사실 정확성, 전환을 감사합니다. HTML·Markdown 보고서와 고칠 것 목록을 내고, 요청하면 로컬 소스를 백업 후 고치고 배포 뒤 다시 감사해 비교합니다. 'SEO 감사', '사이트 점검', '왜 네이버에 안 나와요', '구글에 안 떠요', 'ChatGPT가 우리 회사를 인용하지 않아요' 같은 요청에 씁니다. 키워드 조사, 글 작성, 광고, 순위 추적에는 쓰지 않습니다. Use when an English request gives a site URL and asks for an SEO or site audit, Naver Search Advisor, AEO/GEO/LLMO or AI citation check, a robots.txt, sitemap, noindex, canonical, structured data or Core Web Vitals review, says "my site doesn't show up on Google", or asks to re-check after deploy and compare with the previous report. Runs bundled scripts on local Node.js 22.4+ and keeps an evidence index for every finding.
 ---
 
 # optbrew
 
-웹사이트를 감사한다. 사용자가 할 일은 시작 질문에 한 번 답하는 것뿐이다. 나머지는 이 문서의 순서대로 에이전트가 끝까지 한다.
+웹사이트를 감사한다. 감사(1~9단계)에서 사용자가 할 일은 시작 질문에 한 번 답하는 것뿐이다. 나머지는 이 문서의 순서대로 에이전트가 끝까지 한다. 고치기(10단계)와 배포 뒤 비교(11단계)는 사용자가 요청할 때 하고, 그때는 승인과 배포 여부를 사용자에게 묻는다.
 
 ## 이 감사가 답하는 것
 
@@ -34,6 +34,7 @@ description: 웹사이트 주소를 받아 검색 유입, 네이버 노출, AI �
 | API 키 값을 대화로 받는다 | 대화 기록은 저장되고 지울 수 없다. 사용자가 키를 붙여 넣었다면 저장하지 않고, 그 키를 폐기하고 새로 만들도록 안내한다. |
 | 판정을 하위 에이전트에 나눠 맡기거나 여러 쪽을 모아 한 번에 쓴다 | 사용자의 비용과 결과의 예측 가능성 때문이다. 모아 쓴 긴 출력은 뒤쪽 항목이 「…」 자리표시로 줄어든다([judging.md](references/judging.md)). |
 | 조각에서 찾지 못했다는 이유로 `not_applicable`을 쓴다 | `not_applicable`은 그 단위를 점수의 분모에서 뺀다. 찾지 못한 것을 적용 대상 아님으로 쓰면 약한 쪽이 사라져 점수가 오른다. 근거가 모자라면 `unknown`이다([judging.md](references/judging.md)). |
+| 결과 폴더(`<OUT>`)의 파일을 지우거나 고쳐서 실행을 다시 살린다 | 증거 색인은 폴더 파일의 해시를 적어 둔다. 하나라도 바뀌면 실행이 `index changed:`로 멈추고, 그 폴더의 감사는 이어갈 수 없다. 지난 실행이 남긴 파일은 실행이 스스로 지운다. 막히면 새 `<OUT>`을 쓴다. |
 | 점수를 검색 성과로 말한다 | 점수는 읽은 페이지에서 통과한 검사의 비율이다. 색인, 순위, 유입, 인용은 재지 않았다. |
 | `llms.txt`, 구조화 데이터, AI 봇 허용이 있다는 것만으로 AI 인용이 좋아진다고 말한다 | 어느 AI 제공자도 이것들을 인용 조건으로 약속하지 않는다. 이 감사도 존재에 인용 점수를 주지 않는다([policies.md](references/policies.md)). 마크업은 화면의 사실과 맞을 때만 쓸모가 있다. |
 | `site:` 검색 결과로 색인 여부를 단정하거나, 네이버 `nosourceinfo`를 색인 차단으로 읽는다 | `site:`는 색인의 일부만 보여 준다. `nosourceinfo`는 네이버 AI 답변의 출처 표시만 다룬다. 둘 다 잘못 읽으면 멀쩡한 쪽을 고치게 된다. |
@@ -135,13 +136,13 @@ node "<SKILL_DIR>/scripts/run.mjs" --answers "<OUT>/intake-answers.json" --out "
 |---|---|
 | `index changed:`로 시작 | 결과 폴더의 증거가 바뀌어 이어갈 수 없다는 뜻이다. 새 `<OUT>` 폴더로 1단계부터 다시 한다고 알린다. |
 | `migration_required:`로 시작 | 다른 판의 optbrew가 만든 폴더다. 새 `<OUT>` 폴더로 1단계부터 다시 한다고 알린다. |
-| `This folder already holds a finished audit` 또는 `This folder holds files this audit did not make`로 시작 | 실행이 그 폴더를 거부한 것이다. 결과 폴더에서 아무것도 지우지 않는다. 뒤에 `-2`, `-3`을 붙인 새 `<OUT>`을 정하고, 이전 `<OUT>`의 `preflight` 폴더를 새 폴더로 복사한다(실행은 감사할 쪽을 그 폴더에서 고른다. 없으면 첫 화면과 사실 쪽만 감사한다). 같은 답 파일을 `--answers`로 두고 새 `<OUT>`을 `--out`으로 해 7단계를 다시 한다고 한 문장으로 알린다. |
-| `The answers are not the ones this run was made from`으로 시작 | 이 폴더를 만든 답 파일과 다른 답 파일을 넘겼다. 그 폴더의 `intake-answers.json`을 그대로 쓰거나, 답을 바꿨으면 새 `<OUT>`에 이전 `<OUT>`의 `preflight` 폴더를 복사한 뒤 7단계를 한다. |
+| `This folder already holds a finished audit` 또는 `This folder holds files this audit did not make`로 시작 | 실행이 그 폴더를 거부한 것이다. 폴더를 비우지 않고 뒤에 `-2`, `-3`을 붙인 새 `<OUT>`을 정하고, 이전 `<OUT>`의 `preflight` 폴더를 새 폴더로 복사한다(실행은 감사할 쪽을 그 폴더에서 고른다. 없으면 첫 화면과 사실 쪽만 감사한다). 같은 답 파일을 `--answers`로 두고 새 `<OUT>`을 `--out`으로 해 7단계를 다시 한다고 한 문장으로 알린다. |
+| `The answers are not the ones this run was made from`으로 시작 | 이 폴더를 만든 답 파일과 주소(`url`)가 다른 답 파일을 넘겼다. 실행은 주소만 대조하므로, 같은 주소로 목표나 질문만 바꾼 답 파일은 이 줄로 잡히지 않는다. 답을 바꿨으면 이 오류가 없어도 새 `<OUT>`을 쓴다. 그 폴더의 `intake-answers.json`을 그대로 쓰거나, 답을 바꿨으면 새 `<OUT>`에 이전 `<OUT>`의 `preflight` 폴더를 복사한 뒤 7단계를 한다. |
 | `The address`로 시작하고 `leads to another site`가 든 문장 | 주소가 다른 사이트로 넘어간다. "이 주소는 다른 사이트로 넘어갑니다. 그 사이트가 감사할 곳이면 그 주소를 알려 주세요."라고 말하고 멈춘다. 사용자가 새 주소를 주면 새 `<OUT>`으로 3단계부터 한다. |
 | `None of the selected pages could be fetched`로 시작 | "고른 페이지를 하나도 읽지 못했습니다. 주소가 맞는지, 이 컴퓨터에서 사이트에 접속되는지 확인해 주세요."라고 말하고 멈춘다. 사용자가 새 주소를 주면 새 `<OUT>`으로 3단계부터 한다. |
 | 그 밖의 문장 | 그 문장을 사용자 말로 한 줄로 옮기고 멈춘다. 같은 명령을 되풀이하지 않는다(위 「이 감사가 답하는 것」의 넷째 질문). |
 
-5. 첫 실행이 끝나기 전에 끊겼다면(터미널을 닫음, 도구 시간 제한) 실패 표를 따르지 않는다. 같은 `<OUT>`로 같은 명령을 다시 실행해도 된다. 실행이 스스로 지난 실행이 만든 파일만 지우고 처음부터 다시 한다. 에이전트는 결과 폴더에서 아무것도 지우지 않는다.
+5. 첫 실행이 끝나기 전에 끊겼다면(터미널을 닫음, 도구 시간 제한) 실패 표를 따르지 않는다. 같은 `<OUT>`로 같은 명령을 다시 실행해도 된다. 실행이 스스로 지난 실행이 만든 파일만 지우고 처음부터 다시 한다.
 6. `probe.harness`가 `codex`이고 승인 창이 떴다면 정상이다. `network-codex-approval` 런북을 [prepare.md](references/prepare.md)의 「런북 펼치기」 명령으로 펼쳐 그 출력만 보여 주고, 실행이 끝나기를 기다린다. prepare.md의 다른 항목(「'시작'」 안내, 5단계로 돌아가기)은 이때 따르지 않는다.
 
 ## 8단계. 내용 판정을 한다
@@ -161,7 +162,7 @@ node "<SKILL_DIR>/scripts/run.mjs" --answers "<OUT>/intake-answers.json" --out "
 
 ## 9단계. 결과를 알린다
 
-1. 마지막 줄 JSON의 `reports`에서 보고서 경로를 찾는다: `json`, `md`, `fixes`, `html`. 이 경로를 7단계 JSON에서 읽은 그대로 쓴다.
+1. 마지막 줄 JSON의 `reports`에서 보고서 경로를 찾는다: `json`, `md`, `fixes`, `html`. 이 경로는 `done`을 낸 실행(판정이 없었으면 7단계, 있었으면 8단계 끝의 다시 실행)의 JSON에서 읽은 그대로 쓴다.
 2. 보고서 `md`의 위쪽에서 한 줄 결론과 고칠 것 표를 읽는다. 열려 있는 고칠 것 전체는 `fixes`(`fixes.md`)에 있다. 항목마다 `finding_id`, 영향받는 페이지 전부, 문제, 고치는 방법, 확인하는 방법, 고칠 위치가 들어 있다.
 3. 사용자에게 이 순서로 짧게 알린다. 보고서 파일에 든 내용만 알린다.
    1. 한 줄 결론. 점수는 "측정한 범위 안의 통과율"이라고 부른다.
