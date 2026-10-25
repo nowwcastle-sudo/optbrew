@@ -65,6 +65,21 @@ SKILL.md 8단계의 절차다. 코드가 판정하지 못하는 내용 항목을
 | `freshness-truth` | 날짜가 실제 변경이나 관찰을 뜻하고 중요한 사실이 최신인가 | `pass`, `fail`, `not_applicable`, `unknown` |
 | `source-transparency` | 글의 책임자, 확인할 수 있는 출처, 연락 방법이 쪽의 목적에 맞게 있는가 | `pass`, `fail`, `not_applicable`, `unknown` |
 
+### 한눈에 보기
+
+아래 표는 판정을 쓰기 전에 맞춰 보는 요약이다. 기준과 예는 이 절의 항목별 기준이 정한다. 표와 기준이 다르게 읽히면 기준을 따른다.
+
+| 항목 | `not_applicable`의 `condition` | `partial` | `fail`의 `basis` | `site_chrome` 조각만으로 `pass` | 코드가 다시 보는 판정 |
+|---|---|---|---|---|---|
+| claim-support | `no_material_claims` | `partial_basis` 비율이 있어야 한다 | 쓰지 않는다 | 따로 정하지 않음. 쪽 자신의 주장을 센다 | `no_material_claims`의 `not_applicable` |
+| answer-clarity | `no_matching_questions` | 된다 | 쓰지 않는다 | 된다(사이트 공통 글이 답한 질문) | 없음 |
+| original-value | `simple_contact_or_support` | 된다 | 쓰지 않는다 | 따로 정하지 않음 | 없음 |
+| freshness-truth | `no_date_or_currentness` | 없다 | `shown` 또는 `absence`가 반드시 있다 | 안 된다(`unknown`이 된다) | `no_date_or_currentness`의 `not_applicable`, `absence`의 `fail` |
+| source-transparency | `not_required_for_purpose` | 없다 | `shown` 또는 `absence`가 반드시 있다 | 안 된다. 코드는 이 `pass`를 바꾸지 않으므로 쪽 자신의 글로 직접 지킨다 | `absence`의 `fail`, 조각이 모두 `site_chrome`인 `fail` |
+| entity-identity\|site | 쓸 수 없다 | 된다(이름만 보임) | 쓰지 않는다 | 홈 쪽 조각으로 본다 | 없음 |
+
+글이 없는 쪽(`empty_page`)은 어느 항목이든 코드가 `unknown`으로 바꾼다. 그런 쪽에는 `fail`도 `not_applicable`도 쓰지 않는다.
+
 ### 적용 대상 아님
 
 항목이 그 쪽에 적용되지 않으면 `not_applicable`을 쓴다. 쓰려면 셋을 모두 갖춘다.
@@ -215,6 +230,13 @@ SKILL.md 8단계의 절차다. 코드가 판정하지 못하는 내용 항목을
 
 ## 5. 일하는 순서
 
+쪽마다 판정하기 전에 스스로 묻는다.
+
+- 이 쪽은 무슨 쪽인가? 서비스 안내, 공지, 목록, 법적 고지, 빈 쪽에 따라 같은 항목도 적용 대상 아님이 된다(2절 「적용 대상 아님」). 쪽 종류를 먼저 정해야 적용 대상 아님을 근거 있게 쓸 수 있다.
+- 이 근거는 이 쪽의 본문인가, 모든 쪽에 되풀이되는 머리말·바닥글(`site_chrome`)인가? 되풀이 조각은 쪽마다 같은 답을 내므로 그 쪽만의 근거가 아니다.
+- 앞 쪽과 같은 틀이라서 같은 판정을 하려는가? 틀이 같아도 본문이 다르면 판정이 달라진다. 앞 쪽의 판정을 복사하지 않고 이 쪽의 조각으로 다시 정한다.
+- 조각에서 못 찾은 것인가, 쪽에 없다는 근거가 있는가? 근거 없이 없다고 쓰면 거짓 실패가 된다(3절).
+
 1. 1절의 방법으로 쪽을 하나씩 읽는다. 쪽의 `spans`를 한 번 읽고 그 쪽의 `families` 항목을 모두 판정한다.
 2. 항목마다 2절의 기준에 따라 상태를 정하고, 근거 조각을 고른다.
 3. 쪽마다 판정 파일을 바로 쓴다. 모든 쪽을 마치면 `--judgments "<OUT>/judgments"`로 실행한다. 쪽 안에서 판정하지 않은 항목은 `unknown`으로 남는다.
@@ -222,6 +244,7 @@ SKILL.md 8단계의 절차다. 코드가 판정하지 못하는 내용 항목을
 
 | 오류 내용 | 뜻 | 고치는 법 |
 |---|---|---|
+| `cannot be read as JSON`, `must hold one JSON array` | 쪽 파일이 깨졌다. 쓰는 중에 끊긴 파일이 흔하다 | 그 쪽만 다시 판정해 같은 이름의 파일을 통째로 다시 쓴다 |
 | `unknown span_id` | 그 쪽의 `spans`에 없는 `span_id` | 목록에서 다시 복사한다 |
 | `needs span_ids` | `unknown`이 아닌데 조각이 없다 | 조각을 고르거나 `unknown`으로 바꾼다 |
 | `span_ids repeat a span` | 같은 `span_id`를 두 번 썼다 | 중복을 뺀다 |

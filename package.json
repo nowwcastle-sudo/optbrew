@@ -1,6 +1,6 @@
 {
   "name": "optbrew",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "type": "module",
   "description": "Pinned search audit and improvement skill bundle",
   "license": "MIT",
@@ -43,6 +43,8 @@
     "CHANGELOG.md",
     "docs/platforms.md",
     "docs/release.md",
+    "docs/contracts/api.md",
+    "docs/contracts/report.md",
     "LICENSE",
     "THIRD_PARTY_NOTICES.md",
     "source-lock.json",

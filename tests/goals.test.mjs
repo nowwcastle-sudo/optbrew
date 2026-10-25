@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { goalIds } from '../skills/optbrew/scripts/core/goals.mjs';
 
-const skill = readFileSync(new URL('../skills/optbrew/SKILL.md', import.meta.url), 'utf8');
+const skill = readFileSync(new URL('../skills/optbrew/references/intake.md', import.meta.url), 'utf8');
 
 test('each goal name the start question offers reads as exactly one goal', () => {
   const menu = skill.match(/고를 수 있는 목표는 (.+?)이다\./)[1].split(', ');

@@ -1,6 +1,6 @@
 {
   "schema_version": "1.0.0",
-  "release_version": "0.3.2",
+  "release_version": "0.3.3",
   "evaluation_version": "0.5.0",
   "protocol_version": "0.3.0",
   "evaluation_sources": [
@@ -176,7 +176,7 @@
     },
     {
       "path": "SKILL.md",
-      "sha256": "ed5b8434bf9d9459d4f8452127d3e4fa931638849e1b13eb557c0b67c2e7d652"
+      "sha256": "9106ed29603d717cd114f4a5eec32e1f74481b250ffba0f5fd4dc59f7e3babef"
     },
     {
       "path": "THIRD_PARTY_NOTICES.md",
@@ -655,10 +655,6 @@
       "sha256": "43a1d3c7536257db171c60bb49140480987983ecfbb5c13283933ad9cf3c321c"
     },
     {
-      "path": "references/api.md",
-      "sha256": "a7e5badf0714bffae886b18298af973bd25f024ab0504b633b902be8f60f3e83"
-    },
-    {
       "path": "references/check-registry.json",
       "sha256": "b86870ee91e7c9c7573814c035b2c464b6c8685ef87009a953c3797f8301491d"
     },
@@ -672,7 +668,11 @@
     },
     {
       "path": "references/evidence.md",
-      "sha256": "e93c71724c8a0afdf949d1636b51106ba726b8663163a94229ea285fd304178d"
+      "sha256": "cdbbc34c838097e2ac860e93d6fb626daef769b3e738f64445bf576feca834e8"
+    },
+    {
+      "path": "references/fixing.md",
+      "sha256": "e093fed06ad84ac2af51f1ef2ef63bb3d8dc42e657a8ce67a6bcf32d42668350"
     },
     {
       "path": "references/harness-signals.json",
@@ -680,11 +680,11 @@
     },
     {
       "path": "references/intake.md",
-      "sha256": "20f0443d3f3db6cb18a3cdbd0374fd74318810df923235c5e047bb8c3a4ff59d"
+      "sha256": "fac84ad837d0037e6c618d8ff58aed9f48c1cc227ec820c76d0d1fdc4dd71883"
     },
     {
       "path": "references/judging.md",
-      "sha256": "5440f33230dd8df24d99d60e1e0151e88ac0c573fa51dae977cf2a6c7ce217ce"
+      "sha256": "b2dbdcb3dedae7b704c4c1aed9945038a52b70deaf4c44dace44b8ce6aec3c77"
     },
     {
       "path": "references/limits.json",
@@ -703,20 +703,24 @@
       "sha256": "1ee2a5faaa35da104ad1c32f2bdb3d4fe200601da83334bfa42519c2f35a96cd"
     },
     {
+      "path": "references/prepare.md",
+      "sha256": "47ccc05f42d4d3411e68364214675905ed1812b8166cd3b92db8da174a1feffe"
+    },
+    {
       "path": "references/profiles.json",
       "sha256": "71be1492fa8fc9c8321d0e9b511b2bb56097b4ce607c6ee02e2df537949b3ac7"
+    },
+    {
+      "path": "references/recheck.md",
+      "sha256": "6cc370ac869b2099b3c2116c15cdf8d3b41ed0029911ee8accb526475599bd16"
     },
     {
       "path": "references/remediations.json",
       "sha256": "97ea1207007f2944c7530d6eb11e7af0580948f61670ac2e4653c0d2923ff9fc"
     },
     {
-      "path": "references/report.md",
-      "sha256": "5622b1ca141c95b0a2899fcd7365e954938672f61d0590a50527e7bd8e84783b"
-    },
-    {
       "path": "references/routing.md",
-      "sha256": "84e31cc1d954b5b2f711c56def5fb74d8cd3f929e3aefa83456a18772ccac77b"
+      "sha256": "a3ba587fed9b18c6082ded915ad3c7648d3300e4e3bffcdc72cc5c94d9a12712"
     },
     {
       "path": "references/runbooks/chrome-install.md",
@@ -784,7 +788,7 @@
     },
     {
       "path": "references/versions.json",
-      "sha256": "569c61a5448ce4b8bda6ab1a9f00ab85f5ac4ee02f8d284afb283b2c06b036d7"
+      "sha256": "e271493fa8f18856c0fecd5abbf9499031edf24fdcd29414d9332a046a107725"
     },
     {
       "path": "scripts/adapters/anthropic.mjs",
@@ -1068,7 +1072,7 @@
     },
     {
       "path": "scripts/preflight.mjs",
-      "sha256": "79e98931702a4c830bbba35d62351777eb2ef3588269ba86a852471fe98f4ea3"
+      "sha256": "2d5e558ff1b7314c779bba684899a2ce4727ba30bddb5c96a3dc505abfbfb6ce"
     },
     {
       "path": "scripts/run.mjs",
@@ -1079,5 +1083,5 @@
       "sha256": "dca0bbd03fbf591c4aca6a568be76615eb48d69f7df0c634886f652b54f3f46d"
     }
   ],
-  "bundle_hash": "ff4903f7c1ecb1c78424ef0ad4352d2aa162f862cafefd1c03bb1fadd0d1d4c6"
+  "bundle_hash": "f34b4c4594bede91172a05f2461e97dc30bbac9959dd34ae92367057c95189ae"
 }

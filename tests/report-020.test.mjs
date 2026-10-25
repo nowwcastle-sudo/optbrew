@@ -300,7 +300,7 @@ test('an unaudited fixture report has no verified finding', () => {
 });
 
 test('references/report.md describes the composed report and has no stale wording', () => {
-  const text = readFileSync('skills/optbrew/references/report.md', 'utf8');
+  const text = readFileSync('docs/contracts/report.md', 'utf8');
   assert.doesNotMatch(text, /model-attested/);
   assert.match(text, /bound to spans of the stored judge queue/);
   assert.match(text, /follow_ups/);

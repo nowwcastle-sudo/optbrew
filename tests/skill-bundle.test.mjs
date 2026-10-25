@@ -62,9 +62,10 @@ test('SKILL.md walks the one-call flow in order and links the new references', a
 
 test('the docs quote the limits that code reads from limits.json', async () => {
   const limit = await json('references/limits.json');
-  const entry = await text('SKILL.md');
-  assert.ok(entry.includes(`표본 ${limit.max_urls_default}페이지`) && entry.includes(`최대 ${limit.max_urls_cap}페이지`));
-  assert.ok(entry.includes(`${limit.max_urls_default}을 넘거나`));
+  const intake = await text('references/intake.md');
+  assert.ok(intake.includes(`표본 ${limit.max_urls_default}페이지`) && intake.includes(`최대 ${limit.max_urls_cap}페이지`));
+  assert.ok(intake.includes('기본 상한으로 사이트맵의 쪽을 다 읽지 못하거나') && intake.includes('`max_urls_raise`'));
+  assert.ok((await text('SKILL.md')).includes('`max_urls_raise`'));
   const judging = await text('references/judging.md');
   assert.ok(judging.includes(`\`judge_span_min_bytes\` ${limit.judge_span_min_bytes}, \`judge_spans_per_unit\` ${limit.judge_spans_per_unit}`));
 });
@@ -84,12 +85,13 @@ test('judging.md covers exactly the families the judge queue offers, with the st
 
 const jsonBlocks = entry => [...entry.matchAll(/```json\n([\s\S]*?)\n```/g)].map(match => JSON.parse(match[1]));
 
-test('the change commands SKILL.md gives run as written, and the record they write passes the contract schema', async () => {
+test('the change commands fixing.md gives run as written, and the record they write passes the contract schema', async () => {
   const { validateEntity } = await import('../skills/optbrew/scripts/core/contracts.mjs');
-  const entry = await text('SKILL.md');
+  const entry = await text('references/fixing.md');
+  assert.ok((await text('SKILL.md')).includes('](references/fixing.md)'), 'step 10 sends the agent to fixing.md');
   // The hash commands and the hand-written record are gone: the two commands do both.
   assert.doesNotMatch(entry, /Get-FileHash|sha256sum|shasum -a 256|_백업_원본_/);
-  assert.equal(jsonBlocks(entry).find(block => block.change_id), undefined, 'SKILL.md does not ask for a hand-written ChangeRecord');
+  assert.equal(jsonBlocks(entry).find(block => block.change_id), undefined, 'fixing.md does not ask for a hand-written ChangeRecord');
   const commands = [...entry.matchAll(/^node "<SKILL_DIR>\/scripts\/cli\.mjs" (change (?:start|finish) .*)$/gm)].map(match => match[1]);
   assert.deepEqual(commands.map(command => command.split(' ')[1]), ['start', 'finish']);
   const dir = await mkdtemp(path.join(os.tmpdir(), 'optbrew skill change '));
@@ -111,17 +113,19 @@ test('the change commands SKILL.md gives run as written, and the record they wri
   } finally { await rm(dir, { recursive: true, force: true }); }
 });
 
-test('the intake-answers template in SKILL.md has exactly the documented fields', async () => {
-  const answers = jsonBlocks(await text('SKILL.md')).find(block => block.guidance_level);
-  const intake = await text('references/intake.md');
-  const documented = [...intake.matchAll(/^\| `([a-z_]+)` \|/gm)].map(match => match[1]).filter(field => field in answers);
-  assert.deepEqual(Object.keys(answers).sort(), documented.sort());
+test('the intake-answers template in SKILL.md has exactly the fields the IntakeAnswers schema accepts, each explained once', async () => {
+  const entry = await text('SKILL.md');
+  const answers = jsonBlocks(entry).find(block => block.guidance_level);
+  const schema = (await json('references/schemas/contract.schema.json')).$defs.IntakeAnswers;
+  assert.deepEqual(Object.keys(answers).sort(), Object.keys(schema.properties).sort());
+  for (const field of ['schema_version', 'goals', 'facts', 'sample_mode', 'owner_exports', 'url']) assert.ok(entry.includes(`- \`${field}\``), field);
+  assert.doesNotMatch(await text('references/intake.md'), /^\| `guidance_level` \|/m);
 });
 
-test('the runbooks SKILL.md names exist and fit the harness they are chosen for', async () => {
+test('the runbooks SKILL.md and prepare.md name exist and fit the harness they are chosen for', async () => {
   const { loadRunbook } = await import('../skills/optbrew/scripts/core/runbooks.mjs');
   const { runbookHarnesses } = await import('../skills/optbrew/scripts/core/probe.mjs');
-  const entry = await text('SKILL.md');
+  const entry = `${await text('SKILL.md')}\n${await text('references/prepare.md')}`;
   const keyRunbook = { 'claude-code': 'key-set-local', other: 'key-set-local', codex: 'key-set-codex', 'claude-code-cloud': 'key-set-claude-cloud' };
   for (const [harness, id] of Object.entries(keyRunbook)) {
     assert.ok(entry.includes(`\`${id}\``), id);
@@ -157,4 +161,15 @@ test('the preflight failure codes SKILL.md reacts to are codes the code raises',
     assert.ok((await text('SKILL.md')).includes(`\`${name}\``), name);
     assert.ok(code.includes(name), name);
   }
+});
+
+test('every stderr text the step 7 failure table matches is a sentence the scripts write', async () => {
+  const entry = await text('SKILL.md');
+  const table = entry.slice(entry.indexOf('| stderr 마지막 줄 또는 상황 |'), entry.indexOf('| 그 밖의 문장 |'));
+  const quoted = [...table.matchAll(/^\| (.+?) \|/gm)].slice(2).flatMap(([, cell]) => [...cell.matchAll(/`([^`]+)`/g)].map(match => match[1]));
+  assert.ok(quoted.length >= 7, quoted.join(' | '));
+  const core = path.join(skill, 'scripts', 'core');
+  const sources = (await Promise.all([path.join(skill, 'scripts', 'run.mjs'), ...(await readdir(core)).filter(name => name.endsWith('.mjs')).map(name => path.join(core, name))]
+    .map(file => readFile(file, 'utf8')))).join('\n');
+  for (const piece of quoted) assert.ok(sources.includes(piece), piece);
 });

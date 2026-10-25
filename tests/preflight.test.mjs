@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { access, readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { preflight } from '../skills/optbrew/scripts/preflight.mjs';
+import { preflight, raisedLimit } from '../skills/optbrew/scripts/preflight.mjs';
 import { limits } from '../skills/optbrew/scripts/core/config.mjs';
 import { tempDir } from './support/temp-dir.mjs';
 
@@ -51,6 +51,7 @@ test('preflight never exceeds preflight_pages', async () => {
   assert.equal(startJson.probe.sitemap_pages, 40);
   assert.equal(startJson.sitemap_pages_basis, 'exact');
   assert.equal(startJson.sitemap_declared, 1, 'one sitemap file is declared');
+  assert.equal(startJson.max_urls_raise, null, 'a sitemap within the default limit gets no raise question');
 });
 
 test('redirect hops and the sitemap count against the same budget', async () => {
@@ -196,4 +197,24 @@ test('start.json never holds the proxy authorization or the key', async () => {
   const text = await readFile(path.join(out, 'preflight', 'start.json'), 'utf8');
   assert.doesNotMatch(text, /c2VjcmV0|AIza-secret-value|authorization/i);
   assert.match(text, /proxy\.local/);
+});
+
+test('a count that is only a lower bound raises to the cap, and an unreachable start offers no raise', async () => {
+  const { max_urls_cap: cap } = limits();
+  const out = await tempDir('optbrew-raise-');
+  assert.equal(await raisedLimit(out, { sitemap_pages_basis: 'lower_bound', final_url: `${origin}/`, fact_candidates: [] }), cap);
+  const { startJson } = await run(site({}));
+  assert.equal(startJson.max_urls_raise, null);
+});
+
+test('a second check into the same folder starts clean, so the first one\'s pages and failures do not remain', async () => {
+  const fake = site({ '/': html(page('Home', ['/missing'])) });
+  const { out } = await run(fake);
+  const index = () => readFile(path.join(out, 'preflight', 'evidence', 'evidence-index.json'), 'utf8').then(JSON.parse);
+  const first = await index();
+  await preflight({ url: `${origin}/`, out, skillRoot, env: { CLAUDECODE: '1' }, selectTransport: fake.selectTransport,
+    findChrome: () => ({ path: '/usr/bin/chrome', kind: 'chrome' }), readGoogleKey: () => 'key', home: '/no/such/home' });
+  const second = await index();
+  assert.ok(first.raw.length > 0);
+  assert.deepEqual([second.raw.length, (second.failures ?? []).length], [first.raw.length, (first.failures ?? []).length]);
 });
