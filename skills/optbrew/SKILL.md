@@ -1,6 +1,6 @@
 ---
 name: optbrew
-description: 웹사이트 주소를 받아 검색 유입, 네이버 노출, AI 답변 인용, 브랜드 사실 정확성, 전환을 감사하고 고칠 것을 냅니다. 결과는 HTML·Markdown 보고서와 고칠 것 목록입니다. 요청하면 로컬 소스 파일을 백업 후 고치고, 배포 뒤 다시 감사해 비교합니다. 'SEO 감사', '사이트 점검', '왜 네이버에 안 나와요', '구글에 안 떠요', 'ChatGPT가 우리 회사를 인용하지 않아요' 같은 요청과 고친 뒤 다시 감사하는 요청에 씁니다. 키워드 조사, 글 작성, 광고, 순위 추적에는 쓰지 않습니다. Use when a user gives a website URL and asks for an SEO, Naver Search Advisor, AEO/GEO/LLMO, AI-citation or site audit (robots.txt, sitemap, noindex, canonical, structured data, Core Web Vitals), or says "my site doesn't show up on Google" or "AI never cites us", or wants its fixes applied to local source files and re-checked after deploy. Needs Node.js 22.4+ and network.
+description: 웹사이트 주소를 받아 검색 유입, 네이버 노출, AI 답변 인용, 브랜드 사실 정확성, 전환을 감사합니다. HTML·Markdown 보고서와 고칠 것 목록을 내고, 요청하면 로컬 소스를 백업 후 고치고 배포 뒤 다시 감사해 비교합니다. 'SEO 감사', '사이트 점검', '왜 네이버에 안 나와요', '구글에 안 떠요', 'ChatGPT가 우리 회사를 인용하지 않아요' 같은 요청에 씁니다. 키워드 조사, 글 작성, 광고, 순위 추적에는 쓰지 않습니다. Use for an English request with a site URL too, such as an SEO or site audit, Naver Search Advisor, AEO/GEO/LLMO, AI citation, robots.txt, sitemap, noindex, canonical, structured data, Core Web Vitals, "my site doesn't show up on Google", re-check after deploy. Needs Node.js 22.4+ and network.
 ---
 
 # optbrew
@@ -118,7 +118,7 @@ node "<SKILL_DIR>/scripts/preflight.mjs" --url "<주소>" --out "<OUT>" --source
 ## 7단계. 감사를 실행한다
 
 1. 사용자에게 한 줄로 알린다: 수집에 몇 분 걸릴 수 있다.
-2. 아래 명령을 실행한다. 이 한 번에 수집, 크롬 렌더링, 속도 측정, 코드 판정이 끝난다. 표본이 크면 10분을 넘길 수 있다. 명령 도구에 시간 제한이 있으면 가장 긴 제한을 주거나 백그라운드로 실행하고 끝날 때까지 기다린다. 제한에 걸려 끊기면 실패 표가 아니라 아래 5번(끊긴 실행)대로 같은 명령을 다시 실행한다.
+2. 아래 명령을 실행한다. 이 한 번에 수집, 크롬 렌더링, 속도 측정, 코드 판정이 끝난다. 표본이 크면 10분을 넘길 수 있다. 명령 도구에 시간 제한이 있으면 가장 긴 제한을 주거나 백그라운드로 실행한다. 백그라운드로 돌렸으면 끝났다는 알림이나 종료 코드를 받은 뒤 그 출력의 마지막 줄 JSON을 읽는다. 그 전에 다음 단계로 가지 않는다. 제한에 걸려 끊기면 실패 표가 아니라 아래 5번(끊긴 실행)대로 같은 명령을 다시 실행한다.
 
 ```
 node "<SKILL_DIR>/scripts/run.mjs" --answers "<OUT>/intake-answers.json" --out "<OUT>"

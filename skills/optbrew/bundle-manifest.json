@@ -176,7 +176,7 @@
     },
     {
       "path": "SKILL.md",
-      "sha256": "4c4bdf0538336f2ed91082e7238c8bc638230745e6ffe243f7a584383bf26c2e"
+      "sha256": "3645c45e325faa899babe85411822b9ebde533b4ecd106c053549a0765fef0c1"
     },
     {
       "path": "THIRD_PARTY_NOTICES.md",
@@ -684,7 +684,7 @@
     },
     {
       "path": "references/judging.md",
-      "sha256": "225987fe84396e8080a68c775ecb7fee2a6267ac12925d290ea978dcd42e9011"
+      "sha256": "d978748fd70041c59afeda56d0b3b595da05a411c81d9cdc3053bf428d1506e4"
     },
     {
       "path": "references/limits.json",
@@ -1083,5 +1083,5 @@
       "sha256": "dca0bbd03fbf591c4aca6a568be76615eb48d69f7df0c634886f652b54f3f46d"
     }
   ],
-  "bundle_hash": "f0a108f05593699301ad10e42ad975c716fea16215b164e60b30984e2c86c9ec"
+  "bundle_hash": "0cea220aa934787d98398c4d9a477e8b8482595508992239deb8145e15a6937e"
 }
