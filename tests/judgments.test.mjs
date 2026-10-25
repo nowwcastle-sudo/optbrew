@@ -1167,7 +1167,7 @@ test('judging.md and SKILL.md state the rules the judging and the last message d
   for (const part of ['basis: "shown"', 'basis: "absence"', 'site_chrome', 'hx-vars', 'hx-on', '2026-10-31부터 적용', '경계 한 문장: 제품의 기능을 설명하는 참조 쪽', 'empty_page', '인용한 조각이 모두 `site_chrome`이면', '쪽에 날짜가 하나도 없으면 코드는', 'page shows no text', '쪽에 날짜가 보이는 것이 아니다'])
     assert.ok(judging.includes(part), `judging.md names ${part}`);
   const skill = read('SKILL.md');
-  for (const part of ['영어 문장을 쓰지 않는다', '진행 문장의 언어', '보고서 파일(`md`, `json`, `fixes`, `html`)에 든 내용만 요약한다', '`sitemap_declared`'])
+  for (const part of ['영어 문장을 쓰지 않는다', '진행 문장의 언어', '보고서 파일(`md`, `json`, `fixes`, `html`)에 든 내용만 요약한다', '`max_urls_raise`'])
     assert.ok(skill.includes(part), `SKILL.md names ${part}`);
 });
 

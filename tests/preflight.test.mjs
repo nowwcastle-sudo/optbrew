@@ -3,7 +3,8 @@ import assert from 'node:assert/strict';
 import { access, readFile, readdir } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { preflight } from '../skills/optbrew/scripts/preflight.mjs';
+import { preflight, raisedLimit } from '../skills/optbrew/scripts/preflight.mjs';
+import { pageBudget } from '../skills/optbrew/scripts/core/page-select.mjs';
 import { limits } from '../skills/optbrew/scripts/core/config.mjs';
 import { tempDir } from './support/temp-dir.mjs';
 
@@ -51,6 +52,7 @@ test('preflight never exceeds preflight_pages', async () => {
   assert.equal(startJson.probe.sitemap_pages, 40);
   assert.equal(startJson.sitemap_pages_basis, 'exact');
   assert.equal(startJson.sitemap_declared, 1, 'one sitemap file is declared');
+  assert.equal(startJson.max_urls_raise, null, 'a sitemap within the default limit gets no raise question');
 });
 
 test('redirect hops and the sitemap count against the same budget', async () => {
@@ -196,4 +198,15 @@ test('start.json never holds the proxy authorization or the key', async () => {
   const text = await readFile(path.join(out, 'preflight', 'start.json'), 'utf8');
   assert.doesNotMatch(text, /c2VjcmV0|AIza-secret-value|authorization/i);
   assert.match(text, /proxy\.local/);
+});
+
+test('the raised limit start.json offers is the smallest one whose page budget holds every sitemap page, and never past the cap', () => {
+  const { max_urls_cap: cap } = limits();
+  for (const [pages, declared] of [[51, 1], [60, 1], [120, 4], [150, 1]]) {
+    const limit = raisedLimit(pages, 'exact', declared), auxiliary = 1 + declared;
+    assert.ok(pageBudget(limit, auxiliary) >= pages + 1, `${pages} pages fit in ${limit}`);
+    assert.ok(pageBudget(limit - 1, auxiliary) < pages + 1, `${limit - 1} would drop a page`);
+  }
+  assert.equal(raisedLimit(400, 'exact', 1), cap);
+  assert.equal(raisedLimit(30, 'lower_bound', 2), cap, 'a count that is only a lower bound raises to the cap');
 });

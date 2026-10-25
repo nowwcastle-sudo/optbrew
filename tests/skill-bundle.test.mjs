@@ -64,7 +64,7 @@ test('the docs quote the limits that code reads from limits.json', async () => {
   const limit = await json('references/limits.json');
   const entry = await text('SKILL.md');
   assert.ok(entry.includes(`표본 ${limit.max_urls_default}페이지`) && entry.includes(`최대 ${limit.max_urls_cap}페이지`));
-  assert.ok(entry.includes(`${limit.max_urls_default}을 넘거나`));
+  assert.ok(entry.includes(`사이트맵이 ${limit.max_urls_default}을 넘거나`) && entry.includes('`max_urls_raise`'));
   const judging = await text('references/judging.md');
   assert.ok(judging.includes(`\`judge_span_min_bytes\` ${limit.judge_span_min_bytes}, \`judge_spans_per_unit\` ${limit.judge_spans_per_unit}`));
 });
@@ -84,12 +84,13 @@ test('judging.md covers exactly the families the judge queue offers, with the st
 
 const jsonBlocks = entry => [...entry.matchAll(/```json\n([\s\S]*?)\n```/g)].map(match => JSON.parse(match[1]));
 
-test('the change commands SKILL.md gives run as written, and the record they write passes the contract schema', async () => {
+test('the change commands fixing.md gives run as written, and the record they write passes the contract schema', async () => {
   const { validateEntity } = await import('../skills/optbrew/scripts/core/contracts.mjs');
-  const entry = await text('SKILL.md');
+  const entry = await text('references/fixing.md');
+  assert.ok((await text('SKILL.md')).includes('](references/fixing.md)'), 'step 10 sends the agent to fixing.md');
   // The hash commands and the hand-written record are gone: the two commands do both.
   assert.doesNotMatch(entry, /Get-FileHash|sha256sum|shasum -a 256|_백업_원본_/);
-  assert.equal(jsonBlocks(entry).find(block => block.change_id), undefined, 'SKILL.md does not ask for a hand-written ChangeRecord');
+  assert.equal(jsonBlocks(entry).find(block => block.change_id), undefined, 'fixing.md does not ask for a hand-written ChangeRecord');
   const commands = [...entry.matchAll(/^node "<SKILL_DIR>\/scripts\/cli\.mjs" (change (?:start|finish) .*)$/gm)].map(match => match[1]);
   assert.deepEqual(commands.map(command => command.split(' ')[1]), ['start', 'finish']);
   const dir = await mkdtemp(path.join(os.tmpdir(), 'optbrew skill change '));

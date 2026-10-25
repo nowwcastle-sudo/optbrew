@@ -22,38 +22,46 @@ SKILL.md의 3단계~6단계가 쓰는 참고 문서다. 순서는 SKILL.md가 �
 | `probe.transport`, `probe.address_vetting`, `probe.proxy` | 직접 연결인지 프록시인지. 프록시는 호스트와 포트만 있다 | 답 파일에 그대로 복사 |
 | `probe.chrome` | `{ found, kind, reason }`. 없으면 렌더 항목이 빈칸이 된다 | 답 파일에 그대로 복사 |
 | `probe.google_key` | Google 키 유무. 값은 없다 | 답 파일에 그대로 복사 |
-| `sitemap_pages`, `sitemap_pages_basis` | 사이트맵 쪽수. `basis`는 `exact`, `lower_bound`, `null` | 5번 질문 |
-| `question_candidates_input` | 읽은 쪽마다 `{ url, title, h1, description }` | 3번 질문 |
-| `fact_candidates` | `{ key, value, source_url }`. 쪽에서 읽은 이름·주소·전화·설립 연도 후보 | 4번 질문 |
+| `sitemap_pages`, `sitemap_pages_basis` | 사이트맵 쪽수. `basis`는 `exact`, `lower_bound`, `null` | 「표본」 설명 |
+| `max_urls_raise` | "상한을 올림"일 때 답 파일의 `max_urls`. `null`이면 「표본」 항목을 보내지 않는다 | 「표본」 항목, 답 파일 |
+| `question_candidates_input` | 읽은 쪽마다 `{ url, title, h1, description }` | 「질문」 항목 |
+| `fact_candidates` | `{ key, value, source_url }`. 쪽에서 읽은 이름·주소·전화·설립 연도 후보 | 「사실」 항목 |
 | `start_runbooks.blocking` | 감사가 돌지 않게 막는 런북. 최대 1개. `text`에 본문이 들어 있다 | 3단계 표 |
-| `start_runbooks.improving` | 있으면 결과가 채워지는 런북. 각각 `{ id, line, harness }`. 지금 목록에서는 3개까지 | 6번 질문 |
+| `start_runbooks.improving` | 있으면 결과가 채워지는 런북. 각각 `{ id, line, harness }`. 지금 목록에서는 3개까지 | 「준비」 항목 |
 
 `probe`는 한 번만 점검한다. 답 파일에는 `start.json`의 `probe`를 그대로 복사한다. 사용자가 점검 뒤에 키나 크롬을 준비했으면 점검 명령을 다시 실행해 새 `start.json`을 쓴다.
 
 ## 시작 질문 만들기
 
-### 목표 (2번)
+### 목표 (「주소와 목표」)
 
 고를 수 있는 목표는 검색 유입, 네이버 노출, AI 답변 인용, 브랜드 사실 정확성, 전환이다. 답 파일에는 이 목표 이름을 그대로 적는다. 문의, 예약, 상담, 전화는 전환이다. 실행은 `scripts/core/goals.mjs`의 낱말표로 목표 이름을 읽어 점검할 엔진과 항목을 정한다. 사용자가 목표를 말하지 않았으면 "검색 유입", "AI 답변 인용"을 기본으로 둔다.
 
-### 질문 목록 (3번)
+### 질문 목록 (「질문」)
 
 감사가 "이 사이트가 이 질문에 답하는가"를 보는 기준이다. `question_candidates_input`의 제목, 첫 제목, 설명에서 만든다.
+
+질문을 만들기 전에 스스로 묻는다.
+
+- 이 사이트를 모르는 사람이 검색창이나 AI에 실제로 칠 문장인가? 사이트의 메뉴 이름("사업안내")이 아니라 사람의 말("비용은 얼마인가요")로 쓴다.
+- 목표마다 질문이 하나 이상 있는가? 전환이 목표면 신청·예약·문의 방법을 묻는 질문, 브랜드 사실 정확성이 목표면 위치·연락처·운영 시간을 묻는 질문을 넣는다.
+- 답이 이 사이트 안에 있어야 하는 질문인가? 경쟁사 비교나 업계 통계처럼 사이트가 답할 이유가 없는 질문은 「찾지 못함」만 늘리고 고칠 것을 만들지 않는다.
+- 질문끼리 겹치지 않는가? 말만 다른 같은 질문은 보고서의 질문표에서 같은 줄을 두 번 채울 뿐이고, 그만큼 다른 의도의 질문이 빠진다.
 
 - 10개 안팎으로 만든다. 8개에서 12개 사이면 된다.
 - 브랜드 질문(이름이 들어간 질문, 예: "OO는 어디에 있나요")과 일반 질문(이름 없이 찾는 질문, 예: "재가 요양 서비스 신청은 어떻게 하나요")을 섞는다.
 - 사이트의 언어로 쓴다. 사이트에 근거가 없는 주제로는 만들지 않는다.
-- 답 파일에서는 `{ id, question, category, goal }`이다. `id`는 `q1`, `q2`처럼 번호를 붙인다. `category`는 `brand` 또는 `non_brand`다. `goal`은 2번에서 확정한 목표 중 하나다.
+- 답 파일에서는 `{ id, question, category, goal }`이다. `id`는 `q1`, `q2`처럼 번호를 붙인다. `category`는 `brand` 또는 `non_brand`다. `goal`은 「주소와 목표」에서 확정한 목표 중 하나다.
 
-### 사실 목록 (4번)
+### 사실 목록 (「사실」)
 
 쪽 사이의 사실 일치(이름, 주소, 전화, 설립 연도)를 검사하는 기준이다. 후보는 사이트에서 읽은 값이므로, 이 목록은 "사이트가 자기 자신과 맞는가"를 보는 용도다. 사이트 밖 진실을 확인하지 않는다. 사용자가 틀린 값을 고치면 고친 값을 쓴다.
 
-### 표본과 상한 (5번)
+### 표본과 상한 (「표본」)
 
 기본 상한은 50쪽이다(`max_urls_default`). 사이트맵이 50쪽을 넘거나, 쪽수가 하한값(`sitemap_pages_basis`가 `lower_bound`)이면 "표본 감사" 또는 "상한을 올림"을 묻는다. 올릴 수 있는 한도는 200쪽이다(`max_urls_cap`). 두 값의 원천은 [limits.json](limits.json)이다. 상한은 페이지와 보조 파일(robots, sitemap)의 요청 수를 모두 합친 값이다. 쪽이 다른 주소로 넘어가면 요청이 하나 더 든다. 그래서 상한 안에 여유가 남는다(`redirect_reserve`: 쪽의 10%, 최소 2). 이 여유는 선택한 쪽과 보조 파일이 상한 때문에 빠지지 않게 한다. 그래서 상한을 올려도 모든 쪽이 들어가지 않을 수 있다. 질문에 이 말을 함께 적는다.
 
-### 있으면 더 채워지는 것 (6번)
+### 있으면 더 채워지는 것 (「준비」)
 
 `start_runbooks.improving`에 있는 항목만 보여 준다. 항목마다 한 줄이다. 지금 목록에서는 세 항목(Google 키, 크롬, 내보내기)까지만 나온다. 사용자가 해당 단어로 답할 때만 런북을 펼친다. 답하지 않으면 감사는 그대로 가고, 그 런북은 보고서의 남은 일에 붙는다.
 
@@ -69,8 +77,8 @@ SKILL.md의 3단계~6단계가 쓰는 참고 문서다. 순서는 SKILL.md가 �
 | `goals` | 목표 문자열 목록 |
 | `questions` | 확정한 질문 목록 |
 | `facts` | 확정한 사실 목록 |
-| `sample_mode` | `null`, `sample`, `raise`. 5번 질문이 없었으면 `null` |
-| `max_urls` | 요청 상한. 정수이며 기본 50, 올려도 200 이하 |
+| `sample_mode` | `null`, `sample`, `raise`. 「표본」 항목을 보내지 않았으면 `null` |
+| `max_urls` | 요청 상한. 정수이며 기본 50. `raise`이면 `start.json`의 `max_urls_raise`(200 이하) |
 | `source_tools` | 소스 분석 도구 이름 목록 |
 | `probe` | `start.json`의 `probe` |
 | `owner_exports` | 선택. 사용자가 내려받은 파일 목록 `{ kind, path }`. `kind`는 `gsc`(Search Console) 또는 `naver`(네이버 서치어드바이저). 받은 것이 없으면 필드를 뺀다 |

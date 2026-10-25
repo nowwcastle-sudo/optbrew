@@ -9,6 +9,7 @@ import { fetchScoped, links } from './core/collector.mjs';
 import { findChrome as realFindChrome } from './core/chrome.mjs';
 import { limits } from './core/config.mjs';
 import { openStore } from './core/evidence-store.mjs';
+import { pageBudget } from './core/page-select.mjs';
 import { pageFacts } from './core/facts.mjs';
 import { decodeEntities } from './core/html.mjs';
 import { readGoogleKey as realReadGoogleKey } from './core/keys.mjs';
@@ -153,6 +154,7 @@ export async function preflight({ url, out, sourceTools = [], skillRoot = defaul
     sitemap_pages: sitemapPages,
     sitemap_pages_basis: sitemapBasis,
     sitemap_declared: sitemapFiles.size,
+    max_urls_raise: raisedLimit(sitemapPages, sitemapBasis, sitemapFiles.size),
     question_candidates_input: pages.map(({ artifact, html }) => questionInput(artifact, html)),
     fact_candidates: factCandidates(pages),
     start_runbooks: startRunbooks(probe, { level, skillRoot, harnesses: runbookHarnesses(probe.harness) }),
@@ -160,6 +162,20 @@ export async function preflight({ url, out, sourceTools = [], skillRoot = defaul
   const startPath = path.join(dir, 'start.json');
   await writeFile(startPath, `${JSON.stringify(startJson, null, 2)}\n`);
   return { startJson, startPath };
+}
+
+/**
+ * The `max_urls` a "raise" answer writes, so the agent does not do the arithmetic: the smallest request limit whose page budget
+ * (the run's own `pageBudget`, robots.txt and each sitemap file fetched first) still holds the start page and every sitemap page,
+ * never above the cap. A count that is only a lower bound gets the cap. `null` when the sample question is not asked.
+ */
+export function raisedLimit(pages, basis, declared) {
+  const { max_urls_default: base, max_urls_cap: cap } = limits();
+  if (basis === 'lower_bound') return cap;
+  if (!(pages > base)) return null;
+  const auxiliary = 1 + Math.max(1, declared);
+  for (let limit = base + 1; limit < cap; limit++) if (pageBudget(limit, auxiliary) >= pages + 1) return limit;
+  return cap;
 }
 
 if (process.argv[1] && realpathSync(path.resolve(process.argv[1])) === realpathSync(fileURLToPath(import.meta.url))) {

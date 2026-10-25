@@ -86,12 +86,13 @@ test('the identity fix of the site names the home page address as the place to f
 
 test('SKILL.md checks the key file with status only, states the 200 cap, and tells the summary to name pages left out of the index (M-4, M-5, I-1)', async () => {
   const skill = lf(await readFile(path.join(skillRoot, 'SKILL.md'), 'utf8'));
-  const check = skill.slice(skill.indexOf('4. 키 파일 점검'), skill.indexOf('5. 런북을 펼친 뒤에는'));
+  const check = skill.slice(skill.indexOf('4. 키 파일 점검'), skill.indexOf('5. 런북 뒤.'));
   assert.ok(check.includes('key.mjs" status') && check.includes('google.corrupt') && check.includes('.optbrew/credentials.json'));
   assert.equal(/key\.mjs"? ?remove/.test(skill), false, 'no command that changes the key file is used as a check');
   assert.equal(/\bremove\b/.test(check), false);
   const rule = skill.slice(skill.indexOf('- `sample_mode`는'), skill.indexOf('- `owner_exports`는'));
-  assert.ok(rule.includes('계산한 수가 200을 넘으면 200으로 줄인다') && rule.includes('max_urls') && rule.includes(String(limits().max_urls_cap)));
+  // The raised limit is copied from start.json (preflight computes it with the run's own page budget), never worked out by hand.
+  assert.ok(rule.includes('`max_urls_raise` 값을 그대로 쓴다') && rule.includes('직접 계산하지 않는다') && rule.includes(String(limits().max_urls_cap)));
   // The formula cannot give a limit above the cap the run applies (requestLimit clamps to it).
   for (const pages of [150, 181, 190, 200, 201]) {
     const base = pages + 2 + 1, calculated = base + Math.max(2, Math.ceil(base * 0.1));
