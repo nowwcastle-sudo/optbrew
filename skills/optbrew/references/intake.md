@@ -1,6 +1,6 @@
 # Intake and start questions
 
-SKILL.md의 3단계~6단계가 쓰는 참고 문서다. 순서는 SKILL.md가 정한다. 4단계의 시작 질문 틀과 항목별 쓰는 법은 이 문서에만 있다.
+SKILL.md 4단계에서 처음부터 끝까지 읽는 문서다. 5단계는 이때 읽은 내용을 쓴다. 순서는 SKILL.md가 정한다. 시작 질문 틀과 항목별 쓰는 법은 이 문서에만 있다.
 
 ## 원칙
 
@@ -92,21 +92,7 @@ SKILL.md의 3단계~6단계가 쓰는 참고 문서다. 순서는 SKILL.md가 �
 
 ## 답 파일의 필드
 
-`<OUT>/intake-answers.json`의 필드는 SKILL.md 6단계가 보여 준다.
-
-| 필드 | 뜻 |
-|---|---|
-| `schema_version` | [versions.json](versions.json)의 `contract_schema` 값 |
-| `guidance_level` | 런북 깊이: `beginner`, `brief` |
-| `url` | 사용자가 확인한 감사 시작 주소 |
-| `goals` | 목표 문자열 목록 |
-| `questions` | 확정한 질문 목록 |
-| `facts` | 확정한 사실 목록 |
-| `sample_mode` | `null`, `sample`, `raise`. 「표본」 항목을 보내지 않았으면 `null` |
-| `max_urls` | 요청 상한. 정수이며 기본 50. `raise`이면 `start.json`의 `max_urls_raise`(200 이하) |
-| `source_tools` | 소스 분석 도구 이름 목록 |
-| `probe` | `start.json`의 `probe` |
-| `owner_exports` | 선택. 사용자가 내려받은 파일 목록 `{ kind, path }`. `kind`는 `gsc`(Search Console) 또는 `naver`(네이버 서치어드바이저). 받은 것이 없으면 필드를 뺀다 |
+`<OUT>/intake-answers.json`의 모양, 필드마다 값을 가져올 곳은 SKILL.md 6단계에만 있다. 여기에 다시 적지 않는다. 표를 둘 두면 한쪽만 고쳐져 어긋난다. `schema_version`은 [versions.json](versions.json)의 `contract_schema` 값을 그대로 쓴다. `sample_mode`가 `raise`이면 `max_urls`는 `start.json`의 `max_urls_raise`를 그대로 쓰며 직접 계산하지 않는다(위 「표본」).
 
 ## 재개
 

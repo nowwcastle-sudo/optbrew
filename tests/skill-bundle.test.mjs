@@ -113,11 +113,13 @@ test('the change commands fixing.md gives run as written, and the record they wr
   } finally { await rm(dir, { recursive: true, force: true }); }
 });
 
-test('the intake-answers template in SKILL.md has exactly the documented fields', async () => {
-  const answers = jsonBlocks(await text('SKILL.md')).find(block => block.guidance_level);
-  const intake = await text('references/intake.md');
-  const documented = [...intake.matchAll(/^\| `([a-z_]+)` \|/gm)].map(match => match[1]).filter(field => field in answers);
-  assert.deepEqual(Object.keys(answers).sort(), documented.sort());
+test('the intake-answers template in SKILL.md has exactly the fields the IntakeAnswers schema accepts, each explained once', async () => {
+  const entry = await text('SKILL.md');
+  const answers = jsonBlocks(entry).find(block => block.guidance_level);
+  const schema = (await json('references/schemas/contract.schema.json')).$defs.IntakeAnswers;
+  assert.deepEqual(Object.keys(answers).sort(), Object.keys(schema.properties).sort());
+  for (const field of ['schema_version', 'goals', 'facts', 'sample_mode', 'owner_exports', 'url']) assert.ok(entry.includes(`- \`${field}\``), field);
+  assert.doesNotMatch(await text('references/intake.md'), /^\| `guidance_level` \|/m);
 });
 
 test('the runbooks SKILL.md and prepare.md name exist and fit the harness they are chosen for', async () => {

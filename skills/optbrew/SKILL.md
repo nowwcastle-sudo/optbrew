@@ -1,6 +1,6 @@
 ---
 name: optbrew
-description: 웹사이트 주소를 받아 검색 유입, 네이버 노출, AI 답변 인용, 브랜드 사실 정확성, 전환을 감사하고 고칠 것을 냅니다. 동봉된 Node 스크립트가 페이지를 수집·렌더링·점검하고 에이전트가 내용을 판정해 HTML·Markdown 보고서를 만듭니다. 요청하면 로컬 소스 파일을 백업 후 고치고, 배포 뒤 다시 감사해 비교합니다. 'SEO 감사', '사이트 점검', '왜 네이버에 안 나와요', '구글에 안 떠요', 'ChatGPT가 우리 회사를 인용하지 않아요' 같은 요청과 고친 뒤 다시 감사하는 요청에 씁니다. 키워드 조사, 글 작성, 광고, 순위 추적에는 쓰지 않습니다. Use when a user gives a website URL and asks for an SEO, Naver Search Advisor, AEO/GEO/LLMO, AI-citation or site audit (robots.txt, sitemap, noindex, canonical, structured data, Core Web Vitals), or wants its fixes applied to local source files. Needs Node.js 22.4+ and network.
+description: 웹사이트 주소를 받아 검색 유입, 네이버 노출, AI 답변 인용, 브랜드 사실 정확성, 전환을 감사하고 고칠 것을 냅니다. 결과는 HTML·Markdown 보고서와 고칠 것 목록입니다. 요청하면 로컬 소스 파일을 백업 후 고치고, 배포 뒤 다시 감사해 비교합니다. 'SEO 감사', '사이트 점검', '왜 네이버에 안 나와요', '구글에 안 떠요', 'ChatGPT가 우리 회사를 인용하지 않아요' 같은 요청과 고친 뒤 다시 감사하는 요청에 씁니다. 키워드 조사, 글 작성, 광고, 순위 추적에는 쓰지 않습니다. Use when a user gives a website URL and asks for an SEO, Naver Search Advisor, AEO/GEO/LLMO, AI-citation or site audit (robots.txt, sitemap, noindex, canonical, structured data, Core Web Vitals), or says "my site doesn't show up on Google" or "AI never cites us", or wants its fixes applied to local source files and re-checked after deploy. Needs Node.js 22.4+ and network.
 ---
 
 # optbrew
@@ -65,7 +65,7 @@ node "<SKILL_DIR>/scripts/preflight.mjs" --url "<주소>" --out "<OUT>" --source
 
 | 결과 | 할 일 |
 |---|---|
-| `node`를 찾지 못함, 또는 Node 버전 오류 | "이 감사는 Node.js 22.4 이상이 필요합니다. 설치되어 있는지 확인해 주세요."라고 말하고 멈춘다. 다른 언어로 감사를 흉내 내지 않는다. |
+| `node`를 찾지 못함(셸의 `command not found`, `not recognized`, 종료 코드 127), 또는 `node --version`이 v22.4보다 낮음 | "이 감사는 Node.js 22.4 이상이 필요합니다. 설치되어 있는지 확인해 주세요."라고 말하고 멈춘다. 다른 언어로 감사를 흉내 내지 않는다. |
 | 0과 2가 아닌 종료 코드 | stderr의 마지막 줄을 사용자 말로 한 줄로 옮기고 멈춘다. 같은 명령을 되풀이하지 않는다. |
 | 종료 코드 2, `preflight failed: …` | 메시지를 사용자 말로 한 줄로 옮긴다. 주소 형식이 틀렸으면 주소를 다시 받고 3단계로 돌아간다. 다른 메시지면 거기서 멈춘다. |
 | `start_runbooks.blocking`에 항목이 있음 | 그 항목의 `text`를 이 턴의 마지막 메시지에 그대로 붙인다. "끝나면 '다 했어요'라고 알려 주세요"라고 하고 기다린다. 답이 오면 3단계를 처음부터 다시 한다. 질문은 아직 보내지 않는다. |
@@ -76,7 +76,7 @@ node "<SKILL_DIR>/scripts/preflight.mjs" --url "<주소>" --out "<OUT>" --source
 
 ## 4단계. 시작 질문을 한 번에 보낸다
 
-**반드시 먼저 읽는다**: [intake.md](references/intake.md)의 「시작 질문 보내기」 절을 끝까지 읽고, 그 틀대로 한 메시지를 보낸다. 틀, 항목마다 넣고 빼는 조건, 질문을 만드는 법이 거기 있다. 이 단계에서 다른 참고 문서는 열지 않는다. 이 메시지가 이 턴의 마지막 메시지다. 답을 받기 전에는 아무것도 실행하지 않는다.
+**반드시 먼저 읽는다**: [intake.md](references/intake.md)를 처음부터 끝까지 읽고, 그 문서의 「시작 질문 보내기」 틀대로 한 메시지를 보낸다. `start.json` 필드를 읽는 법, 틀, 항목마다 넣고 빼는 조건, 질문을 만드는 법이 거기 있다. 5단계는 이때 읽은 내용을 쓴다. 이 단계에서 다른 참고 문서는 열지 않는다. 이 메시지가 이 턴의 마지막 메시지다. 답을 받기 전에는 아무것도 실행하지 않는다.
 
 ## 5단계. 답을 처리한다
 
@@ -118,7 +118,7 @@ node "<SKILL_DIR>/scripts/preflight.mjs" --url "<주소>" --out "<OUT>" --source
 ## 7단계. 감사를 실행한다
 
 1. 사용자에게 한 줄로 알린다: 수집에 몇 분 걸릴 수 있다.
-2. 아래 명령을 실행한다. 이 한 번에 수집, 크롬 렌더링, 속도 측정, 코드 판정이 끝난다. 표본이 크면 10분을 넘길 수 있다. 명령 도구에 시간 제한이 있으면 가장 긴 제한을 주거나 백그라운드로 실행하고 끝날 때까지 기다린다. 제한에 걸려 끊기면 이 단계의 5번대로 같은 명령을 다시 실행한다.
+2. 아래 명령을 실행한다. 이 한 번에 수집, 크롬 렌더링, 속도 측정, 코드 판정이 끝난다. 표본이 크면 10분을 넘길 수 있다. 명령 도구에 시간 제한이 있으면 가장 긴 제한을 주거나 백그라운드로 실행하고 끝날 때까지 기다린다. 제한에 걸려 끊기면 실패 표가 아니라 아래 5번(끊긴 실행)대로 같은 명령을 다시 실행한다.
 
 ```
 node "<SKILL_DIR>/scripts/run.mjs" --answers "<OUT>/intake-answers.json" --out "<OUT>"
@@ -179,7 +179,7 @@ node "<SKILL_DIR>/scripts/run.mjs" --answers "<OUT>/intake-answers.json" --out "
 
 ## 이어서 할 때
 
-결과 폴더에 판정 목록이 있고 보고서가 없으면 8단계부터 이어간다. 새로 수집하지 않는다. `judgments/`에 이미 쓴 쪽 파일은 그대로 두고, 파일이 없는 쪽부터 판정한다. 대화가 길어져 앞의 판정을 기억하지 못해도 된다. 쪽 파일 하나가 그 쪽의 판정 전부다. 목표나 표본이 바뀌었으면 새 폴더에서 1단계부터 한다. 기존 증거는 덮어쓰지 않는다.
+결과 폴더에 판정 목록이 있고 보고서가 없으면 8단계부터 이어간다. 새로 수집하지 않는다. `judgments/`에 이미 쓴 쪽 파일은 그대로 두고, 파일이 없는 쪽부터 판정한다. 끊길 때 쓰던 마지막 쪽 파일은 JSON 배열로 읽히는지 먼저 본다. 읽히지 않으면 그 쪽을 다시 판정해 파일을 통째로 다시 쓴다. 대화가 길어져 앞의 판정을 기억하지 못해도 된다. 쪽 파일 하나가 그 쪽의 판정 전부다. 목표나 표본이 바뀌었으면 새 폴더에서 1단계부터 한다. 기존 증거는 덮어쓰지 않는다.
 
 ## 진행 보고
 
@@ -195,7 +195,7 @@ node "<SKILL_DIR>/scripts/run.mjs" --answers "<OUT>/intake-answers.json" --out "
 
 | 문서 | 여는 때 | 열지 않는 때 |
 |---|---|---|
-| [intake.md](references/intake.md) | 4단계(반드시), 사용자가 시작 질문의 항목 뜻을 물을 때 | 7단계 이후 |
+| [intake.md](references/intake.md) | 4단계(반드시, 처음부터 끝까지), 사용자가 시작 질문의 항목 뜻이나 수집 한도를 물을 때 | 7단계 이후 |
 | [judging.md](references/judging.md) | 8단계(반드시) | 8단계 밖 |
 | [source-analysis.md](references/source-analysis.md) | 2단계의 도구 표, 10단계에서 원인을 찾을 때 | 그 밖 |
 | [fixing.md](references/fixing.md) | 10단계(반드시) | 사용자가 고치라고 하지 않았을 때 |
@@ -205,6 +205,6 @@ node "<SKILL_DIR>/scripts/run.mjs" --answers "<OUT>/intake-answers.json" --out "
 | [recheck.md](references/recheck.md) | 11단계(반드시) | 고친 것이 없고 비교를 묻지 않았을 때 |
 | [evidence.md](references/evidence.md) | 사용자가 증거나 「해결됨」의 조건을 물을 때 | 그 밖 |
 
-[scoring.md](references/scoring.md)와 [measurement.md](references/measurement.md)는 스크립트가 지키는 채점·비교 계약이다. 감사, 판정, 결과 설명 중에는 열지 않는다. 점수가 왜 그렇게 나왔는지는 보고서의 검사별 결과로 답한다. 사용자가 계산식, 또는 11단계 `not_comparable`의 조건 자체를 물을 때만 연다. 두 문서의 명령은 저장소 기준이라 `skills/optbrew/`가 `<SKILL_DIR>`이고, `docs/`, `tests/` 링크는 설치본에 없으므로 따라가지 않는다. scoring.md 13번째 줄은 2,000자가 넘으므로 줄을 잘라 읽는 도구라면 그 줄을 나눠 읽는다. 수집 한도를 물으면 intake.md의 「표본과 상한」으로 답한다.
+[scoring.md](references/scoring.md)와 [measurement.md](references/measurement.md)는 스크립트가 지키는 채점·비교 계약이다. 감사, 판정, 결과 설명 중에는 열지 않는다. 점수가 왜 그렇게 나왔는지는 보고서의 검사별 결과로 답한다. 사용자가 계산식, 또는 11단계 `not_comparable`의 조건 자체를 물을 때만 연다. 두 문서의 명령은 저장소 기준이라 `skills/optbrew/`가 `<SKILL_DIR>`이고, `docs/`, `tests/` 링크는 설치본에 없으므로 따라가지 않는다. scoring.md 13번째 줄은 2,000자가 넘으므로 줄을 잘라 읽는 도구라면 그 줄을 나눠 읽는다. 수집 한도를 물으면 intake.md의 「표본」 절로 답한다.
 
-그 밖의 파일: `references/runbooks/`는 `cli.mjs runbook`으로만 펼친다(5단계). `bundle-manifest.json`, `source-lock.json`은 스크립트가 읽는 파일이다(채점 때 번들 확인, 설치 때 출처 확인). 지우거나 옮기지 않는다. 에이전트가 직접 열 필요는 없다.
+그 밖의 파일: `references/runbooks/`는 `cli.mjs runbook`으로만 펼친다([prepare.md](references/prepare.md)의 「런북 펼치기」). `bundle-manifest.json`, `source-lock.json`은 스크립트가 읽는 파일이다(채점 때 번들 확인, 설치 때 출처 확인). 지우거나 옮기지 않는다. 에이전트가 직접 열 필요는 없다.

@@ -229,6 +229,7 @@ SKILL.md 8단계의 절차다. 코드가 판정하지 못하는 내용 항목을
 
 | 오류 내용 | 뜻 | 고치는 법 |
 |---|---|---|
+| `cannot be read as JSON`, `must hold one JSON array` | 쪽 파일이 깨졌다. 쓰는 중에 끊긴 파일이 흔하다 | 그 쪽만 다시 판정해 같은 이름의 파일을 통째로 다시 쓴다 |
 | `unknown span_id` | 그 쪽의 `spans`에 없는 `span_id` | 목록에서 다시 복사한다 |
 | `needs span_ids` | `unknown`이 아닌데 조각이 없다 | 조각을 고르거나 `unknown`으로 바꾼다 |
 | `span_ids repeat a span` | 같은 `span_id`를 두 번 썼다 | 중복을 뺀다 |

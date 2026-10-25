@@ -176,7 +176,7 @@
     },
     {
       "path": "SKILL.md",
-      "sha256": "eda201e3b0630aa5e4853ca854bc274299ea554d2076775dfbbeafa79560bd6a"
+      "sha256": "27af1914a074b6ebe6041043962924db0c3295cf7bdf63e919e50063da23f890"
     },
     {
       "path": "THIRD_PARTY_NOTICES.md",
@@ -668,7 +668,7 @@
     },
     {
       "path": "references/evidence.md",
-      "sha256": "925c9cacde64ff9830c14a818c4ae68693052a97caa7179b0be7e8c1b85d0352"
+      "sha256": "394a6243c49a9da449b7629ba45e40994cdb594ac126d1246e01a988b7ba7a6c"
     },
     {
       "path": "references/fixing.md",
@@ -680,11 +680,11 @@
     },
     {
       "path": "references/intake.md",
-      "sha256": "d8bdd0d6e5713a8afac6be612a650bc5ff3864f259439f0b878fe13539b71528"
+      "sha256": "64f7128ffe1ed605c59714171238d01cdabce59907af157a45f24ab4c7596507"
     },
     {
       "path": "references/judging.md",
-      "sha256": "66e079bff0ea05e12262c23ccfe7a31be1acc202872c95ea224588d984a60380"
+      "sha256": "225987fe84396e8080a68c775ecb7fee2a6267ac12925d290ea978dcd42e9011"
     },
     {
       "path": "references/limits.json",
@@ -1083,5 +1083,5 @@
       "sha256": "dca0bbd03fbf591c4aca6a568be76615eb48d69f7df0c634886f652b54f3f46d"
     }
   ],
-  "bundle_hash": "8fe37912a9b1831b3a43cea311c34afc7a56c7a9aa764a26104c3826fd7e7e5c"
+  "bundle_hash": "39e2003e322b4f64c60009086cd19e7e7d8951249775ab9d3c9f24f79410ff49"
 }
