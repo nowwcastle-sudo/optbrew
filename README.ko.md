@@ -161,7 +161,7 @@ npx를 쓴다면 `npx optbrew@latest update --scope user`를 실행합니다. `o
 
 ## API와 비용
 
-유료 계정 없이 쓸 수 있습니다. Anthropic API나 [SE Ranking](https://seranking.com/api.html)을 직접 호출하려면 먼저 사용자 승인, 예산 기록, 중단 조건이 있어야 합니다. Claude 구독에는 API 요금이 포함되지 않습니다. 위의 구글 키는 본인 키이고, 그 키로 부르는 구글 속도 서비스는 무료입니다. 키는 환경 변수나 키 파일에만 두며 보고서에는 넣지 않습니다. 자세한 내용은 [API 경계](skills/optbrew/references/api.md)를 보십시오.
+유료 계정 없이 쓸 수 있습니다. 감사는 유료 호출을 하지 않습니다. [SE Ranking](https://seranking.com/api.html) 연결은 선택입니다. 사용자가 요청할 때만 에이전트가 연결 안내를 보여 줍니다. 유료 호출에는 먼저 사용자 승인, 예산 기록, 중단 조건이 있어야 합니다. Claude 구독에는 API 요금이 포함되지 않습니다. 위의 구글 키는 본인 키이고, 그 키로 부르는 구글 속도 서비스는 무료입니다. 키는 환경 변수나 키 파일에만 두며 보고서에는 넣지 않습니다. 자세한 내용은 [API 경계](skills/optbrew/references/api.md)를 보십시오.
 
 ## 문서
 

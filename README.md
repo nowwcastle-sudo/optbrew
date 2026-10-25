@@ -161,7 +161,7 @@ Release 0.3.0 changes the evaluation version (0.5.0) and the audit protocol (0.3
 
 ## APIs and cost
 
-Nothing here requires a paid account. A direct Anthropic API call or an [SE Ranking](https://seranking.com/api.html) call needs your approval, a recorded budget and a stop condition first; a Claude subscription does not include API billing. The Google key above is your own, and the Google speed services it calls are free. Keys stay in your environment variables or the key file and never go into a report. Details: [API boundaries](skills/optbrew/references/api.md).
+Nothing here requires a paid account, and the audit makes no paid call. An [SE Ranking](https://seranking.com/api.html) connection is optional: the agent opens its guide only when you ask for it, and a paid call needs your approval, a recorded budget and a stop condition first. A Claude subscription does not include API billing. The Google key above is your own, and the Google speed services it calls are free. Keys stay in your environment variables or the key file and never go into a report. Details: [API boundaries](skills/optbrew/references/api.md).
 
 ## Documentation
 
