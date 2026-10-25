@@ -176,7 +176,7 @@
     },
     {
       "path": "SKILL.md",
-      "sha256": "4bdef1d73e732319642b2acd2fb9d529eaa712909f13a86020be6addf9f7a4de"
+      "sha256": "99c7ddaf5431544e3757cb21e50dcc99dd625257d6f846a405de3eb2061eee94"
     },
     {
       "path": "THIRD_PARTY_NOTICES.md",
@@ -1079,5 +1079,5 @@
       "sha256": "dca0bbd03fbf591c4aca6a568be76615eb48d69f7df0c634886f652b54f3f46d"
     }
   ],
-  "bundle_hash": "80d7b11ba385d0fd771b0efed872e14facc9f020e6c5d6a30eb08b4af2bf69f5"
+  "bundle_hash": "c6e27fa5bc3d494d1eca9e8e21c86cdfd65935ba15df647d283a15936dce7de2"
 }
