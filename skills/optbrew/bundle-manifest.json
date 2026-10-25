@@ -176,7 +176,7 @@
     },
     {
       "path": "SKILL.md",
-      "sha256": "57ca4aa521752d40d5b15d2f8c509a41070686ea3ba86092901d234d05164761"
+      "sha256": "4c4bdf0538336f2ed91082e7238c8bc638230745e6ffe243f7a584383bf26c2e"
     },
     {
       "path": "THIRD_PARTY_NOTICES.md",
@@ -720,7 +720,7 @@
     },
     {
       "path": "references/routing.md",
-      "sha256": "60e619ce7557aad9d9d319e449cdf86e01bb0dbcafda83cb476d6a9ce8b8ba29"
+      "sha256": "a3ba587fed9b18c6082ded915ad3c7648d3300e4e3bffcdc72cc5c94d9a12712"
     },
     {
       "path": "references/runbooks/chrome-install.md",
@@ -1083,5 +1083,5 @@
       "sha256": "dca0bbd03fbf591c4aca6a568be76615eb48d69f7df0c634886f652b54f3f46d"
     }
   ],
-  "bundle_hash": "4e7cec9b44fe7e0dc8cb973c7e2e20e44cc1822053dbb206053321719b598ca4"
+  "bundle_hash": "f0a108f05593699301ad10e42ad975c716fea16215b164e60b30984e2c86c9ec"
 }

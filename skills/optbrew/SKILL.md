@@ -54,7 +54,7 @@ description: 웹사이트 주소를 받아 검색 유입, 네이버 노출, AI �
 
 ## 3단계. 환경을 점검한다
 
-1. 아래 명령을 실행한다. `<TOOLS>`가 비었으면 `--source-tools "<TOOLS>"`를 통째로 뺀다. 사용자가 처음부터 "간단히"라고 했으면 끝에 `--level brief`를 붙인다.
+1. 먼저 `node --version`을 실행한다. 명령을 찾지 못하거나 v22.4보다 낮으면 아래 표의 첫 줄을 따른다. Node가 낮으면 점검 스크립트가 문법 오류로 죽어 표의 다른 줄과 헷갈린다. 그다음 아래 명령을 실행한다. `<TOOLS>`가 비었으면 `--source-tools "<TOOLS>"`를 통째로 뺀다. 사용자가 처음부터 "간단히"라고 했으면 끝에 `--level brief`를 붙인다.
 
 ```
 node "<SKILL_DIR>/scripts/preflight.mjs" --url "<주소>" --out "<OUT>" --source-tools "<TOOLS>"
@@ -145,7 +145,7 @@ node "<SKILL_DIR>/scripts/run.mjs" --answers "<OUT>/intake-answers.json" --out "
 ## 8단계. 내용 판정을 한다
 
 1. **반드시 먼저 읽는다**: [judging.md](references/judging.md)를 처음부터 끝까지 읽는다. 줄 범위를 정해 읽지 않는다. 판정 규칙, 적용 대상 아님의 조건, 오류표가 문서 전체에 흩어져 있다. 그대로 따른다. 이 단계에서 scoring.md, measurement.md, `modules/`는 열지 않는다.
-2. 7단계 JSON의 `judge_pages` 폴더(보통 `<OUT>/judge-queue/`)에서 `site.json`을 먼저 읽고, `p001.json`부터 쪽 파일을 하나씩 읽는다. 쪽 하나를 판정하면 곧바로 같은 이름으로 `<OUT>/judgments/p001.json`을 쓴다. 파일마다 그 쪽의 판정을 담은 JSON 배열 하나다. 판정을 모아 두었다가 끝에 한꺼번에 쓰지 않는다. 판정은 이 세션에서 직접 한다. 쪽을 순서대로 한 쪽씩 판정하고, 하위 에이전트에 나눠 맡기지 않는다(사용자의 비용과 결과의 예측 가능성 때문이다).
+2. 7단계 JSON의 `judge_pages` 폴더(보통 `<OUT>/judge-queue/`)에서 `site.json`을 먼저 읽고, `p001.json`부터 쪽 파일을 하나씩 읽는다. 쪽 하나를 판정하면 곧바로 같은 이름으로 `<OUT>/judgments/p001.json`을 쓴다. 파일마다 그 쪽의 판정을 담은 JSON 배열 하나다. 판정을 모아 두었다가 끝에 한꺼번에 쓰지 않는다. 판정은 이 세션에서 쪽 순서대로 직접 한다(위 「하지 않는 것과 그 이유」).
 3. 모든 쪽 파일을 쓴 뒤 같은 명령에 `--judgments`로 폴더를 붙여 실행한다.
 
 ```
