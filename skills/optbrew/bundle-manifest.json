@@ -796,7 +796,7 @@
     },
     {
       "path": "scripts/adapters/imports.mjs",
-      "sha256": "80c69b8599e192990ed3708348774ca1539ddb4a9a1b3800157a2ad7a35cf994"
+      "sha256": "6260ea0e41b9703c5f376d0fc5c569f674d454d77018160e004935e227fb7c89"
     },
     {
       "path": "scripts/audit.mjs",
@@ -1083,5 +1083,5 @@
       "sha256": "dca0bbd03fbf591c4aca6a568be76615eb48d69f7df0c634886f652b54f3f46d"
     }
   ],
-  "bundle_hash": "01daa6b8973c95f0269fdc364fb70cf4cdc361860fcedc29042ce7acb202ef27"
+  "bundle_hash": "6214456bf52e9c8876e011810c6537e58b301ef4b29db30b42bf9b37a9e6ad31"
 }

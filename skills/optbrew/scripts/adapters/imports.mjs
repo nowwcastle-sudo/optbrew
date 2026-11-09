@@ -80,7 +80,12 @@ function csvRows(text) {
 }
 
 const column = (header, names) => header.findIndex(name => names.includes(name.trim().toLowerCase()));
-const count = value => { const number = Number(String(value).replace(/,/g, '')); return Number.isFinite(number) ? number : null; };
+function count(value) {
+  const normalized = String(value).replace(/,/g, '').trim();
+  if (!normalized) return null;
+  const number = Number(normalized);
+  return Number.isFinite(number) ? number : null;
+}
 
 /** Clicks and impressions as totals, with ctr as their ratio. */
 function trafficRows(clicks, impressions, label) {
@@ -114,16 +119,21 @@ function readNaver(bytes) {
   const text = bytes.toString('utf8').replace(/^﻿/, '');
   const period = NAVER_PERIOD.exec(text);
   if (!period) throw unusable('export_period_missing');
-  const lines = text.split(/\r?\n/).map(line => line.split(/\t| {2,}/).map(cell => cell.trim()).filter(Boolean));
+  const lines = text.split(/\r?\n/).filter(line => line.trim()).map(line => {
+    const cells = line.includes('\t') ? line.split('\t') : line.trim().split(/ {2,}/);
+    return cells.map(cell => cell.trim());
+  });
   const at = lines.findIndex(cells => column(cells, CLICK_COLUMNS) >= 0 && column(cells, IMPRESSION_COLUMNS) >= 0);
   if (at < 0) throw unusable('export_table_not_found');
   const [clicks, impressions] = [CLICK_COLUMNS, IMPRESSION_COLUMNS].map(names => column(lines[at], names));
-  const body = lines.slice(at + 1).filter(cells => cells.length > Math.max(clicks, impressions) && count(cells[clicks]) !== null && count(cells[impressions]) !== null);
-  if (!body.length) throw unusable('export_numbers_unreadable');
+  const body = lines.slice(at + 1);
+  if (!body.length || body.some(row => row.length !== lines[at].length)) throw unusable('export_numbers_unreadable');
+  const totals = body.map(row => [count(row[clicks]), count(row[impressions])]);
+  if (totals.some(pair => pair.includes(null))) throw unusable('export_numbers_unreadable');
   const [start, end] = [period.slice(1, 4), period.slice(4, 7)].map(parts => parts.join('-'));
   // A pasted top-N table lists only its leading rows, so its totals say nothing about the whole site.
   return { provider: 'naver', window: { start, end, timezone: NAVER_TIMEZONE }, sample_selection: { kind: 'unknown' },
-    rows: trafficRows(body.reduce((sum, cells) => sum + count(cells[clicks]), 0), body.reduce((sum, cells) => sum + count(cells[impressions]), 0), 'Naver Search Advisor table as pasted') };
+    rows: trafficRows(totals.reduce((sum, pair) => sum + pair[0], 0), totals.reduce((sum, pair) => sum + pair[1], 0), 'Naver Search Advisor table as pasted') };
 }
 
 /**

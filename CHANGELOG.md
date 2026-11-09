@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Report blank or unreadable Search Console and Naver Search Advisor counts as an import problem instead of including incorrect totals.
+
 ## 0.3.4
 
 Fixes from the 0.3.3 re-audit of the same public Korean care-facility site in a Claude Code cloud session (2026-10-25). The site's own finding (a past event still written as upcoming) is a site content fix and is not part of this release. No verdict or score changes.

@@ -119,9 +119,14 @@ test('owner exports: a missing or unreadable file is an unknown with a reason, n
   const gaps = report.follow_ups.filter(row => row.reason.startsWith('export_'));
   assert.deepEqual(gaps.map(row => row.reason), ['export_file_missing', 'export_table_not_found']);
   assert.match(gaps[0].problem, /No file was found/);
-  const damaged = await withExports([{ kind: 'gsc', file: 'bad.zip' }], { 'bad.zip': Buffer.from('not a zip at all') });
-  assert.equal(damaged.index.owner_exports[0].reason, 'export_not_a_zip');
-  assert.equal(damaged.report.follow_ups.filter(row => row.reason.startsWith('export_')).length, 1);
+  const damaged = await withExports([{ kind: 'gsc', file: 'bad.zip' }, { kind: 'naver', file: 'bad.txt' }], {
+    'bad.zip': Buffer.from('not a zip at all'),
+    'bad.txt': NAVER + '빈 클릭수\t\t200\n',
+  });
+  const damagedReasons = ['export_not_a_zip', 'export_numbers_unreadable'];
+  assert.deepEqual(damaged.index.owner_exports.map(row => row.reason), damagedReasons);
+  assert.deepEqual(damaged.report.follow_ups.filter(row => row.reason.startsWith('export_')).map(row => row.reason), damagedReasons);
+  assert.equal(damaged.report.metrics.length, 0);
 });
 
 test('--out may already hold preflight/ and the answers file; the queue files are compact JSON', async () => {

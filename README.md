@@ -124,6 +124,8 @@ Run optbrew on https://example.com. Goal: show up in Naver and get cited in AI a
 
 optbrew then checks your setup and sends the start questions in one message. Answer each number, or reply "시작" (start) to accept the defaults. A missing Google key, Chrome or export file does not stop the audit. The blank is listed in the report with the steps to fill it.
 
+If a Search Console or Naver Search Advisor export has blank or unreadable counts, the audit continues and lists the import problem under remaining work.
+
 The audit takes a few minutes. Everything it writes goes to `optbrew-audit/<site>-<date>` in your working folder: the evidence (every response with its hash), the three reports and `fixes.md`. Open `report.html` first. The same name with a number added (`-2`, `-3`) is used when the folder already exists. Private, internal and local addresses (such as `localhost` or `192.168.x.x`) are refused, so audit the public address of the site.
 
 ### Google API key (optional)
