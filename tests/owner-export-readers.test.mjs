@@ -32,3 +32,24 @@ test('files that cannot be read say why and never expand without a limit', () =>
   assert.equal(reason(() => readOwnerExport('bing', Buffer.alloc(0))), 'export_kind_unknown');
   assert.equal(reason(() => readOwnerExport('gsc', zipOf({ 'Dates.csv': 'x' }).subarray(0, 40))), 'export_not_a_zip');
 });
+
+test('a blank Search Console count invalidates the import', () => {
+  const rows = 'Date,Clicks,Impressions\n2026-09-01,0,100\n2026-09-02,   ,200\n';
+  const exported = zipOf({ 'Dates.csv': rows });
+  assert.equal(reason(() => readOwnerExport('gsc', exported)), 'export_numbers_unreadable');
+});
+
+test('Naver tab-separated data keeps blank cells in their original columns', () => {
+  const table = '기간: 2026-09-01 ~ 2026-09-28\r\n키워드\t클릭수\t노출수\t순위\r\n브루\t0\t1,200\t3\r\n\r\n';
+  const valid = readOwnerExport('naver', Buffer.from(table));
+  assert.equal(total(valid, 'clicks').value, 0);
+  assert.equal(total(valid, 'impressions').value, 1200);
+  const withBlank = Buffer.from(table + '비어 있음\t\t50\t4\r\n');
+  assert.equal(reason(() => readOwnerExport('naver', withBlank)), 'export_numbers_unreadable');
+});
+
+test('Naver rejects a malformed data row even when another row is valid', () => {
+  const table = '기간: 2026-09-01 ~ 2026-09-28\n키워드  클릭수  노출수\n브루  30  400\n';
+  const withBadNumber = Buffer.from(table + '깨진 행  x  200\n');
+  assert.equal(reason(() => readOwnerExport('naver', withBadNumber)), 'export_numbers_unreadable');
+});
