@@ -27,6 +27,21 @@ test('path, host, port, userinfo and IP boundaries', () => {
   assert.throws(() => assertInScope('http://localhost:8766/', local, ['127.0.0.1']));
 });
 
+// daybreak csf_8cb7ab2e25e6302741267948: IPv6 special-purpose ranges that can lead to an internal network, and ranges that
+// carry an IPv4 address inside, are judged like the private addresses they reach. Public addresses still pass.
+test('IPv6 special-purpose ranges and embedded private IPv4 addresses are refused', () => {
+  const refused = ['64:ff9b:1::a00:1', '64:ff9b:1:ffff::1', '64:ff9b::10.0.0.1', '64:ff9b::7f00:1', '64:ff9b::a9fe:a9fe',
+    '2002:a00:1::1', '2002:7f00:1::', '2001::1', '2001:0:4136:e378::1', '2001:10::1', '100::1', '3fff::1', '5f00::1',
+    'fec0::1', '::10.0.0.1', '::7f00:1', '192.88.99.1'];
+  for (const ip of refused) assert.throws(() => assertInScope('https://example.test/owned/', scope, [ip]), /private or reserved/, ip);
+  // Public addresses, including NAT64 and 6to4 forms of a public IPv4 address, stay in.
+  const allowed = ['2606:4700:4700::1111', '2a00:1450:4001:80b::200e', '64:ff9b::8.8.8.8', '64:ff9b::808:808', '2002:808:808::1', '93.184.215.14'];
+  for (const ip of allowed) assert.equal(assertInScope('https://example.test/owned/page', scope, [ip]).host, 'example.test', ip);
+  // A local target is still allowed on purpose.
+  const local = { allowed: [{ origin: 'http://nat64.test:8080' }], local_targets: [{ host: 'nat64.test', port: 8080 }] };
+  assert.equal(assertInScope('http://nat64.test:8080/', local, ['64:ff9b:1::a00:1']).host, 'nat64.test:8080');
+});
+
 test('redirect and DNS change are rejected before transport can contact target', async () => {
   let calls = 0;
   const transport = async () => { calls++; return response('', 302, { location: 'https://example.test/other' }); };

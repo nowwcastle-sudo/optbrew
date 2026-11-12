@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Report blank or unreadable Search Console and Naver Search Advisor counts as an import problem instead of including incorrect totals.
+- **The network boundary covers more than direct HTTP.** (1) When local DNS fails, the audit goes through `HTTPS_PROXY` only if that proxy keeps internal addresses out itself: the Claude Code cloud sandbox's egress proxy, or a proxy the user vouches for with `OPTBREW_TRUST_PROXY_EGRESS=1`; otherwise it stops, because through a proxy optbrew cannot see which address a name points to. (2) IPv6 special-purpose ranges (local-use NAT64 `64:ff9b:1::/48`, the IETF protocol block with Teredo, discard, documentation, SRv6, site-local, IPv4-compatible) are refused, and NAT64 and 6to4 addresses are judged by the IPv4 address inside, so a public one still passes. (3) The rendering Chrome sends no WebRTC, WebTransport or WebSocket traffic: those APIs are removed from every page, frame and worker before page code runs, WebRTC gets no UDP outside a proxy and QUIC is off. (daybreak `csf_c78e5c341e64e3e9a8ec7705`, `csf_8cb7ab2e25e6302741267948`, `csf_e39987f051fee9889a490040`)
 
 ## 0.3.4
 
