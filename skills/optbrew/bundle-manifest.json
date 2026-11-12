@@ -176,7 +176,7 @@
     },
     {
       "path": "SKILL.md",
-      "sha256": "1099eb6ef566e73b8870bac6af0d5fda944e1bc206efa631402ad748ab34e84b"
+      "sha256": "f082e62f8f7ad8bf48d53a7c3f49137e9d4aebde9e6dfa03174011089ced64fb"
     },
     {
       "path": "THIRD_PARTY_NOTICES.md",
@@ -904,7 +904,7 @@
     },
     {
       "path": "scripts/core/chrome.mjs",
-      "sha256": "8589c11c8e15ebbc52c2d95d652d7ff7c2bb1e646042b1ee9d2c65581d203c6e"
+      "sha256": "e25e7915800d0abc3ce00486a116cc326ec780a3f1774c358cfeca4a9cd5baba"
     },
     {
       "path": "scripts/core/collector.mjs",
@@ -1044,7 +1044,7 @@
     },
     {
       "path": "scripts/core/scope.mjs",
-      "sha256": "c302fe0fd0711faafc39f5741e735ebd9921723b56f071134afe8ef1fc073053"
+      "sha256": "ab46eca5cf94e86aa256632d9c6214ca9b7e80992ca2f99eb899b53362b19036"
     },
     {
       "path": "scripts/core/score.mjs",
@@ -1060,7 +1060,7 @@
     },
     {
       "path": "scripts/core/transport.mjs",
-      "sha256": "f3214e68c48a2edc42d061e3bf33138d844eca7aa54d3a6e59d26c5c58d77001"
+      "sha256": "addb05ad367fe202f65518b6be061a52939e82ca3ec848c828212ddd1b1a9240"
     },
     {
       "path": "scripts/core/weights.mjs",
@@ -1083,5 +1083,5 @@
       "sha256": "dca0bbd03fbf591c4aca6a568be76615eb48d69f7df0c634886f652b54f3f46d"
     }
   ],
-  "bundle_hash": "6dcc8c3e4b23d7e2ffc2c4da4ba22b6e09f3ab679c657cba6992ff9b0ee97f4b"
+  "bundle_hash": "676c3554dccab6e09ccbc4c48c804469a73c7034db358dbf421eb7ac9f6c0584"
 }
