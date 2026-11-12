@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Report blank or unreadable Search Console and Naver Search Advisor counts as an import problem instead of including incorrect totals.
+- **Site text stays text in report.md and fixes.md.** `[`, `]` and the backtick are now escaped with the characters already escaped, so a quote the site wrote can no longer show as an image a markdown viewer fetches, a link with a misleading label, or code. report.html was already safe. (daybreak `csf_681b45188d624ec2b172d2ac`)
 
 ## 0.3.4
 
