@@ -617,6 +617,30 @@ describe('chrome block', async () => {
     });
   });
 
+  // daybreak csf_9b099e94a9109c6bebd137cd: what a rendered page hands back is cut in the page, and the cut is said.
+  test('a page that logs and links without end comes back within the render limits', { skip }, async () => {
+    const { max_console_errors: maxErrors, max_console_error_chars: maxChars, max_page_links: maxLinks } = await import('../skills/optbrew/scripts/core/config.mjs').then(config => config.limits());
+    const pagePort = await listen(createServer((req, res) => {
+      res.writeHead(200, { 'content-type': 'text/html' });
+      res.end(`<title>noisy</title><script>
+        for (let i = 0; i < ${maxErrors * 3}; i++) console.error('e'.repeat(${maxChars * 2}));
+        for (let i = 0; i < ${maxLinks + 500}; i++) { const a = document.createElement('a'); a.href = '/l' + i; document.documentElement.appendChild(a); }
+      </script>`);
+    }));
+    const scope = { allowed: [{ origin: `http://127.0.0.1:${pagePort}` }], local_targets: [{ host: '127.0.0.1', port: pagePort }] };
+    await withChrome({ hostRules }, async chrome => {
+      const page = await scopedPage({ chrome, context: { scope }, budget: 100 });
+      try {
+        const result = await page.goto(`http://127.0.0.1:${pagePort}/`);
+        assert.equal(result.status, 200);
+        assert.equal(result.console_errors.length, maxErrors);
+        assert.ok(result.console_errors.every(text => text.length <= maxChars));
+        assert.equal(result.links.length, maxLinks);
+        assert.deepEqual(result.truncated, { dom: false, links: true, console_errors: maxErrors * 2 });
+      } finally { await page.close(); }
+    });
+  });
+
   // daybreak csf_e39987f051fee9889a490040: the Fetch interception sees HTTP only. A rendered page could still reach the
   // network outside it: WebRTC ICE sends STUN over UDP, WebTransport runs over QUIC (UDP), and a WebSocket handshake is not
   // paused by Fetch. None of them may leave the browser, whatever address the page names.

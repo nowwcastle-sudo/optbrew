@@ -164,9 +164,9 @@ export function declaredRobotsIndex(artifacts, declaredRobots, pageFinalUrl) {
   });
 }
 
-/** Anchors plus the canonical target, which the report needs in order to judge canonical consistency. */
+/** Anchors (the first `max_page_links`) plus the canonical target, which the report needs in order to judge canonical consistency. */
 export function links(html, base) {
-  const out = anchorLinks(html, base);
+  const out = anchorLinks(html, base).slice(0, limits().max_page_links);
   const canonical = canonicalLink(html);
   if (canonical) { try { out.push(new URL(canonical, base).href); } catch { /* malformed canonical */ } }
   return out;
@@ -191,7 +191,21 @@ export async function collect(context, { transport, resolve, addressVetting } = 
   // Every queued or rejected URL leaves one ledger entry, so skipped URLs and the request count can be checked later.
   const ledger = [];
   const skip = (url, reason) => { skipped.push({ url, reason }); ledger.push({ url, requests: 0, outcome: 'skipped', skipped_reason: reason, error: null }); };
+  // A page can carry any number of links (daybreak csf_9b099e94a9109c6bebd137cd). Past `max_discovered_urls` URLs seen or
+  // skipped, a found link is no longer kept: the first in-scope one is recorded once as `url_limit`, so the run says it is
+  // incomplete (and the report replay finds it linked from a collected page), and the rest are dropped. The selected pages and
+  // declared resources (depth 0) always go in.
+  let overflowed = false;
   const enqueue = (url, depth, auxiliaryResource = false) => {
+    if (depth > 0 && seen.size + skipped.length >= limits().max_discovered_urls) {
+      if (overflowed) return;
+      let inScope;
+      try { inScope = assertUrlInScope(url, scope).href; } catch { return; }
+      if (seen.has(inScope)) return;
+      overflowed = true;
+      skip(inScope, 'url_limit');
+      return;
+    }
     let normalized;
     try { normalized = assertUrlInScope(url, scope).href; }
     catch { skip(url, 'outside_scope'); return; }

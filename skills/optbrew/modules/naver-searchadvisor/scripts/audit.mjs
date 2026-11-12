@@ -88,6 +88,16 @@ const metaBy = (metas, key, val) =>
 const ENGINE_AGENTS = { google: ['googlebot'], naver: ['yeti'] };
 const HEADER_VALUE_FIELDS = new Set(['unavailable_after', 'max-snippet', 'max-image-preview', 'max-video-preview']);
 
+/**
+ * Words longer than one character that occur at least `min` times, in order of first occurrence. One counting pass: a title
+ * of many repeated words cannot cost quadratic time (optbrew, daybreak csf_84b515d62d085c422ec8a13c).
+ */
+function repeatedWords(words, min) {
+  const counts = new Map();
+  for (const word of words) counts.set(word, (counts.get(word) ?? 0) + 1);
+  return [...counts].filter(([word, count]) => word.length > 1 && count >= min).map(([word]) => word);
+}
+
 /** Drop comments and script/style/textarea/title text, which are not markup; keep the title element on request. */
 function stripInert(html, keepTitle = false) {
   return String(html ?? '').replace(/<!--[\s\S]*?(?:-->|$)|<(script|style|textarea|title)\b[^>]*>[\s\S]*?(?:<\/\1\s*>|$)/gi,
@@ -308,7 +318,7 @@ async function audit(target) {
   } else {
     add('INFO', 'title', `제목: "${title}" (${title.length}자)`, 'markup-content');
     const words = title.toLowerCase().match(/[가-힣a-z0-9]+/g) || [];
-    const dup = [...new Set(words.filter((w) => w.length > 1 && words.filter((x) => x === w).length >= 2))];
+    const dup = repeatedWords(words, 2);
     if (dup.length)
       add('INDEX', 'title-keyword-repeat',
         `제목에 반복되는 키워드가 있습니다: ${dup.join(', ')}. 2회 이상 반복은 어뷰징 의심 대상입니다.`,
@@ -672,7 +682,7 @@ export function auditCollected({ artifact, html, robotsArtifact = null, engines 
   else if (!/^https?:\/\//i.test(canonical)) markupFindings.push({ code: 'canonical-relative', message: `canonical is relative: ${canonical}`, values: { canonical } });
   // Three or more occurrences of one word in a title; two are common in legitimate "Page | Site" titles.
   const titleWords = (title || '').toLowerCase().match(/[가-힣a-z0-9]+/g) || [];
-  const repeated = [...new Set(titleWords.filter((w) => w.length > 1 && titleWords.filter((x) => x === w).length >= 3))];
+  const repeated = repeatedWords(titleWords, 3);
   if (repeated.length) markupFindings.push({ code: 'title-keyword-repeat', message: `title repeats: ${repeated.join(', ')}`, values: { words: repeated.join(', ') } });
   if (!metaBy(markupMetas, 'name', 'viewport')[0]) markupFindings.push({ code: 'no-viewport', message: 'meta viewport is missing' });
   let parsedRobots = null;
