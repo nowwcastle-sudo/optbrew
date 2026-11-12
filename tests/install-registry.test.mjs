@@ -1,7 +1,7 @@
 // daybreak csf_2c602f70ee5e3014b473562b: the install commands must not take the npm registry or npm options from the folder
 // they start in. A site project can carry an .npmrc that points npx at an attacker registry serving a fake optbrew@<version>.
 import assert from 'node:assert/strict';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, realpathSync } from 'node:fs';
 import { mkdir, readFile, writeFile, chmod } from 'node:fs/promises';
 import { spawnSync } from 'node:child_process';
 import path from 'node:path';
@@ -55,12 +55,16 @@ for (const shell of shells) {
     assert.equal(result.status, 0, result.stderr + result.stdout);
     const calls = readFileSync(log, 'utf8').trim().split('\n').map(line => JSON.parse(line));
     assert.deepEqual(calls.map(call => call.args[call.args.indexOf('optbrew') + 1]), ['install', 'install', 'doctor']);
+    // Windows can name the same temp folder by its short (RUNNER~1) or long form, so paths compare by their real path.
+    const real = value => realpathSync.native(value).toLowerCase();
+    const projectReal = real(project);
     for (const call of calls) {
-      assert.notEqual(path.resolve(call.cwd), path.resolve(project), 'npx must not run in the project folder');
-      assert.ok(!path.resolve(call.cwd).startsWith(path.resolve(project) + path.sep), 'npx must not run under the project folder');
+      const cwd = path.resolve(call.cwd).toLowerCase();
+      assert.ok(cwd !== projectReal && !cwd.startsWith(projectReal + path.sep), 'npx must not run in or under the project folder');
       const at = call.args.indexOf('--registry');
       assert.ok(at >= 0 && call.args[at + 1] === OFFICIAL, `registry not named: ${call.args.join(' ')}`);
-      assert.equal(call.args[call.args.indexOf('--project') + 1], project, 'a relative -Project is passed as an absolute path');
+      const passed = call.args[call.args.indexOf('--project') + 1];
+      assert.ok(path.isAbsolute(passed) && real(passed) === projectReal, 'a relative -Project is passed as an absolute path');
       // The working folder was a fresh one and is gone afterwards.
       assert.equal(existsSync(call.cwd), false, 'the temporary working folder is removed');
     }
