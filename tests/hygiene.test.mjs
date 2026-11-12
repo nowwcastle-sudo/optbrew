@@ -6,7 +6,8 @@ import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const entryPoints = new Set(['skills/optbrew/scripts/run.mjs', 'skills/optbrew/scripts/audit.mjs', 'skills/optbrew/scripts/cli.mjs',
-  'skills/optbrew/scripts/key.mjs', 'skills/optbrew/scripts/preflight.mjs', 'lib/cli.mjs', 'bin/optbrew.mjs']);
+  'skills/optbrew/scripts/key.mjs', 'skills/optbrew/scripts/preflight.mjs', 'lib/cli.mjs', 'bin/optbrew.mjs',
+  'skills/hooks/plugin-key-env.mjs']);
 const isEntry = file => entryPoints.has(file) || /^scripts\/[^/]+\.mjs$/.test(file);
 
 /** Product code: skill scripts, lib, bin and the root build scripts. Tests and vendored modules are out of scope. */
@@ -20,6 +21,8 @@ async function productFiles() {
     }
   };
   await walk('skills/optbrew/scripts', true);
+  // The Claude plugin's hooks ship beside the skill and import its modules.
+  await walk('skills/hooks', false);
   await walk('lib', true);
   await walk('bin', false);
   await walk('scripts', false);
