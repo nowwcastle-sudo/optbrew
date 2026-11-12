@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **Vendoring checks each upstream file against the pinned commit.** A source mirror that is not a Git checkout vouched for itself through its own `SOURCE-MANIFEST.json`, so edited files with a rewritten manifest passed. `scripts/vendor.mjs` now compares every selected file with the blob GitHub serves at the configured commit and stops on a difference. This is a maintainer step; installs are unchanged.
 - Report blank or unreadable Search Console and Naver Search Advisor counts as an import problem instead of including incorrect totals.
 
 ## 0.3.4
