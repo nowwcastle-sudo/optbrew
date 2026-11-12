@@ -23,35 +23,53 @@ const IMPRESSION_COLUMNS = ['impressions', '노출수', '노출'];
 /** A file the owner handed over that cannot be used; `reason` is a short code the report shows next to the missing numbers. */
 const unusable = reason => Object.assign(new Error(reason), { reason });
 
-/** The entries of a ZIP archive, read from its central directory. */
+/**
+ * The entries of a ZIP archive, read from its central directory. A small archive must not cost unbounded work (daybreak
+ * csf_f055c95f8ea4039291f9f9a7): more than `max_export_entries` entries are refused, and so are entries whose data share or
+ * overlap bytes (one compressed stream listed many times would be inflated and parsed once per listing).
+ */
 function zipEntries(bytes) {
   try {
     let end = bytes.length - ZIP_END_SIZE;
     while (end >= 0 && bytes.readUInt32LE(end) !== ZIP_END) end--;
     if (end < 0) throw unusable('export_not_a_zip');
     let offset = bytes.readUInt32LE(end + 16);
+    const total = bytes.readUInt16LE(end + 10);
+    // Reported with the size reason: more entries than this audit reads is more than it reads.
+    if (total > limits().max_export_entries) throw unusable('export_file_too_large');
     const entries = [];
-    for (let count = bytes.readUInt16LE(end + 10); count > 0; count--) {
+    for (let count = total; count > 0; count--) {
       if (bytes.readUInt32LE(offset) !== ZIP_CENTRAL) throw unusable('export_zip_damaged');
       const [nameLength, extraLength, commentLength] = [28, 30, 32].map(at => bytes.readUInt16LE(offset + at));
+      const local = bytes.readUInt32LE(offset + 42);
+      const compressed = bytes.readUInt32LE(offset + 20);
+      const start = local + ZIP_LOCAL_SIZE + bytes.readUInt16LE(local + 26) + bytes.readUInt16LE(local + 28);
       entries.push({ name: bytes.toString('utf8', offset + ZIP_CENTRAL_SIZE, offset + ZIP_CENTRAL_SIZE + nameLength), method: bytes.readUInt16LE(offset + 10),
-        compressed: bytes.readUInt32LE(offset + 20), original: bytes.readUInt32LE(offset + 24), local: bytes.readUInt32LE(offset + 42) });
+        compressed, original: bytes.readUInt32LE(offset + 24), local, start, stop: start + compressed });
       offset += ZIP_CENTRAL_SIZE + nameLength + extraLength + commentLength;
     }
+    const ordered = [...entries].sort((a, b) => a.local - b.local);
+    for (let i = 1; i < ordered.length; i++) if (ordered[i].local < ordered[i - 1].stop) throw unusable('export_zip_damaged');
     return entries;
   } catch (error) { throw error.reason ? error : unusable('export_zip_damaged'); }
 }
 
-/** The text of one archive entry; an entry larger than the collection byte limit is refused, so a small file cannot expand into memory. */
-function zipText(bytes, entry) {
+/**
+ * The text of one archive entry; an entry larger than the collection byte limit is refused, so a small file cannot expand into memory.
+ * `budget.left` is what the whole archive may still inflate (`max_export_bytes`); every entry read takes its size from it.
+ */
+function zipText(bytes, entry, budget) {
   if (entry.original > limits().max_bytes) throw unusable('export_file_too_large');
+  let text = null;
   try {
-    const start = entry.local + ZIP_LOCAL_SIZE + bytes.readUInt16LE(entry.local + 26) + bytes.readUInt16LE(entry.local + 28);
-    const data = bytes.subarray(start, start + entry.compressed);
-    if (entry.method === ZIP_STORED) return data.toString('utf8');
-    if (entry.method === ZIP_DEFLATED) return inflateRawSync(data, { maxOutputLength: limits().max_bytes }).toString('utf8');
-  } catch { throw unusable('export_zip_damaged'); }
-  throw unusable('export_zip_method_unsupported');
+    const data = bytes.subarray(entry.start, entry.stop);
+    if (entry.method === ZIP_STORED) text = data;
+    else if (entry.method === ZIP_DEFLATED) text = inflateRawSync(data, { maxOutputLength: Math.min(limits().max_bytes, budget.left) });
+  } catch { throw unusable(budget.left < limits().max_bytes ? 'export_file_too_large' : 'export_zip_damaged'); }
+  if (text === null) throw unusable('export_zip_method_unsupported');
+  if (text.length > budget.left) throw unusable('export_file_too_large');
+  budget.left -= text.length;
+  return text.toString('utf8');
 }
 
 /** Rows of a CSV text (quoted cells, doubled quotes, CRLF), without a leading byte-order mark. */
@@ -100,8 +118,9 @@ function trafficRows(clicks, impressions, label) {
 /** Search Console's CSV export: the archive's daily table (date, clicks, impressions) gives the totals and the period. */
 function readGsc(bytes) {
   const archive = zipEntries(bytes);
+  const budget = { left: limits().max_export_bytes };
   for (const entry of archive.filter(x => x.name.toLowerCase().endsWith('.csv'))) {
-    const [header, ...body] = csvRows(zipText(bytes, entry));
+    const [header, ...body] = csvRows(zipText(bytes, entry, budget));
     if (!header) continue;
     const [date, clicks, impressions] = [DATE_COLUMNS, CLICK_COLUMNS, IMPRESSION_COLUMNS].map(names => column(header, names));
     if (date < 0 || clicks < 0 || impressions < 0 || !body.length || !body.every(row => ISO_DATE.test(row[date]))) continue;
