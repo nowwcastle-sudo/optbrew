@@ -59,7 +59,7 @@ test('a managed rename whose destination parent became a link is moved back and 
 });
 
 // daybreak csf_0274d90e248e: owner exports and raw bodies are owner-only on POSIX. Windows keeps the profile's inherited ACL.
-test('audit folders are owner-only and evidence files are 0600', { skip: process.platform === 'win32' }, async () => {
+test('audit folders are owner-only and evidence files are 0600', { skip: process.platform === 'win32' && 'Windows has no POSIX modes' }, async () => {
   const root = await tempDir('optbrew-perm-');
   const fresh = path.join(root, 'fresh');
   await ownerOnlyDir(fresh);
