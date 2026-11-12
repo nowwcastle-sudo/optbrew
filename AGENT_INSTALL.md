@@ -10,6 +10,7 @@ Package: `optbrew@0.3.4` on npm. Source: https://github.com/nowwcastle-sudo/optb
 - Never delete `.optbrew/runs` or an `optbrew-audit` folder (the user's audit evidence) or a whole `.optbrew` folder (it also holds the user's Google key file). The only deletions in this guide are the paths that the reinstall check in [Update](#update) prints.
 - Do not call paid APIs, submit sites to search engines or publish anything. optbrew itself does none of these without the user's approval.
 - Show the user the planned changes (step 3) before you install.
+- Run every `npx` and `npm` command of this guide from the user's home folder (`cd ~`), never from a site or project folder. npm reads an `.npmrc` in the folder it starts from, and a project's `.npmrc` can point it at another registry that serves a fake optbrew. Keep the `--registry=https://registry.npmjs.org/` option on every command; if the user's network allows only a private npm mirror, ask the user for its URL and use that instead.
 - On Windows in PowerShell, write `npx.cmd` wherever this guide says `npx`. Plain `npx` runs `npx.ps1`, which the default execution policy blocks with "running scripts is disabled".
 
 ## 1. Ask the user two questions
@@ -32,13 +33,13 @@ Check: the major version is 22 or higher. If Node.js is missing or older, stop a
 User scope:
 
 ```text
-npx --yes optbrew@0.3.4 install --agents AGENTS --scope user --dry-run --json
+npx --yes --registry=https://registry.npmjs.org/ optbrew@0.3.4 install --agents AGENTS --scope user --dry-run --json
 ```
 
 Project scope:
 
 ```text
-npx --yes optbrew@0.3.4 install --agents AGENTS --scope project --project PROJECT --dry-run --json
+npx --yes --registry=https://registry.npmjs.org/ optbrew@0.3.4 install --agents AGENTS --scope project --project PROJECT --dry-run --json
 ```
 
 Check: exit code 0 and `"status": "dry_run"`. Show the user `decision.targets[].path` from the output and ask for approval before step 4.
@@ -54,7 +55,7 @@ Check: exit code 0 and `"status": "installed"` (or `"unchanged"` when the same r
 ## 5. Verify
 
 ```text
-npx --yes optbrew@0.3.4 doctor --agents AGENTS --scope SCOPE --json
+npx --yes --registry=https://registry.npmjs.org/ optbrew@0.3.4 doctor --agents AGENTS --scope SCOPE --json
 ```
 
 Add `--project PROJECT` for project scope. Check: every entry in `targets` has `file_present: true`, `hash_ok: true` and `registered: true`. `session_discovery` and `invocation_verified` are always `not_verified`: doctor checks files, not whether the agent loaded them. A new agent session in step 6 confirms that.
@@ -71,10 +72,10 @@ Tell the user:
 
 ## Update
 
-1. Find the installed release: run `npx --yes optbrew@0.3.4 doctor --agents AGENTS --scope SCOPE --json` (add `--project PROJECT` for project scope) and read `release_version`.
-2. Find the latest release: `npm view optbrew version`.
+1. Find the installed release: run `npx --yes --registry=https://registry.npmjs.org/ optbrew@0.3.4 doctor --agents AGENTS --scope SCOPE --json` (add `--project PROJECT` for project scope) and read `release_version`.
+2. Find the latest release: `npm view --registry=https://registry.npmjs.org/ optbrew version`. Call the printed version `VERSION`.
 3. If they are equal, stop: nothing to update.
-4. Otherwise run `npx --yes optbrew@latest update --scope SCOPE --json` (add `--project PROJECT` for project scope). Check: `"status": "updated"`. Then repeat step 5 with `optbrew@latest`.
+4. Otherwise run `npx --yes --registry=https://registry.npmjs.org/ optbrew@VERSION update --scope SCOPE --json` with the exact `VERSION` from step 2, not `latest` (add `--project PROJECT` for project scope). Check: `"status": "updated"`. Then repeat step 5 with `optbrew@VERSION`.
 
 If `update` stops with `migration_required`, the installed release scores with an older evaluation version and cannot be updated in place. Its scores are not comparable with the new release. Every managed 0.1.x install ends here when it is updated to 0.2.0. Tell the user that an output folder from a 0.1.x audit cannot be reused: the new release refuses it with one sentence, and the audit has to run again in a new folder. Reinstall it:
 
@@ -91,4 +92,4 @@ If `update` stops with `migration_required`, the installed release scores with a
 | `npx` cannot find `optbrew` | Check network access to the npm registry, then retry once. |
 | `unmanaged optbrew target exists` | Stop. Show the path to the user and ask. |
 | `bundle integrity failed` | Stop. Report the full message to the user. |
-| `doctor` shows `hash_ok: false` | Read the doctor `warnings`. If one says `migration_required`, the install is an older release: follow [Update](#update). Otherwise someone edited the installed files: ask the user before you run `npx --yes optbrew@0.3.4 update --scope SCOPE --local-changes backup-and-replace --json`, which keeps a backup of the edited files. |
+| `doctor` shows `hash_ok: false` | Read the doctor `warnings`. If one says `migration_required`, the install is an older release: follow [Update](#update). Otherwise someone edited the installed files: ask the user before you run `npx --yes --registry=https://registry.npmjs.org/ optbrew@0.3.4 update --scope SCOPE --local-changes backup-and-replace --json`, which keeps a backup of the edited files. |
