@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Report blank or unreadable Search Console and Naver Search Advisor counts as an import problem instead of including incorrect totals.
+- **Install commands no longer trust the folder they start in.** `install.ps1` runs `npx` in a new empty temporary folder with the official registry on its command line (`-Registry` names a private mirror, https only), so a site project's `.npmrc` can neither point npm at a fake optbrew nor add npm options. `AGENT_INSTALL.md` and both READMEs run every npm command from the home folder with `--registry=https://registry.npmjs.org/`, and an update installs the exact version it just looked up instead of `optbrew@latest`. (daybreak `csf_2c602f70ee5e3014b473562b`)
 - **The Claude plugin key no longer reaches every shell of the session.** The plugin's SessionStart hook used to append the `google_api_key` setting to `CLAUDE_ENV_FILE`, so every later shell command of the session, a site project's scripts included, inherited it. The hook now writes it to the owner-only `~/.optbrew/plugin-key.json`, which only optbrew's key reader opens; a session that receives no setting (the desktop app) leaves that file alone, and `key remove google` deletes it too. A session started by 0.3.4 or earlier still has the old variable and keeps working. (daybreak `csf_6c7324c30de94e12802a539b`)
 
 ## 0.3.4
