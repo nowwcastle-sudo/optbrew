@@ -1,6 +1,6 @@
 # optbrew installer for Windows PowerShell 5.1 and PowerShell 7.
 # It installs the pinned npm release into each agent's skills folder and checks the result.
-#   irm https://raw.githubusercontent.com/nowwcastle-sudo/optbrew/v0.3.4/install.ps1 | iex
+#   irm https://raw.githubusercontent.com/nowwcastle-sudo/optbrew/v0.3.5/install.ps1 | iex
 # To choose agents or a project folder, download the file and run it with parameters:
 #   powershell -ExecutionPolicy Bypass -File .\install.ps1 -Agents codex,claude-code -Scope project -Project C:\path\to\site
 # npx runs in a new empty temporary folder with the registry named on its command line, so an .npmrc in the folder this
@@ -11,7 +11,7 @@ param(
   [string[]]$Agents = @('codex', 'claude-code'),
   [ValidateSet('user', 'project')][string]$Scope = 'user',
   [string]$Project = '',
-  [string]$Package = 'optbrew@0.3.4',
+  [string]$Package = 'optbrew@0.3.5',
   [string]$Registry = 'https://registry.npmjs.org/'
 )
 # The body runs in a child scope so that irm | iex leaves no variables, functions or preferences in the caller's session.
@@ -44,7 +44,7 @@ param(
         $scopeArgs = if ($Scope -eq 'project') { "--scope project --project `"$projectPath`"" } else { '--scope user' }
         throw ("optbrew $($Arguments[0]) failed with exit code $LASTEXITCODE (message above). If optbrew is already installed, " +
           "update it from an empty folder with: $npx $($npxArgs -join ' ') optbrew update $scopeArgs`n" +
-          'If update stops with migration_required, see https://github.com/nowwcastle-sudo/optbrew/blob/v0.3.4/docs/platforms.md#reinstall-after-a-migration_required-update')
+          'If update stops with migration_required, see https://github.com/nowwcastle-sudo/optbrew/blob/v0.3.5/docs/platforms.md#reinstall-after-a-migration_required-update')
       }
       ($out -join "`n") | ConvertFrom-Json
     }
