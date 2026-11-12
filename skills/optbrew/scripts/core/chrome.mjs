@@ -161,6 +161,10 @@ async function readActivePort(userDataDir, deadline) {
 function chromeArgs({ userDataDir, kind, proxy = null, hostRules = null, root = false }) {
   const args = ['--headless=new', `--user-data-dir=${userDataDir}`, '--no-first-run', '--no-default-browser-check',
     '--disable-background-networking', '--disable-extensions',
+    // Traffic the Fetch interception never sees must not leave at all (daybreak csf_e39987f051fee9889a490040): WebRTC may use
+    // no UDP outside a proxy (so ICE sends no STUN or media packet), and QUIC is off (WebTransport and HTTP/3 run over UDP).
+    '--force-webrtc-ip-handling-policy=disable_non_proxied_udp', '--webrtc-ip-handling-policy=disable_non_proxied_udp',
+    '--disable-quic',
     kind === 'pipe' ? '--remote-debugging-pipe' : '--remote-debugging-port=0'];
   // Chrome refuses to start as root without its sandbox disabled (containers, CI).
   if (root) args.push('--no-sandbox');
@@ -327,6 +331,20 @@ const TOP_LEVEL = [{ type: 'page' }, { type: 'service_worker' }, { type: 'shared
 // A dedicated worker has no Fetch domain of its own ("'Fetch.enable' wasn't found"): its requests are paused on the session
 // of the frame that owns it, which already has the interception.
 const OWNER_INTERCEPTS = new Set(['worker']);
+// Targets whose documents get NO_RAW_SOCKETS before any page script; the other adopted targets (workers) get it evaluated
+// while they are still paused.
+const DOCUMENT_TARGETS = new Set(['page', 'iframe']);
+// The page APIs that open connections the Fetch interception never sees (daybreak csf_e39987f051fee9889a490040): WebRTC
+// (ICE over UDP), WebTransport (QUIC) and WebSocket. A rendered SEO page does not need them to show its content. They are
+// removed from every document and worker before page code runs, and cannot be put back. The Chrome flags in chromeArgs are
+// the second layer: WebRTC gets no UDP outside a proxy even where a constructor survived.
+const NO_RAW_SOCKETS = `(() => {
+  for (const name of ['RTCPeerConnection', 'webkitRTCPeerConnection', 'RTCDataChannel', 'RTCIceTransport', 'RTCSctpTransport',
+    'RTCDtlsTransport', 'WebTransport', 'WebSocket', 'WebSocketStream']) {
+    try { delete globalThis[name]; } catch {}
+    try { Object.defineProperty(globalThis, name, { value: undefined, writable: false, configurable: false }); } catch {}
+  }
+})();`;
 
 /**
  * One browser-level auto-attach per Chrome: each new top-level target (a popup, a service worker, a shared worker) is
@@ -466,6 +484,14 @@ export async function scopedPage({ chrome, context, budget, fetchStatic = null, 
         return;
       }
     }
+    // The connection APIs the interception cannot see are gone before the target's own code runs; a target where that fails is closed.
+    try {
+      if (DOCUMENT_TARGETS.has(targetInfo.type)) await cdp.send('Page.addScriptToEvaluateOnNewDocument', { source: NO_RAW_SOCKETS, runImmediately: true }, child);
+      else await cdp.send('Runtime.evaluate', { expression: NO_RAW_SOCKETS }, child);
+    } catch {
+      await cdp.send('Target.closeTarget', { targetId: targetInfo.targetId }).catch(() => {});
+      return;
+    }
     // Targets nested under this one (iframes, workers) attach to this session in turn; not every target type supports it.
     await cdp.send('Target.setAutoAttach', AUTO_ATTACH, child).catch(() => {});
     await resume();
@@ -514,6 +540,7 @@ export async function scopedPage({ chrome, context, budget, fetchStatic = null, 
     on('Runtime.consoleAPICalled', ({ type, args }) => { if (type === 'error') keepConsole(consoleText(args)); });
     on('Runtime.exceptionThrown', ({ exceptionDetails }) => { keepConsole(exceptionDetails.exception?.description ?? exceptionDetails.text); });
     await send('Page.enable');
+    await send('Page.addScriptToEvaluateOnNewDocument', { source: NO_RAW_SOCKETS, runImmediately: true });
     await send('Network.enable');
     await send('Runtime.enable');
     await send('Page.setLifecycleEventsEnabled', { enabled: true });

@@ -3,9 +3,20 @@ import https from 'node:https';
 import tls from 'node:tls';
 import { isIP } from 'node:net';
 import { performance } from 'node:perf_hooks';
+import { harnessSignals } from './config.mjs';
 import { unbracket, urlTarget } from './scope.mjs';
 
 const DNS_FAILURES = new Set(['ENOTFOUND', 'EAI_AGAIN']);
+const TRUST_PROXY = 'OPTBREW_TRUST_PROXY_EGRESS';
+
+/**
+ * Through a proxy the proxy resolves names, so optbrew cannot check the address a name points to: a site whose DNS answers
+ * with an internal address would reach whatever the proxy can reach (daybreak csf_c78e5c341e64e3e9a8ec7705). The proxy is
+ * used only where it keeps private and reserved addresses out itself: the Claude Code cloud sandbox's own egress proxy, or
+ * a proxy the user vouched for with OPTBREW_TRUST_PROXY_EGRESS=1.
+ */
+const trustedProxyEgress = env => env?.[TRUST_PROXY] === '1' ||
+  harnessSignals()['claude-code-cloud'].env_any.some(name => typeof env?.[name] === 'string' && env[name] !== '');
 
 /** Send one request (`body`, when there is one, is its whole payload) and read the response into `{ status, headers, rawHeaders, body }`; both transports share this, byte limit included. */
 function exchange({ send, timeoutMs, maxBytes, body = null }) {
@@ -152,6 +163,8 @@ export async function selectTransport({ env, resolve, probeHost }) {
     if (!DNS_FAILURES.has(error?.code)) throw error;
     const proxy = bypassesProxy(env, probeHost) ? null : parseProxy(env);
     if (!proxy) throw dnsError(probeHost, error.code, 'no usable HTTPS_PROXY is set');
+    if (!trustedProxyEgress(env))
+      throw dnsError(probeHost, error.code, `HTTPS_PROXY is set but not trusted to block private and internal addresses; ask the user, and only if that proxy blocks them set ${TRUST_PROXY}=1`);
     return { transport: proxyTransport(proxy), resolve: async () => [], address_vetting: 'proxy', proxy };
   }
 }

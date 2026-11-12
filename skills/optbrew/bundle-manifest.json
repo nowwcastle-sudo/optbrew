@@ -176,7 +176,7 @@
     },
     {
       "path": "SKILL.md",
-      "sha256": "1099eb6ef566e73b8870bac6af0d5fda944e1bc206efa631402ad748ab34e84b"
+      "sha256": "f082e62f8f7ad8bf48d53a7c3f49137e9d4aebde9e6dfa03174011089ced64fb"
     },
     {
       "path": "THIRD_PARTY_NOTICES.md",
@@ -752,7 +752,7 @@
     },
     {
       "path": "references/runbooks/key-set-local.md",
-      "sha256": "3a352adf8464d97477cc302565eda6cf36fd8078de499a861c346d415d36e830"
+      "sha256": "0445559595a08a69254eefb084ba1fd879393c87cebc1989990347489628c5c5"
     },
     {
       "path": "references/runbooks/naver-searchadvisor-export.md",
@@ -904,7 +904,7 @@
     },
     {
       "path": "scripts/core/chrome.mjs",
-      "sha256": "b9e4bc174c4902cd18864106a079da348166155f054add223f597f0320ca3e64"
+      "sha256": "d7edffe6c2b6355a7a5df8260e77e37f2520a28e4b36409438d0c88680b9e1c1"
     },
     {
       "path": "scripts/core/collector.mjs",
@@ -980,7 +980,7 @@
     },
     {
       "path": "scripts/core/keys.mjs",
-      "sha256": "381dd2eca2dde1166e06749db2a7ff354a0280cbd720b2fa98232189bfd0fcd5"
+      "sha256": "73e8d84e1c79c31a2fc5b50ac1d6da9841e40ffde26fb7b11b9a1cc645ba90f4"
     },
     {
       "path": "scripts/core/link-graph.mjs",
@@ -1020,7 +1020,7 @@
     },
     {
       "path": "scripts/core/report-compose.mjs",
-      "sha256": "67d9ffe1751e68ef94ec76731c12e219fa37535d20f97e39452b77f380a28e15"
+      "sha256": "52c5c2e7fc39a4fd084cb12a34c4bdedc5a68b986662bbf0f92803445c3c7295"
     },
     {
       "path": "scripts/core/report-fixes.mjs",
@@ -1044,7 +1044,7 @@
     },
     {
       "path": "scripts/core/scope.mjs",
-      "sha256": "c302fe0fd0711faafc39f5741e735ebd9921723b56f071134afe8ef1fc073053"
+      "sha256": "ab46eca5cf94e86aa256632d9c6214ca9b7e80992ca2f99eb899b53362b19036"
     },
     {
       "path": "scripts/core/score.mjs",
@@ -1060,7 +1060,7 @@
     },
     {
       "path": "scripts/core/transport.mjs",
-      "sha256": "f3214e68c48a2edc42d061e3bf33138d844eca7aa54d3a6e59d26c5c58d77001"
+      "sha256": "addb05ad367fe202f65518b6be061a52939e82ca3ec848c828212ddd1b1a9240"
     },
     {
       "path": "scripts/core/weights.mjs",
@@ -1083,5 +1083,5 @@
       "sha256": "f7119e765139292f4d88685e617f91feab3615003a30eae1ff05e6bf7e561497"
     }
   ],
-  "bundle_hash": "7ca316f54360ad1162eb2a92ec4dd209f45b2b0c1e43aca33d51f8affca58c85"
+  "bundle_hash": "9505081f67985394d3858056c15f8b711d68d1318129ad6db298d769e864a287"
 }

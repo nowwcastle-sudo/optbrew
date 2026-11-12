@@ -3,6 +3,8 @@ import test, { after, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
 import { createServer } from 'node:http';
+import dgram from 'node:dgram';
+import net from 'node:net';
 import { mkdir, mkdtemp, readdir, rm, stat, symlink, utimes } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
@@ -637,5 +639,69 @@ describe('chrome block', async () => {
         assert.deepEqual(result.truncated, { dom: false, links: true, console_errors: maxErrors * 2 });
       } finally { await page.close(); }
     });
+  });
+
+  // daybreak csf_e39987f051fee9889a490040: the Fetch interception sees HTTP only. A rendered page could still reach the
+  // network outside it: WebRTC ICE sends STUN over UDP, WebTransport runs over QUIC (UDP), and a WebSocket handshake is not
+  // paused by Fetch. None of them may leave the browser, whatever address the page names.
+  test('a rendered page sends no WebRTC, WebTransport or WebSocket traffic', { skip }, async () => {
+    const udp = await Promise.all([0, 1].map(() => new Promise(resolve => {
+      const socket = dgram.createSocket('udp4');
+      socket.packets = 0;
+      socket.on('message', () => { socket.packets += 1; });
+      socket.bind(0, '127.0.0.1', () => resolve(socket));
+    })));
+    const [stun, quic] = udp;
+    let tcpConnections = 0;
+    const tcp = net.createServer(socket => { tcpConnections += 1; socket.destroy(); });
+    await new Promise(resolve => tcp.listen(0, '127.0.0.1', resolve));
+    const wsPort = tcp.address().port;
+    try {
+      const pagePort = await listen(createServer((req, res) => {
+        res.writeHead(200, { 'content-type': 'text/html' });
+        res.end(`<title>egress</title><script>
+          window.tried = [];
+          try {
+            const pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:127.0.0.1:${stun.address().port}' }] });
+            pc.createDataChannel('x');
+            pc.createOffer().then(offer => pc.setLocalDescription(offer)).catch(() => {});
+            tried.push('webrtc');
+          } catch (error) { tried.push('webrtc-unavailable'); }
+          try { new WebTransport('https://127.0.0.1:${quic.address().port}/').ready.catch(() => {}); tried.push('webtransport'); }
+          catch (error) { tried.push('webtransport-unavailable'); }
+          try { new WebSocket('ws://127.0.0.1:${wsPort}/'); tried.push('websocket'); }
+          catch (error) { tried.push('websocket-unavailable'); }
+          // A fresh about:blank frame is the usual way to get untouched constructors back.
+          const frame = document.createElement('iframe');
+          document.documentElement.appendChild(frame);
+          const other = frame.contentWindow;
+          try { new other.RTCPeerConnection({ iceServers: [{ urls: 'stun:127.0.0.1:${stun.address().port}' }] }).createOffer().catch(() => {}); } catch (error) {}
+          try { new other.WebTransport('https://127.0.0.1:${quic.address().port}/').ready.catch(() => {}); } catch (error) {}
+          try { new other.WebSocket('ws://127.0.0.1:${wsPort}/'); } catch (error) {}
+          // A worker has WebTransport and WebSocket of its own.
+          try {
+            const source = "try { new WebTransport('https://127.0.0.1:${quic.address().port}/').ready.catch(() => {}); } catch (e) {}" +
+              "try { new WebSocket('ws://127.0.0.1:${wsPort}/'); } catch (e) {}";
+            new Worker(URL.createObjectURL(new Blob([source], { type: 'text/javascript' })));
+          } catch (error) {}
+        </script>`);
+      }));
+      const scope = { allowed: [{ origin: `http://127.0.0.1:${pagePort}` }], local_targets: [{ host: '127.0.0.1', port: pagePort }] };
+      await withChrome({ hostRules }, async chrome => {
+        const page = await scopedPage({ chrome, context: { scope }, budget: 100 });
+        try {
+          const result = await page.goto(`http://127.0.0.1:${pagePort}/`);
+          assert.equal(result.status, 200);
+          // ICE gathering and the connection attempts run in the background; give them time to send.
+          await page.evaluate('new Promise(resolve => setTimeout(resolve, 3000))');
+        } finally { await page.close(); }
+      });
+      assert.equal(stun.packets, 0, 'no STUN packet left the browser');
+      assert.equal(quic.packets, 0, 'no QUIC packet left the browser');
+      assert.equal(tcpConnections, 0, 'no WebSocket connection left the browser');
+    } finally {
+      udp.forEach(socket => socket.close());
+      await new Promise(resolve => tcp.close(resolve));
+    }
   });
 });

@@ -78,7 +78,7 @@ const origin = `http://example.test:${targetPort}`;
 const scope = { allowed: [{ origin, path_prefix: '/owned/' }] };
 const context = urls => ({ scope, protocol: { page_types: [{ id: 'main', urls: urls.map(url => ({ original: url, normalized: url })) }] } });
 const dnsDown = code => async host => { throw Object.assign(new Error(`getaddrinfo ${code} ${host}`), { code }); };
-const proxyEnv = (port, userinfo = '') => ({ HTTPS_PROXY: `http://${userinfo}127.0.0.1:${port}` });
+const proxyEnv = (port, userinfo = '') => ({ HTTPS_PROXY: `http://${userinfo}127.0.0.1:${port}`, OPTBREW_TRUST_PROXY_EGRESS: '1' });
 const viaProxy = chosen => ({ transport: chosen.transport, resolve: chosen.resolve, addressVetting: chosen.address_vetting });
 
 test('direct DNS success keeps direct', async () => {
@@ -105,6 +105,27 @@ test('DNS failure with HTTPS_PROXY switches to proxy', async () => {
     assert.match(result.body.toString(), /hello/);
     assert.deepEqual(proxy.connects.map(x => x.url), [`example.test:${targetPort}`]);
   }
+});
+
+// daybreak csf_c78e5c341e64e3e9a8ec7705: through a proxy optbrew cannot see the address a name resolves to, so a site whose
+// DNS answers with an internal address would reach whatever the proxy reaches. The proxy is used only when it is trusted.
+test('DNS failure with a proxy nobody vouched for stops instead of sending names through it', async () => {
+  const proxy = await startProxy();
+  const env = { HTTPS_PROXY: `http://127.0.0.1:${proxy.port}` };
+  for (const trust of [undefined, '', '0', 'true']) {
+    await assert.rejects(selectTransport({ env: { ...env, ...(trust === undefined ? {} : { OPTBREW_TRUST_PROXY_EGRESS: trust }) },
+      resolve: dnsDown('ENOTFOUND'), probeHost: 'example.test' }), error => {
+      assert.equal(error.code, 'dns_unresolvable');
+      assert.match(error.message, /not trusted to block private and internal addresses.*OPTBREW_TRUST_PROXY_EGRESS=1/);
+      return true;
+    }, String(trust));
+  }
+  assert.deepEqual(proxy.connects, [], 'nothing went through the proxy');
+  // The Claude Code cloud sandbox's own egress proxy is trusted without the variable.
+  const cloud = await selectTransport({ env: { ...env, CLAUDE_CODE_REMOTE: 'true' }, resolve: dnsDown('ENOTFOUND'), probeHost: 'example.test' });
+  assert.equal(cloud.address_vetting, 'proxy');
+  // Direct DNS still never uses the proxy, trusted or not.
+  assert.equal((await selectTransport({ env, resolve: async () => [{ address: '127.0.0.1', family: 4 }], probeHost: 'example.test' })).address_vetting, 'direct');
 });
 
 test('DNS failure without a proxy is a classified error', async () => {

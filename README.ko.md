@@ -45,12 +45,14 @@ optbrew는 다섯 기준 모두에 같은 작업 순서와 같은 채점 규칙�
 
 [Node.js](https://nodejs.org) 22 이상이 필요합니다. Python 3.10 이상은 선택입니다. 없으면 내부 Python 감사 도구만 실행하지 않습니다. 아래 다섯 방법 중 하나를 고르십시오. 예시는 Codex와 Claude Code에 사용자 범위로 설치합니다. 에이전트 ID는 `codex`, `claude-code`, `cursor`, `opencode`, `pi`입니다.
 
+아래 `npm`·`npx` 명령은 사이트 프로젝트 폴더가 아니라 홈 폴더에서 실행하십시오. npm은 시작한 폴더의 `.npmrc`를 읽고, 프로젝트의 `.npmrc`는 다른 레지스트리로 보낼 수 있습니다. 같은 이유로 명령에 공식 레지스트리를 적었습니다. 사설 미러를 쓰면 그 주소로 바꾸십시오.
+
 Windows PowerShell에서 `npx`나 `optbrew`가 「스크립트를 실행할 수 없습니다」라고 하면 `npx.cmd`, `optbrew.cmd`로 바꿔 입력하십시오.
 
 ### 1. npm
 
 ```bash
-npm install -g optbrew@0.3.4
+npm install -g --registry=https://registry.npmjs.org/ optbrew@0.3.4
 optbrew install --agents codex,claude-code --scope user --dry-run
 optbrew install --agents codex,claude-code --scope user
 optbrew doctor --agents codex,claude-code --scope user
@@ -63,8 +65,8 @@ optbrew doctor --agents codex,claude-code --scope user
 전역 설치 없이 같은 CLI를 실행합니다.
 
 ```bash
-npx optbrew@0.3.4 install --agents codex,claude-code --scope user
-npx optbrew@0.3.4 doctor --agents codex,claude-code --scope user
+npx --yes --registry=https://registry.npmjs.org/ optbrew@0.3.4 install --agents codex,claude-code --scope user
+npx --yes --registry=https://registry.npmjs.org/ optbrew@0.3.4 doctor --agents codex,claude-code --scope user
 ```
 
 ### 3. PowerShell (Windows)
@@ -138,16 +140,17 @@ optbrew key status
 optbrew key remove google
 ```
 
-`set`은 숨겨진 입력 창으로 키를 받습니다. `status`는 키가 있는지와 해시 앞 8자만 보여 줍니다. `remove`는 키를 지웁니다. npm으로 설치하지 않았다면 `npx optbrew@0.3.4 key set google`을 쓰거나, 「키」라고 답해 안내에 나온 명령을 그대로 복사하십시오. 스킬 폴더에도 같은 명령이 있습니다: `node <스킬 폴더>/scripts/key.mjs set google`. 키는 홈 폴더의 `.optbrew/credentials.json`에 저장되며 어느 프로젝트 안에도 들어가지 않습니다. 환경 변수 `OPTBREW_GOOGLE_API_KEY`가 있으면 그것이 먼저입니다. Claude 데스크톱 앱을 쓰면 키 파일 방법(`key set google`)을 쓰십시오. 2026-10-18 Windows 측정에서 아래 플러그인 설정 값은 데스크톱 앱 세션(함께 설치된 claude.exe 2.1.299)에 오지 않았고, 터미널 `claude` 2.1.302 세션에는 왔습니다. 원인이 앱인지 버전인지는 아직 가리지 못했습니다. 터미널 `claude`에서 Claude Code 플러그인으로 설치했다면 터미널을 열고 `claude`를 실행한 뒤 `/plugin` → **Installed** → optbrew → **Configure options**에 키를 넣어도 됩니다. 데스크톱 앱의 Code 탭에는 `/plugin` 화면이 없습니다. Claude Code가 운영체제의 자격 증명 저장소에 보관하고, 새 세션부터 적용되며, 값이 세션에 전달됐을 때만 둘보다 먼저 쓰입니다. 어느 출처가 쓰이는지는 `key status`의 `google.sources`에 나옵니다. optbrew는 키를 요청 헤더로만 구글에 보내고, 보고서·로그·근거에는 쓰지 않습니다.
+`set`은 숨겨진 입력 창으로 키를 받습니다. `status`는 키가 있는지와 해시 앞 8자만 보여 줍니다. `remove`는 키를 지웁니다. npm으로 설치하지 않았다면 `npx --yes --registry=https://registry.npmjs.org/ optbrew@0.3.4 key set google`을 쓰거나, 「키」라고 답해 안내에 나온 명령을 그대로 복사하십시오. 스킬 폴더에도 같은 명령이 있습니다: `node <스킬 폴더>/scripts/key.mjs set google`. 키는 홈 폴더의 `.optbrew/credentials.json`에 저장되며 어느 프로젝트 안에도 들어가지 않습니다. 환경 변수 `OPTBREW_GOOGLE_API_KEY`가 있으면 그것이 먼저입니다. Claude 데스크톱 앱을 쓰면 키 파일 방법(`key set google`)을 쓰십시오. 2026-10-18 Windows 측정에서 아래 플러그인 설정 값은 데스크톱 앱 세션(함께 설치된 claude.exe 2.1.299)에 오지 않았고, 터미널 `claude` 2.1.302 세션에는 왔습니다. 원인이 앱인지 버전인지는 아직 가리지 못했습니다. 터미널 `claude`에서 Claude Code 플러그인으로 설치했다면 터미널을 열고 `claude`를 실행한 뒤 `/plugin` → **Installed** → optbrew → **Configure options**에 키를 넣어도 됩니다. 데스크톱 앱의 Code 탭에는 `/plugin` 화면이 없습니다. Claude Code가 운영체제의 자격 증명 저장소에 보관하고, 새 세션부터 적용되며, 값이 세션에 전달됐을 때만 둘보다 먼저 쓰입니다. optbrew의 세션 훅은 그 값을 세션 환경 변수에 넣지 않고 홈 폴더의 `.optbrew/plugin-key.json`(소유자만 읽기)에 둡니다. 그래서 세션에서 실행되는 다른 프로그램은 키를 물려받지 않습니다. `key remove google`은 이 사본도 지웁니다. 어느 출처가 쓰이는지는 `key status`의 `google.sources`에 나옵니다. optbrew는 키를 요청 헤더로만 구글에 보내고, 보고서·로그·근거에는 쓰지 않습니다.
 
 ## 업데이트
 
 ```bash
-npm install -g optbrew@latest
+npm view --registry=https://registry.npmjs.org/ optbrew version
+npm install -g --registry=https://registry.npmjs.org/ optbrew@VERSION
 optbrew update --scope user
 ```
 
-npx를 쓴다면 `npx optbrew@latest update --scope user`를 실행합니다. `optbrew check-updates --package optbrew`는 아무것도 바꾸지 않고, 지금 실행한 CLI보다 새 버전이 npm에 있는지 알려 줍니다. 에이전트 폴더에 설치된 버전은 `optbrew doctor --json`의 `release_version`에 나옵니다. `npm update`만으로는 에이전트 폴더에 이미 놓인 사본이 바뀌지 않습니다. 사본은 `update` 명령이 바꿉니다.
+`VERSION` 자리에는 첫 줄이 출력한 버전을 넣습니다. 그래야 확인한 버전이 그대로 설치됩니다. npx를 쓴다면 홈 폴더에서 `npx --yes --registry=https://registry.npmjs.org/ optbrew@VERSION update --scope user`를 실행합니다. `optbrew check-updates --package optbrew`는 아무것도 바꾸지 않고, 지금 실행한 CLI보다 새 버전이 npm에 있는지 알려 줍니다. 에이전트 폴더에 설치된 버전은 `optbrew doctor --json`의 `release_version`에 나옵니다. `npm update`만으로는 에이전트 폴더에 이미 놓인 사본이 바뀌지 않습니다. 사본은 `update` 명령이 바꿉니다.
 
 ### 0.1.x에서 올리기
 
