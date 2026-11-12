@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- **Update backups and staging stay out of the host skills folder.** They now live under the managed record (`<record-root>/backups/` and `<record-root>/transactions/`). A host loads every child of its skills folder, so the old `_백업_원본_optbrew-*` folder beside the target was a second, stale skill. Older backups stay where they are; remove them by hand. Recovery still reads a journal left by 0.3.4.
+- **Install and update re-check the target's parent folders after each write.** A parent swapped for a link between the check and the write is caught, and the write is undone. Node has no directory-handle API, so this narrows the race; it does not close it.
+- **Audit folders are owner-only on macOS and Linux.** The output and evidence folders are 0700 and evidence files 0600, and an existing folder you own is narrowed to 0700. Windows keeps the access list your profile folder hands down.
 - Report blank or unreadable Search Console and Naver Search Advisor counts as an import problem instead of including incorrect totals.
 
 ## 0.3.4
