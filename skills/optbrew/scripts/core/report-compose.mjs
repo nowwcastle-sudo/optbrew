@@ -26,7 +26,7 @@ export const SECTION_TITLES = { fixes: '먼저 고칠 것', completeness: '얼�
 /**
  * Text from the site or the user as one line of markdown: backslash, `&`, `<`, `>` and `|` escaped, a line break written as `<br>`.
  * `[`, `]` and the backtick are escaped too, so a quote the site wrote can never become an image a viewer fetches, a link
- * with a misleading label, or code (daybreak csf_681b45188d624ec2b172d2ac); `<` is already gone, so no `<https://…>` autolink.
+ * with a misleading label, or code (daybreak csf_681b45188d624ec2b172d2ac); `<` is already gone, so no angle-bracket autolink either.
  */
 const html = value => String(value ?? UNKNOWN).replace(/\\/g, '\\\\').replace(/&/g, '&amp;').replace(/</g, '&lt;')
   .replace(/>/g, '&gt;').replace(/\|/g, '\\|').replace(/[[\]`]/g, '\\$&').replace(/\r?\n/g, '<br>');

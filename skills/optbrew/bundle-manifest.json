@@ -1020,7 +1020,7 @@
     },
     {
       "path": "scripts/core/report-compose.mjs",
-      "sha256": "3db53ee8f78f98bbb3fa9149384c9dad6eb4b5e840222fb4211ba21add4858da"
+      "sha256": "52c5c2e7fc39a4fd084cb12a34c4bdedc5a68b986662bbf0f92803445c3c7295"
     },
     {
       "path": "scripts/core/report-fixes.mjs",
@@ -1083,5 +1083,5 @@
       "sha256": "dca0bbd03fbf591c4aca6a568be76615eb48d69f7df0c634886f652b54f3f46d"
     }
   ],
-  "bundle_hash": "49ba84997fdbea7dade0fb27a137286354ae83b0be991468e367f078b68f6e20"
+  "bundle_hash": "323b4772d98ef008e5cc08d739d2c26ae09a1abaef85327ad6d220cc7b4678e9"
 }
