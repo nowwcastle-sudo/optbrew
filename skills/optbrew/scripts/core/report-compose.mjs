@@ -23,9 +23,13 @@ export const SYNTHETIC_BANNER = '예시 보고서 — 실제 사이트나 외부
 export const SECTION_TITLES = { fixes: '먼저 고칠 것', completeness: '얼마나 확인했나', blank: '아직 비어 있는 곳', conditions: '실행 조건',
   remaining: '남은 일', outcomes: '실제 결과', judgments: '모델 판단' };
 
-/** Text from the site or the user as one line of markdown: backslash, `&`, `<`, `>` and `|` escaped, a line break written as `<br>`. */
+/**
+ * Text from the site or the user as one line of markdown: backslash, `&`, `<`, `>` and `|` escaped, a line break written as `<br>`.
+ * `[`, `]` and the backtick are escaped too, so a quote the site wrote can never become an image a viewer fetches, a link
+ * with a misleading label, or code (daybreak csf_681b45188d624ec2b172d2ac); `<` is already gone, so no angle-bracket autolink either.
+ */
 const html = value => String(value ?? UNKNOWN).replace(/\\/g, '\\\\').replace(/&/g, '&amp;').replace(/</g, '&lt;')
-  .replace(/>/g, '&gt;').replace(/\|/g, '\\|').replace(/\r?\n/g, '<br>');
+  .replace(/>/g, '&gt;').replace(/\|/g, '\\|').replace(/[[\]`]/g, '\\$&').replace(/\r?\n/g, '<br>');
 export { html as markdownText };
 const table = (columns, rows) => `| ${columns.join(' | ')} |\n| ${columns.map(() => '---').join(' | ')} |\n${rows.map(row => `| ${row.map(html).join(' | ')} |`).join('\n') || `| ${columns.map(() => '—').join(' | ')} |`}`;
 /** One rounding rule for every coverage the report shows: the floor to a tenth, the value the 80% threshold is judged on. */

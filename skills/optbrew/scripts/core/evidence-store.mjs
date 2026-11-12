@@ -1,6 +1,6 @@
 import { createHash, randomUUID } from 'node:crypto';
 import { readFileSync, realpathSync } from 'node:fs';
-import { readFile, rename, rm, writeFile } from 'node:fs/promises';
+import { chmod, mkdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 
 const INDEX_FILE = 'evidence-index.json';
@@ -32,6 +32,18 @@ export function readVerified(root, ref, sha256) {
  * atomically on every append, so a crash leaves either the old index or the new one, never a half-written file.
  * `header` holds the index's leading fields and is used only when the run has no index yet.
  */
+/**
+ * An audit folder holds the owner's exports (Search Console and Naver rows) and raw page bodies. On POSIX it is made
+ * owner-only (0700), and an existing one this user owns is narrowed to that, so another local user cannot read it
+ * (daybreak csf_0274d90e248e). Windows keeps the access list the user's profile folder hands down: Node cannot set one.
+ */
+export async function ownerOnlyDir(dir) {
+  await mkdir(dir, { recursive: true, mode: 0o700 });
+  if (process.platform === 'win32') return;
+  const info = await stat(dir);
+  if (info.uid === process.getuid() && (info.mode & 0o077)) await chmod(dir, 0o700);
+}
+
 export function openStore(dir, header = null) {
   const indexRef = path.join(dir, INDEX_FILE);
   const empty = () => ({ ...header, ...Object.fromEntries(BASE_SECTIONS.map(name => [name, []])) });
@@ -49,7 +61,7 @@ export function openStore(dir, header = null) {
   const save = async index => {
     const temporary = `${indexRef}.${randomUUID()}.tmp`;
     try {
-      await writeFile(temporary, `${JSON.stringify(index, null, 2)}\n`);
+      await writeFile(temporary, `${JSON.stringify(index, null, 2)}\n`, { mode: 0o600 });
       await rename(temporary, indexRef);
     } catch (error) {
       await rm(temporary, { force: true }).catch(() => {});
@@ -66,7 +78,7 @@ export function openStore(dir, header = null) {
       const data = Buffer.isBuffer(bytes) ? bytes : Buffer.from(bytes);
       const sha256 = sha256Of(data);
       const ref = path.join(dir, name ?? `${sha256}.${RAW_KINDS.has(kind) ? kind : `${kind}.json`}`);
-      try { await writeFile(ref, data, { flag: 'wx' }); }
+      try { await writeFile(ref, data, { flag: 'wx', mode: 0o600 }); }
       catch (error) {
         if (error.code !== 'EEXIST') throw error;
         if (!(await readFile(ref)).equals(data)) throw new Error(`evidence ${path.basename(ref)} already exists with different content`);

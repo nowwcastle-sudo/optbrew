@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import { readFileSync, readdirSync, writeFileSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
 import { writeReport } from '../skills/optbrew/scripts/core/report.mjs';
-import { SECTION_TITLES, composeReport, fixMethod, markdownText, pageAddresses } from '../skills/optbrew/scripts/core/report-compose.mjs';
+import { SECTION_TITLES, composeReport, fixMethod, markdownText, pageAddresses, renderReport } from '../skills/optbrew/scripts/core/report-compose.mjs';
 import { FIXES_FILE, fixesMarkdown } from '../skills/optbrew/scripts/core/report-fixes.mjs';
 import { fixturePacket, verifiedOf } from './support/compose.mjs';
 import { tempDir } from './support/temp-dir.mjs';
@@ -63,6 +63,23 @@ test('text from the site is escaped and kept on one line', () => {
   assert.doesNotMatch(markdown, /<script|<b>/);
   assert.ok(markdown.includes('- 문제: first line<br>second &lt;b&gt;line&lt;/b&gt; \\| pipe'));
   assert.ok(markdown.includes('&lt;script&gt;'));
+});
+
+// daybreak csf_681b45188d624ec2b172d2ac: a quote the site wrote must stay text in report.md and fixes.md. An image would make
+// a viewer fetch a remote address (leaking the reader's IP and time); a link could show one label and go elsewhere.
+test('site text cannot become a markdown image, link or code in report.md and fixes.md', () => {
+  const quote = '![pixel](https://evil.test/p.png) [보기](https://evil.test/x) `code` <https://evil.test/auto>';
+  const verified = verifiedOf({ findings: [finding('x', { message_key: undefined, message: quote })] });
+  const composed = composeReport(verified);
+  for (const markdown of [fixesMarkdown(composed), renderReport(composed, verified).markdown]) {
+    assert.doesNotMatch(markdown, /!\[[^\]]*\]\(/, 'no image syntax survives');
+    assert.doesNotMatch(markdown, /(?<!\\)\[[^\]]*\]\(https:\/\/evil/, 'no link syntax survives');
+    assert.doesNotMatch(markdown, /<https:/, 'no autolink survives');
+    assert.ok(markdown.includes('!\\[pixel\\](https://evil.test/p.png)'), 'the quote is still readable as text');
+    assert.ok(markdown.includes('\\`code\\`'));
+  }
+  // The shared escape keeps the characters it already handled.
+  assert.equal(markdownText('a|b\\c<d>&e\nf'), 'a\\|b\\\\c&lt;d&gt;&amp;e<br>f');
 });
 
 test('a fix confirmed in production is counted and left out, and a list with none open says where unchecked parts show', () => {

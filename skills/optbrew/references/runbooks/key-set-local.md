@@ -38,7 +38,7 @@ npm으로 optbrew를 설치했다면 같은 일을 `optbrew key set google`, `op
 - 같은 PC의 터미널 `claude` 2.1.302로 시작한 세션(`claude -p`): 값이 왔습니다.
 - 원인이 데스크톱 앱인지 2.1.299 버전인지는 아직 가르지 못했습니다.
 
-**터미널에서 Claude Code(`claude`)를 쓰고 optbrew를 플러그인으로 설치했다면** 키 파일 대신 플러그인 설정에 키를 넣을 수 있습니다. Claude Code가 이 값을 운영체제의 자격 증명 저장소에 보관합니다. 값이 세션에 전달되면 키 파일과 `OPTBREW_GOOGLE_API_KEY`보다 먼저 쓰입니다. 전달되지 않으면 키 파일이나 `OPTBREW_GOOGLE_API_KEY`가 쓰입니다.
+**터미널에서 Claude Code(`claude`)를 쓰고 optbrew를 플러그인으로 설치했다면** 키 파일 대신 플러그인 설정에 키를 넣을 수 있습니다. Claude Code가 이 값을 운영체제의 자격 증명 저장소에 보관합니다. optbrew의 세션 훅은 이 값을 세션 환경 변수에 넣지 않고 홈 폴더의 `.optbrew/plugin-key.json`(소유자만 읽기)에 둡니다. `key remove google`은 이 사본도 지웁니다. 값이 세션에 전달되면 키 파일과 `OPTBREW_GOOGLE_API_KEY`보다 먼저 쓰입니다. 전달되지 않으면 키 파일이나 `OPTBREW_GOOGLE_API_KEY`가 쓰입니다.
 
 1. 터미널을 엽니다(위 1단계와 같습니다).
 2. `claude`를 입력하고 Enter를 누릅니다. 데스크톱 앱의 Code 탭에는 아래 `/plugin` 화면이 없습니다.

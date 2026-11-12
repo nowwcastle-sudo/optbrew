@@ -78,7 +78,7 @@
     },
     {
       "path": "modules/naver-searchadvisor/scripts/audit.mjs",
-      "sha256": "f19425a43be0d974756722d6069285317b4897720ede58a7bea8f211b6f73103"
+      "sha256": "05092781042045f9260be2c90a173b2b21464f0fff256da80e27ae7fafcb34f7"
     },
     {
       "path": "scripts/core/checks/canonical-consistency.mjs",
@@ -153,7 +153,7 @@
       "sha256": "7b41a2f2039735e35b1f015ac3f3e8cf7ab9383dbbc758c15fcaa9149874575d"
     }
   ],
-  "evaluation_hash": "173fb158d9a5a823bb1f9c7495f17db7afd01635a866fd5a7b15742c4e945b9d",
+  "evaluation_hash": "7e0def61ef9d74b19810aa182842a2cf296969d58c2e43bc16085a641abcb3cc",
   "protocol_sources": [
     {
       "path": "references/schemas/contract.schema.json",
@@ -161,14 +161,14 @@
     },
     {
       "path": "references/limits.json",
-      "sha256": "0715169cd29a27238041c73dbe1693df7185e27e836b79f5c363e2db35bc6a30"
+      "sha256": "c8b95f076a5f0a4d6143c9b081cc1864b4260a8861590c58cadd09a2e9d2a8b4"
     },
     {
       "path": "scripts/core/protocol.mjs",
       "sha256": "5ec1d80e91d9251936d381cccedece6c37aa899cd50855dfbd5ff8eb59d371bc"
     }
   ],
-  "protocol_hash": "fdcbefec5ea8dce5d404c2937f1e1cf3c84628542c032bee6c83ccd9bb1e7abf",
+  "protocol_hash": "79e433298f4ec3ea63c28db25f7bf11ca4de49aac7acffc621a645ab96c48cf5",
   "files": [
     {
       "path": "LICENSE",
@@ -176,7 +176,7 @@
     },
     {
       "path": "SKILL.md",
-      "sha256": "1099eb6ef566e73b8870bac6af0d5fda944e1bc206efa631402ad748ab34e84b"
+      "sha256": "f082e62f8f7ad8bf48d53a7c3f49137e9d4aebde9e6dfa03174011089ced64fb"
     },
     {
       "path": "THIRD_PARTY_NOTICES.md",
@@ -472,7 +472,7 @@
     },
     {
       "path": "modules/naver-searchadvisor/scripts/audit.mjs",
-      "sha256": "f19425a43be0d974756722d6069285317b4897720ede58a7bea8f211b6f73103"
+      "sha256": "05092781042045f9260be2c90a173b2b21464f0fff256da80e27ae7fafcb34f7"
     },
     {
       "path": "modules/naver-searchadvisor/scripts/robots.mjs",
@@ -688,7 +688,7 @@
     },
     {
       "path": "references/limits.json",
-      "sha256": "0715169cd29a27238041c73dbe1693df7185e27e836b79f5c363e2db35bc6a30"
+      "sha256": "c8b95f076a5f0a4d6143c9b081cc1864b4260a8861590c58cadd09a2e9d2a8b4"
     },
     {
       "path": "references/measurement.md",
@@ -752,7 +752,7 @@
     },
     {
       "path": "references/runbooks/key-set-local.md",
-      "sha256": "3a352adf8464d97477cc302565eda6cf36fd8078de499a861c346d415d36e830"
+      "sha256": "0445559595a08a69254eefb084ba1fd879393c87cebc1989990347489628c5c5"
     },
     {
       "path": "references/runbooks/naver-searchadvisor-export.md",
@@ -796,7 +796,7 @@
     },
     {
       "path": "scripts/adapters/imports.mjs",
-      "sha256": "6260ea0e41b9703c5f376d0fc5c569f674d454d77018160e004935e227fb7c89"
+      "sha256": "89010d4cb1ab729fddcd5a04bed29453ee2e792972337b13fbdb4649faf0ff77"
     },
     {
       "path": "scripts/audit.mjs",
@@ -904,11 +904,11 @@
     },
     {
       "path": "scripts/core/chrome.mjs",
-      "sha256": "8589c11c8e15ebbc52c2d95d652d7ff7c2bb1e646042b1ee9d2c65581d203c6e"
+      "sha256": "d7edffe6c2b6355a7a5df8260e77e37f2520a28e4b36409438d0c88680b9e1c1"
     },
     {
       "path": "scripts/core/collector.mjs",
-      "sha256": "132fc07715b7c39300412dd63d8e8ea24a4675aff8cf2f7d73d4844e0056b60a"
+      "sha256": "9ecad27e9eb5eb3dd6c9f1760eb10b5a0922c3fac1f60addfb0e36ce168c2685"
     },
     {
       "path": "scripts/core/compare.mjs",
@@ -944,7 +944,7 @@
     },
     {
       "path": "scripts/core/evidence-store.mjs",
-      "sha256": "ecfaf801d28e9198fe4fc6ebfc347ec09eaf05f19ad8686647c6ba378dcb5a75"
+      "sha256": "44db39e405876a74d83fe2a3e8ceb97561e8b5be687fa34b8c62f0ed46ee6e8e"
     },
     {
       "path": "scripts/core/facts.mjs",
@@ -980,7 +980,7 @@
     },
     {
       "path": "scripts/core/keys.mjs",
-      "sha256": "381dd2eca2dde1166e06749db2a7ff354a0280cbd720b2fa98232189bfd0fcd5"
+      "sha256": "73e8d84e1c79c31a2fc5b50ac1d6da9841e40ffde26fb7b11b9a1cc645ba90f4"
     },
     {
       "path": "scripts/core/link-graph.mjs",
@@ -1016,11 +1016,11 @@
     },
     {
       "path": "scripts/core/render.mjs",
-      "sha256": "afc803a7312caffa1d2d679d93519af1a4e44e8efa0aed903de7e290e9791e4b"
+      "sha256": "25efa3b30f0074f215fe4ff43f053966f3c31f4fee218c008f7c625f1f3b4dea"
     },
     {
       "path": "scripts/core/report-compose.mjs",
-      "sha256": "67d9ffe1751e68ef94ec76731c12e219fa37535d20f97e39452b77f380a28e15"
+      "sha256": "52c5c2e7fc39a4fd084cb12a34c4bdedc5a68b986662bbf0f92803445c3c7295"
     },
     {
       "path": "scripts/core/report-fixes.mjs",
@@ -1044,7 +1044,7 @@
     },
     {
       "path": "scripts/core/scope.mjs",
-      "sha256": "c302fe0fd0711faafc39f5741e735ebd9921723b56f071134afe8ef1fc073053"
+      "sha256": "ab46eca5cf94e86aa256632d9c6214ca9b7e80992ca2f99eb899b53362b19036"
     },
     {
       "path": "scripts/core/score.mjs",
@@ -1056,11 +1056,11 @@
     },
     {
       "path": "scripts/core/stages.mjs",
-      "sha256": "1c2a6d423723591bd0763405f0fd66f76c887f932175538e864a8a79c4c2b148"
+      "sha256": "d97c10317ae8a3f41b4cdc2ebd027f20e93a25fc9efb4daf8c9480b83a4a7b41"
     },
     {
       "path": "scripts/core/transport.mjs",
-      "sha256": "f3214e68c48a2edc42d061e3bf33138d844eca7aa54d3a6e59d26c5c58d77001"
+      "sha256": "addb05ad367fe202f65518b6be061a52939e82ca3ec848c828212ddd1b1a9240"
     },
     {
       "path": "scripts/core/weights.mjs",
@@ -1072,7 +1072,7 @@
     },
     {
       "path": "scripts/preflight.mjs",
-      "sha256": "2d5e558ff1b7314c779bba684899a2ce4727ba30bddb5c96a3dc505abfbfb6ce"
+      "sha256": "51e36f9075cbd486bb7f9983e3ef7e7278f419cd8a86a49cd934fe7371ea4ad3"
     },
     {
       "path": "scripts/run.mjs",
@@ -1080,8 +1080,8 @@
     },
     {
       "path": "source-lock.json",
-      "sha256": "dca0bbd03fbf591c4aca6a568be76615eb48d69f7df0c634886f652b54f3f46d"
+      "sha256": "f7119e765139292f4d88685e617f91feab3615003a30eae1ff05e6bf7e561497"
     }
   ],
-  "bundle_hash": "7ef511d803d71731e1ea93a985634de4c1c0eb76ddc7cc79bae3f266103c28ac"
+  "bundle_hash": "78851bcac4706094f3070ec000f48c04710af0d1b2275f14e3d0dbef508e9647"
 }

@@ -161,6 +161,10 @@ async function readActivePort(userDataDir, deadline) {
 function chromeArgs({ userDataDir, kind, proxy = null, hostRules = null, root = false }) {
   const args = ['--headless=new', `--user-data-dir=${userDataDir}`, '--no-first-run', '--no-default-browser-check',
     '--disable-background-networking', '--disable-extensions',
+    // Traffic the Fetch interception never sees must not leave at all (daybreak csf_e39987f051fee9889a490040): WebRTC may use
+    // no UDP outside a proxy (so ICE sends no STUN or media packet), and QUIC is off (WebTransport and HTTP/3 run over UDP).
+    '--force-webrtc-ip-handling-policy=disable_non_proxied_udp', '--webrtc-ip-handling-policy=disable_non_proxied_udp',
+    '--disable-quic',
     kind === 'pipe' ? '--remote-debugging-pipe' : '--remote-debugging-port=0'];
   // Chrome refuses to start as root without its sandbox disabled (containers, CI).
   if (root) args.push('--no-sandbox');
@@ -307,8 +311,18 @@ const STATIC_FAILURES = { scope_rejected: 'third_party_refused', third_party_red
 
 const consoleText =args => args.map(arg => arg.value ?? arg.description ?? '').join(' ');
 
-const READ_PAGE = `JSON.stringify({ final_url: location.href, title: document.title, dom: document.documentElement.outerHTML,
-  links: Array.from(document.querySelectorAll('a[href]'), anchor => anchor.href) })`;
+/**
+ * What goes back from the page, cut inside the page so a page that builds a huge DOM or link list cannot fill this process
+ * (daybreak csf_9b099e94a9109c6bebd137cd): at most `maxChars` of DOM and title and `maxLinks` links; `truncated` says what was cut.
+ */
+const readPage = (maxChars, maxLinks) => `(() => {
+  const dom = document.documentElement.outerHTML;
+  const anchors = document.querySelectorAll('a[href]');
+  const links = [];
+  for (let i = 0; i < anchors.length && i < ${maxLinks}; i++) links.push(anchors[i].href);
+  return JSON.stringify({ final_url: location.href, title: document.title.slice(0, ${maxChars}), dom: dom.slice(0, ${maxChars}), links,
+    truncated: { dom: dom.length > ${maxChars}, links: anchors.length > ${maxLinks} } });
+})()`;
 
 const INTERCEPT_ALL = { patterns: [{ urlPattern: '*' }], handleAuthRequests: true };
 const AUTO_ATTACH = { autoAttach: true, waitForDebuggerOnStart: true, flatten: true };
@@ -317,6 +331,20 @@ const TOP_LEVEL = [{ type: 'page' }, { type: 'service_worker' }, { type: 'shared
 // A dedicated worker has no Fetch domain of its own ("'Fetch.enable' wasn't found"): its requests are paused on the session
 // of the frame that owns it, which already has the interception.
 const OWNER_INTERCEPTS = new Set(['worker']);
+// Targets whose documents get NO_RAW_SOCKETS before any page script; the other adopted targets (workers) get it evaluated
+// while they are still paused.
+const DOCUMENT_TARGETS = new Set(['page', 'iframe']);
+// The page APIs that open connections the Fetch interception never sees (daybreak csf_e39987f051fee9889a490040): WebRTC
+// (ICE over UDP), WebTransport (QUIC) and WebSocket. A rendered SEO page does not need them to show its content. They are
+// removed from every document and worker before page code runs, and cannot be put back. The Chrome flags in chromeArgs are
+// the second layer: WebRTC gets no UDP outside a proxy even where a constructor survived.
+const NO_RAW_SOCKETS = `(() => {
+  for (const name of ['RTCPeerConnection', 'webkitRTCPeerConnection', 'RTCDataChannel', 'RTCIceTransport', 'RTCSctpTransport',
+    'RTCDtlsTransport', 'WebTransport', 'WebSocket', 'WebSocketStream']) {
+    try { delete globalThis[name]; } catch {}
+    try { Object.defineProperty(globalThis, name, { value: undefined, writable: false, configurable: false }); } catch {}
+  }
+})();`;
 
 /**
  * One browser-level auto-attach per Chrome: each new top-level target (a popup, a service worker, a shared worker) is
@@ -365,6 +393,7 @@ export async function scopedPage({ chrome, context, budget, fetchStatic = null, 
   const offs = [];
   const requests = [];
   const consoleErrors = [];
+  let consoleDropped = 0;
   const sessions = new Map();
   // Records per Network request id in arrival order, so a response, a redirect or a failure lands on the right hop.
   const byNetwork = new Map();
@@ -455,6 +484,14 @@ export async function scopedPage({ chrome, context, budget, fetchStatic = null, 
         return;
       }
     }
+    // The connection APIs the interception cannot see are gone before the target's own code runs; a target where that fails is closed.
+    try {
+      if (DOCUMENT_TARGETS.has(targetInfo.type)) await cdp.send('Page.addScriptToEvaluateOnNewDocument', { source: NO_RAW_SOCKETS, runImmediately: true }, child);
+      else await cdp.send('Runtime.evaluate', { expression: NO_RAW_SOCKETS }, child);
+    } catch {
+      await cdp.send('Target.closeTarget', { targetId: targetInfo.targetId }).catch(() => {});
+      return;
+    }
     // Targets nested under this one (iframes, workers) attach to this session in turn; not every target type supports it.
     await cdp.send('Target.setAutoAttach', AUTO_ATTACH, child).catch(() => {});
     await resume();
@@ -495,9 +532,15 @@ export async function scopedPage({ chrome, context, budget, fetchStatic = null, 
     });
     on('Page.lifecycleEvent', ({ name, loaderId }) => { if (name === 'networkIdle') idleLoaders.add(loaderId); });
     on('Page.frameNavigated', ({ frame }) => { if (frame.id === mainFrameId) mainLoader = frame.loaderId; });
-    on('Runtime.consoleAPICalled', ({ type, args }) => { if (type === 'error') consoleErrors.push(consoleText(args)); });
-    on('Runtime.exceptionThrown', ({ exceptionDetails }) => { consoleErrors.push(exceptionDetails.exception?.description ?? exceptionDetails.text); });
+    // A page can log without end: only the first `max_console_errors` are kept, each cut to `max_console_error_chars`.
+    const keepConsole = text => {
+      if (consoleErrors.length >= limits().max_console_errors) { consoleDropped += 1; return; }
+      consoleErrors.push(String(text ?? '').slice(0, limits().max_console_error_chars));
+    };
+    on('Runtime.consoleAPICalled', ({ type, args }) => { if (type === 'error') keepConsole(consoleText(args)); });
+    on('Runtime.exceptionThrown', ({ exceptionDetails }) => { keepConsole(exceptionDetails.exception?.description ?? exceptionDetails.text); });
     await send('Page.enable');
+    await send('Page.addScriptToEvaluateOnNewDocument', { source: NO_RAW_SOCKETS, runImmediately: true });
     await send('Network.enable');
     await send('Runtime.enable');
     await send('Page.setLifecycleEventsEnabled', { enabled: true });
@@ -542,8 +585,9 @@ export async function scopedPage({ chrome, context, budget, fetchStatic = null, 
       notifyMainBlocked = () => {};
       result.blocked_reason = mainBlocked ?? (budgetBlocked ? 'render_budget' : null);
       if (mainBlocked || (result.error && result.error !== 'timeout')) return result;
-      const { result: evaluated } = await send('Runtime.evaluate', { expression: READ_PAGE, returnByValue: true });
-      Object.assign(result, JSON.parse(evaluated.value), { status: lastDocument?.status ?? null });
+      const { result: evaluated } = await send('Runtime.evaluate', { expression: readPage(limits().max_render_dom_chars, limits().max_page_links), returnByValue: true });
+      const read = JSON.parse(evaluated.value);
+      Object.assign(result, read, { status: lastDocument?.status ?? null, truncated: { ...read.truncated, console_errors: consoleDropped } });
       return result;
     },
     /** The value of an expression run in the loaded page; a promise is awaited. An exception in the page throws an EvaluateError. */
