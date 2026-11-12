@@ -5,7 +5,10 @@ import os from 'node:os';
 import path from 'node:path';
 
 const ENV_NAME = 'OPTBREW_GOOGLE_API_KEY';
-// The Claude plugin's `google_api_key` setting (userConfig, sensitive), handed to the session's shell commands by the plugin's SessionStart hook.
+// The Claude plugin's `google_api_key` setting (userConfig, sensitive) reaches only hook processes. The plugin's SessionStart
+// hook writes it to the owner-only `plugin-key.json` beside the key file, never to the session environment, so the shell
+// commands of the session (a site project's scripts among them) do not inherit it. A session started by a release before
+// 0.3.5 still has it in its environment under this name, so that is read after the plugin key file.
 const PLUGIN_ENV_NAME = 'CLAUDE_PLUGIN_OPTION_GOOGLE_API_KEY';
 const HASH_CHARS = 8;
 const OWNER_ONLY_FILE = 0o600;
@@ -17,6 +20,7 @@ export function keyHome(env = process.env, platform = process.platform) {
 }
 
 const credentialsPath = home => path.join(home, '.optbrew', 'credentials.json');
+const pluginKeyPath = home => path.join(home, '.optbrew', 'plugin-key.json');
 
 const clean = value => typeof value === 'string' && value.trim() ? value.trim() : null;
 
@@ -39,12 +43,15 @@ function readCredentials(file) {
   try { return loadCredentials(file); } catch { return {}; }
 }
 
+/** The Claude plugin setting: the file the SessionStart hook wrote, then the environment of a session started before 0.3.5. */
+const pluginSetting = (env, home) => clean(readCredentials(pluginKeyPath(home)).google) ?? clean(env?.[PLUGIN_ENV_NAME]);
+
 /**
  * The Claude plugin setting first, then the environment variable, then the key file. An empty value, a missing file or a
  * corrupt file all mean "no key".
  */
 export function readGoogleKey({ env = process.env, home = keyHome(env) } = {}) {
-  return clean(env?.[PLUGIN_ENV_NAME]) ?? clean(env?.[ENV_NAME]) ?? clean(readCredentials(credentialsPath(home)).google);
+  return pluginSetting(env, home) ?? clean(env?.[ENV_NAME]) ?? clean(readCredentials(credentialsPath(home)).google);
 }
 
 /**
@@ -58,15 +65,15 @@ export function googleKeyStatus({ env = process.env, home = keyHome(env) } = {})
   let credentials = null;
   try { credentials = loadCredentials(credentialsPath(home)); } catch { /* corrupt, reported below */ }
   const corrupt = credentials === null;
-  const pluginSetting = clean(env?.[PLUGIN_ENV_NAME]) !== null;
+  const plugin = pluginSetting(env, home) !== null;
   const envVar = clean(env?.[ENV_NAME]) !== null;
   const keyFile = corrupt ? 'corrupt' : clean(credentials.google) === null ? 'absent' : 'present';
-  const used = pluginSetting ? 'plugin_setting' : envVar ? 'env' : keyFile === 'present' ? 'key_file' : null;
+  const used = plugin ? 'plugin_setting' : envVar ? 'env' : keyFile === 'present' ? 'key_file' : null;
   return { google: {
     present: key !== null,
     sha256_8: key === null ? null : createHash('sha256').update(key).digest('hex').slice(0, HASH_CHARS),
     ...(corrupt ? { corrupt: true } : {}),
-    sources: { plugin_setting: pluginSetting, env: envVar, key_file: keyFile, used },
+    sources: { plugin_setting: plugin, env: envVar, key_file: keyFile, used },
   } };
 }
 
@@ -91,11 +98,23 @@ export async function saveGoogleKey({ home = keyHome(), key }) {
   await writeCredentials(file, { ...loadCredentials(file), google: key });
 }
 
-/** Drop only the google entry; the file itself goes away once nothing else is left in it. Returns whether an entry existed. */
+/** The SessionStart hook's half: keep the Claude plugin setting in the owner-only plugin key file (temp file, then rename). */
+export async function writePluginKey({ home = keyHome(), key }) {
+  await writeCredentials(pluginKeyPath(home), { google: key });
+}
+
+/**
+ * Drop only the google entry; the file itself goes away once nothing else is left in it. The plugin key file goes too, so a
+ * copy left behind after the plugin was removed can be cleared (a plugin setting still in Claude Code writes it again at the
+ * next session start). Returns whether either held a key.
+ */
 export async function removeGoogleKey({ home = keyHome() } = {}) {
+  const pluginFile = pluginKeyPath(home);
+  const hadPlugin = clean(readCredentials(pluginFile).google) !== null;
+  await rm(pluginFile, { force: true });
   const file = credentialsPath(home);
   const { google, ...rest } = loadCredentials(file);
-  if (google === undefined) return false;
+  if (google === undefined) return hadPlugin;
   if (Object.keys(rest).length) await writeCredentials(file, rest);
   else await rm(file, { force: true });
   return true;
