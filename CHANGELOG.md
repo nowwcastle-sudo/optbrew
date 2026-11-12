@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Report blank or unreadable Search Console and Naver Search Advisor counts as an import problem instead of including incorrect totals.
+- **The Claude plugin key no longer reaches every shell of the session.** The plugin's SessionStart hook used to append the `google_api_key` setting to `CLAUDE_ENV_FILE`, so every later shell command of the session, a site project's scripts included, inherited it. The hook now writes it to the owner-only `~/.optbrew/plugin-key.json`, which only optbrew's key reader opens; a session that receives no setting (the desktop app) leaves that file alone, and `key remove google` deletes it too. A session started by 0.3.4 or earlier still has the old variable and keeps working. (daybreak `csf_6c7324c30de94e12802a539b`)
 
 ## 0.3.4
 
