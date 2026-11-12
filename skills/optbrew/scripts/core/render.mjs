@@ -134,7 +134,9 @@ async function renderOne({ ref, chrome, browser, context, store }) {
   const record = { url: ref.normalized, final_url: result?.final_url ?? null, status: result?.status ?? null,
     dom_ref: written?.ref ?? null, dom_sha256: written?.sha256 ?? null, title: result?.title ?? null,
     links: result?.final_url ? sameOriginLinks(result.links, result.final_url) : [], console_errors: [...(result?.console_errors ?? [])], requests,
-    blocked_reason: result ? result.blocked_reason ?? result.error : 'render_failed', address_vetting: chrome.address_vetting };
+    blocked_reason: result ? result.blocked_reason ?? result.error : 'render_failed', address_vetting: chrome.address_vetting,
+    // What the render limits cut (DOM and title, links, console errors dropped), so the evidence says it is not the whole page.
+    ...(result?.truncated && (result.truncated.dom || result.truncated.links || result.truncated.console_errors) ? { truncated: result.truncated } : {}) };
   const { ref: evidenceRef, sha256 } = await store.write('render', `${JSON.stringify(record, null, 2)}\n`);
   await store.append('renders', { url: record.url, evidence_ref: evidenceRef, sha256 });
   for (const entry of ledgerEntries(record.url, requests)) await store.append('render_ledger', entry);

@@ -307,8 +307,18 @@ const STATIC_FAILURES = { scope_rejected: 'third_party_refused', third_party_red
 
 const consoleText =args => args.map(arg => arg.value ?? arg.description ?? '').join(' ');
 
-const READ_PAGE = `JSON.stringify({ final_url: location.href, title: document.title, dom: document.documentElement.outerHTML,
-  links: Array.from(document.querySelectorAll('a[href]'), anchor => anchor.href) })`;
+/**
+ * What goes back from the page, cut inside the page so a page that builds a huge DOM or link list cannot fill this process
+ * (daybreak csf_9b099e94a9109c6bebd137cd): at most `maxChars` of DOM and title and `maxLinks` links; `truncated` says what was cut.
+ */
+const readPage = (maxChars, maxLinks) => `(() => {
+  const dom = document.documentElement.outerHTML;
+  const anchors = document.querySelectorAll('a[href]');
+  const links = [];
+  for (let i = 0; i < anchors.length && i < ${maxLinks}; i++) links.push(anchors[i].href);
+  return JSON.stringify({ final_url: location.href, title: document.title.slice(0, ${maxChars}), dom: dom.slice(0, ${maxChars}), links,
+    truncated: { dom: dom.length > ${maxChars}, links: anchors.length > ${maxLinks} } });
+})()`;
 
 const INTERCEPT_ALL = { patterns: [{ urlPattern: '*' }], handleAuthRequests: true };
 const AUTO_ATTACH = { autoAttach: true, waitForDebuggerOnStart: true, flatten: true };
@@ -365,6 +375,7 @@ export async function scopedPage({ chrome, context, budget, fetchStatic = null, 
   const offs = [];
   const requests = [];
   const consoleErrors = [];
+  let consoleDropped = 0;
   const sessions = new Map();
   // Records per Network request id in arrival order, so a response, a redirect or a failure lands on the right hop.
   const byNetwork = new Map();
@@ -495,8 +506,13 @@ export async function scopedPage({ chrome, context, budget, fetchStatic = null, 
     });
     on('Page.lifecycleEvent', ({ name, loaderId }) => { if (name === 'networkIdle') idleLoaders.add(loaderId); });
     on('Page.frameNavigated', ({ frame }) => { if (frame.id === mainFrameId) mainLoader = frame.loaderId; });
-    on('Runtime.consoleAPICalled', ({ type, args }) => { if (type === 'error') consoleErrors.push(consoleText(args)); });
-    on('Runtime.exceptionThrown', ({ exceptionDetails }) => { consoleErrors.push(exceptionDetails.exception?.description ?? exceptionDetails.text); });
+    // A page can log without end: only the first `max_console_errors` are kept, each cut to `max_console_error_chars`.
+    const keepConsole = text => {
+      if (consoleErrors.length >= limits().max_console_errors) { consoleDropped += 1; return; }
+      consoleErrors.push(String(text ?? '').slice(0, limits().max_console_error_chars));
+    };
+    on('Runtime.consoleAPICalled', ({ type, args }) => { if (type === 'error') keepConsole(consoleText(args)); });
+    on('Runtime.exceptionThrown', ({ exceptionDetails }) => { keepConsole(exceptionDetails.exception?.description ?? exceptionDetails.text); });
     await send('Page.enable');
     await send('Network.enable');
     await send('Runtime.enable');
@@ -542,8 +558,9 @@ export async function scopedPage({ chrome, context, budget, fetchStatic = null, 
       notifyMainBlocked = () => {};
       result.blocked_reason = mainBlocked ?? (budgetBlocked ? 'render_budget' : null);
       if (mainBlocked || (result.error && result.error !== 'timeout')) return result;
-      const { result: evaluated } = await send('Runtime.evaluate', { expression: READ_PAGE, returnByValue: true });
-      Object.assign(result, JSON.parse(evaluated.value), { status: lastDocument?.status ?? null });
+      const { result: evaluated } = await send('Runtime.evaluate', { expression: readPage(limits().max_render_dom_chars, limits().max_page_links), returnByValue: true });
+      const read = JSON.parse(evaluated.value);
+      Object.assign(result, read, { status: lastDocument?.status ?? null, truncated: { ...read.truncated, console_errors: consoleDropped } });
       return result;
     },
     /** The value of an expression run in the loaded page; a promise is awaited. An exception in the page throws an EvaluateError. */

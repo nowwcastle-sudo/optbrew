@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Report blank or unreadable Search Console and Naver Search Advisor counts as an import problem instead of including incorrect totals.
+- **What a site or an export can make the audit do is bounded.** A page's first 2,000 links are followed and at most 5,000 URLs are kept per run (past that, one `url_limit` entry marks the run incomplete). A rendered page hands back at most 5 MiB of DOM, 2,000 links and 100 console errors of 1,000 characters each, cut inside the page, and the render record says what was cut. A Search Console ZIP may have at most 64 entries and inflate at most 20 MiB in all, and entries that share compressed bytes are refused. The Naver module counts repeated title words in one pass instead of quadratic time; its findings are unchanged. New limits in `limits.json`; the Naver replacement and both source locks carry the new hash. Because `limits.json` and the Naver module are part of the protocol and evaluation identities, an audit folder started by 0.3.4 cannot be resumed by this release. (daybreak `csf_9b099e94a9109c6bebd137cd`, `csf_f055c95f8ea4039291f9f9a7`, `csf_84b515d62d085c422ec8a13c`)
 
 ## 0.3.4
 
