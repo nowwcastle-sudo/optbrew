@@ -45,12 +45,14 @@ Your goals decide the target engines, and engine-specific checks run only for th
 
 Requires [Node.js](https://nodejs.org) 22 or later. Python 3.10 or later is optional; without it, the internal Python audit utilities stay unrun. Pick one of the five methods. The examples install for Codex and Claude Code at user level; the agent IDs are `codex`, `claude-code`, `cursor`, `opencode` and `pi`.
 
+Run the `npm` and `npx` commands below from your home folder, not from a site project: npm reads an `.npmrc` in the folder it starts from, and a project's `.npmrc` can send it to another registry. The commands name the official registry for the same reason; with a private mirror, put its URL there instead.
+
 In Windows PowerShell, if `npx` or `optbrew` reports that running scripts is disabled, type `npx.cmd` or `optbrew.cmd` instead.
 
 ### 1. npm
 
 ```bash
-npm install -g optbrew@0.3.4
+npm install -g --registry=https://registry.npmjs.org/ optbrew@0.3.4
 optbrew install --agents codex,claude-code --scope user --dry-run
 optbrew install --agents codex,claude-code --scope user
 optbrew doctor --agents codex,claude-code --scope user
@@ -63,8 +65,8 @@ The dry run prints the folders it will write. `doctor` checks the files and thei
 Runs the same CLI without a global install:
 
 ```bash
-npx optbrew@0.3.4 install --agents codex,claude-code --scope user
-npx optbrew@0.3.4 doctor --agents codex,claude-code --scope user
+npx --yes --registry=https://registry.npmjs.org/ optbrew@0.3.4 install --agents codex,claude-code --scope user
+npx --yes --registry=https://registry.npmjs.org/ optbrew@0.3.4 doctor --agents codex,claude-code --scope user
 ```
 
 ### 3. PowerShell (Windows)
@@ -138,16 +140,17 @@ optbrew key status
 optbrew key remove google
 ```
 
-`set` asks for the key with hidden input. `status` shows only whether a key exists and the first 8 characters of its hash. `remove` deletes it. If you did not install with npm, use `npx optbrew@0.3.4 key set google`, or answer "키" and copy the exact command from the guide. The skill folder has the same command too: `node <skill folder>/scripts/key.mjs set google`. The key is saved in `.optbrew/credentials.json` in your home folder, outside every project, and the environment variable `OPTBREW_GOOGLE_API_KEY` takes priority if it is set. With the Claude desktop app, use the key file (`key set google`): measured on 2026-10-18 on Windows, the plugin setting below did not reach a desktop-app session (bundled claude.exe 2.1.299), while terminal `claude` 2.1.302 received it; whether the app or the version makes the difference is not yet known. With the Claude Code plugin in terminal `claude`, you can instead open a terminal, run `claude`, and enter the key in `/plugin`, **Installed**, optbrew, **Configure options** (the desktop app's Code tab has no `/plugin` screen). Claude Code keeps it in your system credential store, a new session picks it up, and it comes before both only when it reaches the session. `key status` shows which source is used in `google.sources`. optbrew sends the key to Google only in a request header, and never writes it to a report, a log or the evidence.
+`set` asks for the key with hidden input. `status` shows only whether a key exists and the first 8 characters of its hash. `remove` deletes it. If you did not install with npm, use `npx --yes --registry=https://registry.npmjs.org/ optbrew@0.3.4 key set google`, or answer "키" and copy the exact command from the guide. The skill folder has the same command too: `node <skill folder>/scripts/key.mjs set google`. The key is saved in `.optbrew/credentials.json` in your home folder, outside every project, and the environment variable `OPTBREW_GOOGLE_API_KEY` takes priority if it is set. With the Claude desktop app, use the key file (`key set google`): measured on 2026-10-18 on Windows, the plugin setting below did not reach a desktop-app session (bundled claude.exe 2.1.299), while terminal `claude` 2.1.302 received it; whether the app or the version makes the difference is not yet known. With the Claude Code plugin in terminal `claude`, you can instead open a terminal, run `claude`, and enter the key in `/plugin`, **Installed**, optbrew, **Configure options** (the desktop app's Code tab has no `/plugin` screen). Claude Code keeps it in your system credential store, a new session picks it up, and it comes before both only when it reaches the session. `key status` shows which source is used in `google.sources`. optbrew sends the key to Google only in a request header, and never writes it to a report, a log or the evidence.
 
 ## Update
 
 ```bash
-npm install -g optbrew@latest
+npm view --registry=https://registry.npmjs.org/ optbrew version
+npm install -g --registry=https://registry.npmjs.org/ optbrew@VERSION
 optbrew update --scope user
 ```
 
-With npx, run `npx optbrew@latest update --scope user`. `optbrew check-updates --package optbrew` tells you, without changing anything, whether npm has a newer release than the CLI you are running; `optbrew doctor --json` shows the `release_version` installed in your agent folders. `npm update` alone does not touch copies already placed in agent folders; the `update` command does.
+Put the version the first line printed in place of `VERSION`, so the release you install is the one you looked up. With npx, run `npx --yes --registry=https://registry.npmjs.org/ optbrew@VERSION update --scope user` from your home folder. `optbrew check-updates --package optbrew` tells you, without changing anything, whether npm has a newer release than the CLI you are running; `optbrew doctor --json` shows the `release_version` installed in your agent folders. `npm update` alone does not touch copies already placed in agent folders; the `update` command does.
 
 ### Upgrading from 0.1.x
 

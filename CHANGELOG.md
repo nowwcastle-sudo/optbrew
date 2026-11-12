@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Report blank or unreadable Search Console and Naver Search Advisor counts as an import problem instead of including incorrect totals.
+- **Install commands no longer trust the folder they start in.** `install.ps1` runs `npx` in a new empty temporary folder with the official registry on its command line (`-Registry` names a private mirror, https only), so a site project's `.npmrc` can neither point npm at a fake optbrew nor add npm options. `AGENT_INSTALL.md` and both READMEs run every npm command from the home folder with `--registry=https://registry.npmjs.org/`, and an update installs the exact version it just looked up instead of `optbrew@latest`. (daybreak `csf_2c602f70ee5e3014b473562b`)
 
 ## 0.3.4
 
