@@ -161,6 +161,9 @@ async function readActivePort(userDataDir, deadline) {
 function chromeArgs({ userDataDir, kind, proxy = null, hostRules = null, root = false }) {
   const args = ['--headless=new', `--user-data-dir=${userDataDir}`, '--no-first-run', '--no-default-browser-check',
     '--disable-background-networking', '--disable-extensions',
+    // Component updates download through Chrome's url fetcher, which leaves com.google.Chrome.chrome_url_fetcher_* folders in
+    // the temp directory the audit was started from (ubuntu CI, T22 M-7). chrome-launcher turns them off for the same reason.
+    '--disable-component-update',
     // Traffic the Fetch interception never sees must not leave at all (daybreak csf_e39987f051fee9889a490040): WebRTC may use
     // no UDP outside a proxy (so ICE sends no STUN or media packet), and QUIC is off (WebTransport and HTTP/3 run over UDP).
     '--force-webrtc-ip-handling-policy=disable_non_proxied_udp', '--webrtc-ip-handling-policy=disable_non_proxied_udp',
