@@ -21,6 +21,13 @@ export const messagesKo = block('messages.ko');
 /** The request ceiling of one run: the start question's `max_urls` (default 50), never above the cap (200). */
 export const requestLimit = scope => Math.min(scope?.max_urls ?? limits().max_urls_default, limits().max_urls_cap);
 
+/**
+ * The most pages whose model judgments one run asks for: the start answer `max_judge_pages`, else `judge_pages_default` (50, the default sample).
+ * The default is a cautious guess. No measurement of the time or tokens one judged page costs exists in this repository yet (to be measured);
+ * a page needs one judgment per model-judged family, so the cost grows with the page count.
+ */
+export const judgePageCap = scope => Math.min(scope?.max_judge_pages ?? limits().judge_pages_default, limits().max_urls_cap);
+
 export const checkRegistry = block('check-registry');
 /**
  * Whether a family matters only for pages meant to be indexed (`public_only` in `check-registry.json`, the one list): a page with

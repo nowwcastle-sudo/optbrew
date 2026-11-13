@@ -30,6 +30,9 @@ async function readJson(file, what) {
   catch { throw new Error(`The ${what} file cannot be read as JSON: ${file}`); }
 }
 
+/** When the page cap left pages unjudged: how many were judged of how many, and which were not. */
+const partialOf = queue => (queue?.partial ? { judge_partial: queue.partial } : {});
+
 /**
  * One audit: the first call runs context, collect, render, cwv, derive and judge, and stops at the judge queue; the second call
  * (same `out`, now with `judgmentsPath`) rebuilds its state from the evidence in `out` and runs judge, score and report.
@@ -52,8 +55,8 @@ export async function run({ answersPath, out, judgmentsPath = null }, overrides 
     const state = resuming ? await restoreState({ out: outDir, answers }) : { answers, out: outDir, answersDir: path.dirname(path.resolve(answersPath)) };
     const { state: end, halt } = await runStages(overrides.stages ?? stages(), { ...state, judgments }, deps, { from: resuming ? RESUME_FROM : null });
     return halt ? { status: halt, judge_pages: path.join(outDir, QUEUE_PAGES_DIR),
-      pages: new Set(end.queue.items.map(item => item.url)).size, queue_items: end.queue.items.length } :
-      { status: STATUS_DONE, reports: end.reports, score_input: path.join(outDir, 'score-input.json'), ...(end.lab_cwv ? { lab_cwv: end.lab_cwv } : {}) };
+      pages: new Set(end.queue.items.map(item => item.url)).size, queue_items: end.queue.items.length, ...partialOf(end.queue) } :
+      { status: STATUS_DONE, reports: end.reports, score_input: path.join(outDir, 'score-input.json'), ...(end.lab_cwv ? { lab_cwv: end.lab_cwv } : {}), ...partialOf(end.queue) };
   } finally { await chrome.close(); }
 }
 

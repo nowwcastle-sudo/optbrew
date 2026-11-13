@@ -134,3 +134,16 @@ export function groupPages(pages, home) {
   }
   return [...types].map(([id, urls]) => ({ id, urls }));
 }
+
+/**
+ * The pages a judge queue keeps when it may hold at most `cap`: every page when they fit, else the home page first, then one page
+ * of each page type in turn (the types in the order their first page appears, the pages of a type in the order given), round after
+ * round until `cap` pages are chosen. A site with more types than `cap` keeps the first types only. The same pages always give the same choice.
+ */
+export function evenPages(urls, home, cap) {
+  if (urls.length <= cap) return urls;
+  const groups = groupPages(urls, home).sort((a, b) => (a.id === HOME_TYPE ? 0 : 1) - (b.id === HOME_TYPE ? 0 : 1)).map(group => [...group.urls]);
+  const chosen = [];
+  while (chosen.length < cap) for (const group of groups) if (group.length && chosen.length < cap) chosen.push(group.shift());
+  return chosen;
+}

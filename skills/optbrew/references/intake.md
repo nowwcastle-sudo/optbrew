@@ -23,7 +23,7 @@ SKILL.md 4단계에서 처음부터 끝까지 읽는 문서다. 5단계는 이�
 | `probe.chrome` | `{ found, kind, reason }`. 없으면 렌더 항목이 빈칸이 된다 | 답 파일에 그대로 복사 |
 | `probe.google_key` | Google 키 유무. 값은 없다 | 답 파일에 그대로 복사 |
 | `sitemap_pages`, `sitemap_pages_basis` | 사이트맵 쪽수. `basis`는 `exact`, `lower_bound`, `null` | 「표본」 설명 |
-| `judge_estimate` | 모델이 판정할 분량 추정: `families_per_page`, `default`, `raise`(`null`이거나 `{ limit, pages, judgments }`). 쪽마다 모델 판정 검사 수만큼, 홈 쪽에는 사이트 단위 하나가 더 든다. 못 읽은 쪽, 글이 없는 쪽, 목표가 뺀 검사는 줄어들 수 있어 최대값이다 | 「표본」 항목 |
+| `judge_estimate` | 모델이 판정할 분량 추정: `families_per_page`, `judge_pages_cap`(기본 판정 쪽 상한), `default`, `raise`(`null`이거나 `{ limit, pages, judged_pages, judgments }`). `judged_pages`는 `pages`와 상한 중 작은 쪽이다. 쪽마다 모델 판정 검사 수만큼, 홈 쪽에는 사이트 단위 하나가 더 든다. 못 읽은 쪽, 글이 없는 쪽, 목표가 뺀 검사는 줄어들 수 있어 최대값이다 | 「표본」 항목 |
 | `max_urls_raise` | "상한을 올림"일 때 답 파일의 `max_urls`. `null`이면 「표본」 항목을 보내지 않는다 | 「표본」 항목, 답 파일 |
 | `question_candidates_input` | 읽은 쪽마다 `{ url, title, h1, description }` | 「질문」 항목 |
 | `fact_candidates` | `{ key, value, source_url }`. 쪽에서 읽은 이름·주소·전화·설립 연도 후보 | 「사실」 항목 |
@@ -45,7 +45,7 @@ SKILL.md 4단계에서 처음부터 끝까지 읽는 문서다. 5단계는 이�
    <번호. 질문 — 브랜드/일반>
 4. 사이트에서 읽은 사실 (틀린 것만 알려 주세요):
    <종류: 값 (읽은 페이지)>
-5. 사이트맵에 <N>페이지가 있습니다: 표본 50페이지 (기본, 판정할 쪽 <default.pages>쪽·판정 최대 <default.judgments>건) / 상한을 올려 <max_urls_raise>페이지 (판정할 쪽 <raise.pages>쪽·판정 최대 <raise.judgments>건. 최대 200페이지. 이 값이 200이면 모든 페이지가 들어가지 않을 수 있습니다)
+5. 사이트맵에 <N>페이지가 있습니다: 표본 50페이지 (기본, 판정할 쪽 <default.judged_pages>쪽·판정 최대 <default.judgments>건) / 상한을 올려 <max_urls_raise>페이지 (판정할 쪽 <raise.judged_pages>쪽·판정 최대 <raise.judgments>건. 판정은 기본 <judge_pages_cap>쪽까지이고, 더 많이 판정하려면 쪽 수를 말해 주세요. 최대 200페이지. 이 값이 200이면 모든 페이지가 들어가지 않을 수 있습니다)
 6. 있으면 결과가 더 채워지는 것 (원하는 것의 말만 답하세요):
    <improving 항목의 line을 한 줄씩>
 
@@ -85,7 +85,7 @@ SKILL.md 4단계에서 처음부터 끝까지 읽는 문서다. 5단계는 이�
 
 ### 「표본」
 
-`start.json`의 `max_urls_raise`가 `null`이 아닐 때만 넣는다. 기본 상한으로 사이트맵의 쪽을 다 읽지 못하거나 쪽수가 하한값(`sitemap_pages_basis`가 `lower_bound`)일 때 그렇다. `null`이면 뺀다. 기본 상한은 50쪽이다(`max_urls_default`). 올릴 수 있는 한도는 200쪽이다(`max_urls_cap`). 두 값의 원천은 [limits.json](limits.json)이다. 상한은 페이지와 보조 파일(robots, sitemap)의 요청 수를 모두 합친 값이다. 쪽이 다른 주소로 넘어가면 요청이 하나 더 든다. 그래서 상한 안에 여유가 남는다(`redirect_reserve`: 쪽의 10%, 최소 2). 그래서 사이트맵이 50쪽보다 조금 적어도(예: 45쪽) 기본 상한에 다 들어가지 않아 이 항목이 나온다. 질문에는 `judge_estimate`의 쪽 수와 판정 건수도 함께 적는다(판정은 쪽마다 모델이 읽어 쓰므로 비용의 기준이다). 이 수는 안내일 뿐 표본이나 판정 대상을 바꾸지 않는다. `max_urls_raise`는 점검 스크립트가 실행과 같은 방식으로 사전 점검 폴더를 읽어, 사이트맵의 모든 쪽이 들어가는 가장 작은 상한을 구한 값이다. 이 값이 200(한도)이면 모든 쪽이 들어가지 않을 수 있다. 질문에 그 말을 함께 적는다. 이 값은 쪽을 고르는 데까지를 맞춘다. 실행 중 고른 쪽 가운데 여유(10%)보다 많은 쪽이 다른 주소로 넘어가면 몇 쪽이 요청 한도에 걸려 빠질 수 있다.
+`start.json`의 `max_urls_raise`가 `null`이 아닐 때만 넣는다. 기본 상한으로 사이트맵의 쪽을 다 읽지 못하거나 쪽수가 하한값(`sitemap_pages_basis`가 `lower_bound`)일 때 그렇다. `null`이면 뺀다. 기본 상한은 50쪽이다(`max_urls_default`). 올릴 수 있는 한도는 200쪽이다(`max_urls_cap`). 두 값의 원천은 [limits.json](limits.json)이다. 상한은 페이지와 보조 파일(robots, sitemap)의 요청 수를 모두 합친 값이다. 쪽이 다른 주소로 넘어가면 요청이 하나 더 든다. 그래서 상한 안에 여유가 남는다(`redirect_reserve`: 쪽의 10%, 최소 2). 그래서 사이트맵이 50쪽보다 조금 적어도(예: 45쪽) 기본 상한에 다 들어가지 않아 이 항목이 나온다. 질문에는 `judge_estimate`의 쪽 수와 판정 건수도 함께 적는다(판정은 쪽마다 모델이 읽어 쓰므로 비용의 기준이다). 판정할 쪽 수는 상한(`judge_pages_cap`)이 정한다. 사용자가 쪽 수를 말하면 답 파일 `max_judge_pages`에 쓴다(SKILL.md 6단계). 기본 상한은 실측이 아니라 기본 표본에 맞춘 보수적 값이다. `max_urls_raise`는 점검 스크립트가 실행과 같은 방식으로 사전 점검 폴더를 읽어, 사이트맵의 모든 쪽이 들어가는 가장 작은 상한을 구한 값이다. 이 값이 200(한도)이면 모든 쪽이 들어가지 않을 수 있다. 질문에 그 말을 함께 적는다. 이 값은 쪽을 고르는 데까지를 맞춘다. 실행 중 고른 쪽 가운데 여유(10%)보다 많은 쪽이 다른 주소로 넘어가면 몇 쪽이 요청 한도에 걸려 빠질 수 있다.
 
 ### 「준비」
 

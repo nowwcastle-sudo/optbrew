@@ -63,7 +63,8 @@ test('the start file tells how many pages the model would judge at the default l
   assert.equal(estimate.raise.limit, start.max_urls_raise);
   assert.equal(estimate.raise.pages, 61);
   assert.ok(estimate.default.pages > 0 && estimate.default.pages < estimate.raise.pages);
-  for (const entry of [estimate.default, estimate.raise]) assert.equal(entry.judgments, entry.pages * estimate.families_per_page + 1, 'one judgment per page and family, plus the site unit');
+  for (const entry of [estimate.default, estimate.raise]) assert.equal(entry.judged_pages, Math.min(entry.pages, estimate.judge_pages_cap));
+    assert.equal(entry.judgments, entry.judged_pages * estimate.families_per_page + 1, 'one judgment per judged page and family, plus the site unit');
   const intake = await readFile(new URL('../skills/optbrew/references/intake.md', import.meta.url), 'utf8');
   assert.ok(intake.includes('`judge_estimate`') && intake.split('\n').find(line => line.startsWith('5. 사이트맵'))?.includes('판정'), 'the start question shows it');
 });
