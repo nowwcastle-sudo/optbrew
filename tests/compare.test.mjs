@@ -134,3 +134,97 @@ test('an input made by an older release is not comparable, in plain words, found
   delete broken.run_context.target;
   assert.throws(() => compare(broken, current), /target/);
 });
+
+// A re-audit after the fixes the report asks for: the unit table is told even when the two runs cannot be scored against each other.
+const home = 'https://example.com/', about = 'https://example.com/about', help = 'https://example.com/help';
+const plan = (input, familyId) => { const family = input.run_context.protocol.families.find(f => f.family_id === familyId); family.applicable = true; delete family.applicability_decision; };
+const notApplicable = (unit, condition) => ({ ...pass(unit), state: 'not_applicable', q: null,
+  applicability_decision: { condition, reason: 'verified', evidence_ref: 'synthetic/decision' } });
+const model = (unit, state) => ({ ...pass(unit), evaluator_type: 'host_model', state, q: state === 'pass' ? 1 : state === 'fail' ? 0 : null,
+  ...(state === 'unknown' ? {} : { evidence_span: [{ evidence_sha256: 'a'.repeat(64), start: 0, end: 1 }] }) });
+/** The baseline: /help is kept out of the index, the title of the home page fails and no page has JSON-LD. */
+function baseline() {
+  const input = fixture();
+  const url = input.run_context.protocol.page_types[1].urls[0];
+  url.public_indexing = false;
+  url.indexing_decision = { condition: 'not_public_index_target', reason: 'noindex', evidence_ref: 'synthetic/decision' };
+  plan(input, 'structured-data-truth');
+  input.observations = [{ ...pass(`document-title|${home}`), state: 'fail', q: 0 }, pass(`document-title|${about}`),
+    ...[home, about, help].map(url => notApplicable(`structured-data-truth|${url}`, 'markup_not_used_or_selected'))];
+  return input;
+}
+const transitionOf = (result, unit) => result.unit_transitions.changed.find(x => x.unit_key === unit);
+
+test('the fixes the report asks for (title, noindex removed) leave a unit table although the runs are not comparable', () => {
+  const after = baseline();
+  after.run_context.protocol.page_types[1].urls[0] = { original: help, normalized: help };
+  after.observations = [pass(`document-title|${home}`), pass(`document-title|${about}`), pass(`document-title|${help}`),
+    ...[home, about, help].map(url => notApplicable(`structured-data-truth|${url}`, 'markup_not_used_or_selected'))];
+  const result = compare(baseline(), after);
+  assert.equal(result.status, 'not_comparable');
+  assert.deepEqual(result.reasons, ['page_types_changed']);
+  assert.deepEqual(result.score_deltas, []);
+  assert.deepEqual(transitionOf(result, `document-title|${home}`), { unit_key: `document-title|${home}`, family_id: 'document-title',
+    evaluator_type: 'code', before: 'fail', after: 'pass' });
+  assert.deepEqual(result.unit_transitions.only_before, []);
+  assert.deepEqual(result.unit_transitions.only_after.map(x => x.unit_key), [`document-title|${help}`, `index-policy|${help}`,
+    `discovery|${help}`, `search-crawl-policy|google|${help}`].sort());
+  assert.equal(result.unit_transitions.changed.length, 1, 'only the title of the home page changed state');
+  assert.ok(result.unit_transitions.unchanged > 0);
+});
+
+test('adding JSON-LD (a not-applicable unit becomes a verdict) leaves a unit table and names the unit that appeared', () => {
+  const after = baseline();
+  after.observations = [pass(`document-title|${home}`), pass(`document-title|${about}`), pass(`structured-data-truth|${home}`),
+    notApplicable(`structured-data-truth|${about}`, 'markup_not_used_or_selected'), notApplicable(`structured-data-truth|${help}`, 'markup_not_used_or_selected')];
+  const result = compare(baseline(), after);
+  assert.equal(result.status, 'not_comparable');
+  assert.deepEqual(result.reasons, ['applicable_units_changed']);
+  assert.deepEqual(result.unit_transitions.only_after, [{ unit_key: `structured-data-truth|${home}`, family_id: 'structured-data-truth',
+    evaluator_type: 'code', state: 'pass' }]);
+  assert.equal(transitionOf(result, `document-title|${home}`).after, 'pass');
+});
+
+test('a model verdict that flips between not applicable and unknown on unchanged evidence shows as one unit that appeared, with its evaluator', () => {
+  const before = baseline(), after = baseline();
+  for (const input of [before, after]) {
+    plan(input, 'claim-support');
+    input.observations.push(model(`claim-support|${home}`, 'pass'), notApplicable(`claim-support|${about}`, 'no_material_claims'),
+      notApplicable(`claim-support|${help}`, 'no_material_claims'));
+  }
+  after.observations = after.observations.filter(x => x.unit_key !== `claim-support|${about}`);
+  after.observations.push(model(`claim-support|${about}`, 'unknown'));
+  const result = compare(before, after);
+  assert.equal(result.status, 'not_comparable');
+  assert.deepEqual(result.reasons, ['applicable_units_changed']);
+  assert.deepEqual(result.unit_transitions.only_after, [{ unit_key: `claim-support|${about}`, family_id: 'claim-support',
+    evaluator_type: 'host_model', state: 'unknown' }]);
+  assert.deepEqual(result.unit_transitions.changed, []);
+});
+
+test('a comparable result splits the score change by who judged: only the model verdict moved', () => {
+  const before = baseline(), after = baseline();
+  for (const [input, state] of [[before, 'pass'], [after, 'fail']]) {
+    plan(input, 'claim-support');
+    input.observations.push(model(`claim-support|${home}`, state), notApplicable(`claim-support|${about}`, 'no_material_claims'),
+      notApplicable(`claim-support|${help}`, 'no_material_claims'));
+  }
+  const result = compare(before, after);
+  assert.equal(result.status, 'comparable', JSON.stringify(result.reasons));
+  const { by_evaluator } = result.score_deltas[0];
+  assert.deepEqual(by_evaluator.host_model, { before: 100, after: 0, raw_difference: -100 });
+  assert.equal(by_evaluator.code.raw_difference, 0);
+  assert.equal(result.unit_transitions.changed.length, 1);
+});
+
+test('report.md counts the units that moved on the comparison line, and says nothing when none did', async () => {
+  const { composeReport, renderReport } = await import('../skills/optbrew/scripts/core/report-compose.mjs');
+  const { verifiedOf } = await import('./support/compose.mjs');
+  const verified = verifiedOf();
+  const markdown = value => renderReport(composeReport(value), value).markdown;
+  assert.ok(!markdown(verified).includes('단위 변화'));
+  const unit = { unit_key: `document-title|${home}`, family_id: 'document-title', evaluator_type: 'code' };
+  const moved = { ...verified, comparison: { ...verified.comparison, unit_transitions: { unchanged: 3,
+    changed: [{ ...unit, before: 'fail', after: 'pass' }], only_before: [], only_after: [{ ...unit, state: 'pass' }] } } };
+  assert.ok(markdown(moved).includes('단위 변화: 상태가 바뀐 1건, 한쪽 실행에만 있는 1건'));
+});

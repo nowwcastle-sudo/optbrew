@@ -18,7 +18,7 @@
     },
     {
       "path": "references/measurement.md",
-      "sha256": "9e3a0f1188c816c596e0976b7c25f25e3a4af83d76464a90c1422e7408e12948"
+      "sha256": "99089f833c1fcc283b862166974cb53ec6699eeb60801f96e0c2df3f180fec0a"
     },
     {
       "path": "references/messages.ko.json",
@@ -38,7 +38,7 @@
     },
     {
       "path": "scripts/core/compare.mjs",
-      "sha256": "df5652641650dfd5ae526a040ae8c9815862e05b460a8ed46198c16ee3ec6fac"
+      "sha256": "b3181882f37df80ac625c4b461d2e8d864c18bae790d23b2633e1b5b639fdfe3"
     },
     {
       "path": "scripts/core/metrics.mjs",
@@ -153,11 +153,11 @@
       "sha256": "7b41a2f2039735e35b1f015ac3f3e8cf7ab9383dbbc758c15fcaa9149874575d"
     }
   ],
-  "evaluation_hash": "054af65dd2ed1a429f4c94bce2904a290abc5a276a4aab229ed9085543eddd50",
+  "evaluation_hash": "8ffa8d7d750c6fc3b9e3d1b8906b199bf391538b59efebc2226ccc88848deab9",
   "protocol_sources": [
     {
       "path": "references/schemas/contract.schema.json",
-      "sha256": "f0604fe1de02828ccd6fcb3bf91b67d1edb0b901a965b3fdb3f80c33a440698a"
+      "sha256": "52727253b08c335199e426313aa5c0c74d943be7fbc0521c4cb9ceac5d066a7c"
     },
     {
       "path": "references/limits.json",
@@ -168,7 +168,7 @@
       "sha256": "5ec1d80e91d9251936d381cccedece6c37aa899cd50855dfbd5ff8eb59d371bc"
     }
   ],
-  "protocol_hash": "79e433298f4ec3ea63c28db25f7bf11ca4de49aac7acffc621a645ab96c48cf5",
+  "protocol_hash": "e078eb6702251260095d812aca3551a352c4bc0b077221e4b3cf6642dc55a89e",
   "files": [
     {
       "path": "LICENSE",
@@ -668,7 +668,7 @@
     },
     {
       "path": "references/evidence.md",
-      "sha256": "cdbbc34c838097e2ac860e93d6fb626daef769b3e738f64445bf576feca834e8"
+      "sha256": "07295ab8aa9ae656296b77777e40d6ce7e57af69f6aef01740d44ce317257096"
     },
     {
       "path": "references/fixing.md",
@@ -692,7 +692,7 @@
     },
     {
       "path": "references/measurement.md",
-      "sha256": "9e3a0f1188c816c596e0976b7c25f25e3a4af83d76464a90c1422e7408e12948"
+      "sha256": "99089f833c1fcc283b862166974cb53ec6699eeb60801f96e0c2df3f180fec0a"
     },
     {
       "path": "references/messages.ko.json",
@@ -712,7 +712,7 @@
     },
     {
       "path": "references/recheck.md",
-      "sha256": "6cc370ac869b2099b3c2116c15cdf8d3b41ed0029911ee8accb526475599bd16"
+      "sha256": "965f3d6116eeae001d1b29e80beb64d67c1499ac40234dd4b72ff61258448602"
     },
     {
       "path": "references/remediations.json",
@@ -776,7 +776,7 @@
     },
     {
       "path": "references/schemas/contract.schema.json",
-      "sha256": "f0604fe1de02828ccd6fcb3bf91b67d1edb0b901a965b3fdb3f80c33a440698a"
+      "sha256": "52727253b08c335199e426313aa5c0c74d943be7fbc0521c4cb9ceac5d066a7c"
     },
     {
       "path": "references/scoring.md",
@@ -912,7 +912,7 @@
     },
     {
       "path": "scripts/core/compare.mjs",
-      "sha256": "df5652641650dfd5ae526a040ae8c9815862e05b460a8ed46198c16ee3ec6fac"
+      "sha256": "b3181882f37df80ac625c4b461d2e8d864c18bae790d23b2633e1b5b639fdfe3"
     },
     {
       "path": "scripts/core/config.mjs",
@@ -1020,7 +1020,7 @@
     },
     {
       "path": "scripts/core/report-compose.mjs",
-      "sha256": "52c5c2e7fc39a4fd084cb12a34c4bdedc5a68b986662bbf0f92803445c3c7295"
+      "sha256": "34e17e90a3fc971d52982e9a1ac93c2aea811e3e71f48761cf0c48239f885a2c"
     },
     {
       "path": "scripts/core/report-fixes.mjs",
@@ -1063,6 +1063,10 @@
       "sha256": "addb05ad367fe202f65518b6be061a52939e82ca3ec848c828212ddd1b1a9240"
     },
     {
+      "path": "scripts/core/unit-transitions.mjs",
+      "sha256": "3d6c53196040f8942c88b77a92657d0fe2c51275824dbdba90b104661bf95a1a"
+    },
+    {
       "path": "scripts/core/weights.mjs",
       "sha256": "9e02e7c5a5d65f333f71c169c6a50abe15c0b5f5cf76ce1e8aeb5fe59e190f62"
     },
@@ -1083,5 +1087,5 @@
       "sha256": "f7119e765139292f4d88685e617f91feab3615003a30eae1ff05e6bf7e561497"
     }
   ],
-  "bundle_hash": "8fe517dfa018a03ecd99c9374322d897f8fa85f56e2196113512131533cf1569"
+  "bundle_hash": "ecabc0524e01372ac58f794d451cf7addd8831322d34e07e7b288eba47017750"
 }

@@ -386,6 +386,13 @@ function conditionLines(conditions, verified) {
 const questionLines = list => list ? `${table(['질문', '답하는 페이지'], list.map(item => [item.question, item.pages.join(', ') || koText('question-coverage.not-found')]))}\n\n` +
   `${list.some(item => !item.pages.length) ? `${html(koText('question-coverage.note'))}\n\n` : ''}` : '';
 
+/** The comparison line goes on to say how many units changed state or exist in one run only; nothing is said when none did. */
+const transitionsLine = comparison => {
+  const moved = comparison.unit_transitions;
+  const apart = moved ? moved.only_before.length + moved.only_after.length : 0;
+  return moved && (moved.changed.length || apart) ? `단위 변화: 상태가 바뀐 ${moved.changed.length}건, 한쪽 실행에만 있는 ${apart}건  \n` : '';
+};
+
 /** `report.md` and the table rows `report.json` carries, both rendered from the composed report. */
 export function renderReport(composed, verified) {
   const tables = tableRows(composed, verified);
@@ -394,7 +401,7 @@ export function renderReport(composed, verified) {
   const latest = composed.completeness.map(row => row.after ?? row.before);
   const markdown = `# optbrew 보고서\n\n${verified.data_class === 'synthetic' ? `**${SYNTHETIC_BANNER}**\n\n` : ''}` +
     `대상: ${html(context.target)}  \n환경: ${html(context.environment)}  \n목표: ${html(context.goals.join(', '))}  \n` +
-    `비교: ${html(verified.comparison.status)} (${html(verified.comparison.reasons.join(', ') || '없음')})  \n` +
+    `비교: ${html(verified.comparison.status)} (${html(verified.comparison.reasons.join(', ') || '없음')})  \n${transitionsLine(verified.comparison)}` +
     `결론: ${html(composed.headline.text)}${composed.headline.not_indexed ? `  \n색인 제외: ${html(composed.headline.not_indexed.text)}` : ''}\n\n` +
     `## ${SECTION_TITLES.fixes}\n\n${table(['우선순위', '문제 / 주소', '근거', '고르는 해결 방법', '고칠 위치 또는 사이트 소유자', '비용 / 노력', '확인 방법', '상태'], tables.remediation)}\n\n` +
     `## ${SECTION_TITLES.completeness} (확인한 범위 안의 통과율)\n\n점수는 확인한 범위 안의 통과율입니다. 실제 검색 순위나 유입이 아닙니다.\n\n요약:  \n${latest.map(phase => `- ${html(headlineLine(phase.headline))}  \n`).join('')}\n` +

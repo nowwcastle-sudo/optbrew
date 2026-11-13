@@ -24,7 +24,7 @@ SKILL.md 11단계가 쓰는 문서다. 고친 뒤, 또는 사용자가 배포 �
 node "<SKILL_DIR>/scripts/cli.mjs" compare --before "<이전 score_input>" --after "<이후 score_input>" --output "<OUT>-after/comparison.json"
 ```
 
-5. 결과가 `comparable`일 때만 "해결됨"이라고 쓴다. `not_comparable`이면 점수 차를 말하지 않고 `reasons`를 그대로 알린다.
+5. 결과가 `comparable`일 때만 "해결됨"이라고 쓴다. `not_comparable`이면 점수 차를 말하지 않고 `reasons`를 그대로 알린다. 그래도 결과의 `unit_transitions`는 있다: `changed`(상태가 바뀐 단위), `only_before`·`only_after`(한쪽에만 있는 단위)를 사실로 보여 줄 수 있다. 점수나 성과로 말하지 않는다. 점수 차를 말할 때는 `by_evaluator`의 `host_model` 몫이 움직였는지 함께 본다. 모델 판정은 사이트가 같아도 흔들릴 수 있다.
 6. 확인은 사이트에서 읽은 결과다. 색인, 유입, 인용이 좋아졌다는 증명은 아니라고 한 줄 덧붙인다. 사용자가 「해결됨」의 조건을 더 물을 때만 [evidence.md](evidence.md)를 연다.
 
 (b) 사용자가 아직 배포하지 않았다고 답하면 이렇게 말하고 멈춘다: "로컬 수정은 아직 확인되지 않았습니다. 사이트에 배포한 뒤 알려 주시면 다시 확인합니다."

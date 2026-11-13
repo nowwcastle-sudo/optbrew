@@ -851,6 +851,7 @@ test('a no-audit packet is never verified', () => {
     try {
       run.packet.after.input.observations.find(x => x.check_id === 'index-policy').evaluator_type = evaluator;
       run.packet.after.scores = score(run.packet.after.input);
+      run.packet.comparison = compare(run.packet.baseline.input, run.packet.after.input);
       const report = buildReport(run.packet);
       assert.equal(report.json.findings[0].status, 'modified_unverified');
       assert.equal(report.json.findings[0].resolution, null);
@@ -888,6 +889,7 @@ test('final review round 3: a model cannot stand in for a code-judged family', (
     Object.assign(observation, { evaluator_type: 'host_model', source_ref: 'optbrew:model-judgment',
       evidence_span: [{ evidence_sha256: forged.packet.evidence_index.find(x => x.ref === observation.evidence_ref).sha256, start: 0, end: 6 }] });
     forged.packet.after.scores = score(forged.packet.after.input);
+    forged.packet.comparison = compare(forged.packet.baseline.input, forged.packet.after.input);
     assert.throws(() => buildReport(forged.packet), /index-policy is judged by code/, 'a model cannot stand in for a code-judged family');
   } finally { rmSync(forged.dir, { recursive: true, force: true }); }
   const pending = copyRun();
