@@ -904,7 +904,7 @@
     },
     {
       "path": "scripts/core/chrome.mjs",
-      "sha256": "d7edffe6c2b6355a7a5df8260e77e37f2520a28e4b36409438d0c88680b9e1c1"
+      "sha256": "7317a9cc4f7511cad0136b9e2c60843d623b6c0ea5f7a014f18ac0539dff8a54"
     },
     {
       "path": "scripts/core/collector.mjs",
@@ -1083,5 +1083,5 @@
       "sha256": "f7119e765139292f4d88685e617f91feab3615003a30eae1ff05e6bf7e561497"
     }
   ],
-  "bundle_hash": "f0d866737cdbe288c0ec68f6075fc8dadd5702f8f928c1f2ce05b50ba2c58c83"
+  "bundle_hash": "1c4d40db65bd0c5b5e69f2545a6acf49329389c7a50b9afb181974189ae46ebc"
 }
