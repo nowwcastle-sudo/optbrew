@@ -40,7 +40,7 @@ test('local edit defaults to abort; explicit replacement preserves a readable ba
   assert.equal(result.status, 'updated');
   assert.ok(result.decision.conflicts.some(c => c.path === f.record.targets[0].path));
   const backup = result.decision.backups.find(b => b.path === f.record.targets[0].path);
-  assert.match(backup.backup, /_백업_원본_/);
+  assert.ok(backup.backup.startsWith(path.join(f.recordRoot, 'backups') + path.sep), backup.backup);
   assert.equal(await readFile(path.join(backup.backup, 'SKILL.md'), 'utf8'), 'user edit');
 });
 
