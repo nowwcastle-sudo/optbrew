@@ -918,7 +918,7 @@ test('0.1.2 fix 2: a measured score is never the headline below 80% coverage', a
   assert.equal(headline.measured_subset_score, seo.score);
   assert.deepEqual(headline.missing_bounds, seo.missing_bounds);
   assert.match(markdown, /요약:/);
-  const shown = Math.floor(headline.coverage_exact * 10 + 1e-9) / 10;
+  const shown = headline.coverage;
   assert.match(markdown, new RegExp(`SEO: 확인 범위 부족 \\(적용 가중치의 ${shown}%만 확인했습니다. 점수를 내려면 80% 이상 필요합니다\\)`));
   assert.match(markdown, new RegExp(`확인한 범위의 통과율 ${seo.score}`));
   const row = json.tables.score.find(x => x[0] === 'SEO');
