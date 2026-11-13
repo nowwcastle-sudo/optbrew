@@ -11,6 +11,10 @@ const HEADER_NAMES = ['content-type', 'content-length', 'content-range', 'conten
 const REDIRECTS = new Set([301, 302, 303, 307, 308]);
 // An API call follows no redirect: zero hops.
 const FOLLOW_NONE = 0;
+/** Skip reasons that leave a run incomplete: the request budget (`url_limit`, `request_limit`), too many URLs seen, a page's links cut. */
+export const LIMIT_REASONS = ['url_limit', 'request_limit', 'discovery_limit', 'link_limit'];
+/** The skip reasons that mean the request budget was used up, so the recorded requests must equal the limit. */
+export const BUDGET_REASONS = ['url_limit', 'request_limit'];
 const text = value => Buffer.isBuffer(value) ? value : Buffer.from(value ?? '');
 
 function auxiliaryDocument(url) {
@@ -164,13 +168,19 @@ export function declaredRobotsIndex(artifacts, declaredRobots, pageFinalUrl) {
   });
 }
 
-/** Anchors (the first `max_page_links`) plus the canonical target, which the report needs in order to judge canonical consistency. */
-export function links(html, base) {
-  const out = anchorLinks(html, base).slice(0, limits().max_page_links);
+/**
+ * Anchors (the first `max_page_links`) plus the canonical target, which the report needs in order to judge canonical consistency,
+ * and the anchors past the cap (`dropped`), so a cut can be recorded and replayed.
+ */
+export function pageLinks(html, base) {
+  const anchors = anchorLinks(html, base);
+  const kept = anchors.slice(0, limits().max_page_links);
   const canonical = canonicalLink(html);
-  if (canonical) { try { out.push(new URL(canonical, base).href); } catch { /* malformed canonical */ } }
-  return out;
+  if (canonical) { try { kept.push(new URL(canonical, base).href); } catch { /* malformed canonical */ } }
+  return { links: kept, dropped: anchors.slice(limits().max_page_links) };
 }
+
+export const links = (html, base) => pageLinks(html, base).links;
 
 /** Bounded crawl of fixed protocol URLs and their in-scope links. */
 export async function collect(context, { transport, resolve, addressVetting } = {}) {
@@ -192,9 +202,10 @@ export async function collect(context, { transport, resolve, addressVetting } = 
   const ledger = [];
   const skip = (url, reason) => { skipped.push({ url, reason }); ledger.push({ url, requests: 0, outcome: 'skipped', skipped_reason: reason, error: null }); };
   // A page can carry any number of links (daybreak csf_9b099e94a9109c6bebd137cd). Past `max_discovered_urls` URLs seen or
-  // skipped, a found link is no longer kept: the first in-scope one is recorded once as `url_limit`, so the run says it is
+  // skipped, a found link is no longer kept: the first in-scope one is recorded once as `discovery_limit`, so the run says it is
   // incomplete (and the report replay finds it linked from a collected page), and the rest are dropped. The selected pages and
-  // declared resources (depth 0) always go in.
+  // declared resources (depth 0) always go in. `url_limit` stays reserved for the request budget, which the replay checks was
+  // used up.
   let overflowed = false;
   const enqueue = (url, depth, auxiliaryResource = false) => {
     if (depth > 0 && seen.size + skipped.length >= limits().max_discovered_urls) {
@@ -203,7 +214,7 @@ export async function collect(context, { transport, resolve, addressVetting } = 
       try { inScope = assertUrlInScope(url, scope).href; } catch { return; }
       if (seen.has(inScope)) return;
       overflowed = true;
-      skip(inScope, 'url_limit');
+      skip(inScope, 'discovery_limit');
       return;
     }
     let normalized;
@@ -216,6 +227,18 @@ export async function collect(context, { transport, resolve, addressVetting } = 
     seen.add(normalized);
     if (depth > depthLimit) { skip(normalized, 'depth_limit'); return; }
     queue.push({ url: normalized, depth, auxiliaryResource });
+  };
+  // Links past `max_page_links` are not followed. The first one the crawl would have followed is recorded as `link_limit`, once
+  // per page, so the run says it is incomplete and the report replay finds it among that page's cut links.
+  const recordCut = (dropped, depth) => {
+    if (depth > depthLimit || seen.size + skipped.length >= limits().max_discovered_urls) return;
+    for (const url of dropped) {
+      let normalized;
+      try { normalized = assertUrlInScope(url, scope).href; } catch { continue; }
+      if (seen.has(normalized) || auxiliaryDocument(normalized)) continue;
+      skip(normalized, 'link_limit');
+      return;
+    }
   };
   if (auxiliary.some(resource => initial.includes(resource.normalized))) throw new Error('auxiliary resource duplicates selected URL');
   // Declared resources (robots, sitemap) are evidence for every page, so they go first: a selected page's redirect hop
@@ -257,8 +280,11 @@ export async function collect(context, { transport, resolve, addressVetting } = 
       }
       if (!artifact.error) ledger.push({ url: item.url, requests: used, outcome: 'response', skipped_reason: null, error: null });
       artifacts.push(artifact);
-      if (!item.auxiliaryResource && artifact.status === 200 && artifact.capability === 'raw_html')
-        for (const next of links(artifact.body.toString('utf8'), artifact.final_url)) enqueue(next, item.depth + 1);
+      if (!item.auxiliaryResource && artifact.status === 200 && artifact.capability === 'raw_html') {
+        const found = pageLinks(artifact.body.toString('utf8'), artifact.final_url);
+        for (const next of found.links) enqueue(next, item.depth + 1);
+        recordCut(found.dropped, item.depth + 1);
+      }
     }
   }
   await Promise.all(Array.from({ length: concurrency }, () => worker()));
@@ -266,5 +292,5 @@ export async function collect(context, { transport, resolve, addressVetting } = 
   const evaluated = ledger.filter(x => x.requests > 0).length;
   const counted = ledger.reduce((sum, x) => sum + x.requests, 0);
   return { artifacts, ledger, discovered_count: seen.size, evaluated_count: evaluated, request_count: counted, skipped,
-    limit_reached: skipped.some(x => x.reason === 'url_limit' || x.reason === 'request_limit') };
+    limit_reached: skipped.some(x => LIMIT_REASONS.includes(x.reason)) };
 }
