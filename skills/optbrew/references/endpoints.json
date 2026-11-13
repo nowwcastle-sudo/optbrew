@@ -2,6 +2,7 @@
   "anthropic_messages": "https://api.anthropic.com/v1/messages",
   "anthropic_version": "2023-06-01",
   "npm_registry": "https://registry.npmjs.org/",
+  "github_raw": "https://raw.githubusercontent.com/",
   "naver_guide": "https://searchadvisor.naver.com/guide/",
   "plugin_schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "crux": "https://chromeuxreport.googleapis.com/v1/records:queryRecord",
