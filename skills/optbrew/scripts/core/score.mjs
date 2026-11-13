@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { validateEntity, cwvVerdict, ContractError } from './contracts.mjs';
 import { versions } from './config.mjs';
-import { compileUnits, scoreWeighted } from './weights.mjs';
+import { compileUnits, gradeOf, scoreWeighted } from './weights.mjs';
 import { assertCurrentEvidence } from './migration.mjs';
 
 const registry = JSON.parse(readFileSync(new URL('../../references/check-registry.json', import.meta.url)));
@@ -28,14 +28,6 @@ function assertEvaluationIdentity(context) {
 }
 
 export { cwvVerdict };
-
-function band(score) {
-  if (score === null) return null;
-  if (score < 60) return 'focus_improvement';
-  if (score < 80) return 'major_improvement';
-  if (score < 95) return 'additional_improvement';
-  return 'remaining_review';
-}
 
 /** Readiness scores are local audit status, never predicted search or AI outcomes. */
 export function score(input) {
@@ -67,12 +59,13 @@ export function score(input) {
   const selectedProfiles = Object.keys(profiles.profiles).filter(name => name !== 'NEO' || input.run_context.protocol.engines.includes('naver'));
   return selectedProfiles.map(profile => {
     const weighted = scoreWeighted(compileUnits(input, profile));
+    const { band, provisional } = gradeOf(weighted);
     const readiness = weighted.A === 0 ? 'not_applicable' : blockers.length ? 'blocked' :
-      unknown_core.length ? 'unverified' : 100 * weighted.M / weighted.A < 80 - 1e-9 ? 'provisional' : 'measured';
+      unknown_core.length ? 'unverified' : provisional ? 'provisional' : 'measured';
     // Verdicts of a phase with no audit cannot be replayed from collected evidence, so such a phase is never 'measured'.
     const readiness_status = readiness === 'measured' && input.run_context.audited !== true ? 'unverified' : readiness;
     const result = { schema_version: versions().contract_schema, evaluation_version: input.run_context.evaluation_version,
-      profile, ...weighted, band: band(weighted.M === 0 ? null : 100 * weighted.N / weighted.M), readiness_status,
+      profile, ...weighted, band, readiness_status,
       blockers, unknown_core, source_ref: `optbrew:scoring:${versions().evaluation}` };
     return validateEntity('ScoreResult', result);
   });

@@ -79,5 +79,5 @@ export function startRunbooks(probe, { level, skillRoot, harnesses = null }) {
 /** Runbook ids for the `unknown` observations whose reason a runbook can fix, in index order, each once. */
 export function remainingRunbooks(observations) {
   const reasons = new Set(observations.filter(observation => observation.state === 'unknown').map(observation => observation.reason));
-  return index().filter(entry => reasons.has(entry.when.unknown_reason)).map(entry => entry.id);
+  return index().filter(entry => [entry.when.unknown_reason].flat().some(reason => reasons.has(reason))).map(entry => entry.id);
 }

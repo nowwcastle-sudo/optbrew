@@ -81,7 +81,8 @@ export async function preflight({ url, out, sourceTools = [], skillRoot = defaul
   await ownerOnlyDir(out);
   await ownerOnlyDir(evidenceDir);
   if (newOut) await ignoreOutput(out);
-  const store = openStore(evidenceDir);
+  // Refs are relative to the preflight folder, so the folder can be copied into another run folder (a re-check does that) and still be read.
+  const store = openStore(evidenceDir, null, { root: dir });
   const budget = limits().preflight_pages;
   let used = 0;
   const reserveRequest = () => { if (used >= budget) return false; used++; return true; };

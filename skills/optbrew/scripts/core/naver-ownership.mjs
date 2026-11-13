@@ -16,7 +16,7 @@ const ROW = { problem: 'The start page has no naver-site-verification meta tag a
  */
 export async function naverOwnershipFollowUps({ context, index, store }) {
   if (!context.protocol.engines.includes(NAVER) || (index.owner_exports ?? []).some(entry => entry.kind === NAVER && entry.status === 'read')) return [];
-  const { artifacts } = JSON.parse(await readFile(index.collection_ref, 'utf8'));
+  const { artifacts } = JSON.parse(await readFile(store.fileOf(index.collection_ref), 'utf8'));
   const home = artifacts.find(artifact => artifact.normalized_url === context.target && artifact.capability === 'raw_html' && artifact.status === 200 && artifact.content_hash);
   if (!home) return [];
   const html = (await store.read(home.evidence_ref, home.content_hash)).toString('utf8');

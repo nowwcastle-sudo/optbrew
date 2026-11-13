@@ -45,7 +45,7 @@ test('first call halts awaiting judgments with a queue', async () => {
   const index = await readJson(path.join(ws.out, 'evidence', 'evidence-index.json'));
   // Carry 11: the queue lives in the evidence store, and the files in --out are that stored queue, regrouped.
   assert.equal(index.judge_queue.length, 1);
-  const stored = JSON.parse(await readFile(index.judge_queue[0].evidence_ref, 'utf8'));
+  const stored = JSON.parse(await readFile(path.join(ws.out, index.judge_queue[0].evidence_ref), 'utf8'));
   assert.equal(stored.items.length, queuedUnits(queue).length, 'the files are the stored queue, regrouped by page');
   for (const page of queue.pages) {
     const items = stored.items.filter(item => item.evidence_ref === page.evidence_ref);
@@ -200,7 +200,7 @@ test('one run produces report.json and report.md', async () => {
   assert.equal(queuedUnits(queue).some(x => x.unit_key === 'entity-identity|site'), byUnit('entity-identity|site')?.evaluator_type === 'host_model');
   // Carry 2 and 17: the phase was audited, and its snapshot says so.
   assert.equal(report.run_context.audited, true);
-  assert.deepEqual(report.audit_snapshots, [{ phase: 'baseline', audit_ref: path.join(call.ws.out, 'evidence', 'evidence-index.json'), context_ref: 'context.json' }]);
+  assert.deepEqual(report.audit_snapshots, [{ phase: 'baseline', audit_ref: 'evidence/evidence-index.json', context_ref: 'context.json' }]);
   assert.equal(report.run_context.environment, 'production');
   assert.equal(report.run_context.evidence_ref, 'context.json');
   // Carry 11: the packet lists the stored queue.
