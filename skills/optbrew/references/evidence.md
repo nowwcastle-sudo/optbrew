@@ -27,6 +27,6 @@
 - `remaining`(남음): 그 단위 중 하나라도 fail이나 partial로 남았다.
 - `unknown`(모름): 이후 실행이 그 단위를 채점하지 않았거나(쪽이 빠졌다, 적용 안 됨으로 바뀌었다) 판정이 없다. 이전 실행에 없던 id도 같다.
 
-`finding_outcomes`는 `comparable`일 때, 또는 `not_comparable`의 사유가 `page_types_changed`, `applicable_units_changed`뿐일 때(수정이 적용 단위를 바꾼 경우)만 있다. 대상, 환경, 목표, 질문, 확정 사실 같은 다른 조건이 달라졌으면 없으며, 이때 「해결됨」이라고 쓰지 않는다.
+`finding_outcomes`는 `comparable`일 때, 또는 `not_comparable`의 사유가 `page_types_changed`, `applicable_units_changed`, `cwv_window_overlap`뿐일 때(수정이 적용 단위를 바꿨거나 방문자 실측 창이 겹친 경우)만 있다. 창이 겹친 방문자 실측 단위의 pass는 `resolved`로 세지 않는다(`unknown`). 대상, 환경, 목표, 질문, 확정 사실 같은 다른 조건이 달라졌으면 없으며, 이때 「해결됨」이라고 쓰지 않는다.
 
 `comparable`이어도 사이트에서 읽은 결과의 차이일 뿐이다. 색인, 유입, 인용, 매출이 늘었다는 증명이 아니다.

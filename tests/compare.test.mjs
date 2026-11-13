@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { readFileSync } from 'node:fs';
 import { compare } from '../skills/optbrew/scripts/core/compare.mjs';
+import { cwvVerdict } from '../skills/optbrew/scripts/core/contracts.mjs';
 import { spawnSync } from 'node:child_process';
 import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
@@ -299,4 +300,73 @@ test('compare CLI takes the previous fixes.md and writes the outcome of each fix
     const result = JSON.parse(readFileSync(output, 'utf8'));
     assert.deepEqual(result.finding_outcomes.map(x => x.outcome), ['resolved', 'remaining']);
   } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+// The 28-day window the field data of a run was collected in: an after window that overlaps the before window still holds days from before the deploy.
+const origin = 'https://example.com';
+const field = (value, period) => {
+  const measurement = { value, percentile: 75, source_type: 'field', unit: 'ms', ...(period === undefined ? {} : { collection_period: period }) };
+  return { ...pass(`lcp-field|${origin}`), ...cwvVerdict('lcp-field', value, measurement), measurement };
+};
+const during = (first_date, last_date) => ({ first_date, last_date });
+const withField = (...observations) => { const input = fixture(); input.observations = observations; return input; };
+
+test('an after window that overlaps the before window is refused, naming both windows and the unit', () => {
+  const before = withField(field(3000, during('2026-09-01', '2026-09-28')));
+  const after = withField(field(2000, during('2026-09-20', '2026-10-17')));
+  const result = compare(before, after);
+  assert.equal(result.status, 'not_comparable');
+  assert.deepEqual(result.reasons, ['cwv_window_overlap']);
+  assert.deepEqual(result.score_deltas, []);
+  assert.deepEqual(result.cwv_windows, [{ unit_key: `lcp-field|${origin}`, before: during('2026-09-01', '2026-09-28'),
+    after: during('2026-09-20', '2026-10-17'), state: 'overlap' }]);
+  assert.equal(result.warnings, undefined);
+  const touching = compare(before, withField(field(2000, during('2026-09-28', '2026-10-25'))));
+  assert.deepEqual(touching.reasons, ['cwv_window_overlap'], 'a shared last day is an overlap');
+});
+
+test('a window that starts after the before window ends compares as before, and its dates are told', () => {
+  const result = compare(withField(field(3000, during('2026-09-01', '2026-09-28'))), withField(field(2000, during('2026-09-29', '2026-10-26'))));
+  assert.equal(result.status, 'comparable', JSON.stringify(result.reasons));
+  assert.deepEqual(result.cwv_windows.map(x => x.state), ['separate']);
+  assert.equal(result.warnings, undefined);
+  assert.ok(result.score_deltas[0].raw_difference > 0);
+});
+
+test('a missing, null or unreadable window never refuses the comparison; it is a warning that the window cannot be checked', () => {
+  const dated = field(3000, during('2026-09-01', '2026-09-28'));
+  for (const later of [field(2000), field(2000, null), field(2000, during('2026-09-29', null)), field(2000, during('soon', 'later'))]) {
+    const result = compare(withField(dated), withField(later));
+    assert.equal(result.status, 'comparable', JSON.stringify(result.reasons));
+    assert.deepEqual(result.warnings, ['cwv_window_unverifiable']);
+    assert.deepEqual(result.cwv_windows.map(x => [x.state, x.before !== null]), [['unverifiable', true]]);
+  }
+  assert.equal(compare(withField(field(3000)), withField(field(2000))).warnings[0], 'cwv_window_unverifiable', 'an old evidence file has no window at all');
+  assert.equal(compare(fixture(), fixture()).cwv_windows, undefined, 'no field data, nothing to say');
+});
+
+test('under an overlapping window a field pass is not told as resolved, while a fix that is not field data still is', () => {
+  const before = withField(failing(`document-title|${home}`), field(3000, during('2026-09-01', '2026-09-28')));
+  const after = withField(pass(`document-title|${home}`), field(2000, during('2026-09-20', '2026-10-17')));
+  const ids = [`document-title|${home}`, `lcp-field|${origin}`].map(findingOf);
+  const result = compare(before, after, { fixIds: ids });
+  assert.deepEqual(result.reasons, ['cwv_window_overlap']);
+  assert.deepEqual(outcomesOf(result, ids), { [ids[0]]: 'resolved', [ids[1]]: 'unknown' });
+});
+
+test('report.md says which window overlaps and which could not be checked', async () => {
+  const { composeReport, markdownText, renderReport } = await import('../skills/optbrew/scripts/core/report-compose.mjs');
+  const { verifiedOf } = await import('./support/compose.mjs');
+  const verified = verifiedOf();
+  const unitText = markdownText(`lcp-field|${origin}`);
+  const markdown = comparison => {
+    const told = { ...verified, comparison: { ...verified.comparison, ...comparison } };
+    return renderReport(composeReport(told), told).markdown;
+  };
+  const overlap = markdown({ status: 'not_comparable', reasons: ['cwv_window_overlap'], cwv_windows: [{ unit_key: `lcp-field|${origin}`,
+    before: during('2026-09-01', '2026-09-28'), after: during('2026-09-20', '2026-10-17'), state: 'overlap' }] });
+  assert.ok(overlap.includes(`CWV 수집 창이 겹칩니다: ${unitText} 이전 2026-09-01~2026-09-28, 이후 2026-09-20~2026-10-17`));
+  const unknown = markdown({ warnings: ['cwv_window_unverifiable'], cwv_windows: [{ unit_key: `lcp-field|${origin}`, before: null, after: null, state: 'unverifiable' }] });
+  assert.ok(unknown.includes(`CWV 수집 창 확인 불가: ${unitText}`));
+  assert.ok(!markdown({}).includes('CWV 수집 창'));
 });
