@@ -1,8 +1,8 @@
 {
   "schema_version": "1.0.0",
-  "release_version": "0.3.4",
-  "evaluation_version": "0.5.0",
-  "protocol_version": "0.3.0",
+  "release_version": "0.4.0",
+  "evaluation_version": "0.6.0",
+  "protocol_version": "0.4.0",
   "evaluation_sources": [
     {
       "path": "references/check-registry.json",
@@ -788,7 +788,7 @@
     },
     {
       "path": "references/versions.json",
-      "sha256": "56b16712514ea0b7335614af64f23f3d63094cd98cc9a5e98d6119dc58f30832"
+      "sha256": "cf9c071632802fcde65617bde0c878ece760c973c0b5e924729e9182e6e938ac"
     },
     {
       "path": "scripts/adapters/anthropic.mjs",
@@ -1103,5 +1103,5 @@
       "sha256": "f7119e765139292f4d88685e617f91feab3615003a30eae1ff05e6bf7e561497"
     }
   ],
-  "bundle_hash": "1f1403970556ec53edcf12b72697b785dc4c235225ae7d42591cb9581a5bebf2"
+  "bundle_hash": "97358d424ea7f31110fec6c845cd6b8fcfaebe867b10bb2fd5cff9115307bac8"
 }

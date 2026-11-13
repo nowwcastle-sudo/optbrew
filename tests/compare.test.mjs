@@ -40,7 +40,7 @@ test('target, URLs, page type, conditions, questions, goals, confirmed facts, su
     x => { x.run_context.protocol.surfaces = ['claude_web']; },
     x => { x.run_context.protocol.models = ['model-v2']; },
     x => { x.run_context.environment = 'production'; },
-    x => { x.run_context.evaluation_version = '0.6.0'; },
+    x => { x.run_context.evaluation_version = '0.7.0'; },
   ];
   for (const change of mutate) {
     const before = fixture(), after = fixture(); change(after);
