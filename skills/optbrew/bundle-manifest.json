@@ -664,7 +664,7 @@
     },
     {
       "path": "references/endpoints.json",
-      "sha256": "2cbdbf277e15bf23d10d76e15729f4a9587735c23ffda0e6452467bc92f5f60f"
+      "sha256": "ef76cb5eac78adc87dd32857b7a98a8d59e030730e55c2a90613aed8ac8c7932"
     },
     {
       "path": "references/evidence.md",
@@ -1083,5 +1083,5 @@
       "sha256": "f7119e765139292f4d88685e617f91feab3615003a30eae1ff05e6bf7e561497"
     }
   ],
-  "bundle_hash": "f0d866737cdbe288c0ec68f6075fc8dadd5702f8f928c1f2ce05b50ba2c58c83"
+  "bundle_hash": "78851bcac4706094f3070ec000f48c04710af0d1b2275f14e3d0dbef508e9647"
 }
