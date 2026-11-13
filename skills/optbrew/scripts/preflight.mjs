@@ -2,13 +2,13 @@
 import { lookup } from 'node:dns/promises';
 import { realpathSync } from 'node:fs';
 import { isIP } from 'node:net';
-import { mkdir, rm, writeFile } from 'node:fs/promises';
+import { rm, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { fetchScoped, links } from './core/collector.mjs';
 import { findChrome as realFindChrome } from './core/chrome.mjs';
 import { limits } from './core/config.mjs';
-import { openStore } from './core/evidence-store.mjs';
+import { openStore, ownerOnlyDir } from './core/evidence-store.mjs';
 import { pageBudget, readPreflight, selectPages } from './core/page-select.mjs';
 import { pageFacts } from './core/facts.mjs';
 import { decodeEntities } from './core/html.mjs';
@@ -75,7 +75,8 @@ export async function preflight({ url, out, sourceTools = [], skillRoot = defaul
   const evidenceDir = path.join(dir, 'evidence');
   // A second check (after the user prepared a key or Chrome) starts clean: old failures and pages would misroute step 3 and the raise.
   await rm(dir, { recursive: true, force: true });
-  await mkdir(evidenceDir, { recursive: true });
+  await ownerOnlyDir(out);
+  await ownerOnlyDir(evidenceDir);
   const store = openStore(evidenceDir);
   const budget = limits().preflight_pages;
   let used = 0;
