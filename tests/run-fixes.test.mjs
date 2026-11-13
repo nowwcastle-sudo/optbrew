@@ -92,7 +92,7 @@ test('the page file of a page with 30 Korean spans is at most 60% of the bytes i
   const page = JSON.parse(written);
   assert.equal(page.spans.length, 30);
   assert.ok(page.spans.every(span => /[가-힣]/.test(span.text)));
-  const stored = (await readJson((await readJson(path.join(ws.out, 'evidence', 'evidence-index.json'))).judge_queue[0].evidence_ref)).items.filter(item => item.url === url);
+  const stored = (await readJson(path.join(ws.out, (await readJson(path.join(ws.out, 'evidence', 'evidence-index.json'))).judge_queue[0].evidence_ref))).items.filter(item => item.url === url);
   assert.deepEqual(stored[0].spans.map(span => span.text), page.spans.map(span => span.text), 'the same spans in both shapes');
   const old = { url, evidence_ref: stored[0].evidence_ref, evidence_sha256: stored[0].evidence_sha256, spans: stored[0].spans,
     families: stored.map(({ family_id, unit_key }) => ({ family_id, unit_key })) };

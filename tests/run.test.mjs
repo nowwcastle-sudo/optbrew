@@ -177,7 +177,7 @@ test('one run produces report.json and report.md', async () => {
   assert.equal(queuedUnits(queue).some(x => x.unit_key === 'entity-identity|site'), byUnit('entity-identity|site')?.evaluator_type === 'host_model');
   // Carry 2 and 17: the phase was audited, and its snapshot says so.
   assert.equal(report.run_context.audited, true);
-  assert.deepEqual(report.audit_snapshots, [{ phase: 'baseline', audit_ref: path.join(call.ws.out, 'evidence', 'evidence-index.json'), context_ref: 'context.json' }]);
+  assert.deepEqual(report.audit_snapshots, [{ phase: 'baseline', audit_ref: 'evidence/evidence-index.json', context_ref: 'context.json' }]);
   assert.equal(report.run_context.environment, 'production');
   assert.equal(report.run_context.evidence_ref, 'context.json');
   // Carry 11: the packet lists the stored queue.
