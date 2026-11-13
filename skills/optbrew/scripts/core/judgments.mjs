@@ -145,6 +145,9 @@ function modelFamilies() {
   return registry.families.filter(family => family.unit_scope === 'url' && !isCodeJudged(family.family_id)).map(family => family.family_id);
 }
 
+/** How many judgments one page can need at most: the per-page families the model judges (a run plans only the ones its goals use). */
+export const modelFamilyCount = () => modelFamilies().length;
+
 /** Whether a family is one the model judges through the judge queue (a per-page family with no code check block). */
 export const isModelJudged = family_id => modelFamilies().includes(family_id);
 

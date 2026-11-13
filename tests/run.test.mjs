@@ -95,6 +95,29 @@ test('resume refuses answers that are not the ones the run was made from', async
   await assert.rejects(run({ answersPath: other, out: call.ws.out, judgmentsPath }, call.overrides), /not the ones this run was made from/);
 });
 
+test('resume refuses the same address with other answers, and says which answers changed', async () => {
+  const call = await firstCall();
+  const { judgmentsPath } = await judge(call);
+  const before = call.site.requests.length;
+  const changed = path.join(call.ws.dir, 'changed.json');
+  await writeFile(changed, JSON.stringify(answersFor(`${SITE}/`, { questions: [{ id: 'q1', question: 'Where is Brew Cafe?', category: 'brand' }], facts: [{ key: 'phone', value: '02-555-0100', source_url: `${SITE}/` }] })));
+  await assert.rejects(run({ answersPath: changed, out: call.ws.out, judgmentsPath }, call.overrides), /not the ones this run was made from \(changed: questions, facts\)/);
+  assert.equal(call.site.requests.length, before, 'a refused resume collects nothing');
+  await assert.rejects(readFile(path.join(call.ws.out, 'report.json')), { code: 'ENOENT' }, 'and writes no report');
+  assert.equal((await run({ answersPath: call.ws.answersPath, out: call.ws.out, judgmentsPath }, call.overrides)).status, 'done', 'the same answers still resume');
+});
+
+test('a result folder the run creates ignores itself, and a .gitignore already there is left alone', async () => {
+  const call = await firstCall();
+  assert.equal(await readFile(path.join(call.ws.out, '.gitignore'), 'utf8'), '*\n');
+  const site = memorySite();
+  const ws = await workspace(answersFor(`${SITE}/`));
+  await mkdir(ws.out);
+  await writeFile(path.join(ws.out, '.gitignore'), 'keep\n');
+  await run({ answersPath: ws.answersPath, out: ws.out }, { env: quietEnv(), home: ws.home, selectTransport: site.selectTransport });
+  assert.equal(await readFile(path.join(ws.out, '.gitignore'), 'utf8'), 'keep\n');
+});
+
 test('chrome is closed even when a stage throws', async () => {
   let closed = 0;
   const chrome = { open: () => { throw new Error('not used'); }, close: async () => { closed++; } };
