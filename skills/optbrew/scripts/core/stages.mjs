@@ -13,7 +13,7 @@ import { validateEntity } from './contracts.mjs';
 import { HTTP_OK, collectCwv, labCwv } from './cwv.mjs';
 import { deriveObservations } from './derive.mjs';
 import { lcpField, inpField, clsField } from './checks/cwv-field.mjs';
-import { openStore } from './evidence-store.mjs';
+import { openStore, ownerOnlyDir } from './evidence-store.mjs';
 import { planFamilies, targetEngines } from './family-plan.mjs';
 import { goalIds } from './goals.mjs';
 import { notIndexTargets, withIndexTargets } from './index-targets.mjs';
@@ -170,7 +170,7 @@ const contextStage = {
   async run(state, deps) {
     validateEntity('IntakeAnswers', state.answers);
     const { context, intake, mappings, adopted } = await contextFrom(state.answers, { out: state.out, localTargets: deps.localTargets });
-    await mkdir(state.out, { recursive: true });
+    await ownerOnlyDir(state.out);
     await writeFile(path.join(state.out, CONTEXT_FILE), json(context), { flag: 'wx' });
     await writeFile(path.join(state.out, INTAKE_FILE), json(intake), { flag: 'wx' });
     for (const { file, record } of mappings) await writeFile(path.join(state.out, file), json(record), { flag: 'wx' });
@@ -182,7 +182,8 @@ const contextStage = {
 async function ensureStore(state, deps) {
   if (state.store) return state.store;
   const evidenceDir = path.join(state.out, 'evidence');
-  await mkdir(evidenceDir, { recursive: true });
+  await ownerOnlyDir(state.out);
+  await ownerOnlyDir(evidenceDir);
   const documentRef = name => path.join(evidenceDir, DOCUMENTS[name]);
   const { context } = state;
   const store = deps.store ?? openStore(evidenceDir, { run_id: context.run_id, context_ref: context.evidence_ref,
@@ -239,7 +240,7 @@ async function ingestOwnerExports(state, env) {
         evidence_ref: ref, window: parsed.window, sample_selection: parsed.sample_selection, property: host, hostname: host, path: '/' };
       normalizeImport(parsed.provider, parsed.rows, metadata);
       await writeFile(path.join(state.out, ref), json({ kind: 'native_export', run_id: context.run_id, provider: parsed.provider,
-        raw_ref: raw.ref, raw_sha256: raw.sha256, metadata, rows: parsed.rows }), { flag: 'wx' });
+        raw_ref: raw.ref, raw_sha256: raw.sha256, metadata, rows: parsed.rows }), { flag: 'wx', mode: 0o600 });
       entries.push({ kind, status: 'read', ref });
     } catch (error) {
       const reason = error.reason ?? (error.code === 'ENOENT' ? 'export_file_missing' : error.name === 'ContractError' ? 'export_not_accepted' : 'export_file_unreadable');

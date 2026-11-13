@@ -148,7 +148,7 @@ for (const command of ['update', 'rollback']) test(`${command} CLI recovers a de
   const recordBefore = await readFile(path.join(f.recordRoot, 'install-record.json'), 'utf8');
   const moduleUrl = pathToFileURL(path.resolve('lib/update.mjs')).href;
   const script = `import fs from 'node:fs/promises'; import { syncBuiltinESMExports } from 'node:module';
-    const original = fs.cp; fs.cp = async (from, to, ...rest) => { if (to.endsWith('.stage')) process.exit(74); return original(from, to, ...rest); }; syncBuiltinESMExports();
+    const original = fs.cp; fs.cp = async (from, to, ...rest) => { if (/stage-[0-9]+$/.test(to)) process.exit(74); return original(from, to, ...rest); }; syncBuiltinESMExports();
     const { update, rollback } = await import(${JSON.stringify(moduleUrl)});
     if (process.argv[3] === 'update') await update({ bundleRoot: process.argv[1], recordRoot: process.argv[2] });
     else await rollback({ recordRoot: process.argv[2], releaseVersion: '0.1.0' });`;
