@@ -3,6 +3,7 @@ import { freezeProtocol } from './protocol.mjs';
 import { compileUnits } from './weights.mjs';
 import { score } from './score.mjs';
 import { olderVersion } from './migration.mjs';
+import { findingOutcomes, outcomesAllowed } from './finding-outcomes.mjs';
 import { unitTransitions, weightByEvaluator } from './unit-transitions.mjs';
 
 const close = (a, b) => Math.abs(a - b) <= 1e-9;
@@ -21,12 +22,15 @@ const evaluatorDeltas = (before, after, profile) => {
 };
 
 /**
- * The unit table is added to the answer, so two runs whose units cannot be compiled (a changed condition moved the pages the
- * observations belong to) leave it out; the comparison itself is the same either way.
+ * The unit table, and the outcome of each fix the caller names, are added to the answer. Two runs whose units cannot be compiled (a
+ * changed condition moved the pages the observations belong to) leave both out; the comparison itself is the same either way. The
+ * outcomes are given only when a later pass can answer for a fix (`outcomesAllowed`).
  */
-const withTransitions = (result, before, after) => {
-  try { return { ...result, unit_transitions: unitTransitions(before, after) }; }
-  catch (error) { if (error instanceof ContractError) return result; throw error; }
+const annotate = (result, before, after, fixIds) => {
+  try {
+    const unit_transitions = unitTransitions(before, after);
+    return { ...result, unit_transitions, ...(fixIds && outcomesAllowed(result) ? { finding_outcomes: findingOutcomes(before, after, fixIds) } : {}) };
+  } catch (error) { if (error instanceof ContractError) return result; throw error; }
 };
 
 /**
@@ -39,7 +43,7 @@ const olderReason = (input, label) => {
 };
 
 /** Compare two ScoreInputs only when their frozen conditions and applicable units match. */
-export function compare(before, after) {
+export function compare(before, after, { fixIds } = {}) {
   const oldBaseline = olderReason(before, 'baseline');
   if (after === null || after === undefined) {
     if (!oldBaseline) { validateEntity('ScoreInput', before); freezeProtocol(before.run_context); }
@@ -61,13 +65,13 @@ export function compare(before, after) {
       if (JSON.stringify(baseline.protocol[field]) !== JSON.stringify(followup.protocol[field])) reasons.push(`${field}_changed`);
     if (!reasons.length) reasons.push('protocol_changed');
   }
-  if (reasons.length) return withTransitions({ status: 'not_comparable', score_deltas: [], reasons: [...new Set(reasons)] }, before, after);
+  if (reasons.length) return annotate({ status: 'not_comparable', score_deltas: [], reasons: [...new Set(reasons)] }, before, after, fixIds);
   // The protocol fixes planned units. Evidence-backed N/A can still change the actual denominator.
   const unitSignature = input => compileUnits(input, 'SEO').map(unit => [unit.key, unit.weight]).sort((a, b) => a[0].localeCompare(b[0]));
   const leftUnits = unitSignature(before), rightUnits = unitSignature(after);
   if (leftUnits.length !== rightUnits.length || leftUnits.some(([key, weight], i) =>
     key !== rightUnits[i][0] || !close(weight, rightUnits[i][1]))) reasons.push('applicable_units_changed');
-  if (reasons.length) return withTransitions({ status: 'not_comparable', score_deltas: [], reasons: [...new Set(reasons)] }, before, after);
+  if (reasons.length) return annotate({ status: 'not_comparable', score_deltas: [], reasons: [...new Set(reasons)] }, before, after, fixIds);
   const left = score(before), right = score(after);
   const score_deltas = left.map((item, i) => {
     const next = right[i];
@@ -80,5 +84,5 @@ export function compare(before, after) {
       A_delta: next.A - item.A, M_delta: next.M - item.M, N_delta: next.N - item.N,
       by_evaluator: evaluatorDeltas(before, after, item.profile) };
   });
-  return withTransitions({ status: 'comparable', score_deltas, reasons: [] }, before, after);
+  return annotate({ status: 'comparable', score_deltas, reasons: [] }, before, after, fixIds);
 }

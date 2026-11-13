@@ -10,7 +10,7 @@ const evaluatorByUnit = input => {
 };
 
 /** The units one run scores (the not-applicable ones are not among them) with their state and evaluator, by unit key. */
-function runUnits(input) {
+export function runUnits(input) {
   const evaluator = evaluatorByUnit(input);
   return new Map(compileUnits(input, 'SEO').map(unit => [unit.key,
     { unit_key: unit.key, family_id: unit.family_id, evaluator_type: evaluator.get(unit.key) ?? null, state: unit.state }]));
