@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import { readFileSync } from 'node:fs';
 import { compare } from '../skills/optbrew/scripts/core/compare.mjs';
 import { spawnSync } from 'node:child_process';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
@@ -227,4 +227,76 @@ test('report.md counts the units that moved on the comparison line, and says not
   const moved = { ...verified, comparison: { ...verified.comparison, unit_transitions: { unchanged: 3,
     changed: [{ ...unit, before: 'fail', after: 'pass' }], only_before: [], only_after: [{ ...unit, state: 'pass' }] } } };
   assert.ok(markdown(moved).includes('단위 변화: 상태가 바뀐 1건, 한쪽 실행에만 있는 1건'));
+});
+
+// What the later run says about each fix the earlier run listed (the finding ids of its fixes.md).
+const failing = unit => ({ ...pass(unit), state: 'fail', q: 0 });
+const findingOf = unit => `finding-${unit}`;
+function threeFixes() {
+  const before = fixture();
+  before.observations = [failing(`document-title|${home}`), failing(`index-policy|${home}`), failing(`discovery|${home}`)];
+  return before;
+}
+const outcomesOf = (result, ids) => Object.fromEntries(result.finding_outcomes.filter(x => ids.includes(x.finding_id)).map(x => [x.finding_id, x.outcome]));
+
+test('of three fixes listed, the one that was done is resolved, the one that still fails remains, the one with no verdict is unknown', () => {
+  const after = threeFixes();
+  after.observations = [pass(`document-title|${home}`), failing(`index-policy|${home}`)];
+  const ids = [`document-title|${home}`, `index-policy|${home}`, `discovery|${home}`].map(findingOf);
+  const result = compare(threeFixes(), after, { fixIds: ids });
+  assert.equal(result.status, 'comparable', JSON.stringify(result.reasons));
+  assert.deepEqual(outcomesOf(result, ids), { [ids[0]]: 'resolved', [ids[1]]: 'remaining', [ids[2]]: 'unknown' });
+  assert.deepEqual(result.finding_outcomes.find(x => x.finding_id === ids[0]).units, [{ unit_key: `document-title|${home}`, after: 'pass' }]);
+  assert.equal(compare(threeFixes(), after).finding_outcomes, undefined, 'without a fix list there is no outcome list');
+});
+
+test('a fix that touches several pages is resolved only when every page passes', () => {
+  const before = fixture();
+  before.observations = [failing(`document-title|${home}`), failing(`document-title|${about}`)];
+  const after = fixture();
+  after.observations = [pass(`document-title|${home}`), pass(`document-title|${about}`)];
+  const id = findingOf(`document-title|${home}`);
+  assert.equal(compare(before, after, { fixIds: [id] }).finding_outcomes[0].units.length, 2, 'one finding names both pages');
+  assert.equal(compare(before, after, { fixIds: [id] }).finding_outcomes[0].outcome, 'resolved');
+  after.observations[1] = failing(`document-title|${about}`);
+  assert.equal(compare(before, after, { fixIds: [id] }).finding_outcomes[0].outcome, 'remaining');
+});
+
+test('the outcome of a fix is told when only the units that apply changed (not_comparable), and an id the baseline never listed is unknown', () => {
+  const after = baseline();
+  after.run_context.protocol.page_types[1].urls[0] = { original: help, normalized: help };
+  after.observations = [pass(`document-title|${home}`), pass(`document-title|${about}`)];
+  const ids = [findingOf(`document-title|${home}`), 'finding-not-in-the-baseline'];
+  const result = compare(baseline(), after, { fixIds: ids });
+  assert.equal(result.status, 'not_comparable');
+  assert.deepEqual(outcomesOf(result, ids), { [ids[0]]: 'resolved', [ids[1]]: 'unknown' });
+  assert.deepEqual(result.finding_outcomes[1].units, []);
+});
+
+test('no outcome is told when the runs were made under other conditions: a pass there proves nothing', () => {
+  const after = threeFixes();
+  after.run_context.environment = 'production';
+  after.observations = [pass(`document-title|${home}`)];
+  const result = compare(threeFixes(), after, { fixIds: [findingOf(`document-title|${home}`)] });
+  assert.equal(result.status, 'not_comparable');
+  assert.equal(result.finding_outcomes, undefined);
+  assert.ok(result.unit_transitions, 'the unit table is still told');
+});
+
+test('compare CLI takes the previous fixes.md and writes the outcome of each fix it lists', () => {
+  const dir = mkdtempSync(path.join(os.tmpdir(), 'optbrew-compare-fixes-'));
+  try {
+    const after = threeFixes();
+    after.observations = [pass(`document-title|${home}`), failing(`index-policy|${home}`)];
+    for (const [name, value] of Object.entries({ before: threeFixes(), after })) writeFileSync(path.join(dir, `${name}.json`), JSON.stringify(value));
+    writeFileSync(path.join(dir, 'fixes.md'), ['# 고칠 것 목록', '', `## ${findingOf(`document-title|${home}`)}`, '', '- 문제: x', '',
+      `## ${findingOf(`index-policy|${home}`)}`, '', '- 문제: y', ''].join('\n'));
+    const output = path.join(dir, 'result.json');
+    const child = spawnSync(process.execPath, ['skills/optbrew/scripts/cli.mjs', 'compare', '--before', path.join(dir, 'before.json'),
+      '--after', path.join(dir, 'after.json'), '--fixes', path.join(dir, 'fixes.md'), '--output', output],
+    { cwd: new URL('..', import.meta.url), encoding: 'utf8' });
+    assert.equal(child.status, 0, child.stderr);
+    const result = JSON.parse(readFileSync(output, 'utf8'));
+    assert.deepEqual(result.finding_outcomes.map(x => x.outcome), ['resolved', 'remaining']);
+  } finally { rmSync(dir, { recursive: true, force: true }); }
 });

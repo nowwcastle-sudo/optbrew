@@ -3,6 +3,9 @@ import { SECTION_TITLES, SYNTHETIC_BANNER, UNKNOWN, fixMethod, markdownText, pag
 /** The file name of the list, beside `report.md`; the audit prints it in `reports.fixes`. */
 export const FIXES_FILE = 'fixes.md';
 
+/** The finding ids a `fixes.md` lists, in its order: the heading of each fix section. `compare --fixes` reads them back. */
+export const fixIdsOf = markdown => [...markdown.matchAll(/^## (\S+)$/gm)].map(match => match[1]);
+
 /**
  * One open fix as a section of the list: the finding, its pages (all of them, one per line when there are several), the problem,
  * the method, how to check it and where to look. Every word comes from the composed fix; nothing is looked up again, so a replay
