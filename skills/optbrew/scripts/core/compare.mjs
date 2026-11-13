@@ -1,14 +1,42 @@
-import { validateEntity } from './contracts.mjs';
+import { ContractError, validateEntity } from './contracts.mjs';
 import { freezeProtocol } from './protocol.mjs';
 import { compileUnits } from './weights.mjs';
 import { score } from './score.mjs';
 import { olderVersion } from './migration.mjs';
+import { cwvWindows } from './cwv-windows.mjs';
+import { findingOutcomes, outcomesAllowed } from './finding-outcomes.mjs';
+import { unitTransitions, weightByEvaluator } from './unit-transitions.mjs';
 
 const close = (a, b) => Math.abs(a - b) <= 1e-9;
 const rawScore = result => result.M === 0 ? null : 100 * result.N / result.M;
 const rawCoverage = result => result.A === 0 ? null : 100 * result.M / result.A;
 const difference = (before, after) => before === null || after === null ? null : after - before;
 const relative = (before, after) => before === null || after === null || close(before, 0) ? null : (after - before) / before;
+
+/** The score change by who judged the units: a verdict a model wrote can move on its own, so it is shown apart from the code's. */
+const evaluatorDeltas = (before, after, profile) => {
+  const left = weightByEvaluator(before, profile), right = weightByEvaluator(after, profile);
+  return Object.fromEntries([...new Set([...left.keys(), ...right.keys()])].sort().map(type => {
+    const oldScore = left.has(type) ? rawScore(left.get(type)) : null, newScore = right.has(type) ? rawScore(right.get(type)) : null;
+    return [type, { before: oldScore, after: newScore, raw_difference: difference(oldScore, newScore) }];
+  }));
+};
+
+/**
+ * The unit table, the outcome of each fix the caller names and the field-data windows are added to the answer; a window that cannot
+ * be checked is a warning. Two runs whose units cannot be compiled (a changed condition moved the pages the observations belong to)
+ * leave the table and the outcomes out; the comparison itself is the same either way. The outcomes are given only when a later pass
+ * can answer for a fix (`outcomesAllowed`), and a field pass in an overlapping window is not one of them.
+ */
+const annotate = (result, before, after, { fixIds, windows }) => {
+  const told = { ...result, ...(windows.length ? { cwv_windows: windows } : {}),
+    ...(windows.some(window => window.state === 'unverifiable') ? { warnings: ['cwv_window_unverifiable'] } : {}) };
+  try {
+    const unit_transitions = unitTransitions(before, after);
+    const overlapped = new Set(windows.filter(window => window.state === 'overlap').map(window => window.unit_key));
+    return { ...told, unit_transitions, ...(fixIds && outcomesAllowed(result) ? { finding_outcomes: findingOutcomes(before, after, fixIds, overlapped) } : {}) };
+  } catch (error) { if (error instanceof ContractError) return told; throw error; }
+};
 
 /**
  * An input made by an older optbrew was a valid input then, so it is reported as not comparable in plain words instead of
@@ -20,7 +48,7 @@ const olderReason = (input, label) => {
 };
 
 /** Compare two ScoreInputs only when their frozen conditions and applicable units match. */
-export function compare(before, after) {
+export function compare(before, after, { fixIds } = {}) {
   const oldBaseline = olderReason(before, 'baseline');
   if (after === null || after === undefined) {
     if (!oldBaseline) { validateEntity('ScoreInput', before); freezeProtocol(before.run_context); }
@@ -33,6 +61,9 @@ export function compare(before, after) {
   const baseline = freezeProtocol(before.run_context);
   validateEntity('ScoreInput', after);
   const followup = freezeProtocol(after.run_context);
+  const windows = cwvWindows(before, after);
+  const overlapped = windows.some(window => window.state === 'overlap') ? ['cwv_window_overlap'] : [];
+  const refuse = why => annotate({ status: 'not_comparable', score_deltas: [], reasons: [...new Set(why)] }, before, after, { fixIds, windows });
   const reasons = [];
   if (baseline.protocol_hash !== followup.protocol_hash) {
     for (const field of ['target', 'environment', 'evaluation_version', 'protocol_version'])
@@ -42,13 +73,13 @@ export function compare(before, after) {
       if (JSON.stringify(baseline.protocol[field]) !== JSON.stringify(followup.protocol[field])) reasons.push(`${field}_changed`);
     if (!reasons.length) reasons.push('protocol_changed');
   }
-  if (reasons.length) return { status: 'not_comparable', score_deltas: [], reasons: [...new Set(reasons)] };
+  if (reasons.length) return refuse([...reasons, ...overlapped]);
   // The protocol fixes planned units. Evidence-backed N/A can still change the actual denominator.
   const unitSignature = input => compileUnits(input, 'SEO').map(unit => [unit.key, unit.weight]).sort((a, b) => a[0].localeCompare(b[0]));
   const leftUnits = unitSignature(before), rightUnits = unitSignature(after);
   if (leftUnits.length !== rightUnits.length || leftUnits.some(([key, weight], i) =>
     key !== rightUnits[i][0] || !close(weight, rightUnits[i][1]))) reasons.push('applicable_units_changed');
-  if (reasons.length) return { status: 'not_comparable', score_deltas: [], reasons: [...new Set(reasons)] };
+  if (reasons.length || overlapped.length) return refuse([...reasons, ...overlapped]);
   const left = score(before), right = score(after);
   const score_deltas = left.map((item, i) => {
     const next = right[i];
@@ -58,7 +89,8 @@ export function compare(before, after) {
       percentage_point_delta: difference(oldScore, newScore),
       relative_change: relative(oldScore, newScore),
       coverage_percentage_point_delta: difference(rawCoverage(item), rawCoverage(next)),
-      A_delta: next.A - item.A, M_delta: next.M - item.M, N_delta: next.N - item.N };
+      A_delta: next.A - item.A, M_delta: next.M - item.M, N_delta: next.N - item.N,
+      by_evaluator: evaluatorDeltas(before, after, item.profile) };
   });
-  return { status: 'comparable', score_deltas, reasons: [] };
+  return annotate({ status: 'comparable', score_deltas, reasons: [] }, before, after, { fixIds, windows });
 }

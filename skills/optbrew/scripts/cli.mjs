@@ -7,6 +7,7 @@ import { score } from './core/score.mjs';
 import { compare } from './core/compare.mjs';
 import { writeReport } from './core/report.mjs';
 import { htmlReportWriter } from './core/report-page.mjs';
+import { fixIdsOf } from './core/report-fixes.mjs';
 import { MigrationRequired } from './core/migration.mjs';
 import { runbookText } from './core/runbooks.mjs';
 import { finishChange, startChange } from './core/changes.mjs';
@@ -14,7 +15,7 @@ import { nextJudgePage } from './core/judgment-files.mjs';
 import { QUEUE_PAGES_DIR } from './core/stages.mjs';
 
 const SKILL_ROOT = path.resolve(fileURLToPath(new URL('..', import.meta.url)));
-const USAGE = 'usage: cli.mjs score --input <file> --output <file> | compare --before <file> --after <file> --output <file> | report --input <packet.json> --output-dir <directory> | runbook --ids <id,id> --level beginner|brief | change start --out <directory> --root <source directory> --path <file> --finding <id> [--finding <id> ...] | change finish --out <directory> --path <file> [--tool <name> ...] [--query <text> ...] [--self-analysis] | judge next --out <directory>';
+const USAGE = 'usage: cli.mjs score --input <file> --output <file> | compare --before <file> --after <file> [--fixes <fixes.md>] --output <file> | report --input <packet.json> --output-dir <directory> | runbook --ids <id,id> --level beginner|brief | change start --out <directory> --root <source directory> --path <file> --finding <id> [--finding <id> ...] | change finish --out <directory> --path <file> [--tool <name> ...] [--query <text> ...] [--self-analysis] | judge next --out <directory>';
 
 const text = { type: 'string' };
 const texts = { type: 'string', multiple: true };
@@ -63,8 +64,9 @@ const printed = async work => {
 const COMMANDS = {
   score: { options: { input: text, output: text }, required: ['input', 'output'],
     run: async v => writeJson(v.output, score(await readJson(v.input))) },
-  compare: { options: { before: text, after: text, output: text }, required: ['before', 'after', 'output'],
-    run: async v => writeJson(v.output, compare(await readJson(v.before), await readJson(v.after))) },
+  compare: { options: { before: text, after: text, fixes: text, output: text }, required: ['before', 'after', 'output'],
+    run: async v => writeJson(v.output, compare(await readJson(v.before), await readJson(v.after),
+      v.fixes ? { fixIds: fixIdsOf(await readFile(v.fixes, 'utf8')) } : {})) },
   report: { options: { input: text, 'output-dir': text }, required: ['input', 'output-dir'], run: replayReport },
   runbook: { options: { ids: text, level: text }, required: ['ids', 'level'], run: printRunbook },
   'change start': { options: { out: text, root: text, path: text, finding: texts }, required: ['out', 'root', 'path', 'finding'],
