@@ -2,6 +2,7 @@
 
 ## Unreleased
 
+- **A re-audit can take over the earlier model judgments.** `run.mjs --reuse-judgments <earlier run folder>` copies the earlier judgments of every page whose evidence hash is unchanged into the new `judgments/` folder and merges them again, so a cited text that no longer checks is judged afresh. Only changed pages stay for the model, and a run with every page covered finishes in one call. The report's run conditions say 「이어받은 판정 N개」. Judging rules, the evaluation version (0.5.0) and the protocol version (0.3.0) are unchanged.
 - **Update backups and staging stay out of the host skills folder.** They now live under the managed record (`<record-root>/backups/` and `<record-root>/transactions/`). A host loads every child of its skills folder, so the old `_백업_원본_optbrew-*` folder beside the target was a second, stale skill. Older backups stay where they are; remove them by hand. Recovery still reads a journal left by 0.3.4.
 - **Install and update re-check the target's parent folders after each write.** A parent swapped for a link between the check and the write is caught, and the write is undone. Node has no directory-handle API, so this narrows the race; it does not close it.
 - **Audit folders are owner-only on macOS and Linux.** The output and evidence folders are 0700 and evidence files 0600, and an existing folder you own is narrowed to 0700. Windows keeps the access list your profile folder hands down.

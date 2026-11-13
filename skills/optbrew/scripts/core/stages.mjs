@@ -18,6 +18,7 @@ import { planFamilies, targetEngines } from './family-plan.mjs';
 import { goalIds } from './goals.mjs';
 import { notIndexTargets, withIndexTargets } from './index-targets.mjs';
 import { OBSERVATION_SOURCES, buildJudgeQueue, deriveQuestionCoverage, mergeJudgments } from './judgments.mjs';
+import { reuseJudgments, reusedCount } from './judgment-reuse.mjs';
 import { keyHome, readGoogleKey } from './keys.mjs';
 import { MigrationRequired, assertCurrentEvidence } from './migration.mjs';
 import { naverOwnershipFollowUps } from './naver-ownership.mjs';
@@ -43,6 +44,8 @@ const JUDGE_STAGE = 'judge';
 /** The queue the model reads: `site.json` plus one file per page (`p001.json` …), so it reads and judges one small file at a time. */
 export const QUEUE_PAGES_DIR = 'judge-queue';
 const SITE_QUEUE_FILE = 'site.json';
+/** The folder of the model's page files (`p001.json` …), written by the agent or copied in from an earlier run (`--reuse-judgments`). */
+export const JUDGMENTS_DIR = 'judgments';
 const pageFileName = index => `p${String(index + 1).padStart(3, '0')}.json`;
 /** The `key` of a start-answer fact that names the business (preflight's fact candidates use the type as the key). */
 const NAME_FACT = 'name';
@@ -58,6 +61,10 @@ const APPROVED_BY = 'start answers (intake-answers.json)';
 const NAVER_ENGINE = 'naver';
 const KOREAN_DOMAIN = '.kr';
 const NAVER_GOAL = 'naver';
+
+/** The files of an earlier run folder that judgment reuse reads. */
+export const earlierRun = from => ({ context: path.join(from, CONTEXT_FILE), intake: path.join(from, INTAKE_FILE),
+  queue: path.join(from, QUEUE_PAGES_DIR), judgments: path.join(from, JUDGMENTS_DIR) });
 
 const json = value => `${JSON.stringify(value, null, 2)}\n`;
 const compact = value => `${JSON.stringify(value)}\n`;
@@ -484,10 +491,16 @@ const judgeStage = {
     const names = confirmed.filter(fact => fact.key === NAME_FACT).map(fact => fact.value);
     const facts = confirmed.filter(fact => fact.key !== NAME_FACT).map(({ key, value }) => ({ key, value }));
     const queue = await buildJudgeQueue({ observations: state.observations, store, context, names, facts });
-    await writeQueuePages(path.join(out, QUEUE_PAGES_DIR), queueByPage(queue, panel));
-    if (state.judgments) {
-      const merged = await mergeJudgments({ observations: state.observations, judgments: state.judgments, store, questions: panel });
-      return { state: { ...state, queue, observations: deriveQuestionCoverage({ observations: merged, panel, evidence_ref: context.evidence_ref }) } };
+    const grouped = queueByPage(queue, panel);
+    await writeQueuePages(path.join(out, QUEUE_PAGES_DIR), grouped);
+    // Pages whose evidence is unchanged since an earlier run keep its judgments; a run with every page covered goes straight on.
+    const reuse = state.reuse && !state.judgments ? await reuseJudgments({ earlier: earlierRun(state.reuse), into: path.join(out, JUDGMENTS_DIR),
+      pages: grouped.pages.map((page, index) => [pageFileName(index), page]), observations: state.observations, store, questions: panel }) : null;
+    if (reuse) await store.set('reused_judgments', { from_run_id: reuse.from_run_id, judgments: reuse.judgments });
+    const judgments = state.judgments ?? (reuse?.complete ? reuse.judgments : null);
+    if (judgments) {
+      const merged = await mergeJudgments({ observations: state.observations, judgments, store, questions: panel });
+      return { state: { ...state, judgments, queue, observations: deriveQuestionCoverage({ observations: merged, panel, evidence_ref: context.evidence_ref }) } };
     }
     if (queue.items.length) return { state: { ...state, queue }, halt: HALT_JUDGMENTS };
     return { state: { ...state, queue } };
@@ -608,10 +621,13 @@ const reportStage = {
     await writeFile(path.join(out, COSTS_FILE), json(costs));
     const evidence_index = await evidenceList(state);
     const { metrics, remaining } = await ownerExportResults(state);
+    const recorded = (await store.index()).reused_judgments;
+    const reused = reusedCount(recorded, state.judgments);
     const packet = { schema_version: versions().contract_schema, run_context: context, baseline: { input, scores: state.scores }, after: null,
       comparison: compare(input, null), metrics, findings: findingsOf(state.observations, evidence_index), changes: [], costs, remaining,
       evidence_root: out, evidence_index, audit_snapshots: [{ phase: PHASE, audit_ref: store.indexRef, context_ref: context.evidence_ref }],
-      source_ref: RUN_SOURCE, data_class: 'real', lab_cwv: state.lab_cwv ?? null, start_redirect: state.start_redirect ?? null };
+      source_ref: RUN_SOURCE, data_class: 'real', lab_cwv: state.lab_cwv ?? null, start_redirect: state.start_redirect ?? null,
+      ...(reused ? { reused_judgments: { count: reused, from_run_id: recorded.from_run_id } } : {}) };
     const level = state.answers.guidance_level;
     const renderHtml = htmlReportWriter({ level, target: context.target, synthetic: packet.data_class === 'synthetic' });
     const { jsonPath, markdownPath, fixesPath, htmlPath } = await writeReport(packet, out, { renderHtml });
