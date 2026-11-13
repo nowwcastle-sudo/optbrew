@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { readFileSync } from 'node:fs';
 import { ContractError } from '../skills/optbrew/scripts/core/contracts.mjs';
-import { compileUnits, scoreWeighted } from '../skills/optbrew/scripts/core/weights.mjs';
+import { compileUnits, gradeOf, scoreWeighted } from '../skills/optbrew/scripts/core/weights.mjs';
 import { score, cwvVerdict } from '../skills/optbrew/scripts/core/score.mjs';
 import { spawnSync } from 'node:child_process';
 import { mkdtempSync, readFileSync as readOutput, writeFileSync, existsSync, rmSync } from 'node:fs';
@@ -32,6 +32,21 @@ test('weighted score keeps measured score, coverage and missing bounds separate'
     state: 'partial', q: 0.5 }]), ContractError);
   assert.throws(() => scoreWeighted([{ ...weightedCase()[0], family_id: 'fetch-response',
     state: 'not_applicable', q: null }]), ContractError);
+});
+
+test('band and provisional status read the shown one-decimal values (A8)', () => {
+  const unit = (key, weight, state, q) => ({ key, family_id: key, engine: null, url: null, weight, state, q });
+  const scoreAt = pass => scoreWeighted([unit('a', pass, 'pass', 1), unit('b', 100 - pass, 'fail', 0)]);
+  const bandAt = pass => gradeOf(scoreAt(pass)).band;
+  assert.equal(scoreAt(59.96).score, 60, 'the screen shows 60.0');
+  assert.equal(bandAt(59.96), 'major_improvement', 'so it is not below 60');
+  assert.deepEqual([59.94, 60.04, 79.94, 79.96, 80.04, 94.94, 94.96, 95.04].map(bandAt),
+    ['focus_improvement', 'major_improvement', 'major_improvement', 'additional_improvement', 'additional_improvement',
+      'additional_improvement', 'remaining_review', 'remaining_review'], 'values away from a boundary keep their band');
+  assert.equal(gradeOf(scoreWeighted([unit('a', 100, 'unknown', null)])).band, null);
+  const provisionalAt = measured => gradeOf(scoreWeighted([unit('a', measured, 'pass', 1), unit('c', 100 - measured, 'unknown', null)])).provisional;
+  assert.equal(scoreWeighted([unit('a', 79.96, 'pass', 1), unit('c', 20.04, 'unknown', null)]).coverage, 80, 'the screen shows 80.0');
+  assert.deepEqual([79.94, 79.96, 80, 80.04].map(provisionalAt), [true, false, false, false]);
 });
 
 test('registry family ids are unique and every profile sums to 100', () => {

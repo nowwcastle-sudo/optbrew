@@ -347,10 +347,11 @@ test('the units a model declared not applicable are counted under model judgment
   assert.ok(!htmlOf(composeReport(verifiedOf())).includes('모델이 해당 없음으로 뺀 단위는'), 'no note when the model declared none');
 });
 
-test('a coverage that shows as 79.9% is not sufficient (M12)', () => {
+test('a coverage that shows as 79.9% is not sufficient and one that shows as 80.0% meets the rule (M12, A8)', () => {
   const verified = verifiedOf();
   const at = M => composeReport({ ...verified, baseline: { ...verified.baseline, scores: [result({ A: 1000, M, N: M, score: 95, coverage: 80 })] } }).completeness[0].before.headline;
-  assert.deepEqual([at(799.99999).status, at(799.99999).coverage], ['insufficient_coverage', 79.9]);
+  assert.deepEqual([at(799.4).status, at(799.4).coverage], ['insufficient_coverage', 79.9]);
+  assert.deepEqual([at(799.6).status !== 'insufficient_coverage', at(799.6).coverage], [true, 80], 'a raw 79.96 shows 80.0 and is judged as 80.0');
   assert.deepEqual([at(800).status !== 'insufficient_coverage', at(800).coverage], [true, 80], 'at 80.0 the coverage rule is met (the fixture is unaudited, so it is not called sufficient)');
 });
 
@@ -358,12 +359,12 @@ test('one rounding rule shows every coverage', () => {
   const verified = verifiedOf();
   const changed = { ...verified, baseline: { ...verified.baseline, scores: [result({ A: 1000, M: 87.9, score: 50, coverage: 8.8 })] } };
   const composed = composeReport(changed);
-  assert.equal(composed.completeness[0].coverage, 8.7, 'the JSON shows the floor the threshold reads, like the other two formats');
-  assert.equal(composed.completeness[0].before.headline.coverage, 8.7);
+  assert.equal(composed.completeness[0].coverage, 8.8, 'the JSON shows the rounded value the threshold reads, like the other two formats');
+  assert.equal(composed.completeness[0].before.headline.coverage, 8.8);
   assert.ok(Math.abs(composed.completeness[0].before.headline.coverage_exact - 8.79) < 1e-9, 'the exact value stays in its own field');
   for (const text of [renderReport(composed, changed).markdown, htmlOf(composed)]) {
-    assert.ok(text.includes('8.7%'), 'both formats show the floor the threshold is judged on');
-    assert.ok(!text.includes('8.8%'), 'and never the rounded value');
+    assert.ok(text.includes('8.8%'), 'both formats show the rounded value the threshold is judged on');
+    assert.ok(!text.includes('8.7%'), 'and never a floor');
   }
 });
 
