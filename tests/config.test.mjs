@@ -16,7 +16,7 @@ test('versions hold today\'s release, evaluation, protocol and schema versions',
 
 test('endpoints hold every URL the product code uses', () => {
   assert.deepEqual(endpoints(), { anthropic_messages: 'https://api.anthropic.com/v1/messages', anthropic_version: '2023-06-01',
-    npm_registry: 'https://registry.npmjs.org/', naver_guide: 'https://searchadvisor.naver.com/guide/',
+    npm_registry: 'https://registry.npmjs.org/', github_raw: 'https://raw.githubusercontent.com/', naver_guide: 'https://searchadvisor.naver.com/guide/',
     plugin_schema: 'https://agent-plugins.org/schemas/1.0.0/plugin.schema.json', crux: 'https://chromeuxreport.googleapis.com/v1/records:queryRecord',
     psi: 'https://www.googleapis.com/pagespeedonline/v5/runPagespeed?strategy=mobile&category=performance', relative_url_base: 'http://path.invalid' });
 });
