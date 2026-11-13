@@ -741,6 +741,17 @@ function emptyPagesOf(snapshot, requireRef) {
   }).sort();
 }
 
+/**
+ * What the page cap left out of the model's work, for the phase the report describes: how many pages were judged of how many had text,
+ * and which were not (their model units stay unknown). `null` when the queue held every page.
+ */
+function judgePartialOf(snapshot, requireRef) {
+  if (!snapshot) return null;
+  const audit = JSON.parse(requireRef(snapshot.audit_ref).text);
+  const partial = (audit.judge_queue ?? []).map(entry => JSON.parse(requireRef(entry.evidence_ref).text).partial).filter(Boolean).at(-1);
+  return partial ? { judged_pages: partial.judged_pages, total_pages: partial.total_pages, skipped: [...partial.skipped].sort() } : null;
+}
+
 /** Recompute scores and metrics from contained run evidence; render four design tables. */
 export function buildReport(packet) {
   assertCurrentEvidence(packet, 'report packet');
@@ -790,6 +801,7 @@ export function buildReport(packet) {
   const confirmedNames = (intake?.answers?.facts ?? []).filter(fact => fact.key === 'name').map(fact => fact.value);
   const modelRows = [['baseline', packet.baseline.input], ['after', packet.after?.input]].flatMap(([phase, input]) => modelJudgmentRows(phase, input, snapshotFor(phase), requireRef, confirmedNames));
   const emptyPages = emptyPagesOf(snapshotFor(packet.after ? 'after' : 'baseline'), requireRef);
+  const judgePartial = judgePartialOf(snapshotFor(packet.after ? 'after' : 'baseline'), requireRef);
   checkAuditPhase(packet.baseline.input, 'baseline', snapshotFor('baseline'), requireRef);
   checkAuditPhase(packet.after?.input, 'after', snapshotFor('after'), requireRef);
   // An adopted start address is said in the run conditions, so it must match the intake record and the run's target.
@@ -798,6 +810,10 @@ export function buildReport(packet) {
     if (startRedirect?.to !== packet.run_context.target || !same(intake?.selection?.start_redirect ?? null, startRedirect))
       throw new ContractError('start redirect differs from the intake record or the run target');
   }
+  // Judgments taken over from an earlier run are said in the run conditions; the claim is a count and that run's id, nothing a score reads.
+  const reusedJudgments = packet.reused_judgments ?? null;
+  if (reusedJudgments && !(Number.isInteger(reusedJudgments.count) && reusedJudgments.count > 0 && named(reusedJudgments.from_run_id)))
+    throw new ContractError('reused_judgments must hold a positive count and the earlier run id');
   const merged = mergeFindings(packet.findings);
   const observations = [...packet.baseline.input.observations, ...(packet.after?.input.observations ?? [])];
   const collectedAny = collectedResponses(snapshots, requireRef);
@@ -936,8 +952,8 @@ export function buildReport(packet) {
     cost_issue_messages: costNotes.map(({ message_key, message_values }) => ({ message_key, message_values })), metric_origin_limitations: metricOriginLimitations,
     metric_origin_limitation_messages: originNotes.map(([, key]) => messageOf(key)), follow_ups: remaining,
     evidence_root: packet.evidence_root, evidence_index: packet.evidence_index,
-    audit_ref: packet.audit_ref ?? null, audit_snapshots: snapshots, model_judgments: modelRows, empty_pages: emptyPages, source_ref: packet.source_ref,
-    outcome_rows: metricRows(packet.metrics), lab_cwv: packet.lab_cwv ?? null, start_redirect: startRedirect, answered_runbooks: packet.answered_runbooks ?? [] };
+    audit_ref: packet.audit_ref ?? null, audit_snapshots: snapshots, model_judgments: modelRows, empty_pages: emptyPages, judge_partial: judgePartial, source_ref: packet.source_ref,
+    outcome_rows: metricRows(packet.metrics), lab_cwv: packet.lab_cwv ?? null, start_redirect: startRedirect, reused_judgments: reusedJudgments, answered_runbooks: packet.answered_runbooks ?? [] };
   const composed = composeReport(verified);
   const { markdown, tables } = renderReport(composed, verified);
   // The composed report leads; the checked data it was built from follows. `findings` is the sorted fixes again, for readers of earlier reports.

@@ -7,11 +7,13 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { fetchScoped, links } from './core/collector.mjs';
 import { findChrome as realFindChrome } from './core/chrome.mjs';
-import { limits } from './core/config.mjs';
+import { judgePageCap, limits } from './core/config.mjs';
 import { openStore, ownerOnlyDir } from './core/evidence-store.mjs';
+import { ignoreOutput, outputIsNew } from './core/out-ignore.mjs';
 import { pageBudget, readPreflight, selectPages } from './core/page-select.mjs';
 import { pageFacts } from './core/facts.mjs';
 import { decodeEntities } from './core/html.mjs';
+import { modelFamilyCount } from './core/judgments.mjs';
 import { readGoogleKey as realReadGoogleKey } from './core/keys.mjs';
 import { probeEnvironment, runbookHarnesses } from './core/probe.mjs';
 import { startRunbooks } from './core/runbooks.mjs';
@@ -74,10 +76,13 @@ export async function preflight({ url, out, sourceTools = [], skillRoot = defaul
   const dir = path.join(out, 'preflight');
   const evidenceDir = path.join(dir, 'evidence');
   // A second check (after the user prepared a key or Chrome) starts clean: old failures and pages would misroute step 3 and the raise.
+  const newOut = await outputIsNew(out);
   await rm(dir, { recursive: true, force: true });
   await ownerOnlyDir(out);
   await ownerOnlyDir(evidenceDir);
-  const store = openStore(evidenceDir);
+  if (newOut) await ignoreOutput(out);
+  // Refs are relative to the preflight folder, so the folder can be copied into another run folder (a re-check does that) and still be read.
+  const store = openStore(evidenceDir, null, { root: dir });
   const budget = limits().preflight_pages;
   let used = 0;
   const reserveRequest = () => { if (used >= budget) return false; used++; return true; };
@@ -158,6 +163,7 @@ export async function preflight({ url, out, sourceTools = [], skillRoot = defaul
     sitemap_pages_basis: sitemapBasis,
     sitemap_declared: sitemapFiles.size,
     max_urls_raise: null,
+    judge_estimate: null,
     question_candidates_input: pages.map(({ artifact, html }) => questionInput(artifact, html)),
     fact_candidates: factCandidates(pages),
     start_runbooks: startRunbooks(probe, { level, skillRoot, harnesses: runbookHarnesses(probe.harness) }),
@@ -167,6 +173,7 @@ export async function preflight({ url, out, sourceTools = [], skillRoot = defaul
   // The raise is read back the way the run will read this folder, so both count the same pages and sitemap files.
   if (startJson.final_url) {
     startJson.max_urls_raise = await raisedLimit(out, startJson);
+    startJson.judge_estimate = await judgeEstimate(out, startJson);
     await writeFile(startPath, `${JSON.stringify(startJson, null, 2)}\n`);
   }
   return { startJson, startPath };
@@ -180,8 +187,35 @@ export async function preflight({ url, out, sourceTools = [], skillRoot = defaul
  * A sitemap count that is only a lower bound gets the cap.
  */
 export async function raisedLimit(out, startJson) {
-  const { max_urls_default: base, max_urls_cap: cap, preflight_pages: readLimit } = limits();
+  const { max_urls_default: base, max_urls_cap: cap } = limits();
   if (startJson.sitemap_pages_basis === 'lower_bound') return cap;
+  const { sitemapPages, auxiliary } = await selection(out, startJson);
+  const all = sitemapPages(Infinity);
+  const fits = limit => sitemapPages(pageBudget(limit, auxiliary)) >= all;
+  if (fits(base)) return null;
+  for (let limit = base + 1; limit < cap; limit++) if (fits(limit)) return limit;
+  return cap;
+}
+
+/**
+ * What the model would have to judge: the pages the audit covers at the default limit and at the raise (`max_urls_raise`, when one
+ * is offered), each with the most judgments they can need, so the sample question can show the cost. A page needs one judgment per
+ * model-judged family, and the home page adds the site unit. It is an upper bound: a page that fails to load or holds no text
+ * is not judged, and a goal that leaves a family out takes it away. Nothing about the selection or the limits changes.
+ */
+async function judgeEstimate(out, startJson) {
+  const { max_urls_default: base } = limits();
+  const { pagesAt } = await selection(out, startJson);
+  const families = modelFamilyCount();
+  const cap = judgePageCap();
+  const at = limit => { const pages = pagesAt(limit); const judged = Math.min(pages, cap); return { pages, judged_pages: judged, judgments: judged * families + 1 }; };
+  const raise = startJson.max_urls_raise;
+  return { families_per_page: families, judge_pages_cap: cap, default: at(base), raise: raise === null ? null : { limit: raise, ...at(raise) } };
+}
+
+/** The pages the run would select from this preflight folder, as the run selects them: the sitemap's share at a page budget, or all pages at a request limit. */
+async function selection(out, startJson) {
+  const { preflight_pages: readLimit } = limits();
   const start = new URL(startJson.final_url);
   const preflightRead = await readPreflight(out, start.href);
   const scope = { allowed: [{ origin: start.origin, path_prefix: '/' }] };
@@ -193,12 +227,8 @@ export async function raisedLimit(out, startJson) {
     if (normalized && !known.has(normalized)) { known.add(normalized); auxiliary++; }
   }
   const factUrls = [...new Set(startJson.fact_candidates.map(fact => fact.source_url))];
-  const sitemapPages = budget => selectPages({ home: inScope(start.href), factUrls, preflight: preflightRead, scope, budget, auxiliary: known }).sources.sitemap_pages;
-  const all = sitemapPages(Infinity);
-  const fits = limit => sitemapPages(pageBudget(limit, auxiliary)) >= all;
-  if (fits(base)) return null;
-  for (let limit = base + 1; limit < cap; limit++) if (fits(limit)) return limit;
-  return cap;
+  const chosen = budget => selectPages({ home: inScope(start.href), factUrls, preflight: preflightRead, scope, budget, auxiliary: known });
+  return { auxiliary, sitemapPages: budget => chosen(budget).sources.sitemap_pages, pagesAt: limit => chosen(pageBudget(limit, auxiliary)).pages.length };
 }
 
 if (process.argv[1] && realpathSync(path.resolve(process.argv[1])) === realpathSync(fileURLToPath(import.meta.url))) {

@@ -159,8 +159,10 @@ export function validateEntity(typeName, value) {
     fail('IntakeAnswers.schema_version', `the answers file ${value?.schema_version === undefined ? 'has no schema_version' : `says ${JSON.stringify(value.schema_version)}`} but this optbrew needs ${JSON.stringify(versions().contract_schema)}; copy the contract_schema value from references/versions.json`);
   checkRule(rule, value, typeName);
   if (typeName === 'RunContext' && value.scope?.max_urls !== undefined) checkMaxUrls(value.scope.max_urls, 'RunContext.scope.max_urls');
+  if (typeName === 'RunContext' && value.scope?.max_judge_pages !== undefined) checkMaxUrls(value.scope.max_judge_pages, 'RunContext.scope.max_judge_pages');
   if (typeName === 'IntakeAnswers') {
     checkMaxUrls(value.max_urls, 'IntakeAnswers.max_urls');
+    if (value.max_judge_pages !== undefined) checkMaxUrls(value.max_judge_pages, 'IntakeAnswers.max_judge_pages');
     // The start question is "sample or raise the limit": the two answers and the number must agree.
     const raised = value.sample_mode === 'raise';
     if (raised ? value.max_urls <= limits().max_urls_default : value.max_urls !== limits().max_urls_default)

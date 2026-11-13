@@ -851,6 +851,7 @@ test('a no-audit packet is never verified', () => {
     try {
       run.packet.after.input.observations.find(x => x.check_id === 'index-policy').evaluator_type = evaluator;
       run.packet.after.scores = score(run.packet.after.input);
+      run.packet.comparison = compare(run.packet.baseline.input, run.packet.after.input);
       const report = buildReport(run.packet);
       assert.equal(report.json.findings[0].status, 'modified_unverified');
       assert.equal(report.json.findings[0].resolution, null);
@@ -888,6 +889,7 @@ test('final review round 3: a model cannot stand in for a code-judged family', (
     Object.assign(observation, { evaluator_type: 'host_model', source_ref: 'optbrew:model-judgment',
       evidence_span: [{ evidence_sha256: forged.packet.evidence_index.find(x => x.ref === observation.evidence_ref).sha256, start: 0, end: 6 }] });
     forged.packet.after.scores = score(forged.packet.after.input);
+    forged.packet.comparison = compare(forged.packet.baseline.input, forged.packet.after.input);
     assert.throws(() => buildReport(forged.packet), /index-policy is judged by code/, 'a model cannot stand in for a code-judged family');
   } finally { rmSync(forged.dir, { recursive: true, force: true }); }
   const pending = copyRun();
@@ -916,7 +918,7 @@ test('0.1.2 fix 2: a measured score is never the headline below 80% coverage', a
   assert.equal(headline.measured_subset_score, seo.score);
   assert.deepEqual(headline.missing_bounds, seo.missing_bounds);
   assert.match(markdown, /요약:/);
-  const shown = Math.floor(headline.coverage_exact * 10 + 1e-9) / 10;
+  const shown = headline.coverage;
   assert.match(markdown, new RegExp(`SEO: 확인 범위 부족 \\(적용 가중치의 ${shown}%만 확인했습니다. 점수를 내려면 80% 이상 필요합니다\\)`));
   assert.match(markdown, new RegExp(`확인한 범위의 통과율 ${seo.score}`));
   const row = json.tables.score.find(x => x[0] === 'SEO');

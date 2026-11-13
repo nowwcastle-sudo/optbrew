@@ -1,11 +1,11 @@
 import { execFile, spawn } from 'node:child_process';
 import { existsSync, readdirSync } from 'node:fs';
-import { mkdir, mkdtemp, readFile, rm } from 'node:fs/promises';
+import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { createCdpClient, pipeTransport, webSocketTransport } from './cdp.mjs';
-import { PROFILE_PREFIX, chromeEnv, sweepStaleProfiles } from './chrome-temp.mjs';
+import { PROFILE_PREFIX, chromeEnv, chromeTempDir, sweepStaleProfiles, sweepStaleShortTemps } from './chrome-temp.mjs';
 import { chromePaths, limits } from './config.mjs';
 import { assertInScope } from './scope.mjs';
 
@@ -180,8 +180,9 @@ function chromeArgs({ userDataDir, kind, proxy = null, hostRules = null, root = 
 async function attempt({ executable, proxy, hostRules, tmpRoot, transport: kind, launchTimeout }) {
   const { chrome_close_grace_ms: closeGrace, cdp_command_timeout_ms: commandTimeout } = limits();
   const userDataDir = await mkdtemp(path.join(tmpRoot, PROFILE_PREFIX));
-  const tempDir = path.join(userDataDir, 'tmp');
-  try { await mkdir(tempDir); } catch (error) { await rm(userDataDir, { recursive: true, force: true }); throw error; }
+  let temp;
+  try { temp = await chromeTempDir(userDataDir); } catch (error) { await rm(userDataDir, { recursive: true, force: true }); throw error; }
+  const tempDir = temp?.dir ?? path.join(userDataDir, 'tmp');
   const args = chromeArgs({ userDataDir, kind, proxy, hostRules, root: process.getuid?.() === 0 });
 
   const child = spawn(executable, args, { env: chromeEnv(process.env, tempDir), stdio: kind === 'pipe' ? ['ignore', 'ignore', 'pipe', 'pipe', 'pipe'] : ['ignore', 'ignore', 'pipe'],
@@ -210,6 +211,7 @@ async function attempt({ executable, proxy, hostRules, tmpRoot, transport: kind,
     await killLeftovers(userDataDir, closeGrace);
     child.stderr.destroy();
     await rm(userDataDir, { recursive: true, force: true, maxRetries: 20, retryDelay: 100 });
+    if (temp?.own) await rm(temp.dir, { recursive: true, force: true, maxRetries: 20, retryDelay: 100 });
   };
 
   let cdp;
@@ -254,6 +256,7 @@ export async function launchChrome({ path: executable, proxy = null, hostRules =
   launchTimeoutMs = limits().chrome_launch_timeout_ms }) {
   let failure;
   await sweepStaleProfiles(tmpRoot).catch(() => []);
+  if (process.platform !== 'win32') await sweepStaleShortTemps().catch(() => []);
   for (const transport of transports) {
     try { return await attempt({ executable, proxy, hostRules, tmpRoot, transport, launchTimeout: launchTimeoutMs }); }
     catch (error) { failure = error; }

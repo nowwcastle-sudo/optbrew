@@ -4,6 +4,7 @@ import { makeObservation, problem, unitKey } from './checks/observation.mjs';
 import { limits } from './config.mjs';
 import { decodeEntities } from './html.mjs';
 import { messageOf } from './messages.mjs';
+import { evenPages } from './page-select.mjs';
 import { sensitive } from './secrets.mjs';
 
 const FETCH_FAMILY = 'fetch-response';
@@ -144,6 +145,9 @@ const NO_TEXT = /^(?:\s|&nbsp;|&#160;|&#xa0;)*$/i;
 function modelFamilies() {
   return registry.families.filter(family => family.unit_scope === 'url' && !isCodeJudged(family.family_id)).map(family => family.family_id);
 }
+
+/** How many judgments one page can need at most: the per-page families the model judges (a run plans only the ones its goals use). */
+export const modelFamilyCount = () => modelFamilies().length;
 
 /** Whether a family is one the model judges through the judge queue (a per-page family with no code check block). */
 export const isModelJudged = family_id => modelFamilies().includes(family_id);
@@ -474,7 +478,7 @@ function coversPage(bytes, spans) {
  * Returns `{ items: [{ family_id, unit_key, url, evidence_ref, evidence_sha256, spans }] }` and stores it in the run evidence
  * (kind `judge-queue`, listed with its hash in the index section `judge_queue`); mergeJudgments and report replay read that copy.
  */
-export async function buildJudgeQueue({ observations, store, context = null, names = [], facts = [] }) {
+export async function buildJudgeQueue({ observations, store, context = null, names = [], facts = [], maxPages = Infinity }) {
   const index = await store.index();
   const { raw } = index;
   // Raw bodies are named by their hash, so pages with identical bytes share one evidence file; a raw entry is told apart by its address too.
@@ -501,23 +505,27 @@ export async function buildJudgeQueue({ observations, store, context = null, nam
   const chrome = siteChrome([...loaded.values()].map(page => page.bytes));
   const spansOf = new Map();
   for (const [url, page] of loaded) spansOf.set(url, page.spans.map(span => chrome.has(span.text) ? { ...span, site_chrome: true } : span));
+  // More pages than `maxPages` are not cut quietly: the choice is spread over the page types, and the queue names the pages left out.
+  const home = homeOf([...pages.keys()]);
+  const withText = [...pages.keys()].filter(url => spansOf.get(url).length);
+  const kept = new Set(evenPages(withText, home, maxPages));
+  const partial = kept.size < withText.length ? { judged_pages: kept.size, total_pages: withText.length, skipped: withText.filter(url => !kept.has(url)).sort() } : null;
   for (const [url, entry] of pages) {
     const spans = spansOf.get(url);
-    if (!spans.length) continue;
+    if (!spans.length || !kept.has(url)) continue;
     const empty = loaded.get(url).empty ? { empty_page: true } : {};
     for (const family_id of families) {
       const unit_key = unitKey(family_id, url);
       if (!judged.has(unit_key)) items.push({ family_id, unit_key, url, evidence_ref: entry.evidence_ref, evidence_sha256: entry.content_hash, spans, ...empty });
     }
   }
-  const home = homeOf([...pages.keys()]);
   if (home && spansOf.get(home).length && offered(ENTITY_FAMILY) && !judged.has(ENTITY_UNIT)) {
     const entry = pages.get(home);
     items.push({ family_id: ENTITY_FAMILY, unit_key: ENTITY_UNIT, url: home, evidence_ref: entry.evidence_ref, evidence_sha256: entry.content_hash,
       spans: spansOf.get(home), ...(loaded.get(home).empty ? { empty_page: true } : {}), identity: { names, facts, host: new URL(home).host } });
   }
   const emptyPages = [...loaded].filter(([, page]) => page.empty).map(([url]) => url);
-  const queue = { items, ...(chrome.size ? { site_chrome: [...chrome].sort() } : {}), ...(emptyPages.length ? { empty_pages: emptyPages } : {}), ...(names.length ? { owner_names: names } : {}) };
+  const queue = { items, ...(chrome.size ? { site_chrome: [...chrome].sort() } : {}), ...(emptyPages.length ? { empty_pages: emptyPages } : {}), ...(names.length ? { owner_names: names } : {}), ...(partial ? { partial } : {}) };
   const { ref, sha256 } = await store.write(QUEUE_KIND, `${JSON.stringify(queue, null, 2)}\n`);
   if (!(index[QUEUE_SECTION] ?? []).some(entry => entry.sha256 === sha256)) await store.append(QUEUE_SECTION, { evidence_ref: ref, sha256 });
   return queue;

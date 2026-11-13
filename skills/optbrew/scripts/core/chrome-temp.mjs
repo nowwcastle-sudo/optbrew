@@ -1,5 +1,5 @@
 import { execFile } from 'node:child_process';
-import { readdir, rm, stat } from 'node:fs/promises';
+import { lstat, mkdir, mkdtemp, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { limits } from './config.mjs';
 
@@ -42,6 +42,55 @@ export function chromeEnv(env, tempDir, platform = process.platform) {
   if (platform !== 'win32' && Buffer.byteLength(tempDir) > MAX_REDIRECTED_TEMP_BYTES) return { ...env };
   const kept = Object.fromEntries(Object.entries(env).filter(([name]) => !TEMP_VARIABLES.test(name)));
   return { ...kept, TEMP: tempDir, TMP: tempDir, TMPDIR: tempDir };
+}
+
+/**
+ * The temp folder Chrome gets. It is `<profile>/tmp` when that is short enough (always on Windows). Otherwise, off Windows, it is a
+ * new folder in `/tmp` (`optbrew-t-XXXXXX`, owner-only, about 21 bytes), because keeping the user's temp folder let Chrome's
+ * background downloads leave `chrome_url_fetcher_*` folders there (ubuntu CI, T22 M-7: a runner's mkdtemp names made `<profile>/tmp`
+ * 57 bytes). That folder names its profile in an `owner` file; `close()` removes it, and `sweepStaleShortTemps` removes one whose
+ * profile is gone. `null` = no short folder could be made (no writable `/tmp`): Chrome keeps the user's temp folder, as before.
+ * Returns `{ dir, own }`: `own` is true when the folder is outside the profile and must be removed separately.
+ */
+const SHORT_TEMP_PREFIX = 'optbrew-t-';
+const SHORT_TEMP_OWNER = 'owner';
+export async function chromeTempDir(userDataDir, { platform = process.platform, shortRoot = '/tmp' } = {}) {
+  const inside = path.join(userDataDir, 'tmp');
+  await mkdir(inside);
+  if (platform === 'win32' || Buffer.byteLength(inside) <= MAX_REDIRECTED_TEMP_BYTES) return { dir: inside, own: false };
+  let dir;
+  try { dir = await mkdtemp(path.join(shortRoot, SHORT_TEMP_PREFIX)); } catch { return null; }
+  if (Buffer.byteLength(dir) > MAX_REDIRECTED_TEMP_BYTES) { await rm(dir, { recursive: true, force: true }); return null; }
+  try { await writeFile(path.join(dir, SHORT_TEMP_OWNER), userDataDir, { mode: 0o600 }); }
+  catch { await rm(dir, { recursive: true, force: true }); return null; }
+  return { dir, own: true };
+}
+
+/**
+ * Remove the short temp folders of earlier launches whose launcher was killed: a folder goes only when it is not young and the
+ * profile its `owner` file names no longer exists (that profile is removed by `close()` or by `sweepStaleProfiles`). `/tmp` is
+ * shared, so a name alone proves nothing: the entry must be a real folder (not a link), owned by this user and owner-only (0700),
+ * as `chromeTempDir` made it. Anything else, or a folder without a readable owner, is left alone. `uid` is injectable for tests.
+ * Returns the names removed.
+ */
+export async function sweepStaleShortTemps(shortRoot = '/tmp', { now = Date.now(), uid = process.getuid?.() } = {}) {
+  let names;
+  try { names = (await readdir(shortRoot)).filter(name => name.startsWith(SHORT_TEMP_PREFIX)); } catch { return []; }
+  const removed = [];
+  for (const name of names) {
+    const dir = path.join(shortRoot, name);
+    try {
+      const info = await lstat(dir);
+      if (!info.isDirectory() || info.uid !== uid || (info.mode & 0o777) !== 0o700) continue;
+      if (now - info.mtimeMs <= YOUNG_PROFILE_MS) continue;
+      const owner = await readFile(path.join(dir, SHORT_TEMP_OWNER), 'utf8');
+      if (!path.basename(owner).startsWith(PROFILE_PREFIX)) continue;
+      if (await stat(owner).then(() => true, () => false)) continue;
+      await rm(dir, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 });
+      removed.push(name);
+    } catch { /* unreadable, gone or locked: leave it */ }
+  }
+  return removed;
 }
 
 /**

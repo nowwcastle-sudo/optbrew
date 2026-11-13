@@ -63,8 +63,11 @@ test('only the two network runbooks block; every entry names real families and a
       assert.ok(entry.line.length > 0 && !entry.line.includes('\n'), `${entry.id}: line is one line`);
     }
   }
-  const reasonsOf = id => index.filter(entry => entry.when.unknown_reason === id).map(entry => entry.id);
+  const reasonsOf = id => index.filter(entry => [entry.when.unknown_reason].flat().includes(id)).map(entry => entry.id);
   assert.deepEqual(reasonsOf('field_data_unavailable'), ['google-api-key', 'cwv-site-collection']);
+  assert.deepEqual(reasonsOf('psi_field_discontinued'), ['google-api-key', 'cwv-site-collection']);
+  assert.deepEqual(reasonsOf('crux_permission_denied'), ['cwv-site-collection']);
+  assert.deepEqual(reasonsOf('crux_unavailable'), ['cwv-site-collection']);
   assert.deepEqual(reasonsOf('chrome_missing'), ['chrome-install']);
 });
 
