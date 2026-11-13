@@ -798,6 +798,10 @@ export function buildReport(packet) {
     if (startRedirect?.to !== packet.run_context.target || !same(intake?.selection?.start_redirect ?? null, startRedirect))
       throw new ContractError('start redirect differs from the intake record or the run target');
   }
+  // Judgments taken over from an earlier run are said in the run conditions; the claim is a count and that run's id, nothing a score reads.
+  const reusedJudgments = packet.reused_judgments ?? null;
+  if (reusedJudgments && !(Number.isInteger(reusedJudgments.count) && reusedJudgments.count > 0 && named(reusedJudgments.from_run_id)))
+    throw new ContractError('reused_judgments must hold a positive count and the earlier run id');
   const merged = mergeFindings(packet.findings);
   const observations = [...packet.baseline.input.observations, ...(packet.after?.input.observations ?? [])];
   const collectedAny = collectedResponses(snapshots, requireRef);
@@ -937,7 +941,7 @@ export function buildReport(packet) {
     metric_origin_limitation_messages: originNotes.map(([, key]) => messageOf(key)), follow_ups: remaining,
     evidence_root: packet.evidence_root, evidence_index: packet.evidence_index,
     audit_ref: packet.audit_ref ?? null, audit_snapshots: snapshots, model_judgments: modelRows, empty_pages: emptyPages, source_ref: packet.source_ref,
-    outcome_rows: metricRows(packet.metrics), lab_cwv: packet.lab_cwv ?? null, start_redirect: startRedirect, answered_runbooks: packet.answered_runbooks ?? [] };
+    outcome_rows: metricRows(packet.metrics), lab_cwv: packet.lab_cwv ?? null, start_redirect: startRedirect, reused_judgments: reusedJudgments, answered_runbooks: packet.answered_runbooks ?? [] };
   const composed = composeReport(verified);
   const { markdown, tables } = renderReport(composed, verified);
   // The composed report leads; the checked data it was built from follows. `findings` is the sorted fixes again, for readers of earlier reports.
