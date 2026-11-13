@@ -4,7 +4,7 @@ import { readFileSync, readdirSync, writeFileSync, mkdirSync } from 'node:fs';
 import path from 'node:path';
 import { writeReport } from '../skills/optbrew/scripts/core/report.mjs';
 import { SECTION_TITLES, composeReport, fixMethod, markdownText, pageAddresses, renderReport } from '../skills/optbrew/scripts/core/report-compose.mjs';
-import { FIXES_FILE, fixesMarkdown } from '../skills/optbrew/scripts/core/report-fixes.mjs';
+import { FIXES_FILE, fixIdsOf, fixesMarkdown } from '../skills/optbrew/scripts/core/report-fixes.mjs';
 import { fixturePacket, verifiedOf } from './support/compose.mjs';
 import { tempDir } from './support/temp-dir.mjs';
 
@@ -126,4 +126,10 @@ test('fixes.md is part of the all-or-none write: a file already there stops the 
   await assert.rejects(writeReport(fixturePacket(), out), /report output already exists/);
   assert.deepEqual(readdirSync(out), [FIXES_FILE]);
   assert.equal(readFileSync(path.join(out, FIXES_FILE), 'utf8'), 'old\n');
+});
+
+test('fixIdsOf reads back the finding ids of a fixes.md in its order, the ids compare --fixes takes', () => {
+  const composed = composedOf([finding('a', { priority: 'P2' }), finding('b', { priority: 'P0' })]);
+  assert.deepEqual(fixIdsOf(fixesMarkdown(composed)), ['b', 'a']);
+  assert.deepEqual(fixIdsOf(fixesMarkdown(composedOf([]))), []);
 });
