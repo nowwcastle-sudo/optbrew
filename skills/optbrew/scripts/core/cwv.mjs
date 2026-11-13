@@ -1,15 +1,25 @@
 import { endpoints, limits } from './config.mjs';
 
 export const HTTP_OK = 200;
-const HTTP_NOT_FOUND = 404;
+export const HTTP_FORBIDDEN = 403;
+export const HTTP_NOT_FOUND = 404;
+const HTTP_TOO_MANY_REQUESTS = 429;
+const HTTP_SERVER_ERROR = 500;
 const NOT_FOUND = /chrome ux report data not found/i;
 // Google API keys are letters, digits, ".", "_" and "-" (AI Studio's AQ. keys have a dot); anything else is not a key optbrew can send, and a short string could not be removed safely.
 const KEY_SHAPE = /^[A-Za-z0-9._-]{20,}$/;
+// A CrUX answer that says `try later` (429 or 5xx) is asked once more after a short wait. In code and not in limits.json: that file is hashed into the protocol identity.
+const CRUX_RETRIES = 1;
+const CRUX_RETRY_WAIT_MS = 1000;
 // CrUX is asked for phones, as PageSpeed Insights is (strategy=mobile in endpoints.json).
 const FORM_FACTOR = 'PHONE';
 // CLS counts shifts in session windows: a gap of 1 s ends a window and a window ends after 5 s (the web.dev definition).
 const SESSION_GAP_MS = 1000;
 const SESSION_CAP_MS = 5000;
+
+/** An answer that means "try later": a quota or a server error. */
+export const isTryLater = status => status === HTTP_TOO_MANY_REQUESTS || status >= HTTP_SERVER_ERROR;
+const pause = milliseconds => new Promise(resolve => setTimeout(resolve, milliseconds));
 
 /** `text` with the key removed, in the form it was sent and in its URL-encoded form. */
 const without = (text, key) => key ? [key, encodeURIComponent(key)].reduce((rest, secret) => rest.split(secret).join(''), String(text)) : String(text);
@@ -34,23 +44,30 @@ async function keep(store, source, origin, keyState, result) {
 }
 
 /**
- * Field Core Web Vitals of one origin, stored as evidence and never judged here. With the user's own Google key the
- * Chrome UX Report is asked first and PageSpeed Insights only when CrUX has no data for the origin; without a key (or with
- * one that is not shaped like a Google key, which the record says) PageSpeed Insights is tried `psi_attempts` times, keyless.
+ * Field Core Web Vitals of one origin, stored as evidence and never judged here. The Chrome UX Report is the source of record:
+ * with the user's own Google key it is asked first (a 429 or 5xx once more, after `wait`; every answer is kept) and PageSpeed
+ * Insights only when CrUX has no data for the origin. Without a key (or with one that is not shaped like a Google key, which the
+ * record says) PageSpeed Insights is tried `psi_attempts` times, keyless. Google has announced that PageSpeed Insights will stop
+ * returning real-user data, so a keyless answer without it is expected and the verdict says so.
  * `fetchFn(url, { method, headers, body })` answers `{ status, text() }`: pass `transportFetch` of the run's transport, so a
  * proxy-only network works and the host is vetted. The key travels in the `x-goog-api-key` header only: no endpoint and no URL
  * holds it, and every stored body or error has it removed.
  */
-export async function collectCwv({ origin, key = null, fetchFn, store }) {
+export async function collectCwv({ origin, key = null, fetchFn, store, wait = pause }) {
   if (typeof fetchFn !== 'function') throw new TypeError('collectCwv needs fetchFn');
   const usable = typeof key === 'string' && KEY_SHAPE.test(key);
   const keyState = key ? (usable ? 'used' : 'key_ignored_malformed') : 'absent';
   const auth = usable ? { 'x-goog-api-key': key } : {};
   const secret = usable ? key : null;
   if (usable) {
-    const crux = await ask(fetchFn, endpoints().crux, { method: 'POST', headers: { 'content-type': 'application/json', ...auth },
-      body: JSON.stringify({ origin, formFactor: FORM_FACTOR }) }, secret);
-    await keep(store, 'crux', origin, keyState, crux);
+    const request = { method: 'POST', headers: { 'content-type': 'application/json', ...auth }, body: JSON.stringify({ origin, formFactor: FORM_FACTOR }) };
+    let crux;
+    for (let attempt = 0; attempt <= CRUX_RETRIES; attempt++) {
+      if (attempt > 0) await wait(CRUX_RETRY_WAIT_MS);
+      crux = await ask(fetchFn, endpoints().crux, request, secret);
+      await keep(store, 'crux', origin, keyState, crux);
+      if (!isTryLater(crux.status)) break;
+    }
     if (!(crux.status === HTTP_NOT_FOUND && NOT_FOUND.test(crux.text))) return;
   }
   for (let attempt = 0; attempt < limits().psi_attempts; attempt++) {

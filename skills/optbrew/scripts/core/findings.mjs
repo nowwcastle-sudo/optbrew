@@ -1,3 +1,4 @@
+import { checkRegistry } from './config.mjs';
 import { ContractError, validateEntity } from './contracts.mjs';
 
 const rank = { P0: 0, P1: 1, P2: 2, P3: 3 };
@@ -18,6 +19,30 @@ export const pageNeutral = (text, unitKey) => {
  * its reason and lists them in `measurement.problems`; each is its own fix. Any other verdict states one problem, its reason.
  */
 export const problemsOf = observation => observation.measurement?.problems ?? [observation.reason];
+
+/**
+ * The failed verdicts grouped as the fix list groups them: one group for each distinct problem, not for each page it appears on.
+ * Failed verdicts with the same check and the same message (the page's own address left out of it) are one group that lists every
+ * unit it affects in `unit_keys`; its own observation is the first of them. A verdict that states several problems (`problemsOf`)
+ * joins one group per problem; a group that is not its first unit's first problem gets that problem's position in its id. A model's
+ * verdict is told page by page. The id is the finding id of the report, so a later run can name the fix it re-checks.
+ */
+export function findingGroups(observations) {
+  const blocking = new Set(checkRegistry().families.filter(family => family.blocker_on_fail).map(family => family.family_id));
+  const groups = new Map();
+  for (const observation of [...observations].filter(x => x.state === 'fail').sort((a, b) => a.unit_key < b.unit_key ? -1 : a.unit_key > b.unit_key ? 1 : 0)) {
+    const model = observation.evaluator_type === 'host_model';
+    const blocker = observation.blocker === true || blocking.has(observation.family_id);
+    for (const [position, problem] of problemsOf(observation).entries()) {
+      // A model's fix is told page by page: each page has its own cited text, which the owner needs to find the place.
+      const key = JSON.stringify([observation.check_id, pageNeutral(problem, observation.unit_key), model, blocker, ...(model ? [observation.unit_key] : [])]);
+      if (!groups.has(key)) groups.set(key, { observation, problem, position, model, blocker, stated: observation.problem_messages?.[position], unit_keys: [],
+        finding_id: `finding-${observation.observation_id}${position ? `-${position}` : ''}` });
+      groups.get(key).unit_keys.push(observation.unit_key);
+    }
+  }
+  return [...groups.values()];
+}
 
 /** Merge the same check, unit and issue while preserving every module source. */
 export function mergeFindings(findings) {

@@ -70,7 +70,7 @@ test('the pages up to the limit are audited: a 30-page site in full, a 60-page s
   assert.deepEqual(pagesOf(sampled).map(x => x.normalized), pagesOf(raised).slice(0, pagesOf(sampled).length).map(x => x.normalized), 'the same order, cut at the limit');
   assert.deepEqual(small.context.protocol.page_types.map(type => type.id), ['home', 'section']);
   assert.ok(small.context.protocol.render.pages.length <= limits().render_pages);
-  const storedBytes = (await readFile((await readJson(path.join(small.ws.out, 'evidence', 'evidence-index.json'))).judge_queue[0].evidence_ref)).length;
+  const storedBytes = (await readFile(path.join(small.ws.out, (await readJson(path.join(small.ws.out, 'evidence', 'evidence-index.json'))).judge_queue[0].evidence_ref))).length;
   const viewBytes = await queueBytes(small.first);
   assert.ok(viewBytes * 2 < storedBytes, `the files the model reads for 31 pages (${viewBytes} bytes) are under half the stored queue (${storedBytes} bytes)`);
 });
@@ -92,7 +92,7 @@ test('the page file of a page with 30 Korean spans is at most 60% of the bytes i
   const page = JSON.parse(written);
   assert.equal(page.spans.length, 30);
   assert.ok(page.spans.every(span => /[가-힣]/.test(span.text)));
-  const stored = (await readJson((await readJson(path.join(ws.out, 'evidence', 'evidence-index.json'))).judge_queue[0].evidence_ref)).items.filter(item => item.url === url);
+  const stored = (await readJson(path.join(ws.out, (await readJson(path.join(ws.out, 'evidence', 'evidence-index.json'))).judge_queue[0].evidence_ref))).items.filter(item => item.url === url);
   assert.deepEqual(stored[0].spans.map(span => span.text), page.spans.map(span => span.text), 'the same spans in both shapes');
   const old = { url, evidence_ref: stored[0].evidence_ref, evidence_sha256: stored[0].evidence_sha256, spans: stored[0].spans,
     families: stored.map(({ family_id, unit_key }) => ({ family_id, unit_key })) };

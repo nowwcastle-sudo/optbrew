@@ -8,10 +8,11 @@ import { findChrome } from './core/chrome.mjs';
 import { validateEntity } from './core/contracts.mjs';
 import { renderChrome } from './core/render.mjs';
 import { readJudgments } from './core/judgment-files.mjs';
-import { QUEUE_PAGES_DIR, prepareOutput, restoreState, runStages, stages } from './core/stages.mjs';
+import { assertReusable } from './core/judgment-reuse.mjs';
+import { QUEUE_PAGES_DIR, earlierRun, prepareOutput, restoreState, runStages, stages } from './core/stages.mjs';
 import { selectTransport } from './core/transport.mjs';
 
-const USAGE = 'usage: node skills/optbrew/scripts/run.mjs --answers <intake-answers.json> --out <dir> [--judgments <judgments folder or file>]';
+const USAGE = 'usage: node skills/optbrew/scripts/run.mjs --answers <intake-answers.json> --out <dir> [--judgments <judgments folder or file> | --reuse-judgments <earlier run folder>]';
 const RESUME_FROM = 'judge';
 const STATUS_DONE = 'done';
 
@@ -36,11 +37,13 @@ const partialOf = queue => (queue?.partial ? { judge_partial: queue.partial } : 
 /**
  * One audit: the first call runs context, collect, render, cwv, derive and judge, and stops at the judge queue; the second call
  * (same `out`, now with `judgmentsPath`) rebuilds its state from the evidence in `out` and runs judge, score and report.
+ * `reusePath` (first call only) is an earlier run folder: its judgments of pages whose evidence is unchanged are copied into `out`
+ * and checked again; a run with every page covered needs no second call.
  * `overrides` is for tests: `env`, `home`, `chrome` (holder), `fetchFn`, `selectTransport`, `stages` (the stage list), `localTargets`
  * (loopback `{ host, port }` pairs a test may audit; the shipped command refuses a local address, as preflight does).
  * Everything is written under `out`, and the render chrome is closed whatever happens.
  */
-export async function run({ answersPath, out, judgmentsPath = null }, overrides = {}) {
+export async function run({ answersPath, out, judgmentsPath = null, reusePath = null }, overrides = {}) {
   const outDir = path.resolve(out);
   const env = overrides.env ?? process.env;
   const chrome = overrides.chrome ?? chromeHolder(env);
@@ -48,12 +51,15 @@ export async function run({ answersPath, out, judgmentsPath = null }, overrides 
     const answers = await readJson(answersPath, 'answers');
     try { validateEntity('IntakeAnswers', answers); }
     catch (error) { throw new Error(`The start answers are not valid (${error.message}).`); }
+    if (judgmentsPath && reusePath) throw new Error(USAGE);
+    const reuse = reusePath ? path.resolve(reusePath) : null;
+    if (reuse) await assertReusable(earlierRun(reuse), answers);
     const judgments = judgmentsPath ? await readJudgments(path.resolve(judgmentsPath), { queueDir: path.join(outDir, QUEUE_PAGES_DIR) }) : null;
     const deps = { env, home: overrides.home, chrome, fetchFn: overrides.fetchFn, localTargets: overrides.localTargets,
       selectTransport: overrides.selectTransport ?? (input => selectTransport({ ...input, resolve: host => lookup(host, { all: true, verbatim: true }) })) };
     const resuming = await prepareOutput(outDir) === 'resume';
     const state = resuming ? await restoreState({ out: outDir, answers }) : { answers, out: outDir, answersDir: path.dirname(path.resolve(answersPath)) };
-    const { state: end, halt } = await runStages(overrides.stages ?? stages(), { ...state, judgments }, deps, { from: resuming ? RESUME_FROM : null });
+    const { state: end, halt } = await runStages(overrides.stages ?? stages(), { ...state, judgments, reuse }, deps, { from: resuming ? RESUME_FROM : null });
     return halt ? { status: halt, judge_pages: path.join(outDir, QUEUE_PAGES_DIR),
       pages: new Set(end.queue.items.map(item => item.url)).size, queue_items: end.queue.items.length, ...partialOf(end.queue) } :
       { status: STATUS_DONE, reports: end.reports, score_input: path.join(outDir, 'score-input.json'), ...(end.lab_cwv ? { lab_cwv: end.lab_cwv } : {}), ...partialOf(end.queue) };
@@ -69,8 +75,8 @@ if (process.argv[1] && realpathSync(path.resolve(process.argv[1])) === realpathS
     const option = name => { const i = args.indexOf(name); return i < 0 ? null : args[i + 1]; };
     const answersPath = option('--answers');
     const out = option('--out');
-    if (!answersPath || !out || args.length % 2 || args.some((arg, i) => i % 2 === 0 && !['--answers', '--out', '--judgments'].includes(arg))) throw new Error(USAGE);
-    const result = await run({ answersPath, out, judgmentsPath: option('--judgments') }, { chrome });
+    if (!answersPath || !out || args.length % 2 || args.some((arg, i) => i % 2 === 0 && !['--answers', '--out', '--judgments', '--reuse-judgments'].includes(arg))) throw new Error(USAGE);
+    const result = await run({ answersPath, out, judgmentsPath: option('--judgments'), reusePath: option('--reuse-judgments') }, { chrome });
     process.stdout.write(`${JSON.stringify(result)}\n`);
   } catch (error) {
     // The last line of stderr is one plain sentence saying why the run stopped.

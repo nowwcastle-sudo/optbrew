@@ -6,8 +6,9 @@ import { limits } from './config.mjs';
 import { decodeEntities } from './html.mjs';
 import { assertUrlInScope } from './scope.mjs';
 
-const START_FILE = path.join('preflight', 'start.json');
-const EVIDENCE_INDEX = path.join('preflight', 'evidence', 'evidence-index.json');
+const PREFLIGHT_DIR = 'preflight';
+const START_FILE = path.join(PREFLIGHT_DIR, 'start.json');
+const EVIDENCE_INDEX = path.join(PREFLIGHT_DIR, 'evidence', 'evidence-index.json');
 /** Robots and sitemap files are auxiliary resources of the protocol, never audited pages. */
 const AUXILIARY_PATH = /\/(?:robots\.txt|sitemap[^/]*\.xml)$/i;
 // A sitemap is an XML document whose root element is <urlset> or <sitemapindex>: before the root only a byte order mark, white
@@ -51,7 +52,7 @@ export async function readPreflight(out, startHref) {
   for (const entry of index?.raw ?? []) {
     let text;
     try {
-      const bytes = await readFile(entry.evidence_ref);
+      const bytes = await readFile(path.resolve(out, PREFLIGHT_DIR, entry.evidence_ref));
       if (createHash('sha256').update(bytes).digest('hex') !== entry.content_hash) continue;
       text = bytes.toString('utf8');
     } catch { continue; }

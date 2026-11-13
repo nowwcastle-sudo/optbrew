@@ -17,14 +17,17 @@ SKILL.md 11단계가 쓰는 문서다. 고친 뒤, 또는 사용자가 배포 �
 (a) 사용자가 배포했다고 답하면 이렇게 한다.
 1. 새 결과 폴더 `<OUT>-after`를 정한다. 이미 있으면 뒤에 `-2`, `-3`을 붙인다.
 2. 이전 `<OUT>`의 `preflight` 폴더를 통째로 `<OUT>-after/preflight`로 복사한다. 실행은 감사할 쪽을 결과 폴더의 `preflight`(사이트맵과 첫 화면의 링크)에서 고른다. 이 폴더가 없으면 첫 화면과 사실 쪽만 골라 쪽 종류가 달라지고, 비교는 `page_types_changed`로 `not_comparable`이 된다. SKILL.md 3단계 점검은 다시 하지 않는다. 다시 하면 그 사이 바뀐 사이트맵으로 다른 쪽을 고를 수 있다.
-3. 같은 `intake-answers.json`을 그대로 `--answers`로 두고 `--out`에만 `<OUT>-after`를 써서 SKILL.md 7단계와 8단계를 한다. 그 사이 키나 크롬을 준비했어도 답 파일을 바꾸지 않는다. 목표, 질문, 사실, 표본이 바뀌면 검사 묶음이 달라져 비교할 수 없다.
+3. 같은 `intake-answers.json`을 그대로 `--answers`로 두고 `--out`에만 `<OUT>-after`를 써서 SKILL.md 7단계와 8단계를 한다. 그 사이 키나 크롬을 준비했어도 답 파일을 바꾸지 않는다. 목표, 질문, 사실, 표본이 바뀌면 검사 묶음이 달라져 비교할 수 없다. 사이트가 바뀌지 않은 쪽의 모델 판정이 실행마다 달라 점수가 흔들리는 것을 막으려면 7단계 명령에 `--reuse-judgments "<이전 OUT>"`을 붙인다(SKILL.md 11단계). 증거가 같은 쪽은 이전 판정을 그대로 쓰고 바뀐 쪽만 8단계에서 판정한다.
 4. 이전 실행과 이후 실행의 `done` JSON에서 `score_input` 경로를 읽는다. 아래 명령에 넣는다.
 
 ```
-node "<SKILL_DIR>/scripts/cli.mjs" compare --before "<이전 score_input>" --after "<이후 score_input>" --output "<OUT>-after/comparison.json"
+node "<SKILL_DIR>/scripts/cli.mjs" compare --before "<이전 score_input>" --after "<이후 score_input>" --fixes "<OUT>/fixes.md" --output "<OUT>-after/comparison.json"
 ```
 
-5. 결과가 `comparable`일 때만 "해결됨"이라고 쓴다. `not_comparable`이면 점수 차를 말하지 않고 `reasons`를 그대로 알린다.
+`--fixes`는 이전 결과 폴더의 `fixes.md`다. 그 목록의 고칠 것마다 이후 상태를 `finding_outcomes`에 받는다.
+
+5. 「해결됨」은 고칠 것 하나 단위로 쓴다. `finding_outcomes`가 고칠 것마다 `resolved`(그 고칠 것이 가리킨 모든 단위가 이후 실행에서 pass), `remaining`(하나라도 fail이나 partial로 남음), `unknown`(이후 실행이 그 단위를 채점하지 않았거나 판정이 없음)을 준다. `resolved`만 "해결됨", `remaining`은 "남음", `unknown`은 "모름"이라고 쓴다. 쪽이 빠졌거나 판정이 적용 안 됨으로 바뀐 것을 해결됨으로 세지 않는다. `finding_outcomes`는 결과가 `comparable`이거나 `not_comparable`의 사유가 `page_types_changed`, `applicable_units_changed`, `cwv_window_overlap`뿐일 때만 있다. 수정이 적용 단위를 바꾼 경우다. 다른 사유가 하나라도 있으면 없고, 이때는 "해결됨"이라고 쓰지 않는다. 프로필 점수 차는 `comparable`일 때만 말한다. `not_comparable`이면 점수 차를 말하지 않고 `reasons`를 그대로 알린다. 결과의 `unit_transitions`는 있다: `changed`(상태가 바뀐 단위), `only_before`·`only_after`(한쪽에만 있는 단위)를 사실로 보여 줄 수 있다. 점수나 성과로 말하지 않는다. 점수 차를 말할 때는 `by_evaluator`의 `host_model` 몫이 움직였는지 함께 본다. 모델 판정은 사이트가 같아도 흔들릴 수 있다.
+   방문자 실측(CWV) 값은 28일 창의 자료다. 이후 창이 이전 창과 하루라도 겹치면 `cwv_window_overlap`으로 비교를 거절한다. 배포 전 날짜가 섞여 있어 통과가 고친 결과가 아닐 수 있기 때문이다. 결과의 `cwv_windows`에 두 창의 날짜가 있다. 창이 겹쳐도 CWV가 아닌 고칠 것은 `finding_outcomes`로 말할 수 있다. 이 경우 CWV는 이전 창이 끝난 날로부터 28일이 지나 창이 겹치지 않게 된 뒤에 다시 감사해서 비교한다. 창을 확인할 수 없으면(`warnings`의 `cwv_window_unverifiable`) 비교는 하되 CWV 변화는 "창을 확인하지 못했다"고 덧붙여 말한다.
 6. 확인은 사이트에서 읽은 결과다. 색인, 유입, 인용이 좋아졌다는 증명은 아니라고 한 줄 덧붙인다. 사용자가 「해결됨」의 조건을 더 물을 때만 [evidence.md](evidence.md)를 연다.
 
 (b) 사용자가 아직 배포하지 않았다고 답하면 이렇게 말하고 멈춘다: "로컬 수정은 아직 확인되지 않았습니다. 사이트에 배포한 뒤 알려 주시면 다시 확인합니다."
