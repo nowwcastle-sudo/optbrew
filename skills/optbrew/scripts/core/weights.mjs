@@ -100,8 +100,18 @@ export function compileUnits(input, profile) {
   return units;
 }
 
-const display = value => Math.round((value + Number.EPSILON) * 10) / 10;
+/** The one rounding every shown percentage, band and status is read from: half up to one decimal. */
+export const roundTenth = value => Math.round((value + Number.EPSILON) * 10) / 10;
 const tidy = value => Math.abs(value) < tolerance ? 0 : Math.abs(value - 100) < tolerance ? 100 : value;
+
+/**
+ * The band of a score and whether a coverage is under the 80% rule, both read from the one-decimal values `scoreWeighted` shows and
+ * never from the raw weights: a shown 60.0 is not below 60 and a shown 80.0 is not below 80 (audit A8).
+ */
+export function gradeOf({ score, coverage }) {
+  const band = score === null ? null : score < 60 ? 'focus_improvement' : score < 80 ? 'major_improvement' : score < 95 ? 'additional_improvement' : 'remaining_review';
+  return { band, provisional: coverage < 80 };
+}
 
 /** A/M/N remain raw weighted totals; only displayed percentages are rounded. */
 export function scoreWeighted(units) {
@@ -134,7 +144,7 @@ export function scoreWeighted(units) {
     N += weight * q;
   }
   A = tidy(A); M = tidy(M); N = tidy(N);
-  return { A, M, N, score: M === 0 ? null : display(100 * N / M),
-    coverage: A === 0 ? null : display(100 * M / A),
-    missing_bounds: A === 0 ? null : [display(100 * N / A), display(100 * (N + A - M) / A)] };
+  return { A, M, N, score: M === 0 ? null : roundTenth(100 * N / M),
+    coverage: A === 0 ? null : roundTenth(100 * M / A),
+    missing_bounds: A === 0 ? null : [roundTenth(100 * N / A), roundTenth(100 * (N + A - M) / A)] };
 }

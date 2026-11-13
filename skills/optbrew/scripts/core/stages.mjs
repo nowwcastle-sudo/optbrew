@@ -23,7 +23,7 @@ import { keyHome, readGoogleKey } from './keys.mjs';
 import { MigrationRequired, assertCurrentEvidence } from './migration.mjs';
 import { naverOwnershipFollowUps } from './naver-ownership.mjs';
 import { groupPages, pageBudget, readPreflight, sameSite, selectPages } from './page-select.mjs';
-import { pageNeutral, problemsOf } from './findings.mjs';
+import { findingGroups } from './findings.mjs';
 import { freezeProtocol } from './protocol.mjs';
 import { renderPages, selectRenderPages } from './render.mjs';
 import { htmlReportWriter } from './report-page.mjs';
@@ -556,21 +556,9 @@ async function evidenceList(state) {
  * source and cites the page evidence the collector stored.
  */
 function findingsOf(observations, evidence) {
-  const blocking = new Set(checkRegistry().families.filter(family => family.blocker_on_fail).map(family => family.family_id));
   const core = new Set(checkRegistry().families.filter(family => family.core_policy).map(family => family.family_id));
-  const groups = new Map();
-  for (const observation of [...observations].filter(x => x.state === 'fail').sort((a, b) => a.unit_key < b.unit_key ? -1 : a.unit_key > b.unit_key ? 1 : 0)) {
-    const model = observation.evaluator_type === 'host_model';
-    const blocker = observation.blocker === true || blocking.has(observation.family_id);
-    for (const [position, problem] of problemsOf(observation).entries()) {
-      // A model's fix is told page by page: each page has its own cited text, which the owner needs to find the place.
-      const key = JSON.stringify([observation.check_id, pageNeutral(problem, observation.unit_key), model, blocker, ...(model ? [observation.unit_key] : [])]);
-      if (!groups.has(key)) groups.set(key, { observation, problem, position, model, blocker, stated: observation.problem_messages?.[position], unit_keys: [] });
-      groups.get(key).unit_keys.push(observation.unit_key);
-    }
-  }
-  return [...groups.values()].map(({ observation, problem, position, model, blocker, stated, unit_keys }) => ({ schema_version: versions().contract_schema,
-    finding_id: `finding-${observation.observation_id}${position ? `-${position}` : ''}`, check_id: observation.check_id, unit_key: observation.unit_key, unit_keys,
+  return findingGroups(observations).map(({ finding_id, observation, problem, model, blocker, stated, unit_keys }) => ({ schema_version: versions().contract_schema,
+    finding_id, check_id: observation.check_id, unit_key: observation.unit_key, unit_keys,
     priority: blocker ? 'P0' : core.has(observation.family_id) ? 'P1' : 'P2', blocker, message: problem,
     ...(stated ? { message_key: stated.message_key, message_values: stated.message_values } : {}),
     source_ref: model ? OBSERVATION_SOURCES.host_model : evidence.find(x => x.ref === observation.evidence_ref)?.source_ref ?? observation.source_ref,
