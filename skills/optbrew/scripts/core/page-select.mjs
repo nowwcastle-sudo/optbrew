@@ -6,8 +6,9 @@ import { limits } from './config.mjs';
 import { decodeEntities } from './html.mjs';
 import { assertUrlInScope } from './scope.mjs';
 
-const START_FILE = path.join('preflight', 'start.json');
-const EVIDENCE_INDEX = path.join('preflight', 'evidence', 'evidence-index.json');
+const PREFLIGHT_DIR = 'preflight';
+const START_FILE = path.join(PREFLIGHT_DIR, 'start.json');
+const EVIDENCE_INDEX = path.join(PREFLIGHT_DIR, 'evidence', 'evidence-index.json');
 /** Robots and sitemap files are auxiliary resources of the protocol, never audited pages. */
 const AUXILIARY_PATH = /\/(?:robots\.txt|sitemap[^/]*\.xml)$/i;
 // A sitemap is an XML document whose root element is <urlset> or <sitemapindex>: before the root only a byte order mark, white
@@ -51,7 +52,7 @@ export async function readPreflight(out, startHref) {
   for (const entry of index?.raw ?? []) {
     let text;
     try {
-      const bytes = await readFile(entry.evidence_ref);
+      const bytes = await readFile(path.resolve(out, PREFLIGHT_DIR, entry.evidence_ref));
       if (createHash('sha256').update(bytes).digest('hex') !== entry.content_hash) continue;
       text = bytes.toString('utf8');
     } catch { continue; }
@@ -133,4 +134,17 @@ export function groupPages(pages, home) {
     types.set(id, [...(types.get(id) ?? []), href]);
   }
   return [...types].map(([id, urls]) => ({ id, urls }));
+}
+
+/**
+ * The pages a judge queue keeps when it may hold at most `cap`: every page when they fit, else the home page first, then one page
+ * of each page type in turn (the types in the order their first page appears, the pages of a type in the order given), round after
+ * round until `cap` pages are chosen. A site with more types than `cap` keeps the first types only. The same pages always give the same choice.
+ */
+export function evenPages(urls, home, cap) {
+  if (urls.length <= cap) return urls;
+  const groups = groupPages(urls, home).sort((a, b) => (a.id === HOME_TYPE ? 0 : 1) - (b.id === HOME_TYPE ? 0 : 1)).map(group => [...group.urls]);
+  const chosen = [];
+  while (chosen.length < cap) for (const group of groups) if (group.length && chosen.length < cap) chosen.push(group.shift());
+  return chosen;
 }

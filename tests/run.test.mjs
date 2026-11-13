@@ -45,7 +45,7 @@ test('first call halts awaiting judgments with a queue', async () => {
   const index = await readJson(path.join(ws.out, 'evidence', 'evidence-index.json'));
   // Carry 11: the queue lives in the evidence store, and the files in --out are that stored queue, regrouped.
   assert.equal(index.judge_queue.length, 1);
-  const stored = JSON.parse(await readFile(index.judge_queue[0].evidence_ref, 'utf8'));
+  const stored = JSON.parse(await readFile(path.join(ws.out, index.judge_queue[0].evidence_ref), 'utf8'));
   assert.equal(stored.items.length, queuedUnits(queue).length, 'the files are the stored queue, regrouped by page');
   for (const page of queue.pages) {
     const items = stored.items.filter(item => item.evidence_ref === page.evidence_ref);
@@ -93,6 +93,29 @@ test('resume refuses answers that are not the ones the run was made from', async
   const other = path.join(call.ws.dir, 'other.json');
   await writeFile(other, JSON.stringify(answersFor('https://other.test/')));
   await assert.rejects(run({ answersPath: other, out: call.ws.out, judgmentsPath }, call.overrides), /not the ones this run was made from/);
+});
+
+test('resume refuses the same address with other answers, and says which answers changed', async () => {
+  const call = await firstCall();
+  const { judgmentsPath } = await judge(call);
+  const before = call.site.requests.length;
+  const changed = path.join(call.ws.dir, 'changed.json');
+  await writeFile(changed, JSON.stringify(answersFor(`${SITE}/`, { questions: [{ id: 'q1', question: 'Where is Brew Cafe?', category: 'brand' }], facts: [{ key: 'phone', value: '02-555-0100', source_url: `${SITE}/` }] })));
+  await assert.rejects(run({ answersPath: changed, out: call.ws.out, judgmentsPath }, call.overrides), /not the ones this run was made from \(changed: questions, facts\)/);
+  assert.equal(call.site.requests.length, before, 'a refused resume collects nothing');
+  await assert.rejects(readFile(path.join(call.ws.out, 'report.json')), { code: 'ENOENT' }, 'and writes no report');
+  assert.equal((await run({ answersPath: call.ws.answersPath, out: call.ws.out, judgmentsPath }, call.overrides)).status, 'done', 'the same answers still resume');
+});
+
+test('a result folder the run creates ignores itself, and a .gitignore already there is left alone', async () => {
+  const call = await firstCall();
+  assert.equal(await readFile(path.join(call.ws.out, '.gitignore'), 'utf8'), '*\n');
+  const site = memorySite();
+  const ws = await workspace(answersFor(`${SITE}/`));
+  await mkdir(ws.out);
+  await writeFile(path.join(ws.out, '.gitignore'), 'keep\n');
+  await run({ answersPath: ws.answersPath, out: ws.out }, { env: quietEnv(), home: ws.home, selectTransport: site.selectTransport });
+  assert.equal(await readFile(path.join(ws.out, '.gitignore'), 'utf8'), 'keep\n');
 });
 
 test('chrome is closed even when a stage throws', async () => {
@@ -177,7 +200,7 @@ test('one run produces report.json and report.md', async () => {
   assert.equal(queuedUnits(queue).some(x => x.unit_key === 'entity-identity|site'), byUnit('entity-identity|site')?.evaluator_type === 'host_model');
   // Carry 2 and 17: the phase was audited, and its snapshot says so.
   assert.equal(report.run_context.audited, true);
-  assert.deepEqual(report.audit_snapshots, [{ phase: 'baseline', audit_ref: path.join(call.ws.out, 'evidence', 'evidence-index.json'), context_ref: 'context.json' }]);
+  assert.deepEqual(report.audit_snapshots, [{ phase: 'baseline', audit_ref: 'evidence/evidence-index.json', context_ref: 'context.json' }]);
   assert.equal(report.run_context.environment, 'production');
   assert.equal(report.run_context.evidence_ref, 'context.json');
   // Carry 11: the packet lists the stored queue.

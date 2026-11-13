@@ -103,6 +103,7 @@ node "<SKILL_DIR>/scripts/preflight.mjs" --url "<주소>" --out "<OUT>" --source
   "facts": [{ "key": "…", "value": "…", "source_url": "…" }],
   "sample_mode": "null, sample, raise 중 하나",
   "max_urls": 50,
+  "max_judge_pages": "생략하면 기본 상한. 사용자가 판정할 쪽 수를 정했을 때만 그 수",
   "source_tools": ["2단계에서 찾은 이름"],
   "probe": "<start.json의 probe 객체를 그대로>",
   "owner_exports": [{ "kind": "gsc 또는 naver", "path": "<사용자가 알려 준 파일 경로>" }]
@@ -113,6 +114,7 @@ node "<SKILL_DIR>/scripts/preflight.mjs" --url "<주소>" --out "<OUT>" --source
 - `goals`는 「주소와 목표」에서 확정한 목표 이름을 그대로 쓴 목록이다. 실행은 이 이름을 읽어 점검할 엔진과 항목을 정한다.
 - `facts`는 `fact_candidates`의 `key`, `value`, `source_url`을 그대로 쓴다. 사용자가 뺀 사실은 뺀다. 이 사실은 점검의 기준이 된다. 페이지의 이름, 전화번호, 주소, 연도가 이와 다르면 그 페이지가 실패로 적힌다.
 - `sample_mode`는 「표본」 항목을 보내지 않았으면 `null`이고 `max_urls`는 50이다. "표본"이면 `sample`이고 `max_urls`는 50이다. "상한을 올림"이면 `raise`이고 `max_urls`는 `start.json`의 `max_urls_raise` 값을 그대로 쓴다. 이 값은 점검 스크립트가 실행과 같은 방식으로 사전 점검 폴더를 읽어 구한 수다(robots.txt와 사이트맵 파일도 요청에 들어가고, 쪽이 다른 주소로 넘어갈 때의 여유가 남는다). 200을 넘지 않는다. 직접 계산하지 않는다.
+- `max_judge_pages`는 모델이 판정할 쪽 수의 상한이다. 사용자가 「표본」 항목에서 판정 쪽 수를 정해 말했을 때만 그 수(1 이상 200 이하)를 쓰고, 아니면 이 필드를 통째로 뺀다. 빼면 `judge_pages_default`(limits.json)가 상한이다. 상한보다 글이 있는 쪽이 많으면 일부만 판정하고, 보고서가 그 사실과 판정 안 된 쪽을 적는다.
 - `owner_exports`는 5단계에서 경로를 받았을 때만 쓴다. 받은 것이 없으면 이 필드를 통째로 뺀다. 파일이 없거나 읽을 수 없으면 감사는 멈추지 않고, 그 칸이 보고서에 "알 수 없음"과 이유로 남는다.
 - `url`은 `start.json`의 `final_url`을 그대로 쓴다. `www`나 `https`로 넘어간 뒤의 주소다. `final_url`이 `null`이면 사용자가 말한 주소를 쓴다. 이 주소가 같은 사이트의 다른 이름이면 감사는 넘어간 주소로 돈다. 다른 사이트이면 실행이 아무것도 읽지 않고 멈춘다(7단계 실패 표의 `leads to another site` 줄).
 - 한도 숫자의 원천은 [limits.json](references/limits.json)이다.
@@ -187,6 +189,8 @@ node "<SKILL_DIR>/scripts/run.mjs" --answers "<OUT>/intake-answers.json" --out "
 ## 11단계. 다시 확인한다
 
 **반드시 먼저 읽는다**: [recheck.md](references/recheck.md)를 처음부터 끝까지 읽고 그대로 따른다. 배포했는지 묻는 법, 새 결과 폴더, `compare` 명령, 「해결됨」을 쓰는 조건이 거기 있다. 사용자가 배포 뒤 다시 감사해 비교하자고 할 때도 이 단계로 온다.
+
+**이전 판정 이어받기.** 사이트를 바꾸지 않은 쪽까지 다시 판정하면 모델 판정이 흔들려 점수 차가 생길 수 있다. 같은 답 파일로 새 `<OUT>-after`를 감사할 때 7단계 명령에 이전 결과 폴더를 붙인다: `--reuse-judgments "<이전 OUT>"`. 쪽의 증거 해시가 이전과 같으면 이전 판정을 새 `judgments/`에 복사하고, 인용한 글이 이번 증거에 있는지 다시 확인한다. 확인이 실패한 쪽과 바뀐 쪽만 8단계로 남는다. `status`가 `awaiting_judgments`이면 `judge next`가 그 쪽만 내준다. 모든 쪽이 같으면 한 번에 `done`이 나온다. 보고서 실행 조건에 「이어받은 판정 N개」가 적힌다. `--judgments`와 함께 쓰지 않는다. 이전 폴더의 질문이나 사실이 다르면 명령이 멈춘다. 그때는 이어받지 않고 새로 판정한다.
 
 ## 이어서 할 때
 

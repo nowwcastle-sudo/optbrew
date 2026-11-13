@@ -1,4 +1,4 @@
-import { compileUnits, scoreWeighted } from './weights.mjs';
+import { compileUnits, roundTenth, scoreWeighted } from './weights.mjs';
 import { CWV_FAMILIES } from './checks/cwv-field.mjs';
 import { CONTENT_AFTER_RENDER } from './checks/render-content.mjs';
 import { messageKey } from './findings.mjs';
@@ -32,9 +32,9 @@ const html = value => String(value ?? UNKNOWN).replace(/\\/g, '\\\\').replace(/&
   .replace(/>/g, '&gt;').replace(/\|/g, '\\|').replace(/[[\]`]/g, '\\$&').replace(/\r?\n/g, '<br>');
 export { html as markdownText };
 const table = (columns, rows) => `| ${columns.join(' | ')} |\n| ${columns.map(() => '---').join(' | ')} |\n${rows.map(row => `| ${row.map(html).join(' | ')} |`).join('\n') || `| ${columns.map(() => '—').join(' | ')} |`}`;
-/** One rounding rule for every coverage the report shows: the floor to a tenth, the value the 80% threshold is judged on. */
-const floorTenth = value => value === null ? null : Math.floor(value * 10 + 1e-9) / 10;
-export const coverageOf = headline => floorTenth(headline.coverage_exact);
+/** One rounding rule for every coverage the report shows: the score's own, half up to a tenth, the value the 80% threshold is judged on. */
+const shownTenth = value => value === null ? null : roundTenth(value);
+export const coverageOf = headline => shownTenth(headline.coverage_exact);
 /** A percentage as text, or the unknown word when there is no number. */
 export const percent = value => typeof value === 'number' ? `${value}%` : UNKNOWN;
 const count = value => typeof value === 'number' ? `${value}건` : UNKNOWN;
@@ -49,13 +49,13 @@ const TRANSPORT_NAMES = { direct: '직접 연결', proxy: '프록시' };
 /** One headline per profile. Below the coverage threshold the single number is withheld and only the measured subset is shown. */
 function scoreHeadline(result) {
   const exact = result.A > 0 ? 100 * result.M / result.A : null;
-  // Sufficiency reads the value the report shows, so a shown 79.9% is never called sufficient.
-  const coverageOk = result.score !== null && exact !== null && floorTenth(exact) >= COVERAGE_THRESHOLD;
+  // Sufficiency reads the value the report shows: a shown 80.0% is sufficient and a shown 79.9% is not.
+  const coverageOk = result.score !== null && exact !== null && shownTenth(exact) >= COVERAGE_THRESHOLD;
   // The design spec also asks for verdicts on the core access and indexing checks before a score counts as sufficient.
   const coreOk = (result.unknown_core ?? []).length === 0;
   const status = !coverageOk ? 'insufficient_coverage' : !coreOk ? 'insufficient_core' : 'sufficient';
   return { profile: result.profile, status, headline_score: status === 'sufficient' ? result.score : null,
-    measured_subset_score: result.score, coverage: floorTenth(exact), coverage_exact: exact, coverage_threshold: COVERAGE_THRESHOLD,
+    measured_subset_score: result.score, coverage: shownTenth(exact), coverage_exact: exact, coverage_threshold: COVERAGE_THRESHOLD,
     unresolved_core: (result.unknown_core ?? []).length, missing_bounds: result.missing_bounds, readiness_status: result.readiness_status };
 }
 
@@ -69,7 +69,7 @@ const phaseOf = (result, input) => {
 
 const withoutCwv = (input, profile) => {
   const { A, M } = scoreWeighted(compileUnits(input, profile).filter(unit => !CWV_FAMILIES.includes(unit.family_id)));
-  return A === 0 ? null : floorTenth(100 * M / A);
+  return A === 0 ? null : shownTenth(100 * M / A);
 };
 
 export const resolved = finding => finding.status === 'verified_production';
@@ -298,7 +298,7 @@ export function composeReport(verified) {
   const fixes = sortedFixes(verified.findings, verified.changes, home);
   const completeness = completenessOf(verified);
   const afterRender = latest.observations.some(obs => obs.family_id === 'render-content' && obs.state === 'pass' && obs.reason.startsWith(CONTENT_AFTER_RENDER));
-  const conditions = { probe: latest.run_context.environment_probe, model_judgments: verified.model_judgments, model_not_applicable: modelNotApplicable(verified), empty_pages: verified.empty_pages ?? [], absence_basis: absenceBasisCounts(verified), not_accepted: notAcceptedCounts(latest), question_coverage: questionCoverageList(latest), lab_cwv: verified.lab_cwv, start_redirect: verified.start_redirect ?? null,
+  const conditions = { probe: latest.run_context.environment_probe, model_judgments: verified.model_judgments, model_not_applicable: modelNotApplicable(verified), empty_pages: verified.empty_pages ?? [], judge_partial: verified.judge_partial ?? null, absence_basis: absenceBasisCounts(verified), not_accepted: notAcceptedCounts(latest), question_coverage: questionCoverageList(latest), lab_cwv: verified.lab_cwv, start_redirect: verified.start_redirect ?? null, reused_judgments: verified.reused_judgments ?? null,
     blockers: { before: blockerSummary(verified.baseline.scores), after: verified.after ? blockerSummary(verified.after.scores) : null },
     notes: afterRender ? [JAVASCRIPT_NOTE] : [] };
   conditions.lines = conditionLines(conditions, verified);
@@ -365,7 +365,10 @@ function conditionLines(conditions, verified) {
     { label: 'Google 키', value: probe.google_key ? '있음' : '없음' },
     { label: '분석 도구', value: probe.source_tools.join(', ') || '지정 없음' },
     { label: '확인한 모델 판단', value: count(conditions.model_judgments.length) },
+    ...(conditions.reused_judgments ? [{ label: '이어받은 판정', value: `이어받은 판정 ${conditions.reused_judgments.count}개 (이전 실행 ${conditions.reused_judgments.from_run_id}에서 가져왔고, 인용한 글은 이번 증거로 다시 확인함)` }] : []),
     { label: '모델이 해당 없음으로 판정한 단위', value: notApplicableText(conditions.model_not_applicable) },
+    ...(conditions.judge_partial ? [{ label: '일부만 판정',
+      value: `${conditions.judge_partial.judged_pages}/${conditions.judge_partial.total_pages}쪽 (판정 안 된 쪽은 모델 판정 항목이 알 수 없음으로 남음: ${conditions.judge_partial.skipped.join(', ')})` }] : []),
     ...(conditions.empty_pages.length ? [{ label: '본문이 빈 페이지', value: `${conditions.empty_pages.length}페이지 (${conditions.empty_pages.join(', ')})` }] : []),
     ...(conditions.absence_basis.absence + conditions.absence_basis.shown ? [{ label: '날짜·운영 주체 판정(fail)의 근거',
       value: `페이지에 없다는 근거 ${conditions.absence_basis.absence}건, 인용한 글에서 직접 확인 ${conditions.absence_basis.shown}건` }] : []),

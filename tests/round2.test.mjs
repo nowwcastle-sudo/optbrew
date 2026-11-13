@@ -189,15 +189,16 @@ test('an audit index from an older release is refused with a message that says w
   assert.throws(() => buildReport(s.packet), /migration_required.*older optbrew release.*run the audit again/i);
 });
 
-test('headline: unresolved core checks and 79.95% coverage never read as sufficient', () => {
+test('headline: unresolved core checks and a shown 79.9% coverage never read as sufficient', () => {
   const result = (over = {}) => ({ profile: 'SEO', score: 90, coverage: 80, A: 100, M: 80, N: 72, missing_bounds: [72, 92], readiness_status: 'unverified', unknown_core: [], ...over });
   assert.equal(headlineOf(result()).status, 'sufficient');
   const core = headlineOf(result({ unknown_core: [{ family_id: 'fetch-response', unit_key: 'fetch-response|x' }] }));
   assert.equal(core.status, 'insufficient_core');
   assert.equal(core.headline_score, null);
-  const near = headlineOf(result({ M: 79.95, coverage: 80 }));
+  const near = headlineOf(result({ M: 79.94, coverage: 79.9 }));
   assert.equal(near.status, 'insufficient_coverage');
-  assert.equal(near.coverage_exact, 79.95);
+  assert.equal(near.coverage_exact, 79.94);
+  assert.equal(headlineOf(result({ M: 79.96, coverage: 80 })).status, 'sufficient', 'a coverage shown as 80.0 meets the rule');
 });
 
 test('vendor tests fail, not skip, when OPTBREW_SOURCES_ROOT is set but missing', () => {

@@ -7,17 +7,19 @@ import { auditCollected } from '../../modules/naver-searchadvisor/scripts/audit.
 import { normalizeImport, readOwnerExport } from '../adapters/imports.mjs';
 import { scopedPage } from './chrome.mjs';
 import { collect, declaredRobotsIndex, transportFetch } from './collector.mjs';
-import { checkRegistry, limits, requestLimit, versions } from './config.mjs';
+import { checkRegistry, judgePageCap, limits, requestLimit, versions } from './config.mjs';
 import { compare } from './compare.mjs';
 import { validateEntity } from './contracts.mjs';
 import { HTTP_OK, collectCwv, labCwv } from './cwv.mjs';
 import { deriveObservations } from './derive.mjs';
 import { lcpField, inpField, clsField } from './checks/cwv-field.mjs';
-import { openStore, ownerOnlyDir } from './evidence-store.mjs';
+import { evidenceRef, openStore, ownerOnlyDir } from './evidence-store.mjs';
+import { ignoreOutput, outputIsNew } from './out-ignore.mjs';
 import { planFamilies, targetEngines } from './family-plan.mjs';
 import { goalIds } from './goals.mjs';
 import { notIndexTargets, withIndexTargets } from './index-targets.mjs';
 import { OBSERVATION_SOURCES, buildJudgeQueue, deriveQuestionCoverage, mergeJudgments } from './judgments.mjs';
+import { reuseJudgments, reusedCount } from './judgment-reuse.mjs';
 import { keyHome, readGoogleKey } from './keys.mjs';
 import { MigrationRequired, assertCurrentEvidence } from './migration.mjs';
 import { naverOwnershipFollowUps } from './naver-ownership.mjs';
@@ -43,6 +45,8 @@ const JUDGE_STAGE = 'judge';
 /** The queue the model reads: `site.json` plus one file per page (`p001.json` …), so it reads and judges one small file at a time. */
 export const QUEUE_PAGES_DIR = 'judge-queue';
 const SITE_QUEUE_FILE = 'site.json';
+/** The folder of the model's page files (`p001.json` …), written by the agent or copied in from an earlier run (`--reuse-judgments`). */
+export const JUDGMENTS_DIR = 'judgments';
 const pageFileName = index => `p${String(index + 1).padStart(3, '0')}.json`;
 /** The `key` of a start-answer fact that names the business (preflight's fact candidates use the type as the key). */
 const NAME_FACT = 'name';
@@ -58,6 +62,10 @@ const APPROVED_BY = 'start answers (intake-answers.json)';
 const NAVER_ENGINE = 'naver';
 const KOREAN_DOMAIN = '.kr';
 const NAVER_GOAL = 'naver';
+
+/** The files of an earlier run folder that judgment reuse reads. */
+export const earlierRun = from => ({ context: path.join(from, CONTEXT_FILE), intake: path.join(from, INTAKE_FILE),
+  queue: path.join(from, QUEUE_PAGES_DIR), judgments: path.join(from, JUDGMENTS_DIR) });
 
 const json = value => `${JSON.stringify(value, null, 2)}\n`;
 const compact = value => `${JSON.stringify(value)}\n`;
@@ -118,7 +126,7 @@ async function contextFrom(answers, { out, localTargets = [] }) {
   const { start, adopted } = startFrom(asked, preflight);
   const target = urlTarget(start);
   const local = localTargets.filter(x => x.host === target.host && Number(x.port) === target.port);
-  const scope = { allowed: [{ origin: start.origin, path_prefix: '/' }], max_urls: answers.max_urls, ...(local.length ? { local_targets: local } : {}) };
+  const scope = { allowed: [{ origin: start.origin, path_prefix: '/' }], max_urls: answers.max_urls, ...(answers.max_judge_pages ? { max_judge_pages: answers.max_judge_pages } : {}), ...(local.length ? { local_targets: local } : {}) };
   const ref = href => ({ original: href, normalized: assertUrlInScope(href, scope).href });
   const auxiliary = [['robots', '/robots.txt'], ['sitemap', '/sitemap.xml']].map(([kind, pathname]) => ({ kind, ...ref(new URL(pathname, start.origin).href) }));
   const home = ref(start.href);
@@ -170,7 +178,9 @@ const contextStage = {
   async run(state, deps) {
     validateEntity('IntakeAnswers', state.answers);
     const { context, intake, mappings, adopted } = await contextFrom(state.answers, { out: state.out, localTargets: deps.localTargets });
+    const newOut = await outputIsNew(state.out);
     await ownerOnlyDir(state.out);
+    if (newOut) await ignoreOutput(state.out);
     await writeFile(path.join(state.out, CONTEXT_FILE), json(context), { flag: 'wx' });
     await writeFile(path.join(state.out, INTAKE_FILE), json(intake), { flag: 'wx' });
     for (const { file, record } of mappings) await writeFile(path.join(state.out, file), json(record), { flag: 'wx' });
@@ -184,12 +194,15 @@ async function ensureStore(state, deps) {
   const evidenceDir = path.join(state.out, 'evidence');
   await ownerOnlyDir(state.out);
   await ownerOnlyDir(evidenceDir);
-  const documentRef = name => path.join(evidenceDir, DOCUMENTS[name]);
+  // A full run names its evidence relative to the run folder; `audit.mjs` (no answers) leaves the caller, who builds its own packet, the files' own paths.
+  const root = deps.store ? deps.store.root : state.answers ? state.out : null;
+  const documentFile = name => path.join(evidenceDir, DOCUMENTS[name]);
+  const documentRef = name => evidenceRef(root, documentFile(name));
   const { context } = state;
   const store = deps.store ?? openStore(evidenceDir, { run_id: context.run_id, context_ref: context.evidence_ref,
     collection_ref: documentRef('collection'), module_output_ref: documentRef('modules'),
-    observations_ref: documentRef('observations'), ledger_ref: documentRef('ledger'), modules: state.modules });
-  for (const existing of [documentRef('collection'), store.indexRef]) if (await exists(existing)) throw new Error('run evidence index already exists');
+    observations_ref: documentRef('observations'), ledger_ref: documentRef('ledger'), modules: state.modules }, { root });
+  for (const existing of [documentFile('collection'), store.indexRef]) if (await exists(existing)) throw new Error('run evidence index already exists');
   state.store = store;
   state.evidenceDir = evidenceDir;
   return store;
@@ -270,7 +283,7 @@ const collectStage = {
     const { context, modules } = state;
     const store = await ensureStore(state, deps);
     const route = await routeOf(state, deps);
-    const documentRef = name => path.join(state.evidenceDir, DOCUMENTS[name]);
+    const documentRef = name => evidenceRef(store.root, path.join(state.evidenceDir, DOCUMENTS[name]));
     const collection = await collect(context, { transport: route.transport, resolve: route.resolve, addressVetting: route.address_vetting });
     const artifacts = [];
     for (const artifact of collection.artifacts) {
@@ -406,7 +419,7 @@ async function readStored(state) {
   const { store } = state;
   const index = await store.index();
   const text = async (ref, sha) => (await store.read(ref, sha)).toString('utf8');
-  const collection = JSON.parse(await readFile(index.collection_ref, 'utf8'));
+  const collection = JSON.parse(await readFile(store.fileOf(index.collection_ref), 'utf8'));
   const bodies = new Map();
   for (const artifact of collection.artifacts) if (artifact.content_hash) bodies.set(artifact.evidence_ref, await text(artifact.evidence_ref, artifact.content_hash));
   for (const entry of [...index.raw.filter(x => x.content_hash), ...index.responses, ...index.failures]) await store.read(entry.evidence_ref, entry.content_hash);
@@ -483,11 +496,17 @@ const judgeStage = {
     const confirmed = state.answers?.facts ?? [];
     const names = confirmed.filter(fact => fact.key === NAME_FACT).map(fact => fact.value);
     const facts = confirmed.filter(fact => fact.key !== NAME_FACT).map(({ key, value }) => ({ key, value }));
-    const queue = await buildJudgeQueue({ observations: state.observations, store, context, names, facts });
-    await writeQueuePages(path.join(out, QUEUE_PAGES_DIR), queueByPage(queue, panel));
-    if (state.judgments) {
-      const merged = await mergeJudgments({ observations: state.observations, judgments: state.judgments, store, questions: panel });
-      return { state: { ...state, queue, observations: deriveQuestionCoverage({ observations: merged, panel, evidence_ref: context.evidence_ref }) } };
+    const queue = await buildJudgeQueue({ observations: state.observations, store, context, names, facts, maxPages: judgePageCap(context.scope) });
+    const grouped = queueByPage(queue, panel);
+    await writeQueuePages(path.join(out, QUEUE_PAGES_DIR), grouped);
+    // Pages whose evidence is unchanged since an earlier run keep its judgments; a run with every page covered goes straight on.
+    const reuse = state.reuse && !state.judgments ? await reuseJudgments({ earlier: earlierRun(state.reuse), into: path.join(out, JUDGMENTS_DIR),
+      pages: grouped.pages.map((page, index) => [pageFileName(index), page]), observations: state.observations, store, questions: panel }) : null;
+    if (reuse) await store.set('reused_judgments', { from_run_id: reuse.from_run_id, judgments: reuse.judgments });
+    const judgments = state.judgments ?? (reuse?.complete ? reuse.judgments : null);
+    if (judgments) {
+      const merged = await mergeJudgments({ observations: state.observations, judgments, store, questions: panel });
+      return { state: { ...state, judgments, queue, observations: deriveQuestionCoverage({ observations: merged, panel, evidence_ref: context.evidence_ref }) } };
     }
     if (queue.items.length) return { state: { ...state, queue }, halt: HALT_JUDGMENTS };
     return { state: { ...state, queue } };
@@ -526,7 +545,7 @@ async function evidenceList(state) {
   }
   for (const name of (await readdir(evidenceDir)).sort()) {
     const [, kind = 'record', collector = false] = EVIDENCE_KINDS.find(([pattern]) => pattern.test(name)) ?? [];
-    list.push(await entry(path.join(evidenceDir, name), kind, collector ? OBSERVATION_SOURCES.code : null));
+    list.push(await entry(evidenceRef(state.store.root, path.join(evidenceDir, name)), kind, collector ? OBSERVATION_SOURCES.code : null));
   }
   return list;
 }
@@ -596,10 +615,13 @@ const reportStage = {
     await writeFile(path.join(out, COSTS_FILE), json(costs));
     const evidence_index = await evidenceList(state);
     const { metrics, remaining } = await ownerExportResults(state);
+    const recorded = (await store.index()).reused_judgments;
+    const reused = reusedCount(recorded, state.judgments);
     const packet = { schema_version: versions().contract_schema, run_context: context, baseline: { input, scores: state.scores }, after: null,
       comparison: compare(input, null), metrics, findings: findingsOf(state.observations, evidence_index), changes: [], costs, remaining,
-      evidence_root: out, evidence_index, audit_snapshots: [{ phase: PHASE, audit_ref: store.indexRef, context_ref: context.evidence_ref }],
-      source_ref: RUN_SOURCE, data_class: 'real', lab_cwv: state.lab_cwv ?? null, start_redirect: state.start_redirect ?? null };
+      evidence_root: out, evidence_index, audit_snapshots: [{ phase: PHASE, audit_ref: evidenceRef(store.root, store.indexRef), context_ref: context.evidence_ref }],
+      source_ref: RUN_SOURCE, data_class: 'real', lab_cwv: state.lab_cwv ?? null, start_redirect: state.start_redirect ?? null,
+      ...(reused ? { reused_judgments: { count: reused, from_run_id: recorded.from_run_id } } : {}) };
     const level = state.answers.guidance_level;
     const renderHtml = htmlReportWriter({ level, target: context.target, synthetic: packet.data_class === 'synthetic' });
     const { jsonPath, markdownPath, fixesPath, htmlPath } = await writeReport(packet, out, { renderHtml });
@@ -660,6 +682,12 @@ async function wroteByRun(out, names) {
   return sameRun && (await readdir(path.join(out, 'evidence'))).every(name => RUN_FILE.test(name));
 }
 
+/** `value` as JSON with every object's keys in order, so two answers files that list the same fields differently still compare equal. */
+const orderedJson = value => JSON.stringify(value, (_, v) => (v && typeof v === 'object' && !Array.isArray(v) ? Object.fromEntries(Object.entries(v).sort(([x], [y]) => (x < y ? -1 : 1))) : v));
+
+/** The answer fields whose value differs between the answers a run was made from and the ones a resume brings (names only: a value may be a fact the owner confirmed). */
+const changedAnswers = (recorded = {}, given) => [...new Set([...Object.keys(recorded), ...Object.keys(given)])].filter(key => orderedJson(recorded[key]) !== orderedJson(given[key]));
+
 /**
  * The state a first call left in `<out>`, rebuilt from the evidence index and the fixed context it points to; nothing else
  * is saved between calls. Every hash is checked (the evidence the index lists, and the run documents it records), and the
@@ -668,11 +696,13 @@ async function wroteByRun(out, names) {
  */
 export async function restoreState({ out, answers }) {
   const evidenceDir = path.join(out, 'evidence');
-  const store = openStore(evidenceDir);
+  const opened = openStore(evidenceDir);
   // Whatever fails while the stored evidence is read back or re-derived is one condition with one message.
   // A folder an older optbrew made is the exception: it is one plain migration sentence, not a change.
   const changed = async job => { try { return await job(); } catch (error) { throw error instanceof MigrationRequired ? error : new Error(INDEX_CHANGED); } };
-  const recorded = await changed(async () => JSON.parse(await readFile(store.indexRef, 'utf8')));
+  const recorded = await changed(async () => JSON.parse(await readFile(opened.indexRef, 'utf8')));
+  // An index that names its files by absolute path was written by an earlier release: the run goes on in that form, so one run never mixes both.
+  const store = path.isAbsolute(String(recorded.collection_ref)) ? opened : openStore(evidenceDir, null, { root: out });
   const { context, intake } = await changed(async () => {
     const value = JSON.parse(await readFile(path.resolve(out, recorded.context_ref), 'utf8'));
     assertCurrentEvidence(value, 'run folder');
@@ -681,11 +711,12 @@ export async function restoreState({ out, answers }) {
     for (const [name, sha] of Object.entries(recorded.documents)) if (sha256Of(await readFile(path.join(out, name))) !== sha) throw new Error('edited document');
     return { context: value, intake: JSON.parse(await readFile(path.join(out, INTAKE_FILE), 'utf8')) };
   });
-  if (intake.answers?.url !== answers.url) throw new Error('The answers are not the ones this run was made from; use the same answers file, or a new --out folder.');
+  const differs = changedAnswers(intake.answers, keptAnswers(answers));
+  if (differs.length) throw new Error(`The answers are not the ones this run was made from (changed: ${differs.join(', ')}); use the same answers file, or a new --out folder.`);
   const state = { answers, out, evidenceDir, store, context, modules: recorded.modules, start_redirect: intake.selection?.start_redirect ?? null };
   return changed(async () => {
     const stored = await readStored(state);
-    const saved = JSON.parse(await readFile(recorded.observations_ref, 'utf8'));
+    const saved = JSON.parse(await readFile(store.fileOf(recorded.observations_ref), 'utf8'));
     const observations = deriveObservations(stored.input);
     if (JSON.stringify(observations) !== JSON.stringify(saved)) throw new Error('verdicts differ');
     if (!stored.index.judge_queue?.length) throw new Error('no queue');

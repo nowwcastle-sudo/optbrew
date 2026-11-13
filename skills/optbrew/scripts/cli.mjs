@@ -12,7 +12,7 @@ import { MigrationRequired } from './core/migration.mjs';
 import { runbookText } from './core/runbooks.mjs';
 import { finishChange, startChange } from './core/changes.mjs';
 import { nextJudgePage } from './core/judgment-files.mjs';
-import { QUEUE_PAGES_DIR } from './core/stages.mjs';
+import { JUDGMENTS_DIR, QUEUE_PAGES_DIR } from './core/stages.mjs';
 
 const SKILL_ROOT = path.resolve(fileURLToPath(new URL('..', import.meta.url)));
 const USAGE = 'usage: cli.mjs score --input <file> --output <file> | compare --before <file> --after <file> [--fixes <fixes.md>] --output <file> | report --input <packet.json> --output-dir <directory> | runbook --ids <id,id> --level beginner|brief | change start --out <directory> --root <source directory> --path <file> --finding <id> [--finding <id> ...] | change finish --out <directory> --path <file> [--tool <name> ...] [--query <text> ...] [--self-analysis] | judge next --out <directory>';
@@ -74,7 +74,7 @@ const COMMANDS = {
   'change finish': { options: { out: text, path: text, tool: texts, query: texts, 'self-analysis': { type: 'boolean' } }, required: ['out', 'path'],
     run: v => printed(finishChange({ out: v.out, file: v.path, tools: v.tool, queries: v.query, selfAnalysis: v['self-analysis'] })) },
   'judge next': { options: { out: text }, required: ['out'],
-    run: v => printed(nextJudgePage({ queueDir: path.resolve(v.out, QUEUE_PAGES_DIR), judgmentsDir: path.resolve(v.out, 'judgments') })) },
+    run: v => printed(nextJudgePage({ queueDir: path.resolve(v.out, QUEUE_PAGES_DIR), judgmentsDir: path.resolve(v.out, JUDGMENTS_DIR) })) },
 };
 
 /** The option values of a command, or the usage line: an unknown option, a stray word, a missing or empty value and a repeated single option are all refused. */

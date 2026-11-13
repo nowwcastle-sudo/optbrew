@@ -53,7 +53,7 @@ const json = async name => JSON.parse(await text(name));
 
 test('SKILL.md walks the one-call flow in order and links the new references', async () => {
   const entry = await text('SKILL.md');
-  const order = ['scripts/preflight.mjs', 'start_runbooks.blocking', '## 6단계', 'scripts/run.mjs', 'judge_pages', '--judgments', '## 9단계', '## 10단계', '## 11단계'];
+  const order = ['scripts/preflight.mjs', 'start_runbooks.blocking', '## 6단계', 'scripts/run.mjs', '`judge_pages`', '--judgments', '## 9단계', '## 10단계', '## 11단계'];
   const positions = order.map(marker => entry.indexOf(marker));
   assert.ok(positions.every(position => position >= 0), `missing: ${order.filter((_, i) => positions[i] < 0)}`);
   assert.deepEqual(positions, [...positions].sort((a, b) => a - b));
