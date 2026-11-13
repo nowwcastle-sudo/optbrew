@@ -128,6 +128,19 @@ function sourceMetadata(sourceDir, module) {
   return null;
 }
 
+/**
+ * A mirror that is not a Git checkout carries only its own SOURCE-MANIFEST.json, and whoever can edit the mirror can
+ * rewrite that manifest along with the files (daybreak csf_6e337a5b749e). So each selected file is also compared with the
+ * blob GitHub serves at the pinned commit. The commit id names the tree, so that blob is the one the commit holds.
+ */
+async function pinnedBlobSha(fetchFn, module, upstream) {
+  if (!/^[\w.-]+\/[\w.-]+$/.test(module.repo) || !/^[0-9a-f]{40}$/.test(module.commit)) throw new Error(`invalid pinned source: ${module.module_id}`);
+  const address = new URL(`${module.repo}/${module.commit}/${upstream.split('/').map(encodeURIComponent).join('/')}`, endpoints().github_raw);
+  const response = await fetchFn(address);
+  if (!response.ok) throw new Error(`pinned source unavailable: ${module.module_id}/${upstream} (HTTP ${response.status})`);
+  return blobSha(Buffer.from(await response.arrayBuffer()));
+}
+
 async function optionalRead(target) {
   try {
     if ((await lstat(target)).isSymbolicLink()) throw new Error(`existing symlink rejected: ${target}`);
@@ -195,7 +208,7 @@ export function thirdPartyNotice(modules, borrowed) {
   return notice.join('\n') + '\n';
 }
 
-export async function vendor({ sourcesRoot = defaultSources, outputRoot = repoRoot, configPath = path.join(repoRoot, 'scripts/vendor.config.json'), patchSet = {} } = {}) {
+export async function vendor({ sourcesRoot = defaultSources, outputRoot = repoRoot, configPath = path.join(repoRoot, 'scripts/vendor.config.json'), patchSet = {}, fetchFn = fetch } = {}) {
   const config = JSON.parse(await readFile(configPath, 'utf8'));
   const patchEntries = [...(config.reviewed_patches ?? []), ...(patchSet.patches ?? [])];
   const patches = new Map();
@@ -221,7 +234,8 @@ export async function vendor({ sourcesRoot = defaultSources, outputRoot = repoRo
     const sourceDir = patchSet.sourceOverrides?.[module.module_id] ?? path.join(sourcesRoot, module.source_dir);
     const manifest = module.module_id === 'marketing-search' ? null : JSON.parse(await readFile(path.join(sourceDir, 'SOURCE-MANIFEST.json'), 'utf8'));
     if (manifest && (manifest.sha !== module.commit || manifest.canonical_repo !== module.repo)) throw new Error(`source identity mismatch: ${module.module_id}`);
-    const tree = sourceMetadata(sourceDir, module) ?? new Map(manifest.tree.filter(x => x.type === 'blob').map(x => [x.path, x.sha]));
+    const gitTree = sourceMetadata(sourceDir, module);
+    const tree = gitTree ?? new Map(manifest.tree.filter(x => x.type === 'blob').map(x => [x.path, x.sha]));
     const downloaded = new Map((manifest?.downloaded ?? []).map(x => [x.path, x]));
     const selectedPaths = new Set();
     for (const include of module.include) {
@@ -239,6 +253,7 @@ export async function vendor({ sourcesRoot = defaultSources, outputRoot = repoRo
         : await readFile(path.join(sourceDir, normalizeRelative(upstream)));
       const gitBlob = blobSha(bytes);
       if (tree.get(upstream) !== gitBlob) throw new Error(`Git blob mismatch: ${module.module_id}/${upstream}`);
+      if (!gitTree && await pinnedBlobSha(fetchFn, module, upstream) !== gitBlob) throw new Error(`pinned commit mismatch: ${module.module_id}/${upstream}`);
       if (downloaded.has(upstream) && downloaded.get(upstream).sha256 !== sha(bytes, 'sha256')) throw new Error(`snapshot hash mismatch: ${module.module_id}/${upstream}`);
       if (upstream === module.license_path && gitBlob !== module.license_blob_sha) throw new Error(`license blob mismatch: ${module.module_id}`);
       const transformations = [];
