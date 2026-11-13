@@ -8,7 +8,7 @@ harness: any
 
 ## beginner
 
-왜 필요한가: 방문자가 실제로 겪은 속도 점수(LCP·INP·CLS)는 Google의 Chrome UX Report(CrUX)와 PageSpeed Insights(PSI)에서 가져옵니다. 키가 있으면 이 세 항목이 채워지고, 없으면 빈칸으로 남습니다. 키는 본인 Google 계정에서 직접 만듭니다. 두 API는 무료이며 CrUX는 프로젝트당 분당 150회 한도가 있습니다. 결제 정보를 입력하라는 화면이 나오면 멈추세요. 키가 없어도 감사는 끝까지 갑니다.
+왜 필요한가: 방문자가 실제로 겪은 속도 점수(LCP·INP·CLS)는 Google의 Chrome UX Report(CrUX)와 PageSpeed Insights(PSI)에서 가져옵니다. 키가 있으면 이 세 항목이 채워지고, 없으면 빈칸으로 남습니다. 키는 본인 Google 계정에서 직접 만듭니다. 두 API는 무료이며 CrUX는 프로젝트당 분당 150회 한도가 있습니다. 결제 정보를 입력하라는 화면이 나오면 멈추세요. 키가 없어도 감사는 끝까지 갑니다. 방문자 실측 점수는 CrUX가 기준이고, PageSpeed Insights의 실사용 데이터는 Google이 곧 없앨 예정이라 키 없이는 대부분 빈칸으로 남습니다. 키가 있는데도 보고서에 `crux_permission_denied`(403)가 나오면 아래 15번의 Chrome UX Report API 사용 설정과 키의 API 제한사항에 그 API가 들어 있는지 확인합니다.
 
 1. 브라우저에서 console.cloud.google.com을 엽니다.
 2. Google 계정으로 로그인합니다.
