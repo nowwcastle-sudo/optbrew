@@ -13,7 +13,7 @@ import { validateEntity } from './contracts.mjs';
 import { HTTP_OK, collectCwv, labCwv } from './cwv.mjs';
 import { deriveObservations } from './derive.mjs';
 import { lcpField, inpField, clsField } from './checks/cwv-field.mjs';
-import { openStore, ownerOnlyDir } from './evidence-store.mjs';
+import { evidenceRef, openStore, ownerOnlyDir } from './evidence-store.mjs';
 import { planFamilies, targetEngines } from './family-plan.mjs';
 import { goalIds } from './goals.mjs';
 import { notIndexTargets, withIndexTargets } from './index-targets.mjs';
@@ -191,12 +191,15 @@ async function ensureStore(state, deps) {
   const evidenceDir = path.join(state.out, 'evidence');
   await ownerOnlyDir(state.out);
   await ownerOnlyDir(evidenceDir);
-  const documentRef = name => path.join(evidenceDir, DOCUMENTS[name]);
+  // A full run names its evidence relative to the run folder; `audit.mjs` (no answers) leaves the caller, who builds its own packet, the files' own paths.
+  const root = deps.store ? deps.store.root : state.answers ? state.out : null;
+  const documentFile = name => path.join(evidenceDir, DOCUMENTS[name]);
+  const documentRef = name => evidenceRef(root, documentFile(name));
   const { context } = state;
   const store = deps.store ?? openStore(evidenceDir, { run_id: context.run_id, context_ref: context.evidence_ref,
     collection_ref: documentRef('collection'), module_output_ref: documentRef('modules'),
-    observations_ref: documentRef('observations'), ledger_ref: documentRef('ledger'), modules: state.modules });
-  for (const existing of [documentRef('collection'), store.indexRef]) if (await exists(existing)) throw new Error('run evidence index already exists');
+    observations_ref: documentRef('observations'), ledger_ref: documentRef('ledger'), modules: state.modules }, { root });
+  for (const existing of [documentFile('collection'), store.indexRef]) if (await exists(existing)) throw new Error('run evidence index already exists');
   state.store = store;
   state.evidenceDir = evidenceDir;
   return store;
@@ -277,7 +280,7 @@ const collectStage = {
     const { context, modules } = state;
     const store = await ensureStore(state, deps);
     const route = await routeOf(state, deps);
-    const documentRef = name => path.join(state.evidenceDir, DOCUMENTS[name]);
+    const documentRef = name => evidenceRef(store.root, path.join(state.evidenceDir, DOCUMENTS[name]));
     const collection = await collect(context, { transport: route.transport, resolve: route.resolve, addressVetting: route.address_vetting });
     const artifacts = [];
     for (const artifact of collection.artifacts) {
@@ -413,7 +416,7 @@ async function readStored(state) {
   const { store } = state;
   const index = await store.index();
   const text = async (ref, sha) => (await store.read(ref, sha)).toString('utf8');
-  const collection = JSON.parse(await readFile(index.collection_ref, 'utf8'));
+  const collection = JSON.parse(await readFile(store.fileOf(index.collection_ref), 'utf8'));
   const bodies = new Map();
   for (const artifact of collection.artifacts) if (artifact.content_hash) bodies.set(artifact.evidence_ref, await text(artifact.evidence_ref, artifact.content_hash));
   for (const entry of [...index.raw.filter(x => x.content_hash), ...index.responses, ...index.failures]) await store.read(entry.evidence_ref, entry.content_hash);
@@ -539,7 +542,7 @@ async function evidenceList(state) {
   }
   for (const name of (await readdir(evidenceDir)).sort()) {
     const [, kind = 'record', collector = false] = EVIDENCE_KINDS.find(([pattern]) => pattern.test(name)) ?? [];
-    list.push(await entry(path.join(evidenceDir, name), kind, collector ? OBSERVATION_SOURCES.code : null));
+    list.push(await entry(evidenceRef(state.store.root, path.join(evidenceDir, name)), kind, collector ? OBSERVATION_SOURCES.code : null));
   }
   return list;
 }
@@ -613,7 +616,7 @@ const reportStage = {
     const reused = reusedCount(recorded, state.judgments);
     const packet = { schema_version: versions().contract_schema, run_context: context, baseline: { input, scores: state.scores }, after: null,
       comparison: compare(input, null), metrics, findings: findingsOf(state.observations, evidence_index), changes: [], costs, remaining,
-      evidence_root: out, evidence_index, audit_snapshots: [{ phase: PHASE, audit_ref: store.indexRef, context_ref: context.evidence_ref }],
+      evidence_root: out, evidence_index, audit_snapshots: [{ phase: PHASE, audit_ref: evidenceRef(store.root, store.indexRef), context_ref: context.evidence_ref }],
       source_ref: RUN_SOURCE, data_class: 'real', lab_cwv: state.lab_cwv ?? null, start_redirect: state.start_redirect ?? null,
       ...(reused ? { reused_judgments: { count: reused, from_run_id: recorded.from_run_id } } : {}) };
     const level = state.answers.guidance_level;
@@ -684,11 +687,13 @@ async function wroteByRun(out, names) {
  */
 export async function restoreState({ out, answers }) {
   const evidenceDir = path.join(out, 'evidence');
-  const store = openStore(evidenceDir);
+  const opened = openStore(evidenceDir);
   // Whatever fails while the stored evidence is read back or re-derived is one condition with one message.
   // A folder an older optbrew made is the exception: it is one plain migration sentence, not a change.
   const changed = async job => { try { return await job(); } catch (error) { throw error instanceof MigrationRequired ? error : new Error(INDEX_CHANGED); } };
-  const recorded = await changed(async () => JSON.parse(await readFile(store.indexRef, 'utf8')));
+  const recorded = await changed(async () => JSON.parse(await readFile(opened.indexRef, 'utf8')));
+  // An index that names its files by absolute path was written by an earlier release: the run goes on in that form, so one run never mixes both.
+  const store = path.isAbsolute(String(recorded.collection_ref)) ? opened : openStore(evidenceDir, null, { root: out });
   const { context, intake } = await changed(async () => {
     const value = JSON.parse(await readFile(path.resolve(out, recorded.context_ref), 'utf8'));
     assertCurrentEvidence(value, 'run folder');
@@ -701,7 +706,7 @@ export async function restoreState({ out, answers }) {
   const state = { answers, out, evidenceDir, store, context, modules: recorded.modules, start_redirect: intake.selection?.start_redirect ?? null };
   return changed(async () => {
     const stored = await readStored(state);
-    const saved = JSON.parse(await readFile(recorded.observations_ref, 'utf8'));
+    const saved = JSON.parse(await readFile(store.fileOf(recorded.observations_ref), 'utf8'));
     const observations = deriveObservations(stored.input);
     if (JSON.stringify(observations) !== JSON.stringify(saved)) throw new Error('verdicts differ');
     if (!stored.index.judge_queue?.length) throw new Error('no queue');

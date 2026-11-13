@@ -194,7 +194,7 @@ test('the field-data stage reads the key through keyHome and sends it in the hea
   assert.ok(calls.every(call => !call.url.includes(KEY)));
   const { cwv } = await state.store.index();
   assert.ok(cwv.length > 0);
-  for (const entry of cwv) assert.ok(!(await readFile(entry.evidence_ref, 'utf8')).includes(KEY));
+  for (const entry of cwv) assert.ok(!(await readFile(path.join(ws.out, entry.evidence_ref), 'utf8')).includes(KEY));
   assert.equal(state.lab_cwv, null, 'no Chrome, so no lab measure');
 });
 

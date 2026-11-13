@@ -15,6 +15,12 @@ const sha256Of = bytes => createHash('sha256').update(bytes).digest('hex');
 const within = (root, file) => file === root || file.startsWith(`${root}${path.sep}`);
 
 /**
+ * How a run names an evidence file: relative to `root` (the run folder) with `/` separators, so the folder can be moved or sent to
+ * someone else and still be read; with no `root` (a run an earlier release made, or a caller that builds its own packet) the file's own path.
+ */
+export const evidenceRef = (root, file) => root ? path.relative(root, file).split(path.sep).join('/') : file;
+
+/**
  * Read evidence bytes after checking that the file stays inside root and matches its recorded hash.
  * `ref` is absolute or relative to root. Report replay and Store.read both read through this.
  */
@@ -44,7 +50,8 @@ export async function ownerOnlyDir(dir) {
   if (info.uid === process.getuid() && (info.mode & 0o077)) await chmod(dir, 0o700);
 }
 
-export function openStore(dir, header = null) {
+/** `root`, when given, is the folder the refs this store hands out are relative to (see `evidenceRef`); `read` accepts those and absolute paths. */
+export function openStore(dir, header = null, { root = null } = {}) {
   const indexRef = path.join(dir, INDEX_FILE);
   const empty = () => ({ ...header, ...Object.fromEntries(BASE_SECTIONS.map(name => [name, []])) });
   const queueKey = path.resolve(indexRef);
@@ -71,19 +78,22 @@ export function openStore(dir, header = null) {
 
   return {
     indexRef,
+    root,
+    /** The file a ref names (as `read` finds it), for the index and the run documents a store lists without a hash. */
+    fileOf: ref => root ? path.resolve(root, ref) : path.resolve(ref),
     /** Write `bytes` once. The file is named by its hash, or by `name` for a fixed-name run document. */
     async write(kind, bytes, { name } = {}) {
       if (!/^[a-z][a-z0-9-]*$/.test(kind)) throw new Error(`invalid evidence kind: ${kind}`);
       if (name !== undefined && (!name || path.basename(name) !== name)) throw new Error(`invalid evidence name: ${name}`);
       const data = Buffer.isBuffer(bytes) ? bytes : Buffer.from(bytes);
       const sha256 = sha256Of(data);
-      const ref = path.join(dir, name ?? `${sha256}.${RAW_KINDS.has(kind) ? kind : `${kind}.json`}`);
-      try { await writeFile(ref, data, { flag: 'wx', mode: 0o600 }); }
+      const file = path.join(dir, name ?? `${sha256}.${RAW_KINDS.has(kind) ? kind : `${kind}.json`}`);
+      try { await writeFile(file, data, { flag: 'wx', mode: 0o600 }); }
       catch (error) {
         if (error.code !== 'EEXIST') throw error;
-        if (!(await readFile(ref)).equals(data)) throw new Error(`evidence ${path.basename(ref)} already exists with different content`);
+        if (!(await readFile(file)).equals(data)) throw new Error(`evidence ${path.basename(file)} already exists with different content`);
       }
-      return { ref, sha256 };
+      return { ref: evidenceRef(root, file), sha256 };
     },
     /** Add one entry to a section of the index (created on first use) and replace the index file. */
     append(section, entry) {
@@ -116,6 +126,7 @@ export function openStore(dir, header = null) {
     },
     /** Bytes of a ref returned by write or listed in the index; throws if the file is outside the store or its hash differs. */
     async read(ref, sha256) {
+      if (root) return readVerified(dir, path.resolve(root, ref), sha256);
       // A ref from write() is dir-joined (cwd-relative when dir is); any other relative ref is relative to dir, as in readVerified.
       const returned = path.resolve(ref);
       return readVerified(dir, within(path.resolve(dir), returned) ? returned : ref, sha256);
