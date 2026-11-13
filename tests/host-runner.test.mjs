@@ -36,11 +36,10 @@ test('owned fake host writes logs and an incomplete receipt on timeout', async (
     Object.assign(process.env, { PATH: `${bin}${path.delimiter}${previousEnv.PATH}`, HOME: home,
       USERPROFILE: home, HOMEDRIVE: path.parse(home).root.replace(/[\\/]$/, ''),
       HOMEPATH: home.slice(path.parse(home).root.length - 1) });
-    const start = Date.now();
     // 3 s leaves room for a slow node start under load before the fake host writes its logs.
+    const timeoutMs = 3000;
     const receipt = await runHostScenarios({ host: 'codex', scenarios: [{ id: 'held-pipe', request: 'fixture only' }],
-      workspaceRoot, outputDir, timeoutMs: 3000 });
-    const elapsed = Date.now() - start;
+      workspaceRoot, outputDir, timeoutMs });
     grandchildPid = Number(await readFile(pidFile, 'utf8'));
     assert.doesNotThrow(() => process.kill(grandchildPid, 0), 'grandchild still holds the pipe at completion');
     const saved = JSON.parse(await readFile(receipt.evidence_ref, 'utf8'));
@@ -51,7 +50,13 @@ test('owned fake host writes logs and an incomplete receipt on timeout', async (
     assert.equal(saved.scenarios[0].exit_code, null);
     assert.match(await readFile(saved.scenarios[0].stdout_ref, 'utf8'), /owned parent stdout/);
     assert.match(await readFile(saved.scenarios[0].stderr_ref, 'utf8'), /owned parent stderr/);
-    assert.ok(elapsed < 10000, `bounded completion took ${elapsed} ms`);
+    // Bounded: the scenario ends at its timeout plus the 500 ms close grace of runOwnedProcess, not when the grandchild lets go of
+    // the pipes 20 s later (that it is still alive is checked above). Timed from the scenario's own start and end, so the
+    // `--version` run before it, whose first start of a just-copied executable is slow on Windows, does not count; 2 s more covers
+    // killing the host and syncing and closing two log files on a loaded runner. The old whole-run bound of 10 s had only 3.5 s
+    // left after the fixed waits (version up to 3 s + timeout 3 s + grace 0.5 s) and failed on a slow Windows runner (10049 ms).
+    const scenarioMs = Date.parse(saved.scenarios[0].ended) - Date.parse(saved.scenarios[0].started);
+    assert.ok(scenarioMs < timeoutMs + 500 + 2000, `bounded completion took ${scenarioMs} ms for a ${timeoutMs} ms timeout`);
   } finally {
     for (const key of envKeys) {
       if (previousEnv[key] === undefined) delete process.env[key]; else process.env[key] = previousEnv[key];
