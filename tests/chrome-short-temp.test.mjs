@@ -3,7 +3,7 @@
 // in /tmp takes its place and is removed with the profile.
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdir, mkdtemp, readFile, rm, stat, utimes } from 'node:fs/promises';
+import { chmod, mkdir, mkdtemp, readFile, rm, stat, symlink, utimes, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { chromeEnv, chromeTempDir, sweepStaleShortTemps } from '../skills/optbrew/scripts/core/chrome-temp.mjs';
@@ -54,4 +54,28 @@ test('the sweep removes an old short temp folder whose profile is gone and keeps
   assert.ok(removed.includes(base(made[0])), 'old, profile gone: removed');
   assert.ok(!removed.includes(base(made[1])), 'old, profile still there: kept');
   assert.ok(!removed.includes(base(made[2])), 'young: kept even with its profile gone');
+});
+
+test('the sweep leaves what it did not make: a link, another user\'s folder, a folder that is not owner-only', posixOnly, async t => {
+  const shortRoot = await mkdtemp(path.join(os.tmpdir(), 'oc-sweep-'));
+  t.after(() => rm(shortRoot, { recursive: true, force: true }));
+  const old = new Date(Date.now() - 13 * 60 * 60_000);
+  const gone = path.join(shortRoot, 'optbrew-chrome-gone');                 // a profile path that does not exist
+  const folder = async (name, mode) => {
+    const dir = path.join(shortRoot, name);
+    await mkdir(dir, { mode });
+    await chmod(dir, mode);
+    await writeFile(path.join(dir, 'owner'), gone);
+    await utimes(dir, old, old);
+    return dir;
+  };
+  await folder('optbrew-t-mine', 0o700);
+  await folder('optbrew-t-open', 0o755);
+  const target = await folder('victim', 0o700);                             // a folder someone points a link at
+  await symlink(target, path.join(shortRoot, 'optbrew-t-link'));
+  const uid = process.getuid();
+  assert.deepEqual(await sweepStaleShortTemps(shortRoot, { uid: uid + 1 }), [], 'owned by another user: nothing removed');
+  assert.deepEqual(await sweepStaleShortTemps(shortRoot, { uid }), ['optbrew-t-mine'], 'only the real owner-only folder of this user');
+  assert.ok((await stat(target)).isDirectory(), 'the link target is untouched');
+  assert.ok((await stat(path.join(shortRoot, 'optbrew-t-open'))).isDirectory());
 });

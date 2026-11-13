@@ -1,5 +1,5 @@
 import { execFile } from 'node:child_process';
-import { mkdir, mkdtemp, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
+import { lstat, mkdir, mkdtemp, readFile, readdir, rm, stat, writeFile } from 'node:fs/promises';
 import path from 'node:path';
 import { limits } from './config.mjs';
 
@@ -68,17 +68,21 @@ export async function chromeTempDir(userDataDir, { platform = process.platform, 
 
 /**
  * Remove the short temp folders of earlier launches whose launcher was killed: a folder goes only when it is not young and the
- * profile its `owner` file names no longer exists (that profile is removed by `close()` or by `sweepStaleProfiles`). A folder
- * without a readable owner is left alone: it may not be ours. Returns the names removed.
+ * profile its `owner` file names no longer exists (that profile is removed by `close()` or by `sweepStaleProfiles`). `/tmp` is
+ * shared, so a name alone proves nothing: the entry must be a real folder (not a link), owned by this user and owner-only (0700),
+ * as `chromeTempDir` made it. Anything else, or a folder without a readable owner, is left alone. `uid` is injectable for tests.
+ * Returns the names removed.
  */
-export async function sweepStaleShortTemps(shortRoot = '/tmp', { now = Date.now() } = {}) {
+export async function sweepStaleShortTemps(shortRoot = '/tmp', { now = Date.now(), uid = process.getuid?.() } = {}) {
   let names;
   try { names = (await readdir(shortRoot)).filter(name => name.startsWith(SHORT_TEMP_PREFIX)); } catch { return []; }
   const removed = [];
   for (const name of names) {
     const dir = path.join(shortRoot, name);
     try {
-      if (now - (await stat(dir)).mtimeMs <= YOUNG_PROFILE_MS) continue;
+      const info = await lstat(dir);
+      if (!info.isDirectory() || info.uid !== uid || (info.mode & 0o777) !== 0o700) continue;
+      if (now - info.mtimeMs <= YOUNG_PROFILE_MS) continue;
       const owner = await readFile(path.join(dir, SHORT_TEMP_OWNER), 'utf8');
       if (!path.basename(owner).startsWith(PROFILE_PREFIX)) continue;
       if (await stat(owner).then(() => true, () => false)) continue;

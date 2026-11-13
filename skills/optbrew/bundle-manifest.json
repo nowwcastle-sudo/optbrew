@@ -900,7 +900,7 @@
     },
     {
       "path": "scripts/core/chrome-temp.mjs",
-      "sha256": "33bac5b388bc68af977f6ac00a1477d68bfb430dcc792835923cf88230fc7f81"
+      "sha256": "d05fb0781a86d3e862a1805973b02041053bbf8b5287a7e28b0632ac5f3f08a6"
     },
     {
       "path": "scripts/core/chrome.mjs",
@@ -1095,5 +1095,5 @@
       "sha256": "f7119e765139292f4d88685e617f91feab3615003a30eae1ff05e6bf7e561497"
     }
   ],
-  "bundle_hash": "91c1ed3f7f8b4684aadf0316bec692c7088366d61f81a7d0d9127a86b2c90019"
+  "bundle_hash": "5d44b7703fa32a394ec1461b0cb5ac83561daa30f774060192591867e75b4ec5"
 }
