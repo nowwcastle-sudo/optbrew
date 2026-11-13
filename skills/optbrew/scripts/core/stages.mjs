@@ -14,6 +14,7 @@ import { HTTP_OK, collectCwv, labCwv } from './cwv.mjs';
 import { deriveObservations } from './derive.mjs';
 import { lcpField, inpField, clsField } from './checks/cwv-field.mjs';
 import { evidenceRef, openStore, ownerOnlyDir } from './evidence-store.mjs';
+import { ignoreOutput, outputIsNew } from './out-ignore.mjs';
 import { planFamilies, targetEngines } from './family-plan.mjs';
 import { goalIds } from './goals.mjs';
 import { notIndexTargets, withIndexTargets } from './index-targets.mjs';
@@ -177,7 +178,9 @@ const contextStage = {
   async run(state, deps) {
     validateEntity('IntakeAnswers', state.answers);
     const { context, intake, mappings, adopted } = await contextFrom(state.answers, { out: state.out, localTargets: deps.localTargets });
+    const newOut = await outputIsNew(state.out);
     await ownerOnlyDir(state.out);
+    if (newOut) await ignoreOutput(state.out);
     await writeFile(path.join(state.out, CONTEXT_FILE), json(context), { flag: 'wx' });
     await writeFile(path.join(state.out, INTAKE_FILE), json(intake), { flag: 'wx' });
     for (const { file, record } of mappings) await writeFile(path.join(state.out, file), json(record), { flag: 'wx' });
@@ -679,6 +682,12 @@ async function wroteByRun(out, names) {
   return sameRun && (await readdir(path.join(out, 'evidence'))).every(name => RUN_FILE.test(name));
 }
 
+/** `value` as JSON with every object's keys in order, so two answers files that list the same fields differently still compare equal. */
+const orderedJson = value => JSON.stringify(value, (_, v) => (v && typeof v === 'object' && !Array.isArray(v) ? Object.fromEntries(Object.entries(v).sort(([x], [y]) => (x < y ? -1 : 1))) : v));
+
+/** The answer fields whose value differs between the answers a run was made from and the ones a resume brings (names only: a value may be a fact the owner confirmed). */
+const changedAnswers = (recorded = {}, given) => [...new Set([...Object.keys(recorded), ...Object.keys(given)])].filter(key => orderedJson(recorded[key]) !== orderedJson(given[key]));
+
 /**
  * The state a first call left in `<out>`, rebuilt from the evidence index and the fixed context it points to; nothing else
  * is saved between calls. Every hash is checked (the evidence the index lists, and the run documents it records), and the
@@ -702,7 +711,8 @@ export async function restoreState({ out, answers }) {
     for (const [name, sha] of Object.entries(recorded.documents)) if (sha256Of(await readFile(path.join(out, name))) !== sha) throw new Error('edited document');
     return { context: value, intake: JSON.parse(await readFile(path.join(out, INTAKE_FILE), 'utf8')) };
   });
-  if (intake.answers?.url !== answers.url) throw new Error('The answers are not the ones this run was made from; use the same answers file, or a new --out folder.');
+  const differs = changedAnswers(intake.answers, keptAnswers(answers));
+  if (differs.length) throw new Error(`The answers are not the ones this run was made from (changed: ${differs.join(', ')}); use the same answers file, or a new --out folder.`);
   const state = { answers, out, evidenceDir, store, context, modules: recorded.modules, start_redirect: intake.selection?.start_redirect ?? null };
   return changed(async () => {
     const stored = await readStored(state);

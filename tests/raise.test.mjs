@@ -51,3 +51,19 @@ test('a sitemap file the home page links to, outside the index, is counted the w
   assert.ok(raise !== null);
   assert.equal(collected, 55);
 });
+
+test('the start file tells how many pages the model would judge at the default limit and at the raise', async () => {
+  const site = memorySite(bigSite(60));
+  const ws = await workspace(answersFor(`${SITE}/`));
+  await preflightOf(site, `${SITE}/`, ws.out);
+  const start = JSON.parse(await readFile(path.join(ws.out, 'preflight', 'start.json'), 'utf8'));
+  const estimate = start.judge_estimate;
+  assert.ok(estimate.families_per_page > 0);
+  // The home page and the 60 sitemap pages are all in the raise; the default limit holds fewer.
+  assert.equal(estimate.raise.limit, start.max_urls_raise);
+  assert.equal(estimate.raise.pages, 61);
+  assert.ok(estimate.default.pages > 0 && estimate.default.pages < estimate.raise.pages);
+  for (const entry of [estimate.default, estimate.raise]) assert.equal(entry.judgments, entry.pages * estimate.families_per_page + 1, 'one judgment per page and family, plus the site unit');
+  const intake = await readFile(new URL('../skills/optbrew/references/intake.md', import.meta.url), 'utf8');
+  assert.ok(intake.includes('`judge_estimate`') && intake.split('\n').find(line => line.startsWith('5. 사이트맵'))?.includes('판정'), 'the start question shows it');
+});
