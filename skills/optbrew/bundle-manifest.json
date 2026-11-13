@@ -70,7 +70,7 @@
     },
     {
       "path": "scripts/core/page-select.mjs",
-      "sha256": "79d16301b8f29b82986f8a30a62228e5730bc007ae37218f3e28a5e49ca5dc00"
+      "sha256": "298a1b29aa9b13d27e5befde5ee481906c41e0d77251e0410b2ca597bd64b381"
     },
     {
       "path": "scripts/core/contact-routes.mjs",
@@ -153,7 +153,7 @@
       "sha256": "7b41a2f2039735e35b1f015ac3f3e8cf7ab9383dbbc758c15fcaa9149874575d"
     }
   ],
-  "evaluation_hash": "7e0def61ef9d74b19810aa182842a2cf296969d58c2e43bc16085a641abcb3cc",
+  "evaluation_hash": "9caae24d54c65777bedc940c18c6d8149b1af9666f70dfe3004e898d8316db19",
   "protocol_sources": [
     {
       "path": "references/schemas/contract.schema.json",
@@ -944,7 +944,7 @@
     },
     {
       "path": "scripts/core/evidence-store.mjs",
-      "sha256": "44db39e405876a74d83fe2a3e8ceb97561e8b5be687fa34b8c62f0ed46ee6e8e"
+      "sha256": "0d043f17ad9c245dc3a84f721b90049faba9d6f76924fc04af2909ca0ff789c9"
     },
     {
       "path": "scripts/core/facts.mjs",
@@ -1004,11 +1004,11 @@
     },
     {
       "path": "scripts/core/naver-ownership.mjs",
-      "sha256": "1c5c401a0706b2c7a65041638977fe132cb708e12a6cf5bfc2d76270102ac853"
+      "sha256": "0f062b50ee66919f18a6cd8d7917b28495f54c1a6a69469eeec239ab15033da2"
     },
     {
       "path": "scripts/core/page-select.mjs",
-      "sha256": "79d16301b8f29b82986f8a30a62228e5730bc007ae37218f3e28a5e49ca5dc00"
+      "sha256": "298a1b29aa9b13d27e5befde5ee481906c41e0d77251e0410b2ca597bd64b381"
     },
     {
       "path": "scripts/core/probe.mjs",
@@ -1060,7 +1060,7 @@
     },
     {
       "path": "scripts/core/stages.mjs",
-      "sha256": "5464f602b3aa54e133a2001ea36f620c73f8dfacac24d67ebfdfb35702b7363e"
+      "sha256": "b9447167e62911fb51c50afb6758fb000307b96bea4c550f114f8cf4600bfb7e"
     },
     {
       "path": "scripts/core/transport.mjs",
@@ -1076,7 +1076,7 @@
     },
     {
       "path": "scripts/preflight.mjs",
-      "sha256": "51e36f9075cbd486bb7f9983e3ef7e7278f419cd8a86a49cd934fe7371ea4ad3"
+      "sha256": "fa2938e72ba13e030134f5fb9aca6482f49cce1a8bedda72b8a82f22269ac44f"
     },
     {
       "path": "scripts/run.mjs",
@@ -1087,5 +1087,5 @@
       "sha256": "f7119e765139292f4d88685e617f91feab3615003a30eae1ff05e6bf7e561497"
     }
   ],
-  "bundle_hash": "9b15097faa677f6781517c507c15e4d3f3fdaa7f6a0fbe1e3938252e9f3ed531"
+  "bundle_hash": "b8cd79668ec9aa418962aa0c654bc2f0c9adec78e6796f9b8c4a2d4b2f531a34"
 }

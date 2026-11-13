@@ -131,7 +131,7 @@ test('preflight evidence is separate from the audit evidence index', async () =>
   await assert.rejects(access(path.join(out, 'evidence-index.json')), { code: 'ENOENT' });
   const index = JSON.parse(await readFile(path.join(out, 'preflight', 'evidence', 'evidence-index.json'), 'utf8'));
   assert.deepEqual(index.raw.map(entry => entry.normalized_url).toSorted(), [`${origin}/`, `${origin}/about`, `${origin}/sitemap.xml`]);
-  for (const entry of index.raw) assert.ok(entry.evidence_ref.includes(`${path.sep}preflight${path.sep}`), entry.evidence_ref);
+  for (const entry of index.raw) assert.ok(entry.evidence_ref.startsWith('evidence/'), `a ref relative to the preflight folder: ${entry.evidence_ref}`);
   assert.deepEqual((await readdir(path.join(out, 'preflight'))).toSorted(), ['evidence', 'start.json']);
 });
 

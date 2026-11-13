@@ -45,7 +45,7 @@ test('first call halts awaiting judgments with a queue', async () => {
   const index = await readJson(path.join(ws.out, 'evidence', 'evidence-index.json'));
   // Carry 11: the queue lives in the evidence store, and the files in --out are that stored queue, regrouped.
   assert.equal(index.judge_queue.length, 1);
-  const stored = JSON.parse(await readFile(index.judge_queue[0].evidence_ref, 'utf8'));
+  const stored = JSON.parse(await readFile(path.join(ws.out, index.judge_queue[0].evidence_ref), 'utf8'));
   assert.equal(stored.items.length, queuedUnits(queue).length, 'the files are the stored queue, regrouped by page');
   for (const page of queue.pages) {
     const items = stored.items.filter(item => item.evidence_ref === page.evidence_ref);

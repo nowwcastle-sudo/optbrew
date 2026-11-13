@@ -70,7 +70,7 @@ test('the pages up to the limit are audited: a 30-page site in full, a 60-page s
   assert.deepEqual(pagesOf(sampled).map(x => x.normalized), pagesOf(raised).slice(0, pagesOf(sampled).length).map(x => x.normalized), 'the same order, cut at the limit');
   assert.deepEqual(small.context.protocol.page_types.map(type => type.id), ['home', 'section']);
   assert.ok(small.context.protocol.render.pages.length <= limits().render_pages);
-  const storedBytes = (await readFile((await readJson(path.join(small.ws.out, 'evidence', 'evidence-index.json'))).judge_queue[0].evidence_ref)).length;
+  const storedBytes = (await readFile(path.join(small.ws.out, (await readJson(path.join(small.ws.out, 'evidence', 'evidence-index.json'))).judge_queue[0].evidence_ref))).length;
   const viewBytes = await queueBytes(small.first);
   assert.ok(viewBytes * 2 < storedBytes, `the files the model reads for 31 pages (${viewBytes} bytes) are under half the stored queue (${storedBytes} bytes)`);
 });
