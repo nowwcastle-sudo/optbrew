@@ -14,7 +14,7 @@ import { auditCollected, indexingDirectives } from '../../modules/naver-searchad
 import { deriveObservations } from './derive.mjs';
 import { isDerivedIndexDecision, notIndexTargets } from './index-targets.mjs';
 import { readVerified } from './evidence-store.mjs';
-import { links } from './collector.mjs';
+import { BUDGET_REASONS, LIMIT_REASONS, pageLinks } from './collector.mjs';
 import { checkRenderLedger } from './render.mjs';
 import { assertUrlInScope } from './scope.mjs';
 import { composeReport, pagesLabel, renderReport } from './report-compose.mjs';
@@ -418,9 +418,11 @@ function checkLedger(input, audit, collection, artifacts, requireRef) {
   const key = x => `${x.url}|${x.reason ?? x.skipped_reason}`;
   const ledgerSkips = entries.filter(x => x.skipped_reason).map(key).sort();
   if (JSON.stringify((collection.skipped ?? []).map(key).sort()) !== JSON.stringify(ledgerSkips)) fail('skipped list differs from the ledger');
-  const limited = entries.some(x => ['url_limit', 'request_limit'].includes(x.skipped_reason));
+  const limited = entries.some(x => LIMIT_REASONS.includes(x.skipped_reason));
   if (collection.limit_reached !== limited) fail('limit_reached differs from the ledger');
-  if (limited && total !== limit) fail('a request limit is claimed but the recorded requests do not use the whole limit');
+  // Only the request budget implies every request was used; the discovery and link limits stop a crawl that had requests left.
+  if (entries.some(x => BUDGET_REASONS.includes(x.skipped_reason)) && total !== limit)
+    fail('a request limit is claimed but the recorded requests do not use the whole limit');
   if (collection.request_count !== total || collection.evaluated_count !== entries.filter(x => x.requests > 0).length) fail('request or evaluated count differs from the ledger');
   const selected = new Set(input.run_context.protocol.page_types.flatMap(type => type.urls.map(x => x.normalized)));
   if (entries.some(x => selected.has(x.url) && x.skipped_reason && x.skipped_reason !== 'url_limit' && x.outcome === 'skipped')) fail('a selected page is skipped for a reason other than the request limit');
@@ -432,16 +434,20 @@ function checkLedger(input, audit, collection, artifacts, requireRef) {
   // Provenance: a failed fetch or a request-limit skip belongs to a URL the run was given (selected or auxiliary) or one
   // that a hashed page of this collection links to (anchors and canonical, as the collector follows them). A URL nothing
   // links to cannot be a failed fetch or a skipped one, so fabricated entries cannot pad the total or claim a limit.
-  const known = new Set(planned);
+  // A `link_limit` skip must be one of a collected page's links past `max_page_links` instead.
+  const known = new Set(planned); const cut = new Set();
+  const inScope = (link, into) => { try { into.add(assertUrlInScope(link, input.run_context.scope).href); } catch { /* out of scope: the collector skipped it */ } };
   for (const artifact of responded) {
     if (artifact.status !== 200 || artifact.capability !== 'raw_html' || auxiliary.has(artifact.normalized_url)) continue;
-    for (const link of links(requireRef(artifact.evidence_ref).text, artifact.final_url)) {
-      try { known.add(assertUrlInScope(link, input.run_context.scope).href); } catch { /* out of scope: the collector skipped it */ }
-    }
+    const found = pageLinks(requireRef(artifact.evidence_ref).text, artifact.final_url);
+    for (const link of found.links) inScope(link, known);
+    for (const link of found.dropped) inScope(link, cut);
   }
   for (const entry of entries) {
-    if ((entry.outcome === 'error' || (entry.outcome === 'skipped' && entry.skipped_reason === 'url_limit')) && !known.has(entry.url))
+    const linkCut = entry.outcome === 'skipped' && entry.skipped_reason === 'link_limit';
+    if ((entry.outcome === 'error' || (entry.outcome === 'skipped' && ['url_limit', 'discovery_limit'].includes(entry.skipped_reason))) && !known.has(entry.url))
       fail(`${entry.url} has no provenance: it is neither a selected or auxiliary URL nor linked from a collected page`);
+    if (linkCut && !cut.has(entry.url)) fail(`${entry.url} is recorded as a cut link but no collected page lists it past the link cap`);
   }
   if (entries.some(x => selected.has(x.url) && x.outcome === 'skipped' && x.skipped_reason === 'url_limit') &&
       entries.some(x => x.requests > 0 && !planned.has(x.url))) fail('a selected page is skipped for the request limit although a discovered page was fetched');

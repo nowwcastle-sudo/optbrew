@@ -44,6 +44,8 @@ If you are not sure about any of this, open the pull request anyway and say so. 
 
 Files under `skills/optbrew/modules/` come from pinned upstream sources listed in `source-lock.json`. Changes there go through `scripts/vendor.mjs` and keep the upstream license notices; see [third-party notices](skills/optbrew/THIRD_PARTY_NOTICES.md). If you want to update an upstream guide, open an issue first.
 
+`scripts/vendor.mjs` needs network access to `raw.githubusercontent.com`. A mirror that is not a Git checkout proves its files only through its own `SOURCE-MANIFEST.json`, so the script also compares every selected file with the blob GitHub serves at the pinned commit and stops on any difference.
+
 ## License
 
 By contributing, you agree that your contribution is licensed under the [MIT License](LICENSE) of this repository.
