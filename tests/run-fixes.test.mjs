@@ -56,7 +56,7 @@ test('the pages up to the limit are audited: a 30-page site in full, a 60-page s
   };
   const small = await audit(30, answersFor(`${SITE}/`));
   const sampled = await audit(60, answersFor(`${SITE}/`));
-  const raised = await audit(60, answersFor(`${SITE}/`, { max_urls: 80, sample_mode: 'raise' }));
+  const raised = await audit(60, answersFor(`${SITE}/`, { max_urls: 80, sample_mode: 'raise', max_judge_pages: 80 }));
   const pagesOf = run => run.context.protocol.page_types.flatMap(type => type.urls);
   assert.equal(pagesOf(small).length, 31, 'the home page and all 30 listed pages');
   assert.equal(pagesOf(sampled).length, pageBudget(limits().max_urls_default, 2), 'the default limit less robots.txt, sitemap.xml and the redirect margin');

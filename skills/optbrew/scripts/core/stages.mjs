@@ -7,7 +7,7 @@ import { auditCollected } from '../../modules/naver-searchadvisor/scripts/audit.
 import { normalizeImport, readOwnerExport } from '../adapters/imports.mjs';
 import { scopedPage } from './chrome.mjs';
 import { collect, declaredRobotsIndex, transportFetch } from './collector.mjs';
-import { checkRegistry, limits, requestLimit, versions } from './config.mjs';
+import { checkRegistry, judgePageCap, limits, requestLimit, versions } from './config.mjs';
 import { compare } from './compare.mjs';
 import { validateEntity } from './contracts.mjs';
 import { HTTP_OK, collectCwv, labCwv } from './cwv.mjs';
@@ -126,7 +126,7 @@ async function contextFrom(answers, { out, localTargets = [] }) {
   const { start, adopted } = startFrom(asked, preflight);
   const target = urlTarget(start);
   const local = localTargets.filter(x => x.host === target.host && Number(x.port) === target.port);
-  const scope = { allowed: [{ origin: start.origin, path_prefix: '/' }], max_urls: answers.max_urls, ...(local.length ? { local_targets: local } : {}) };
+  const scope = { allowed: [{ origin: start.origin, path_prefix: '/' }], max_urls: answers.max_urls, ...(answers.max_judge_pages ? { max_judge_pages: answers.max_judge_pages } : {}), ...(local.length ? { local_targets: local } : {}) };
   const ref = href => ({ original: href, normalized: assertUrlInScope(href, scope).href });
   const auxiliary = [['robots', '/robots.txt'], ['sitemap', '/sitemap.xml']].map(([kind, pathname]) => ({ kind, ...ref(new URL(pathname, start.origin).href) }));
   const home = ref(start.href);
@@ -496,7 +496,7 @@ const judgeStage = {
     const confirmed = state.answers?.facts ?? [];
     const names = confirmed.filter(fact => fact.key === NAME_FACT).map(fact => fact.value);
     const facts = confirmed.filter(fact => fact.key !== NAME_FACT).map(({ key, value }) => ({ key, value }));
-    const queue = await buildJudgeQueue({ observations: state.observations, store, context, names, facts });
+    const queue = await buildJudgeQueue({ observations: state.observations, store, context, names, facts, maxPages: judgePageCap(context.scope) });
     const grouped = queueByPage(queue, panel);
     await writeQueuePages(path.join(out, QUEUE_PAGES_DIR), grouped);
     // Pages whose evidence is unchanged since an earlier run keep its judgments; a run with every page covered goes straight on.

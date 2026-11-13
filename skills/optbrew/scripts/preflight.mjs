@@ -7,7 +7,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { fetchScoped, links } from './core/collector.mjs';
 import { findChrome as realFindChrome } from './core/chrome.mjs';
-import { limits } from './core/config.mjs';
+import { judgePageCap, limits } from './core/config.mjs';
 import { openStore, ownerOnlyDir } from './core/evidence-store.mjs';
 import { ignoreOutput, outputIsNew } from './core/out-ignore.mjs';
 import { pageBudget, readPreflight, selectPages } from './core/page-select.mjs';
@@ -207,9 +207,10 @@ async function judgeEstimate(out, startJson) {
   const { max_urls_default: base } = limits();
   const { pagesAt } = await selection(out, startJson);
   const families = modelFamilyCount();
-  const at = limit => { const pages = pagesAt(limit); return { pages, judgments: pages * families + 1 }; };
+  const cap = judgePageCap();
+  const at = limit => { const pages = pagesAt(limit); const judged = Math.min(pages, cap); return { pages, judged_pages: judged, judgments: judged * families + 1 }; };
   const raise = startJson.max_urls_raise;
-  return { families_per_page: families, default: at(base), raise: raise === null ? null : { limit: raise, ...at(raise) } };
+  return { families_per_page: families, judge_pages_cap: cap, default: at(base), raise: raise === null ? null : { limit: raise, ...at(raise) } };
 }
 
 /** The pages the run would select from this preflight folder, as the run selects them: the sitemap's share at a page budget, or all pages at a request limit. */
