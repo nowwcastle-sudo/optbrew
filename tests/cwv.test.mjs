@@ -156,9 +156,18 @@ test('field families judge the p75 against the registry thresholds', () => {
   const [lcp, inp, cls] = [lcpField, inpField, clsField].map(block => judge(block, [field]));
   assert.deepEqual([lcp, inp, cls].map(x => [x.state, x.q]), [['pass', 1], ['partial', 0.5], ['fail', 0]]);
   assert.deepEqual(inp.partial_basis, { kind: 'threshold_half' });
-  assert.deepEqual(cls.measurement, { value: 0.3, percentile: 75, source_type: 'field', unit: 'unitless' });
+  assert.deepEqual(cls.measurement, { value: 0.3, percentile: 75, source_type: 'field', unit: 'unitless', collection_period: null });
   assert.equal(lcp.evidence_ref, 'evidence/crux.json');
   assert.equal(lcp.unit_key, `lcp-field|${ORIGIN}`);
+});
+
+test('a field observation records the CrUX collection window, and null when there is none', () => {
+  const window = { firstDate: { year: 2026, month: 10, day: 5 }, lastDate: { year: 2026, month: 11, day: 1 } };
+  const withWindow = answer('crux', { record: { ...crux({ largest_contentful_paint: 2100 }).record, collectionPeriod: window } });
+  assert.deepEqual(judge(lcpField, [withWindow]).measurement.collection_period, { first_date: '2026-10-05', last_date: '2026-11-01' });
+  assert.equal(judge(lcpField, [answer('crux', crux({ largest_contentful_paint: 2100 }))]).measurement.collection_period, null, 'no collectionPeriod in the answer');
+  const psi = answer('psi', psiBody({ LARGEST_CONTENTFUL_PAINT_MS: { percentile: 2100 } }));
+  assert.equal(judge(lcpField, [psi]).measurement.collection_period, null, 'PSI names no window');
 });
 
 test('missing field data is unknown, not a failure', () => {
@@ -181,6 +190,36 @@ test('PSI answers are read from the origin experience and CLS is unscaled by its
   assert.equal(judge(clsField, [answer('psi', metrics(10, []))]).state, 'unknown', 'without a bucket bound the scale is not known');
   const other = [{ min: 0, max: 0.1 }, { min: 0.1, max: 0.25 }];
   assert.equal(judge(clsField, [answer('psi', metrics(10, other))]).state, 'unknown', 'a first bucket that does not end at 10 means another scale');
+});
+
+test('CrUX 429 and 5xx are asked once more, and a second failure stays on record', async () => {
+  const noWait = async () => {};
+  for (const status of [429, 503]) {
+    const { store } = await newStore();
+    const { calls, fetchFn } = fakeFetch(reply(status, { error: { code: status } }), reply(200, crux({ largest_contentful_paint: 2100 })));
+    await collectCwv({ origin: ORIGIN, key: KEY, fetchFn, store, wait: noWait });
+    assert.equal(calls.length, 2, `CrUX ${status} is retried once`);
+    assert.deepEqual((await stored(store)).map(x => [x.source, x.record.status]), [['crux', status], ['crux', 200]]);
+  }
+  const { store } = await newStore();
+  const { calls, fetchFn } = fakeFetch(reply(429, { error: { code: 429 } }));
+  await collectCwv({ origin: ORIGIN, key: KEY, fetchFn, store, wait: noWait });
+  assert.equal(calls.length, 2, 'one retry and no more, and no PSI after a CrUX that failed for another reason than missing data');
+  assert.deepEqual((await stored(store)).map(x => [x.source, x.record.status]), [['crux', 429], ['crux', 429]]);
+});
+
+test('the reason of a blank says why the field data is missing', () => {
+  const reasonOf = records => judge(lcpField, records.map(([source, status, body]) => answer(source, body, { status }))).reason;
+  const denied = { error: { code: 403, status: 'PERMISSION_DENIED' } };
+  assert.equal(reasonOf([['crux', 403, denied]]), 'crux_permission_denied');
+  assert.equal(reasonOf([['crux', 429, null], ['crux', 429, null]]), 'crux_unavailable');
+  assert.equal(reasonOf([['crux', 503, null]]), 'crux_unavailable');
+  assert.equal(reasonOf([['crux', 404, NOT_FOUND], ['psi', 200, { lighthouseResult: {} }]]), 'field_data_unavailable', 'CrUX said the origin has no data: PSI adds nothing');
+  assert.equal(reasonOf([['psi', 200, { lighthouseResult: {} }]]), 'psi_field_discontinued', 'a PSI answer that holds no field block');
+  assert.equal(reasonOf([['psi', 200, psiBody({})]]), 'psi_field_discontinued');
+  assert.equal(reasonOf([['psi', 429, null]]), 'field_data_unavailable', 'a PSI quota error says nothing about its field block');
+  assert.equal(reasonOf([]), 'field_data_unavailable');
+  assert.equal(reasonOf([['crux', 200, crux({ interaction_to_next_paint: 120 })]]), 'field_data_unavailable', 'CrUX answered but not for this metric');
 });
 
 test('lab values never create observations', async () => {
