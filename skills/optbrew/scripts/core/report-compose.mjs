@@ -393,6 +393,20 @@ const transitionsLine = comparison => {
   return moved && (moved.changed.length || apart) ? `단위 변화: 상태가 바뀐 ${moved.changed.length}건, 한쪽 실행에만 있는 ${apart}건  \n` : '';
 };
 
+/** The days a field-data window covers, or that it is not known. */
+const windowText = period => period ? `${period.first_date}~${period.last_date}` : '알 수 없음';
+/**
+ * Said under the comparison line: each field-data unit whose later window overlaps the earlier one, with both windows, and the units
+ * whose windows could not be checked. Nothing is said when every window was checked and apart, or when there is no field data to pair.
+ */
+const windowLines = comparison => {
+  const windows = comparison.cwv_windows ?? [];
+  const unchecked = windows.filter(window => window.state === 'unverifiable').map(window => html(window.unit_key));
+  return [...windows.filter(window => window.state === 'overlap').map(window =>
+    `CWV 수집 창이 겹칩니다: ${html(window.unit_key)} 이전 ${windowText(window.before)}, 이후 ${windowText(window.after)}  \n`),
+  ...(unchecked.length ? [`CWV 수집 창 확인 불가: ${unchecked.join(', ')}  \n`] : [])].join('');
+};
+
 /** `report.md` and the table rows `report.json` carries, both rendered from the composed report. */
 export function renderReport(composed, verified) {
   const tables = tableRows(composed, verified);
@@ -401,7 +415,7 @@ export function renderReport(composed, verified) {
   const latest = composed.completeness.map(row => row.after ?? row.before);
   const markdown = `# optbrew 보고서\n\n${verified.data_class === 'synthetic' ? `**${SYNTHETIC_BANNER}**\n\n` : ''}` +
     `대상: ${html(context.target)}  \n환경: ${html(context.environment)}  \n목표: ${html(context.goals.join(', '))}  \n` +
-    `비교: ${html(verified.comparison.status)} (${html(verified.comparison.reasons.join(', ') || '없음')})  \n${transitionsLine(verified.comparison)}` +
+    `비교: ${html(verified.comparison.status)} (${html(verified.comparison.reasons.join(', ') || '없음')})  \n${transitionsLine(verified.comparison)}${windowLines(verified.comparison)}` +
     `결론: ${html(composed.headline.text)}${composed.headline.not_indexed ? `  \n색인 제외: ${html(composed.headline.not_indexed.text)}` : ''}\n\n` +
     `## ${SECTION_TITLES.fixes}\n\n${table(['우선순위', '문제 / 주소', '근거', '고르는 해결 방법', '고칠 위치 또는 사이트 소유자', '비용 / 노력', '확인 방법', '상태'], tables.remediation)}\n\n` +
     `## ${SECTION_TITLES.completeness} (확인한 범위 안의 통과율)\n\n점수는 확인한 범위 안의 통과율입니다. 실제 검색 순위나 유입이 아닙니다.\n\n요약:  \n${latest.map(phase => `- ${html(headlineLine(phase.headline))}  \n`).join('')}\n` +
