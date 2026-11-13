@@ -5,7 +5,7 @@ import { spawn } from 'node:child_process';
 import { createServer } from 'node:http';
 import dgram from 'node:dgram';
 import net from 'node:net';
-import { mkdir, mkdtemp, readdir, rm, stat, symlink, utimes } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, readdir, rm, stat, symlink, utimes } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { PassThrough } from 'node:stream';
@@ -197,6 +197,12 @@ describe('chrome block', async () => {
         assert.ok((await stat(path.join(runDir, profile, 'tmp'))).isDirectory(), 'the run-scoped temp folder is inside the profile');
         const running = await processesWith(path.join(runDir, profile));
         assert.ok(running.length > 0, 'chrome runs on that profile');
+        // Whether Chrome writes into a temp folder depends on its background downloads, so the folder check below can pass by
+        // luck. The environment it got cannot: no Chrome process may keep the user's temp folder.
+        if (process.platform === 'linux') for (const { pid } of running) {
+          const env = (await readFile(`/proc/${pid}/environ`, 'utf8').catch(() => '')).split('\0');
+          assert.ok(!env.includes(`TMPDIR=${hostTemp}`), `chrome process ${pid} kept the user temp folder as TMPDIR`);
+        }
       });
     } finally { names.forEach((name, index) => { if (saved[index] === undefined) delete process.env[name]; else process.env[name] = saved[index]; }); }
     assert.deepEqual(await readdir(hostTemp), [], 'no scoped_dir or other folder in the user temp folder');
