@@ -1,12 +1,12 @@
 import { auditCollected } from '../../../modules/naver-searchadvisor/scripts/audit.mjs';
 import { alternateLinks, decodeEntities } from '../html.mjs';
-import { declaredRobotsIndex } from '../collector.mjs';
+import { LIMIT_REASONS, declaredRobotsIndex } from '../collector.mjs';
 import { compareFacts, pageFacts } from '../facts.mjs';
 import { canonicalUrl, findOrphans, linkGraph } from '../link-graph.mjs';
 import { sameSite } from '../page-select.mjs';
 import { selectRenderPages } from '../render.mjs';
 
-const SKIP_REASONS = ['depth_limit', 'url_limit', 'request_limit'];
+const SKIP_REASONS = ['depth_limit', ...LIMIT_REASONS];
 const NOT_COLLECTED = 'not_collected';
 const normalizeTitle = title => title.toLowerCase().replace(/\s+/g, ' ').trim();
 const BASE_HREF = /<base\b[^>]*\bhref\s*=\s*["']([^"']*)["']/i;
