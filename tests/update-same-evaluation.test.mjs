@@ -30,6 +30,8 @@ async function setup(t, edit) {
   const temp = await tempDir('optbrew same evaluation ');
   const released = path.join(temp, 'release-0.4.0');
   await copyCurrent(released);
+  const versionsFile = path.join(released, 'references', 'versions.json');
+  await writeFile(versionsFile, (await readFile(versionsFile, 'utf8')).replace('"release": "0.4.1"', '"release": "0.4.0"'));
   for (const name of ['scoring.md', 'measurement.md']) await copyFile(path.join(before, name), path.join(released, 'references', name));
   await seal(released, '0.4.0');
   assert.equal((await manifestOf(released)).bundle_hash, published040, 'the fixture is the published 0.4.0 bundle');

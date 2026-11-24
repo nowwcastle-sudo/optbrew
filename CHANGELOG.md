@@ -2,6 +2,13 @@
 
 ## Unreleased
 
+## 0.4.1
+
+Ships the two fixes merged after 0.4.0. Scores, verdicts, the evaluation version (0.6.0) and the protocol version (0.4.0) do not change, so an install of 0.4.0 updates in place.
+
+- A wording-only correction of `references/scoring.md` or `references/measurement.md` inside the same evaluation version no longer stops a managed update with `migration_required`. The accepted texts are listed by hash in `lib/evaluation-equivalence.json`; a changed rule still needs a new evaluation version.
+- The scoring and measurement texts now describe the evaluation 0.6.0 and protocol 0.4.0 compatibility conditions the way the code applies them.
+
 ## 0.4.0
 
 Security fixes from the daybreak review of 0.3.4, and re-audit improvements: judgments of unchanged pages are reused, evidence references are relative to the run folder, a re-audit refuses a field-data window that still holds days from before the fix, the number of judged pages has a cap, and a band follows the number the report shows.
