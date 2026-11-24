@@ -130,7 +130,7 @@ while IFS=$'\t' read -r kind a b; do
 done <<< "$plan"
 ```
 
-Between releases that keep the evaluation version and the scoring contract files, `update` and `rollback` work as before. The same refusal and steps apply to any future release that changes the evaluation version or a scoring contract file.
+Between releases that keep the evaluation version and the scoring contract files, `update` and `rollback` work as before. The same refusal and steps apply to any future release that changes the evaluation version or a scoring contract file. The one exception is a wording-only fix of `scoring.md` or `measurement.md` inside the same evaluation version: a reviewer lists the new text hash in `lib/evaluation-equivalence.json`, and `tests/update-same-evaluation.test.mjs` fails until that is done.
 
 ## Native host routes
 

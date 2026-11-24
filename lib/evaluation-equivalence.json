@@ -1,0 +1,12 @@
+{
+  "0.6.0": {
+    "references/scoring.md": [
+      "f6516e63f6fb4b019ad093720304c493f8a0d279e6e184e44af4277ba6337221",
+      "69a71ba3d57e2306193173221a6bb7d047b303339e4d0cb941c9d626fc6cdb92"
+    ],
+    "references/measurement.md": [
+      "c766c49330cbdd510e74ebe0d75af0018fd370916add8d4ba550838a00f386c1",
+      "901055c48d5f9a16e6b60fa2a4be8eca80dcbe1e1f5c1ac08e6f1d5bca95bcdb"
+    ]
+  }
+}
