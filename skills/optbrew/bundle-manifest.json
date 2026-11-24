@@ -14,11 +14,11 @@
     },
     {
       "path": "references/scoring.md",
-      "sha256": "f6516e63f6fb4b019ad093720304c493f8a0d279e6e184e44af4277ba6337221"
+      "sha256": "69a71ba3d57e2306193173221a6bb7d047b303339e4d0cb941c9d626fc6cdb92"
     },
     {
       "path": "references/measurement.md",
-      "sha256": "c766c49330cbdd510e74ebe0d75af0018fd370916add8d4ba550838a00f386c1"
+      "sha256": "901055c48d5f9a16e6b60fa2a4be8eca80dcbe1e1f5c1ac08e6f1d5bca95bcdb"
     },
     {
       "path": "references/messages.ko.json",
@@ -153,7 +153,7 @@
       "sha256": "7b41a2f2039735e35b1f015ac3f3e8cf7ab9383dbbc758c15fcaa9149874575d"
     }
   ],
-  "evaluation_hash": "2ea5b812d6868e30793d412e5ca317bc9dfdba386a7be7026a07458bf08132fe",
+  "evaluation_hash": "b6ba8fbb688971fbe70c5548baf19b57e5a717b5f96e5cf1842e951fa9bb3539",
   "protocol_sources": [
     {
       "path": "references/schemas/contract.schema.json",
@@ -692,7 +692,7 @@
     },
     {
       "path": "references/measurement.md",
-      "sha256": "c766c49330cbdd510e74ebe0d75af0018fd370916add8d4ba550838a00f386c1"
+      "sha256": "901055c48d5f9a16e6b60fa2a4be8eca80dcbe1e1f5c1ac08e6f1d5bca95bcdb"
     },
     {
       "path": "references/messages.ko.json",
@@ -780,7 +780,7 @@
     },
     {
       "path": "references/scoring.md",
-      "sha256": "f6516e63f6fb4b019ad093720304c493f8a0d279e6e184e44af4277ba6337221"
+      "sha256": "69a71ba3d57e2306193173221a6bb7d047b303339e4d0cb941c9d626fc6cdb92"
     },
     {
       "path": "references/source-analysis.md",
@@ -1103,5 +1103,5 @@
       "sha256": "f7119e765139292f4d88685e617f91feab3615003a30eae1ff05e6bf7e561497"
     }
   ],
-  "bundle_hash": "97358d424ea7f31110fec6c845cd6b8fcfaebe867b10bb2fd5cff9115307bac8"
+  "bundle_hash": "d23919ba544e01f3179640ba4743e538875a3277aa13f2454eb7c7bee7f59779"
 }
